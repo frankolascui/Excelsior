@@ -35,11 +35,25 @@ export function SettingsPanel({
     pick(next);
   }
 
-  function download() {
-    const blob = new Blob([exportBackup(game.state, Date.now())], { type: 'application/json' });
+  async function download() {
+    const name = `excelsior-${new Date().toISOString().slice(0, 10)}.json`;
+    const data = exportBackup(game.state, Date.now());
+    // Dentro de Claude (Artifact) las descargas pasan por la capacidad «downloads»; en la web, enlace normal.
+    const claudeRt = (window as unknown as { claude?: { use?: (n: string) => Promise<{ save: (r: { filename: string; data: string }) => Promise<unknown> } | null> } }).claude;
+    const downloads = claudeRt?.use ? await claudeRt.use('downloads').catch(() => null) : null;
+    if (downloads) {
+      try {
+        await downloads.save({ filename: name, data });
+        game.toast('Copia descargada', 'info');
+      } catch (e) {
+        if ((e as { code?: string }).code !== 'declined') game.toast('No se pudo descargar aquí', 'info');
+      }
+      return;
+    }
+    const blob = new Blob([data], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `excelsior-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = name;
     document.body.appendChild(a);
     a.click();
     a.remove();

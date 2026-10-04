@@ -1,0 +1,260 @@
+{
+  "app": "excelsior",
+  "exportedAt": "2026-10-05T09:50:25.851Z",
+  "state": {
+    "version": 5,
+    "profile": {
+      "name": "Nicolas",
+      "createdAt": 1791104400472
+    },
+    "quests": [
+      {
+        "id": "mutlbgvwc5lv4d",
+        "title": "Terminar el tema 3 de Física",
+        "type": "main",
+        "createdAt": 1791104406332,
+        "completedAt": 1791107417808
+      },
+      {
+        "id": "mutlbgxwt2n3d4",
+        "title": "Responder emails",
+        "type": "daily",
+        "createdAt": 1791104406404,
+        "completedAt": 1791104406466
+      },
+      {
+        "id": "muv2jyt13g329e",
+        "title": "Terminar una calculadora",
+        "type": "main",
+        "createdAt": 1791193822453,
+        "completedAt": 1791193822598,
+        "kingdomId": "muv2jyp8rfbfbx"
+      },
+      {
+        "id": "muv2jyv72cfudx",
+        "title": "Aprender Git",
+        "type": "main",
+        "createdAt": 1791193822531,
+        "completedAt": null,
+        "kingdomId": "muv2jyp8rfbfbx"
+      }
+    ],
+    "habits": [
+      {
+        "id": "mutlbcd4xnp548",
+        "name": "Leer",
+        "frequency": "daily",
+        "createdAt": 1791104400472,
+        "rewards": {
+          "sabiduria": 3
+        }
+      },
+      {
+        "id": "mutlbcd5sjoc3j",
+        "name": "Entrenar",
+        "frequency": "daily",
+        "createdAt": 1791104400472,
+        "rewards": {
+          "voluntad": 5
+        }
+      },
+      {
+        "id": "muv2jzhz0bmugx",
+        "name": "Tocar la guitarra",
+        "frequency": "daily",
+        "createdAt": 1791193823351,
+        "rewards": {
+          "voluntad": 2,
+          "creacion": 5,
+          "conexion": 3
+        },
+        "xp": 15
+      }
+    ],
+    "habitCompletions": [
+      {
+        "id": "mutn4159tl49ej",
+        "habitId": "mutlbcd4xnp548",
+        "day": "2026-10-04",
+        "at": 1791107418573
+      },
+      {
+        "id": "muv2jzwxzkkorb",
+        "habitId": "muv2jzhz0bmugx",
+        "day": "2026-10-05",
+        "at": 1791193823889
+      }
+    ],
+    "sessions": [
+      {
+        "id": "mutn40hz8el5w6",
+        "questId": "mutlbgvwc5lv4d",
+        "label": "Terminar el tema 3 de Física",
+        "area": "general",
+        "startedAt": 1791104406835,
+        "endedAt": 1791107417735,
+        "minutes": 45,
+        "breakMinutes": 0,
+        "distractionMinutes": 5,
+        "distractions": 1,
+        "focusPct": 90
+      }
+    ],
+    "xp": [
+      {
+        "at": 1791104406466,
+        "amount": 20,
+        "source": "quest",
+        "sourceId": "mutlbgxwt2n3d4",
+        "label": "Responder emails",
+        "attributes": {
+          "voluntad": 3
+        },
+        "id": "mutlbgzm6t04nr"
+      },
+      {
+        "at": 1791107417735,
+        "amount": 45,
+        "source": "deepwork",
+        "sourceId": "mutn40hz8el5w6",
+        "label": "Terminar el tema 3 de Física",
+        "attributes": {
+          "maestria": 45,
+          "voluntad": 22.5
+        },
+        "id": "mutn40hznsc08j"
+      },
+      {
+        "at": 1791107417808,
+        "amount": 50,
+        "source": "quest",
+        "sourceId": "mutlbgvwc5lv4d",
+        "label": "Terminar el tema 3 de Física",
+        "attributes": {
+          "voluntad": 5,
+          "maestria": 5
+        },
+        "id": "mutn40k0irq3a1"
+      },
+      {
+        "at": 1791107418573,
+        "amount": 10,
+        "source": "habit",
+        "sourceId": "mutn4159tl49ej",
+        "label": "Leer",
+        "attributes": {
+          "sabiduria": 3
+        },
+        "id": "mutn4159bqozug"
+      },
+      {
+        "at": 1791193822598,
+        "amount": 50,
+        "source": "quest",
+        "sourceId": "muv2jyt13g329e",
+        "label": "Terminar una calculadora",
+        "attributes": {
+          "voluntad": 5,
+          "maestria": 5
+        },
+        "id": "muv2jyx3ul7cfa"
+      },
+      {
+        "at": 1791193823889,
+        "amount": 15,
+        "source": "habit",
+        "sourceId": "muv2jzwxzkkorb",
+        "label": "Tocar la guitarra",
+        "attributes": {
+          "voluntad": 2,
+          "creacion": 5,
+          "conexion": 3
+        },
+        "id": "muv2jzwx5ggnvc"
+      }
+    ],
+    "activeTimer": null,
+    "kingdoms": [
+      {
+        "id": "muv2jyp8rfbfbx",
+        "name": "Reino de la Programación",
+        "createdAt": 1791193822316
+      }
+    ],
+    "goals": [
+      {
+        "name": "Hablar con desconocidos",
+        "unit": "personas",
+        "start": 0,
+        "target": 10,
+        "avatarId": "iniciado",
+        "current": 1,
+        "id": "muv2jy4zp650mx",
+        "createdAt": 1791193821587
+      }
+    ],
+    "rewards": [
+      {
+        "id": "r0-mutlbcd4",
+        "name": "Ver un episodio de una serie",
+        "icon": "📺",
+        "cost": 25,
+        "createdAt": 1791104400472
+      },
+      {
+        "id": "r1-mutlbcd4",
+        "name": "1 hora de videojuegos",
+        "icon": "🎮",
+        "cost": 40,
+        "createdAt": 1791104400472
+      },
+      {
+        "id": "r2-mutlbcd4",
+        "name": "Comida trampa",
+        "icon": "🍔",
+        "cost": 80,
+        "createdAt": 1791104400472
+      },
+      {
+        "id": "r3-mutlbcd4",
+        "name": "Salir con amigos",
+        "icon": "🍻",
+        "cost": 100,
+        "createdAt": 1791104400472
+      },
+      {
+        "id": "r4-mutlbcd4",
+        "name": "Día libre sin culpa",
+        "icon": "🏖️",
+        "cost": 350,
+        "createdAt": 1791104400472
+      }
+    ],
+    "purchases": [
+      {
+        "id": "muv2jzrojoqszj",
+        "rewardId": "r0-mutlbcd4",
+        "name": "Ver un episodio de una serie",
+        "icon": "📺",
+        "cost": 25,
+        "at": 1791193823700
+      }
+    ],
+    "bosses": [
+      {
+        "id": "muv2jzpq2c8hq6",
+        "name": "Hidra de la Procrastinación",
+        "icon": "🐉",
+        "source": "xp",
+        "hp": 700,
+        "createdAt": 1791193823630,
+        "deadline": 1791798623630,
+        "reward": 88
+      }
+    ]
+  },
+  "prefs": {
+    "excelsior:tutorial": "{\"doneFor\":1791104400472,\"guide\":\"Hiperión\"}",
+    "excelsior:theme": "{\"id\":\"olimpo\"}"
+  }
+}
