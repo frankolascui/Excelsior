@@ -21,6 +21,21 @@ const check = (cond, msg) => { if (!cond) { console.error('FALLO:', msg); proces
 await page.fill('#hero-name', 'Nicolas');
 await page.click('text=Crear personaje');
 await page.waitForSelector('text=¿Qué hago ahora?');
+
+// 1b. Tutorial con guía: aparece solo, señala cada pantalla y no vuelve tras saltarlo
+check(await seen('.tour .eyebrow:has-text("Maestro Sun · 1/10")'), 'el tutorial arranca con el guía');
+await page.click('.tour button:has-text("Siguiente")');
+check(await seen('[data-tour="now"].tour-target'), 'paso 2 señala «¿Qué hago ahora?»');
+await page.click('.tour button:has-text("Siguiente")');
+check(await seen('.nav-item.on:has-text("Misiones")') && await seen('[data-tour="quest-add"].tour-target'), 'paso 3 lleva a Misiones y señala el formulario');
+await page.waitForTimeout(1200);
+await page.screenshot({ path: `${out}/00-tutorial.png` });
+await page.click('.tour button:has-text("Saltar")');
+check(!(await page.$('.tour')) && !(await page.$('.tour-target')), 'saltar cierra el tutorial y quita el foco');
+await page.reload();
+await page.waitForSelector('.nav');
+check(!(await seen('.tour')), 'el tutorial no vuelve a salir al recargar');
+await page.click('.nav-item:has-text("Hoy")');
 check(await seen('text=Crea tu primera misión.'), 'dashboard guía a crear la primera misión');
 await page.screenshot({ path: `${out}/01-empty.png`, fullPage: true });
 
@@ -87,6 +102,15 @@ await page.clock.fastForward('24:00:00');
 await page.reload();
 await page.click('.nav-item:has-text("Personaje")');
 check(await seen('text=125 XP global en total'), 'personaje muestra 125 XP totales');
+check(await seen('.chart-sub:has-text("125 XP en 30 días")'), 'gráfica de XP: 125 XP en 30 días');
+check((await page.$$('.heat rect')).length >= 175, 'mapa de actividad con al menos 26 semanas de cuadraditos en escritorio');
+check(await seen('.heat rect.heat-4') && await seen('.heat rect.today.heat-0'), 'ayer brilla al máximo y hoy (sin XP) está vacío');
+await page.hover('.heat rect.heat-4');
+check(await seen('.chart-tip:has-text("125 XP")'), 'tooltip del cuadradito: 125 XP ese día');
+await page.click('[role=radio]:has-text("7 días")');
+check(await seen('.chart-sub:has-text("en 7 días")'), 'la gráfica cambia a 7 días');
+await page.hover('.chart svg rect[fill="transparent"]', { position: { x: 5, y: 60 } });
+check(await seen('.chart-tip'), 'crosshair con tooltip al pasar por la gráfica');
 check(await seen('.req:has-text("Nivel global 3")'), 'Personaje muestra los requisitos del siguiente avatar');
 await page.screenshot({ path: `${out}/05-character.png`, fullPage: true });
 
@@ -106,15 +130,27 @@ await page.click('.nav-item:has-text("Reinos")');
 await page.fill('#new-kingdom', 'Reino de la Programación');
 await page.click('button:has-text("Fundar")');
 await page.fill('.kingdom input', 'Terminar una calculadora');
-await page.click('.kingdom [role=radio]:has-text("Torre")');
+await page.click('.kingdom [role=radio]:has-text("Torreón")');
 await page.click('.kingdom button:has-text("Construir")');
 await page.fill('.kingdom input', 'Aprender Git');
 await page.click('.kingdom button:has-text("Construir")');
-check(await seen('.kingdom-stage:has-text("Solar vacío")') || await seen('.kingdom-stage:has-text("0/2")'), 'reino con 2 construcciones en obras');
+check(await seen('.kingdom-stage:has-text("Campamento · 0/2")'), 'reino con 2 cimientos: Campamento');
 await page.click('button[aria-label="Construir Terminar una calculadora"]');
 check(await seen('.toast:has-text("+50 XP")'), 'construir la torre da +50 XP');
-check(await seen('.kingdom-stage:has-text("Pueblo · 1/2")'), 'el reino pasa a Pueblo 1/2');
+check(await seen('.kingdom-stage:has-text("Villa · 1/2")'), 'el reino pasa a Villa 1/2');
+check(await seen('.kingdom-node[aria-label*="50 %"]'), 'el mapa muestra el reino al 50 %');
+check(await seen('.realm .chart-sub:has-text("Dominio 50 %")'), 'dominio del mapa 50 %');
+await page.click('.kingdom-node');
+check(await seen('.kingdom.flash'), 'pulsar el reino en el mapa lleva a su ciudad');
+await page.evaluate(() => window.scrollTo(0, 0));
 await page.screenshot({ path: `${out}/08-kingdom.png`, fullPage: true });
+
+// 7a3. Atributo elegido a mano al crear un hábito
+await page.click('.nav-item:has-text("Hábitos")');
+await page.fill('#new-habit', 'Tocar la guitarra');
+await page.selectOption('[data-tour="habits"] .attr-select', 'conexion');
+await page.click('[data-tour="habits"] button:has-text("Añadir")');
+check(await seen('.item:has-text("Tocar la guitarra") .rewards[aria-label="+4 Conexión"]'), 'hábito con atributo elegido: +4 Conexión');
 
 // 7b. Cuenta atrás: se termina sola al llegar a 0
 await page.click('.nav-item:has-text("Deep Work")');

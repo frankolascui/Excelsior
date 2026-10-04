@@ -41,8 +41,12 @@ function add(a: AttributeRewards, b: AttributeRewards): AttributeRewards {
   return out;
 }
 
-/** Recompensa por tipo de misión + bonus de Conexión/Creación si el título lo indica. */
-export function questRewards(type: QuestType, title = ''): AttributeRewards {
+/**
+ * Recompensa por tipo de misión + bonus de atributo: el elegido a mano (`focus`)
+ * o, si no hay, Conexión/Creación cuando el título lo indica.
+ */
+export function questRewards(type: QuestType, title = '', focus?: AttributeId): AttributeRewards {
+  if (focus) return add(QUEST_REWARDS[type], { [focus]: QUEST_KEYWORD_BONUS });
   const t = normalize(title);
   let r = QUEST_REWARDS[type];
   if (CONEXION_RE.test(t)) r = add(r, { conexion: QUEST_KEYWORD_BONUS });
@@ -61,7 +65,11 @@ const HABIT_RULES: [RegExp, AttributeRewards][] = [
 ];
 const HABIT_DEFAULT: AttributeRewards = { voluntad: 2 };
 
-export function habitRewards(name: string): AttributeRewards {
+const HABIT_FOCUS_XP = 4;
+
+/** Atributo elegido a mano (`focus`) o deducido del nombre del hábito. */
+export function habitRewards(name: string, focus?: AttributeId): AttributeRewards {
+  if (focus) return { [focus]: HABIT_FOCUS_XP };
   const n = normalize(name);
   return HABIT_RULES.find(([re]) => re.test(n))?.[1] ?? HABIT_DEFAULT;
 }

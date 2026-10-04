@@ -5,6 +5,7 @@ import { avatarInfo } from './attributes';
 import { isMuted, setMuted, sfx } from './sfx';
 import { Character, Dashboard, DeepWork, Habits, Kingdoms, Onboarding, Quests, type Tab } from './screens';
 import type { Quest } from './types';
+import { loadTutorial, saveTutorial, Tutorial, type TutorialPrefs } from './tutorial';
 
 const TABS: { id: Tab; label: string; glyph: string }[] = [
   { id: 'hoy', label: 'Hoy', glyph: '◆' },
@@ -26,6 +27,25 @@ export default function App() {
   const [tab, setTab] = useState<Tab>(tabFromHash);
   const [preselect, setPreselect] = useState<string | null>(null);
   const [muted, setMutedState] = useState(isMuted);
+  const [tutorial, setTutorial] = useState<TutorialPrefs>(loadTutorial);
+  const [tourStep, setTourStep] = useState<number | null>(null);
+  const profileId = state.profile?.createdAt ?? null;
+
+  // Cada personaje nuevo ve el tutorial una vez.
+  useEffect(() => {
+    if (profileId !== null && tutorial.doneFor !== profileId) setTourStep(0);
+  }, [profileId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function updateTutorial(p: Partial<TutorialPrefs>) {
+    const next = { ...tutorial, ...p };
+    setTutorial(next);
+    saveTutorial(next);
+  }
+
+  function closeTour() {
+    setTourStep(null);
+    updateTutorial({ doneFor: profileId });
+  }
 
   function toggleSound() {
     setMuted(!muted);
@@ -82,8 +102,14 @@ export default function App() {
         {tab === 'reinos' && <Kingdoms game={game} focusQuest={focusQuest} />}
         {tab === 'deepwork' && <DeepWork key={preselect ?? 'free'} game={game} preselect={preselect} clearPreselect={() => setPreselect(null)} />}
         {tab === 'habitos' && <Habits game={game} />}
-        {tab === 'personaje' && <Character game={game} />}
+        {tab === 'personaje' && (
+          <Character game={game} guide={tutorial.guide} setGuide={(guide) => updateTutorial({ guide })} replayTutorial={() => setTourStep(0)} />
+        )}
       </main>
+
+      {tourStep !== null && (
+        <Tutorial step={tourStep} name={state.profile.name} guide={tutorial.guide} go={go} onStep={setTourStep} onClose={closeTour} />
+      )}
 
       <div className="toasts" aria-live="polite">
         {game.toasts.map((t) => (

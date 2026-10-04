@@ -1,16 +1,19 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { useGame } from './store';
-import type { FocusPhase, Quest, QuestType } from './types';
+import type { AttributeId, FocusPhase, Quest, QuestType } from './types';
 import { addGoal, avatarInfo, deepWorkRewards, deleteGoal, formatAttrXp, goalProgress, updateGoal } from './attributes';
-import { addKingdom, BUILDINGS, buildings, deleteKingdom, kingdomName, kingdomProgress } from './kingdoms';
+import { addKingdom, BUILDINGS, buildings, deleteKingdom, kingdomName, kingdomProgress, SCAFFOLD_ICON } from './kingdoms';
+import { RealmMap } from './realm';
+import { DEFAULT_GUIDE } from './tutorial';
 import { sfx } from './sfx';
+import { ActivityHeatmap, XpChart } from './charts';
 import {
   addHabit, addQuest, cancelTimer, completeQuest, createProfile, dayKey, deepWorkMinutesOnDay,
   deleteHabit, deleteQuest, focusPercent, habitStreak, isHabitDone, levelInfo, pendingQuests, setPhase, timerTotals,
-  shiftDay, startTimer, stopTimer, suggest, toggleHabit, totalXp, undoQuest, xpOnDay, XP_RULES,
+  startTimer, stopTimer, suggest, toggleHabit, totalXp, undoQuest, xpOnDay, XP_RULES,
 } from './game';
 import {
-  AttributeList, AvatarCard, ConfirmButton, formatClock, formatMinutes, HabitItem, LevelBar, QuestItem,
+  AttributeList, AttributeSelect, AvatarCard, ConfirmButton, formatClock, formatMinutes, HabitItem, LevelBar, QuestItem,
   QuickAddQuest, RewardTags, useNow,
 } from './ui';
 
@@ -75,7 +78,7 @@ export function Dashboard({ game, go, focusQuest }: { game: Game; go: (t: Tab) =
 
   return (
     <div className="screen">
-      <section className="now" aria-labelledby="now-h">
+      <section className="now" aria-labelledby="now-h" data-tour="now">
         <p className="eyebrow" id="now-h">¿Qué hago ahora?</p>
         {s.kind === 'timer' && (
           <>
@@ -107,7 +110,7 @@ export function Dashboard({ game, go, focusQuest }: { game: Game; go: (t: Tab) =
           <>
             <h2>Crea tu primera misión.</h2>
             <p className="now-sub">Algo concreto que quieras hacer hoy. Una sola línea basta.</p>
-            <QuickAddQuest onAdd={(t, ty) => act((st) => addQuest(st, t, ty, Date.now()))} />
+            <QuickAddQuest onAdd={(t, ty, f) => act((st) => addQuest(st, t, ty, Date.now(), undefined, f))} />
           </>
         )}
         {s.kind === 'done' && (
@@ -137,7 +140,7 @@ export function Dashboard({ game, go, focusQuest }: { game: Game; go: (t: Tab) =
               ))}
             </ul>
           )}
-          {s.kind !== 'create' && <QuickAddQuest onAdd={(t, ty) => act((st) => addQuest(st, t, ty, Date.now()))} />}
+          {s.kind !== 'create' && <QuickAddQuest onAdd={(t, ty, f) => act((st) => addQuest(st, t, ty, Date.now(), undefined, f))} />}
         </section>
 
         <section className="panel">
@@ -196,8 +199,8 @@ export function Quests({ game, focusQuest }: { game: Game; focusQuest: (q: Quest
   return (
     <div className="screen">
       <h1 className="screen-title">Misiones</h1>
-      <section className="panel">
-        <QuickAddQuest autoFocus onAdd={(t, ty) => act((st) => addQuest(st, t, ty, Date.now()))} />
+      <section className="panel" data-tour="quest-add">
+        <QuickAddQuest autoFocus onAdd={(t, ty, f) => act((st) => addQuest(st, t, ty, Date.now(), undefined, f))} />
         <p className="hint">Principal = lo importante. Diaria = para hoy. Secundaria = si sobra tiempo.</p>
       </section>
       <section className="panel">
@@ -388,7 +391,7 @@ export function DeepWork({ game, preselect, clearPreselect }: { game: Game; pres
         <p className="linked">Para la misión <strong>{linkedQuest.title}</strong> <button className="link" onClick={() => setQuestId(null)}>Quitar</button></p>
       )}
 
-      <div className="modes">
+      <div className="modes" data-tour="modes">
         <button className="mode-card" onClick={() => start(0)}>
           <span className="mode-icon" aria-hidden="true">⏱</span>
           <span className="mode-title">Sesión libre</span>
@@ -435,18 +438,20 @@ export function Habits({ game }: { game: Game }) {
   const { state, act } = game;
   const now = useNow(30_000);
   const [name, setName] = useState('');
+  const [focus, setFocus] = useState<AttributeId | undefined>();
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    act((s) => addHabit(s, name, Date.now()));
+    act((s) => addHabit(s, name, Date.now(), focus));
     setName('');
   }
   return (
     <div className="screen">
       <h1 className="screen-title">Hábitos</h1>
-      <section className="panel">
+      <section className="panel" data-tour="habits">
         <form className="quick-add inline" onSubmit={submit}>
           <input id="new-habit" value={name} onChange={(e) => setName(e.target.value)} placeholder="+ Nuevo hábito diario (ej. Leer 10 páginas)" maxLength={60} aria-label="Nombre del nuevo hábito" />
+          <AttributeSelect value={focus} onChange={setFocus} />
           <button type="submit" className="primary" disabled={!name.trim()}>Añadir</button>
         </form>
         <p className="hint">+{XP_RULES.habit} XP cada día que lo completes. Los puntos de la derecha son los últimos 7 días.</p>
@@ -466,7 +471,9 @@ export function Habits({ game }: { game: Game }) {
 
 // ---------- Personaje y progreso ----------
 
-export function Character({ game }: { game: Game }) {
+export function Character({
+  game, guide, setGuide, replayTutorial,
+}: { game: Game; guide: string; setGuide: (name: string) => void; replayTutorial: () => void }) {
   const { state, reset } = game;
   const now = useNow(60_000);
   const xp = totalXp(state);
@@ -475,11 +482,6 @@ export function Character({ game }: { game: Game }) {
   const questsDone = state.quests.filter((q) => q.completedAt).length;
   const bestStreak = state.habits.reduce((m, h) => Math.max(m, habitStreak(state, h.id, now)), 0);
   const activeDays = new Set(state.xp.map((t) => dayKey(t.at))).size;
-  const week = Array.from({ length: 7 }, (_, i) => {
-    const ts = shiftDay(now, i - 6);
-    return { day: dayKey(ts), label: new Date(ts).toLocaleDateString('es-ES', { weekday: 'short' }).replace('.', ''), xp: xpOnDay(state, dayKey(ts)) };
-  });
-  const max = Math.max(50, ...week.map((d) => d.xp));
   const history = [...state.xp].reverse().slice(0, 15);
   const SOURCE = { quest: 'Misión', habit: 'Hábito', deepwork: 'Deep Work' } as const;
 
@@ -500,7 +502,7 @@ export function Character({ game }: { game: Game }) {
 
       <GoalsPanel game={game} now={now} />
 
-      <section className="panel" aria-labelledby="attrs-detail-h">
+      <section className="panel" aria-labelledby="attrs-detail-h" data-tour="attrs">
         <h3 id="attrs-detail-h">Atributos</h3>
         <AttributeList state={state} detailed />
       </section>
@@ -512,18 +514,9 @@ export function Character({ game }: { game: Game }) {
         <Stat label="Días con progreso" value={`${activeDays}`} />
       </section>
 
-      <section className="panel">
-        <header className="panel-head"><h3>XP de los últimos 7 días</h3><span className="count mono">{week.reduce((n, d) => n + d.xp, 0)} XP</span></header>
-        <div className="bars" role="img" aria-label={week.map((d) => `${d.label}: ${d.xp} XP`).join(', ')}>
-          {week.map((d) => (
-            <div key={d.day} className={d.day === dayKey(now) ? 'bar today' : 'bar'}>
-              <span className="bar-val mono">{d.xp || ''}</span>
-              <div className="bar-track"><div className="bar-fill" style={{ height: `${(d.xp / max) * 100}%` }} /></div>
-              <span className="bar-label">{d.label}</span>
-            </div>
-          ))}
-        </div>
-      </section>
+      <XpChart state={state} now={now} />
+
+      <ActivityHeatmap state={state} now={now} />
 
       <section className="panel">
         <header className="panel-head"><h3>Historial</h3></header>
@@ -537,6 +530,15 @@ export function Character({ game }: { game: Game }) {
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="panel" aria-labelledby="settings-h">
+        <h3 id="settings-h">Ajustes</h3>
+        <div className="settings-row">
+          <label htmlFor="guide-name">Nombre de tu guía</label>
+          <input id="guide-name" defaultValue={guide} maxLength={30} onBlur={(e) => setGuide(e.target.value.trim() || DEFAULT_GUIDE)} />
+          <button className="secondary" onClick={replayTutorial}>Repetir tutorial</button>
+        </div>
       </section>
 
       <section className="panel quiet">
@@ -560,13 +562,22 @@ export function Kingdoms({ game, focusQuest }: { game: Game; focusQuest: (q: Que
     act((s) => addKingdom(s, name, Date.now()));
     setName('');
   }
+  function showKingdom(id: string) {
+    const el = document.getElementById(`kingdom-${id}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    el.classList.remove('flash');
+    void el.offsetWidth; // reinicia la animación
+    el.classList.add('flash');
+  }
   return (
     <div className="screen">
       <h1 className="screen-title">Reinos</h1>
-      <p className="hint">Un reino es un proyecto. Cada tarea es una construcción y tu ciudad crece al completarlas.</p>
+      <p className="hint">Un reino es un proyecto. Cada tarea es una construcción y tu ciudad crece al completarlas: campamento, aldea, villa, ciudad amurallada y reino glorioso.</p>
+      <RealmMap state={state} onSelect={showKingdom} />
       <section className="panel">
         <form className="quick-add inline" onSubmit={submit}>
-          <input id="new-kingdom" value={name} onChange={(e) => setName(e.target.value)} placeholder="+ Nuevo reino (ej. Reino de la Programación)" maxLength={50} aria-label="Nombre del nuevo reino" />
+          <input id="new-kingdom" value={name} onChange={(e) => setName(e.target.value)} placeholder="+ Fundar un reino (ej. Reino de la Programación)" maxLength={50} aria-label="Nombre del nuevo reino" />
           <button type="submit" className="primary" disabled={!name.trim()}>Fundar</button>
         </form>
       </section>
@@ -585,17 +596,18 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
   const list = buildings(state, kingdomId).sort((a, b) => Number(!!b.completedAt) - Number(!!a.completedAt) || a.createdAt - b.createdAt);
   const [title, setTitle] = useState('');
   const [type, setType] = useState<QuestType>('side');
+  const [focus, setFocus] = useState<AttributeId | undefined>();
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    act((s) => addQuest(s, title, type, Date.now(), kingdomId));
+    act((s) => addQuest(s, title, type, Date.now(), kingdomId, focus));
     setTitle('');
   }
   return (
-    <section className={p.complete ? 'panel kingdom complete' : 'panel kingdom'} aria-labelledby={`k-${kingdomId}`}>
+    <section id={`kingdom-${kingdomId}`} className={p.complete ? 'panel kingdom complete' : 'panel kingdom'} aria-labelledby={`k-${kingdomId}`}>
       <header className="kingdom-head">
         <div>
-          <h2 id={`k-${kingdomId}`} className="kingdom-name">{kingdom.name}</h2>
+          <h2 id={`k-${kingdomId}`} className="kingdom-name"><span aria-hidden="true">{p.icon} </span>{kingdom.name}</h2>
           <p className="kingdom-stage">{p.stage} · {p.built}/{p.total} construcciones</p>
         </div>
         <span className="kingdom-pct mono">{Math.round(p.progress * 100)} %</span>
@@ -604,12 +616,12 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
         <div className="xpbar-fill" style={{ width: `${p.progress * 100}%` }} />
       </div>
       <div className="city" aria-label="Ciudad">
-        {list.length === 0 && <p className="empty city-empty">Solar vacío. Añade tu primera construcción abajo.</p>}
+        {list.length === 0 && <p className="empty city-empty">Tierras baldías. Planea tu primera construcción abajo.</p>}
         {list.map((q) => (
           <div key={q.id} className={`building b-${q.type} ${q.completedAt ? 'built' : 'pending'}`}>
-            <span className="building-icon" aria-hidden="true">{q.completedAt ? BUILDINGS[q.type].icon : '🏗️'}</span>
+            <span className="building-icon" aria-hidden="true">{q.completedAt ? BUILDINGS[q.type].icon : SCAFFOLD_ICON}</span>
             <span className="building-name">{q.title}</span>
-            <span className="building-type">{q.completedAt ? BUILDINGS[q.type].name : `${BUILDINGS[q.type].name} en obras`}</span>
+            <span className="building-type">{q.completedAt ? BUILDINGS[q.type].name : `Cimientos de ${BUILDINGS[q.type].name.toLowerCase()}`}</span>
             {!q.completedAt && (
               <span className="building-actions">
                 <button className="check" onClick={() => act((s) => completeQuest(s, q.id, Date.now()), CAP_QUEST)} aria-label={`Construir ${q.title}`} title="Completar">✓</button>
@@ -629,6 +641,7 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
               </button>
             ))}
           </div>
+          <AttributeSelect value={focus} onChange={setFocus} />
           <button type="submit" className="primary" disabled={!title.trim()}>Construir</button>
         </div>
       </form>

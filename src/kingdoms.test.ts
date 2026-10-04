@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { addQuest, completeQuest, createProfile, emptyState, migrate, totalXp } from './game';
-import { addKingdom, buildings, deleteKingdom, kingdomProgress } from './kingdoms';
+import { addKingdom, buildings, deleteKingdom, kingdomProgress, realmProgress } from './kingdoms';
 
 const NOW = new Date(2026, 9, 4, 10, 0).getTime();
 
@@ -8,16 +8,18 @@ describe('reinos', () => {
   it('cada construcción es una misión y el reino avanza al completarlas', () => {
     let s = addKingdom(createProfile(emptyState(), 'Nico', [], NOW), 'Reino de la Programación', NOW);
     const k = s.kingdoms[0].id;
-    expect(kingdomProgress(s, k)).toMatchObject({ total: 0, stage: 'Solar vacío' });
+    expect(kingdomProgress(s, k)).toMatchObject({ total: 0, stage: 'Tierras baldías' });
     s = addQuest(s, 'Terminar una calculadora', 'main', NOW, k);
     s = addQuest(s, 'Aprender Git', 'side', NOW, k);
     s = addQuest(s, 'Misión suelta', 'daily', NOW);
     expect(buildings(s, k)).toHaveLength(2);
+    expect(kingdomProgress(s, k)).toMatchObject({ stage: 'Campamento', icon: '⛺' });
     s = completeQuest(s, buildings(s, k)[0].id, NOW).state;
     expect(totalXp(s)).toBe(50);
-    expect(kingdomProgress(s, k)).toMatchObject({ built: 1, total: 2, progress: 0.5, stage: 'Pueblo', complete: false });
+    expect(kingdomProgress(s, k)).toMatchObject({ built: 1, total: 2, progress: 0.5, stage: 'Villa', complete: false });
+    expect(realmProgress(s)).toEqual({ built: 1, total: 2, progress: 0.5 });
     s = completeQuest(s, buildings(s, k)[1].id, NOW).state;
-    expect(kingdomProgress(s, k)).toMatchObject({ stage: 'Reino completado', complete: true });
+    expect(kingdomProgress(s, k)).toMatchObject({ stage: 'Reino glorioso', icon: '👑', complete: true });
   });
 
   it('borrar un reino quita lo pendiente y conserva lo construido', () => {

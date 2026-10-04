@@ -21,6 +21,7 @@ export interface Quest {
   createdAt: number;
   completedAt: number | null;
   kingdomId?: string; // si existe, la misión es una construcción de ese reino
+  focus?: AttributeId; // atributo elegido a mano; sin él se deduce del título
 }
 
 export interface Habit {

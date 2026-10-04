@@ -1,7 +1,7 @@
 // Reglas del juego: funciones puras sobre GameState. Toda la lógica de XP,
 // niveles, rachas y límites anti-farmeo vive aquí para poder probarla.
 import type {
-  ActiveTimer, GameState, Quest, QuestType, XPSource, XPTransaction, DeepWorkSession, DeepWorkArea, FocusPhase,
+  ActiveTimer, AttributeId, GameState, Quest, QuestType, XPSource, XPTransaction, DeepWorkSession, DeepWorkArea, FocusPhase,
 } from './types';
 import { deepWorkRewards, habitRewards, questRewards } from './attributes';
 
@@ -175,9 +175,12 @@ export function createProfile(s: GameState, name: string, habitNames: string[], 
 
 // ---------- Misiones ----------
 
-export function addQuest(s: GameState, title: string, type: QuestType, now: number, kingdomId?: string): GameState {
+export function addQuest(
+  s: GameState, title: string, type: QuestType, now: number, kingdomId?: string, focus?: AttributeId,
+): GameState {
   const quest: Quest = { id: uid(), title: title.trim(), type, createdAt: now, completedAt: null };
   if (kingdomId) quest.kingdomId = kingdomId;
+  if (focus) quest.focus = focus;
   return { ...s, quests: [...s.quests, quest] };
 }
 
@@ -187,7 +190,7 @@ export function completeQuest(s: GameState, id: string, now: number): ActionResu
   const base = XP_RULES.quest[q.type];
   const amount = cappedAmount(s, 'quest', base, now);
   let state: GameState = { ...s, quests: s.quests.map((x) => (x.id === id ? { ...x, completedAt: now } : x)) };
-  state = withXp(state, { at: now, amount, source: 'quest', sourceId: id, label: q.title, attributes: questRewards(q.type, q.title) });
+  state = withXp(state, { at: now, amount, source: 'quest', sourceId: id, label: q.title, attributes: questRewards(q.type, q.title, q.focus) });
   return { state, xp: amount, capped: amount < base };
 }
 
@@ -206,8 +209,8 @@ export function deleteQuest(s: GameState, id: string): GameState {
 
 // ---------- Hábitos ----------
 
-export function addHabit(s: GameState, name: string, now: number): GameState {
-  const habit = { id: uid(), name: name.trim(), frequency: 'daily' as const, createdAt: now, rewards: habitRewards(name) };
+export function addHabit(s: GameState, name: string, now: number, focus?: AttributeId): GameState {
+  const habit = { id: uid(), name: name.trim(), frequency: 'daily' as const, createdAt: now, rewards: habitRewards(name, focus) };
   return { ...s, habits: [...s.habits, habit] };
 }
 

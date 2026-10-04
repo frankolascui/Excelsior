@@ -1,6 +1,6 @@
 // Piezas de interfaz compartidas entre pantallas.
 import { useEffect, useState, type FormEvent } from 'react';
-import type { AttributeRewards, GameState, Habit, Quest, QuestType } from './types';
+import type { AttributeId, AttributeRewards, GameState, Habit, Quest, QuestType } from './types';
 import { ATTRIBUTES, attributeHistory, attributeLevel, attributeXp, avatarInfo, formatAttrXp, questRewards } from './attributes';
 import {
   dayKey, habitStreak, isHabitDone, levelInfo, QUEST_LABEL, shiftDay, totalXp, XP_RULES,
@@ -83,7 +83,7 @@ export function QuestItem({
           <TypeChip type={quest.type} />
           {kingdom && <span className="kingdom-tag">🏰 {kingdom}</span>}
           <span className="mono xp-tag">+{XP_RULES.quest[quest.type]} XP</span>
-          <RewardTags rewards={questRewards(quest.type, quest.title)} />
+          <RewardTags rewards={questRewards(quest.type, quest.title, quest.focus)} />
         </span>
       </div>
       <div className="item-actions">
@@ -101,13 +101,26 @@ export function QuestItem({
 
 const TYPES: QuestType[] = ['daily', 'main', 'side'];
 
-export function QuickAddQuest({ onAdd, autoFocus = false }: { onAdd: (title: string, type: QuestType) => void; autoFocus?: boolean }) {
+/** Selector compacto del atributo que entrena una misión o hábito («Auto» = deducido del nombre). */
+export function AttributeSelect({ value, onChange }: { value: AttributeId | undefined; onChange: (v: AttributeId | undefined) => void }) {
+  return (
+    <select className="attr-select" aria-label="Atributo que entrena" title="Atributo que entrena" value={value ?? ''} onChange={(e) => onChange((e.target.value || undefined) as AttributeId | undefined)}>
+      <option value="">✨ Auto</option>
+      {ATTRIBUTES.map((a) => <option key={a.id} value={a.id}>{a.icon} {a.name}</option>)}
+    </select>
+  );
+}
+
+export function QuickAddQuest({
+  onAdd, autoFocus = false,
+}: { onAdd: (title: string, type: QuestType, focus?: AttributeId) => void; autoFocus?: boolean }) {
   const [title, setTitle] = useState('');
   const [type, setType] = useState<QuestType>('daily');
+  const [focus, setFocus] = useState<AttributeId | undefined>();
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    onAdd(title, type);
+    onAdd(title, type, focus);
     setTitle('');
   }
   return (
@@ -136,6 +149,7 @@ export function QuickAddQuest({ onAdd, autoFocus = false }: { onAdd: (title: str
             </button>
           ))}
         </div>
+        <AttributeSelect value={focus} onChange={setFocus} />
         <button type="submit" className="primary" disabled={!title.trim()}>Crear</button>
       </div>
     </form>
@@ -215,7 +229,7 @@ export function RewardTags({ rewards }: { rewards: AttributeRewards }) {
 export function AvatarCard({ state, now, showRequirements = false }: { state: GameState; now: number; showRequirements?: boolean }) {
   const a = avatarInfo(state, now);
   return (
-    <section className="panel avatar-card" aria-labelledby="avatar-h">
+    <section className="panel avatar-card" aria-labelledby="avatar-h" data-tour="avatar">
       <div className="avatar-sigil" aria-hidden="true"><span className="mono">{a.index + 1}</span></div>
       <div className="avatar-body">
         <p className="eyebrow">Avatar actual</p>
