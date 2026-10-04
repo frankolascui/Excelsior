@@ -1,0 +1,273 @@
+// Piezas de interfaz compartidas entre pantallas.
+import { useEffect, useState, type FormEvent } from 'react';
+import type { AttributeRewards, GameState, Habit, Quest, QuestType } from './types';
+import { ATTRIBUTES, attributeHistory, attributeLevel, attributeXp, avatarInfo, formatAttrXp, questRewards } from './attributes';
+import {
+  dayKey, habitStreak, isHabitDone, levelInfo, QUEST_LABEL, shiftDay, totalXp, XP_RULES,
+} from './game';
+
+export function useNow(intervalMs = 1000): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), intervalMs);
+    return () => clearInterval(t);
+  }, [intervalMs]);
+  return now;
+}
+
+export function formatClock(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const mm = String(m).padStart(2, '0');
+  const ss = String(s).padStart(2, '0');
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+
+export function formatMinutes(min: number): string {
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return m ? `${h} h ${m} min` : `${h} h`;
+}
+
+export function LevelBar({ state, compact = false }: { state: GameState; compact?: boolean }) {
+  const info = levelInfo(totalXp(state));
+  return (
+    <div className={compact ? 'levelbar compact' : 'levelbar'}>
+      <div className="level-badge" aria-label={`Nivel ${info.level}`}>
+        <span className="level-badge-label">Nv</span>
+        <span className="level-badge-num">{info.level}</span>
+      </div>
+      <div className="levelbar-body">
+        <div className="levelbar-head">
+          <span className="levelbar-name">{state.profile?.name}</span>
+        </div>
+        <div className="xpbar" role="progressbar" aria-valuemin={0} aria-valuemax={info.needed} aria-valuenow={info.current}>
+          <div className="xpbar-fill" style={{ width: `${Math.min(100, info.progress * 100)}%` }} />
+        </div>
+        <div className="levelbar-foot mono">
+          Nivel global · {info.current} / {info.needed} XP · faltan {info.needed - info.current} para nivel {info.level + 1}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function TypeChip({ type }: { type: QuestType }) {
+  return <span className={`chip chip-${type}`}>{QUEST_LABEL[type]}</span>;
+}
+
+export function QuestItem({
+  quest, kingdom, onComplete, onStart, onDelete, onUndo,
+}: {
+  quest: Quest;
+  kingdom?: string;
+  onComplete?: () => void;
+  onStart?: () => void;
+  onDelete?: () => void;
+  onUndo?: () => void;
+}) {
+  const done = !!quest.completedAt;
+  return (
+    <li className={done ? 'item done' : 'item'}>
+      {done ? (
+        <span className="check checked" aria-hidden="true">✓</span>
+      ) : (
+        <button className="check" onClick={onComplete} aria-label={`Completar ${quest.title}`} title="Completar misión">✓</button>
+      )}
+      <div className="item-body">
+        <span className="item-title">{quest.title}</span>
+        <span className="item-meta">
+          <TypeChip type={quest.type} />
+          {kingdom && <span className="kingdom-tag">🏰 {kingdom}</span>}
+          <span className="mono xp-tag">+{XP_RULES.quest[quest.type]} XP</span>
+          <RewardTags rewards={questRewards(quest.type, quest.title)} />
+        </span>
+      </div>
+      <div className="item-actions">
+        {onStart && !done && (
+          <button className="ghost small" onClick={onStart} title="Hacer Deep Work en esta misión">▶ Foco</button>
+        )}
+        {onUndo && done && <button className="ghost small" onClick={onUndo}>Deshacer</button>}
+        {onDelete && !done && (
+          <button className="icon-btn" onClick={onDelete} aria-label={`Borrar ${quest.title}`} title="Borrar">×</button>
+        )}
+      </div>
+    </li>
+  );
+}
+
+const TYPES: QuestType[] = ['daily', 'main', 'side'];
+
+export function QuickAddQuest({ onAdd, autoFocus = false }: { onAdd: (title: string, type: QuestType) => void; autoFocus?: boolean }) {
+  const [title, setTitle] = useState('');
+  const [type, setType] = useState<QuestType>('daily');
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!title.trim()) return;
+    onAdd(title, type);
+    setTitle('');
+  }
+  return (
+    <form className="quick-add" onSubmit={submit}>
+      <input
+        id="new-quest"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="+ Nueva misión (ej. Terminar el tema 3)"
+        maxLength={80}
+        autoFocus={autoFocus}
+        aria-label="Nombre de la nueva misión"
+      />
+      <div className="quick-add-row">
+        <div className="segmented" role="radiogroup" aria-label="Tipo de misión">
+          {TYPES.map((t) => (
+            <button
+              type="button"
+              key={t}
+              role="radio"
+              aria-checked={type === t}
+              className={type === t ? 'seg on' : 'seg'}
+              onClick={() => setType(t)}
+            >
+              {QUEST_LABEL[t]} <span className="mono">{XP_RULES.quest[t]}</span>
+            </button>
+          ))}
+        </div>
+        <button type="submit" className="primary" disabled={!title.trim()}>Crear</button>
+      </div>
+    </form>
+  );
+}
+
+export function HabitItem({
+  state, habit, now, onToggle, onDelete,
+}: {
+  state: GameState;
+  habit: Habit;
+  now: number;
+  onToggle: () => void;
+  onDelete?: () => void;
+}) {
+  const today = dayKey(now);
+  const done = isHabitDone(state, habit.id, today);
+  const streak = habitStreak(state, habit.id, now);
+  const week = Array.from({ length: 7 }, (_, i) => dayKey(shiftDay(now, i - 6)));
+  return (
+    <li className={done ? 'item done' : 'item'}>
+      <button
+        className={done ? 'check checked' : 'check'}
+        onClick={onToggle}
+        aria-pressed={done}
+        aria-label={done ? `Desmarcar ${habit.name}` : `Completar ${habit.name}`}
+        title={done ? 'Desmarcar' : 'Completado'}
+      >
+        ✓
+      </button>
+      <div className="item-body">
+        <span className="item-title">{habit.name}</span>
+        <span className="item-meta">
+          <span className="week" aria-label="Últimos 7 días">
+            {week.map((d) => (
+              <span key={d} className={isHabitDone(state, habit.id, d) ? 'dot on' : 'dot'} title={d} />
+            ))}
+          </span>
+          <span className="mono streak">{streak > 0 ? `racha ${streak}` : 'sin racha'}</span>
+          <RewardTags rewards={habit.rewards} />
+        </span>
+      </div>
+      <div className="item-actions">
+        {onDelete && <button className="icon-btn" onClick={onDelete} aria-label={`Borrar ${habit.name}`} title="Borrar">×</button>}
+      </div>
+    </li>
+  );
+}
+
+/** Confirmación en la propia página (los diálogos nativos no siempre están disponibles). */
+export function ConfirmButton({ label, confirmLabel, onConfirm }: { label: string; confirmLabel: string; onConfirm: () => void }) {
+  const [asking, setAsking] = useState(false);
+  if (!asking) return <button className="ghost danger" onClick={() => setAsking(true)}>{label}</button>;
+  return (
+    <span className="confirm">
+      <button className="danger-solid" onClick={onConfirm}>{confirmLabel}</button>
+      <button className="ghost" onClick={() => setAsking(false)}>Cancelar</button>
+    </span>
+  );
+}
+
+/** Iconos compactos del XP de atributo que da una acción (p. ej. ⚔️5 🔨5). */
+export function RewardTags({ rewards }: { rewards: AttributeRewards }) {
+  const items = ATTRIBUTES.filter((a) => (rewards[a.id] ?? 0) > 0);
+  if (items.length === 0) return null;
+  return (
+    <span className="rewards mono" aria-label={items.map((a) => `+${formatAttrXp(rewards[a.id]!)} ${a.name}`).join(', ')}>
+      {items.map((a) => (
+        <span key={a.id}>
+          <span aria-hidden="true">{a.icon}</span>+{formatAttrXp(rewards[a.id]!)}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+export function AvatarCard({ state, now, showRequirements = false }: { state: GameState; now: number; showRequirements?: boolean }) {
+  const a = avatarInfo(state, now);
+  return (
+    <section className="panel avatar-card" aria-labelledby="avatar-h">
+      <div className="avatar-sigil" aria-hidden="true"><span className="mono">{a.index + 1}</span></div>
+      <div className="avatar-body">
+        <p className="eyebrow">Avatar actual</p>
+        <h3 id="avatar-h" className="avatar-name">{a.current.name}</h3>
+        <div className="xpbar" role="progressbar" aria-label="Progreso hacia el siguiente avatar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(a.progress * 100)}>
+          <div className="xpbar-fill" style={{ width: `${Math.min(100, a.progress * 100)}%` }} />
+        </div>
+        <p className="levelbar-foot mono">
+          {a.next
+            ? `${Math.floor(a.progress * 100)} % hacia ${a.next.name} · ${a.met} de ${a.requirements.length} requisitos`
+            : 'Avatar máximo alcanzado'}
+        </p>
+        {showRequirements && a.next && (
+          <ul className="reqs" aria-label={`Requisitos para ${a.next.name}`}>
+            <li className="req-head">Para desbloquear {a.next.name}:</li>
+            {a.requirements.map((r) => (
+              <li key={r.label} className={r.met ? 'req met' : 'req'}>
+                <span aria-hidden="true">{r.met ? '✓' : '○'}</span> {r.label}
+                <span className="mono muted"> · {Math.floor(r.progress * 100)} %</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
+  );
+}
+
+export function AttributeList({ state, detailed = false }: { state: GameState; detailed?: boolean }) {
+  const xp = attributeXp(state);
+  return (
+    <ul className="attrs">
+      {ATTRIBUTES.map((a) => {
+        const lvl = attributeLevel(xp[a.id]);
+        const last = detailed ? attributeHistory(state, a.id).slice(-1)[0] : undefined;
+        return (
+          <li key={a.id} className={xp[a.id] === 0 ? 'attr idle' : 'attr'}>
+            <span className="attr-icon" aria-hidden="true">{a.icon}</span>
+            <span className="attr-name">{a.name}</span>
+            <span className="attr-level mono">Nv {lvl.level}</span>
+            <div className="attr-bar" role="progressbar" aria-label={`${a.name}: ${formatAttrXp(lvl.current)} de ${lvl.needed} XP`} aria-valuemin={0} aria-valuemax={lvl.needed} aria-valuenow={lvl.current}>
+              <div style={{ width: `${Math.min(100, lvl.progress * 100)}%` }} />
+            </div>
+            <span className="attr-xp mono">{formatAttrXp(xp[a.id])} XP</span>
+            {detailed && (
+              <span className="attr-last">
+                {last ? `Último: +${formatAttrXp(last.amount)} · ${last.label}` : 'Aún sin progreso'}
+              </span>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
