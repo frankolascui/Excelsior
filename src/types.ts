@@ -21,7 +21,9 @@ export interface Quest {
   createdAt: number;
   completedAt: number | null;
   kingdomId?: string; // si existe, la misión es una construcción de ese reino
-  focus?: AttributeId; // atributo elegido a mano; sin él se deduce del título
+  focus?: AttributeId; // (v4) atributo elegido a mano; sin él se deduce del título
+  xp?: number; // XP a medida; sin él, el del tipo
+  rewards?: AttributeRewards; // atributos a medida (varios); sin él, se deducen
 }
 
 export interface Habit {
@@ -30,6 +32,7 @@ export interface Habit {
   frequency: 'daily';
   createdAt: number;
   rewards: AttributeRewards;
+  xp?: number; // XP a medida; sin él, XP_RULES.habit
 }
 
 export interface HabitCompletion {
@@ -101,8 +104,41 @@ export interface Goal {
   createdAt: number;
 }
 
+/** Recompensa de la tienda: algo que te das a ti mismo pagando monedas. */
+export interface Reward {
+  id: string;
+  name: string;
+  icon: string;
+  cost: number;
+  createdAt: number;
+}
+
+export interface Purchase {
+  id: string;
+  rewardId: string;
+  name: string;
+  icon: string;
+  cost: number;
+  at: number;
+}
+
+/** De qué se alimenta el daño a un boss: XP global, minutos de foco, hábitos completados o XP de un atributo. */
+export type BossSource = 'xp' | 'deepwork' | 'habits' | AttributeId;
+
+/** Boss: reto con vida y fecha límite. El daño se deriva de lo que haces entre createdAt y deadline. */
+export interface Boss {
+  id: string;
+  name: string;
+  icon: string;
+  source: BossSource;
+  hp: number;
+  createdAt: number;
+  deadline: number;
+  reward: number; // monedas al derrotarlo
+}
+
 export interface GameState {
-  version: 4;
+  version: 5;
   profile: Profile | null;
   quests: Quest[];
   habits: Habit[];
@@ -112,4 +148,7 @@ export interface GameState {
   activeTimer: ActiveTimer | null;
   kingdoms: Kingdom[];
   goals: Goal[];
+  rewards: Reward[];
+  purchases: Purchase[];
+  bosses: Boss[];
 }

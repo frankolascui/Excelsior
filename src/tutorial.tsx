@@ -3,9 +3,11 @@
 import { useEffect, useState } from 'react';
 import type { Tab } from './screens';
 import { XP_RULES } from './game';
+import { sfx } from './sfx';
 
 const KEY = 'excelsior:tutorial';
-export const DEFAULT_GUIDE = 'Maestro Sun';
+export const DEFAULT_GUIDE = 'Hiperión';
+const OLD_DEFAULT = 'Maestro Sun'; // guía por defecto hasta oct. 2026
 
 export interface TutorialPrefs {
   doneFor: number | null; // createdAt del perfil que ya lo vio (un personaje nuevo lo vuelve a ver)
@@ -15,7 +17,8 @@ export interface TutorialPrefs {
 export function loadTutorial(): TutorialPrefs {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) ?? 'null');
-    return { doneFor: raw?.doneFor ?? null, guide: raw?.guide?.trim() || DEFAULT_GUIDE };
+    const guide = raw?.guide?.trim();
+    return { doneFor: raw?.doneFor ?? null, guide: guide && guide !== OLD_DEFAULT ? guide : DEFAULT_GUIDE };
   } catch {
     return { doneFor: null, guide: DEFAULT_GUIDE };
   }
@@ -39,71 +42,92 @@ interface Step {
 export const STEPS: Step[] = [
   {
     tab: 'hoy',
-    title: 'Bienvenida',
+    title: 'El despertar',
     text: ({ name, guide }) =>
-      `Saludos, ${name}. Soy ${guide}, cronista de Excelsior. Aquí tu vida real es la partida: lo que haces da XP, sube tus atributos y levanta tus reinos. Te enseño el castillo en un par de minutos.`,
+      `Mortal ${name}: soy ${guide}, Titán de la luz, el que camina en lo alto. Excelsior significa «siempre más alto», y desde hoy ese es tu juramento. Aquí tu vida real es la epopeya: cada acción forja tu leyenda. Escucha bien.`,
   },
   {
     tab: 'hoy',
     target: 'now',
-    title: '¿Qué hago ahora?',
+    title: 'El oráculo',
     text: () =>
-      'Esta es la pregunta que más importa. Excelsior siempre te propone UNA acción: un Deep Work, tu misión principal o un hábito. Cuando dudes, no pienses: haz lo que diga aquí.',
+      'Este es tu oráculo. Cuando dudes, te señalará UNA acción: una forja de Deep Work, tu gesta principal o un rito. Los héroes no deliberan eternamente. Obedece al oráculo y avanza.',
   },
   {
     tab: 'misiones',
     target: 'quest-add',
-    title: 'Misiones',
+    title: 'Las gestas',
     text: () =>
-      `Tus tareas son misiones. Principal (+${XP_RULES.quest.main} XP) es la que de verdad mueve tu vida; Diaria (+${XP_RULES.quest.daily}) es la rutina; Secundaria (+${XP_RULES.quest.side}) es lo demás. Hay un tope de ${XP_RULES.dailyCap.quest} XP al día por misiones: no se gana trampeándose a uno mismo.`,
+      `Tus tareas son gestas. La Principal (+${XP_RULES.quest.main} XP) mueve tu destino; la Diaria (+${XP_RULES.quest.daily}) es disciplina; la Secundaria (+${XP_RULES.quest.side}), el resto. Con ⚙ decides tú cuánta XP y qué atributos otorga cada una. Los dioses limitan la gloria diaria a ${XP_RULES.dailyCap.quest} XP: no se gana engañándose a uno mismo.`,
   },
   {
     tab: 'deepwork',
     target: 'modes',
-    title: 'Deep Work',
+    title: 'La forja',
     text: () =>
-      'Aquí se forja la Maestría. Elige sesión libre o con minutos. Si te levantas, pulsa Descanso; si te vas al móvil, Me distraje. Solo el foco real da XP: 1 por minuto, y verás tu % de foco al terminar.',
+      'En la forja se templa la Maestría. Elige sesión libre o con minutos. Si te levantas, Descanso; si sucumbes al móvil, Me distraje. Solo el foco real da XP. Invoca lluvia, océano u hoguera de fondo, o pega el enlace de tu música.',
   },
   {
     tab: 'habitos',
     target: 'habits',
-    title: 'Hábitos',
+    title: 'Los ritos',
     text: () =>
-      `Los hábitos se marcan cada día (+${XP_RULES.habit} XP) y cada uno alimenta un atributo: entrenar da Voluntad, leer da Sabiduría, llamar a alguien da Conexión. La racha es tu escudo: no la rompas dos días seguidos.`,
+      `Los hábitos son tus ritos diarios (+${XP_RULES.habit} XP). Cada uno alimenta atributos, y con ✎ puedes repartirlos a tu gusto. La racha es tu escudo: puedes caer un día, nunca dos seguidos.`,
   },
   {
     tab: 'reinos',
     target: 'realm',
-    title: 'Reinos',
+    title: 'Los reinos',
     text: () =>
-      'Tus proyectos grandes son reinos. Cada tarea es una construcción: cabaña, herrería o torreón. Al completarlas el reino pasa de campamento a aldea, villa, ciudad amurallada y reino glorioso, y su camino en el mapa se ilumina.',
+      'Tus grandes proyectos son reinos. Cada tarea levanta una cabaña, una herrería o un torreón. Al completarlas, el campamento se vuelve aldea, villa, ciudad amurallada y, al fin, reino glorioso, que te paga tributo en monedas.',
+  },
+  {
+    tab: 'arena',
+    target: 'bosses',
+    title: 'La Arena',
+    text: () =>
+      'Aquí se invocan las bestias del mito: la Hidra de la Procrastinación, la Medusa de la Distracción, el Minotauro de la Rutina. Todo lo que haces las hiere. Derríbalas antes de que expire su plazo y su botín será tuyo.',
+  },
+  {
+    tab: 'arena',
+    target: 'shop',
+    title: 'El tesoro',
+    text: () =>
+      'Cada 5 XP te da una moneda. Gástalas en recompensas que eliges tú: un episodio, una salida con amigos, un día libre. El placer ganado sabe distinto al placer robado.',
   },
   {
     tab: 'personaje',
-    target: 'avatar',
-    title: 'Tu avatar',
+    target: 'ladder',
+    title: 'El camino del héroe',
     text: () =>
-      'Tu avatar no sube solo con XP. Exige nivel global, niveles de atributo y metas reales que eliges tú: dinero, peso, personas nuevas. Lo que no cumples en la vida real, no lo desbloqueas aquí.',
+      'Diez avatares, de Aprendiz a Excelsior. Sus pruebas son las mismas para todo mortal: nivel, atributos y hazañas. Tus metas reales (dinero, peso, personas) las añades tú, y hacen el camino tuyo.',
   },
   {
     tab: 'personaje',
     target: 'attrs',
-    title: 'Atributos',
+    title: 'Los cinco atributos',
     text: () =>
-      'Cinco atributos: Voluntad, Sabiduría, Maestría, Conexión y Creación. Mira cuál está más bajo: ese suele ser tu cuello de botella.',
+      'Voluntad, Sabiduría, Maestría, Conexión y Creación. El más bajo suele ser tu cuello de botella. Cada lunes te escribiré una crónica señalándolo y te propondré una bestia a la que enfrentarte.',
   },
   {
     tab: 'personaje',
     target: 'heat',
-    title: 'Actividad',
+    title: 'La huella',
     text: () =>
-      'Cada cuadrado es un día; cuanto más brilla, más XP. El objetivo no es un día perfecto: es no dejar huecos.',
+      'Cada cuadrado es un día; cuanto más brilla, más XP. La grandeza no es un día perfecto: es no dejar huecos.',
+  },
+  {
+    tab: 'personaje',
+    target: 'settings',
+    title: 'Tu estandarte',
+    text: () =>
+      'Elige los colores de tu estandarte y guarda copias de tu partida: vive solo en este navegador, y ni los dioses recuperan lo que no se guarda.',
   },
   {
     tab: 'hoy',
     title: 'Primera orden',
     text: ({ guide }) =>
-      `Eso es todo. Tu primera orden: crea la misión principal de hoy y complétala antes de dormir. Si me necesitas, en Personaje → Repetir tutorial. ${guide} se retira.`,
+      `Ya lo sabes todo. Tu primera orden: crea la gesta principal de hoy y complétala antes de que caiga el sol. Si me necesitas, Personaje → Ajustes → Repetir tutorial. ${guide} vela por ti. Siempre más alto.`,
   },
 ];
 
@@ -131,6 +155,7 @@ export function Tutorial({
   // Cambia de pantalla y señala el elemento del paso.
   useEffect(() => {
     go(s.tab);
+    sfx.tick();
     let el: Element | null = null;
     const t = setTimeout(() => {
       el = s.target ? document.querySelector(`[data-tour="${s.target}"]`) : null;
@@ -162,7 +187,7 @@ export function Tutorial({
       {!hasTarget && <div className="tour-backdrop" aria-hidden="true" />}
       <div className="tour" role="dialog" aria-modal="false" aria-labelledby="tour-h">
         <div className="tour-guide" aria-hidden="true">
-          <span className="tour-portrait">🧙</span>
+          <span className="tour-portrait"><GuidePortrait /></span>
         </div>
         <div className="tour-body">
           <p className="eyebrow">{guide} · {step + 1}/{STEPS.length}</p>
@@ -186,5 +211,31 @@ export function Tutorial({
         </div>
       </div>
     </>
+  );
+}
+
+/** Retrato del guía: yelmo corintio de bronce con mirada de luz. */
+export function GuidePortrait() {
+  return (
+    <svg viewBox="0 0 64 64" width="100%" height="100%" aria-hidden="true">
+      <defs>
+        <linearGradient id="g-bronze" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#ffe9a8" />
+          <stop offset="55%" stopColor="#d4a03c" />
+          <stop offset="100%" stopColor="#7a4d12" />
+        </linearGradient>
+        <linearGradient id="g-crest" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="var(--c3)" />
+          <stop offset="50%" stopColor="var(--c1)" />
+          <stop offset="100%" stopColor="var(--c2)" />
+        </linearGradient>
+      </defs>
+      <path d="M10 27 C9 7, 55 7, 54 27 C47 15, 17 15, 10 27 Z" fill="url(#g-crest)" />
+      <path d="M17 30 C17 16, 47 16, 47 30 L47 47 C47 52, 42 55, 38 55 L38 42 L34 38 L30 38 L26 42 L26 55 C22 55, 17 52, 17 47 Z" fill="url(#g-bronze)" />
+      <path d="M21 32 L30 34.5 L32 33.5 L34 34.5 L43 32 L43 35.5 L34 38 L32 37 L30 38 L21 35.5 Z" fill="#160b02" />
+      <circle cx="26" cy="34.6" r="1.6" fill="var(--c1)" className="guide-eye" />
+      <circle cx="38" cy="34.6" r="1.6" fill="var(--c1)" className="guide-eye" />
+      <path d="M32 18 L32 31" stroke="#7a4d12" strokeWidth="1.2" />
+    </svg>
   );
 }

@@ -4,7 +4,7 @@ import {
   toggleHabit, totalXp, undoQuest,
 } from './game';
 import {
-  addGoal, attributeHistory, attributeLevel, attributeXp, avatarInfo, deleteGoal, formatAttrXp, goalProgress, habitRewards,
+  addGoal, AVATARS, attributeHistory, attributeLevel, attributeXp, avatarInfo, deleteGoal, formatAttrXp, goalProgress, habitRewards,
   questRewards, requirementStatus, updateGoal,
 } from './attributes';
 
@@ -65,33 +65,40 @@ describe('niveles de atributo y avatar', () => {
     expect(attributeLevel(500).level).toBe(5);
   });
 
-  /** Estado con XP global y de atributos inyectados. */
-  const withXp = (global: number, attrs: AttributeRewards): GameState => ({
+  /** Estado con XP global y de atributos inyectados, repartido en `days` días distintos. */
+  const withXp = (global: number, attrs: AttributeRewards, days = 1): GameState => ({
     ...base(),
-    xp: [{ id: 'x', at: NOW, amount: global, source: 'quest' as const, sourceId: 'q', label: 'x', attributes: attrs }],
+    xp: Array.from({ length: days }, (_, i) => ({
+      id: `x${i}`, at: NOW - i * 86_400_000, amount: i ? 0 : global, source: 'quest' as const, sourceId: 'q', label: 'x', attributes: i ? {} : attrs,
+    })),
   });
 
-  it('el avatar exige nivel global y niveles de atributo', () => {
+  it('el avatar exige nivel global y hazañas iguales para todos', () => {
     const start = avatarInfo(withXp(0, {}), NOW);
-    expect(start).toMatchObject({ current: { name: 'Aprendiz Constructor' }, next: { name: 'Constructor Disciplinado' }, progress: 0 });
-    // Nivel global 3 = 300 XP; Voluntad nivel 2 = 50 XP.
-    const onlyLevel = avatarInfo(withXp(300, { voluntad: 25 }), NOW);
-    expect(onlyLevel.current.name).toBe('Aprendiz Constructor');
-    expect(onlyLevel.progress).toBeCloseTo(0.75); // (1 + 0,5) / 2
-    expect(avatarInfo(withXp(300, { voluntad: 50 }), NOW).current.name).toBe('Constructor Disciplinado');
+    expect(start).toMatchObject({ current: { name: 'Aprendiz' }, next: { name: 'Iniciado' } });
+    // Iniciado: nivel 3 (300 XP) + 3 días con progreso.
+    const oneDay = avatarInfo(withXp(300, {}), NOW);
+    expect(oneDay.current.name).toBe('Aprendiz');
+    expect(oneDay.progress).toBeCloseTo((1 + 1 / 3) / 2);
+    expect(avatarInfo(withXp(300, {}, 3), NOW)).toMatchObject({ current: { name: 'Iniciado' }, next: { name: 'Disciplinado' } });
   });
 
   it('las metas personales bloquean el avatar hasta cumplirse (subiendo o bajando)', () => {
-    let s = withXp(300, { voluntad: 50 });
-    s = addGoal(s, { name: 'Pesar', unit: 'kg', start: 80, target: 75, avatarId: 'disciplinado' }, NOW);
-    expect(avatarInfo(s, NOW).current.name).toBe('Aprendiz Constructor');
+    let s = withXp(300, {}, 3);
+    s = addGoal(s, { name: 'Pesar', unit: 'kg', start: 80, target: 75, avatarId: 'iniciado' }, NOW);
+    expect(avatarInfo(s, NOW).current.name).toBe('Aprendiz');
     const goal = s.goals[0];
     s = updateGoal(s, goal.id, 77.5);
     expect(goalProgress(s.goals[0])).toBeCloseTo(0.5);
     expect(avatarInfo(s, NOW).requirements[2]).toMatchObject({ met: false, label: 'Pesar: 77,5 / 75 kg' });
     s = updateGoal(s, goal.id, 75);
-    expect(avatarInfo(s, NOW).current.name).toBe('Constructor Disciplinado');
-    expect(avatarInfo(deleteGoal(s, goal.id), NOW).current.name).toBe('Constructor Disciplinado');
+    expect(avatarInfo(s, NOW).current.name).toBe('Iniciado');
+    expect(avatarInfo(deleteGoal(s, goal.id), NOW).current.name).toBe('Iniciado');
+  });
+
+  it('la escalera tiene 10 avatares y acaba en Excelsior', () => {
+    expect(AVATARS).toHaveLength(10);
+    expect(AVATARS.at(-1)).toMatchObject({ id: 'prime', name: 'Excelsior' });
   });
 
   it('evalúa otros tipos de requisito', () => {
@@ -120,8 +127,10 @@ describe('migración de datos guardados', () => {
       xp: s.xp.map(({ attributes: _t, ...t }) => t),
     }));
     const m = migrate(v1);
-    expect(m.version).toBe(4);
+    expect(m.version).toBe(5);
     expect(m.kingdoms).toEqual([]);
+    expect(m.rewards.length).toBeGreaterThan(0);
+    expect(m.bosses).toEqual([]);
     expect(totalXp(m)).toBe(totalXp(s));
     expect(attributeXp(m)).toEqual(attributeXp(s));
     expect(m.sessions[0].area).toBe('general');

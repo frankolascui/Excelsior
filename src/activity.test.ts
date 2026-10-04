@@ -38,7 +38,7 @@ describe('atributo elegido a mano', () => {
   it('sustituye a la deducción por el nombre', () => {
     expect(questRewards('side', 'Llamar a mi abuela', 'creacion')).toEqual({ voluntad: 3, creacion: 3 });
     expect(habitRewards('Entrenar', 'sabiduria')).toEqual({ sabiduria: 4 });
-    let s = addQuest(base(), 'Algo', 'main', NOW, undefined, 'conexion');
+    let s = addQuest(base(), 'Algo', 'main', NOW, { focus: 'conexion' });
     s = completeQuest(s, s.quests[0].id, NOW).state;
     expect(attributeXp(s)).toMatchObject({ voluntad: 5, maestria: 5, conexion: 3 });
   });

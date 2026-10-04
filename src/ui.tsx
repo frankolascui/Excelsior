@@ -1,10 +1,11 @@
 // Piezas de interfaz compartidas entre pantallas.
 import { useEffect, useState, type FormEvent } from 'react';
-import type { AttributeId, AttributeRewards, GameState, Habit, Quest, QuestType } from './types';
-import { ATTRIBUTES, attributeHistory, attributeLevel, attributeXp, avatarInfo, formatAttrXp, questRewards } from './attributes';
+import type { AttributeRewards, GameState, Habit, Quest, QuestType } from './types';
+import { ATTRIBUTES, attributeHistory, attributeLevel, attributeXp, avatarInfo, formatAttrXp, habitRewards, questRewards } from './attributes';
 import {
-  dayKey, habitStreak, isHabitDone, levelInfo, QUEST_LABEL, shiftDay, totalXp, XP_RULES,
+  CUSTOM_LIMITS, dayKey, habitStreak, habitXp, isHabitDone, levelInfo, QUEST_LABEL, questAttributeRewards, questXp, shiftDay, totalXp, XP_RULES,
 } from './game';
+import { CustomizeToggle, InlineEdit, RewardEditor, sameRewards, type CustomValue } from './customize';
 
 export function useNow(intervalMs = 1000): number {
   const [now, setNow] = useState(() => Date.now());
@@ -60,7 +61,7 @@ export function TypeChip({ type }: { type: QuestType }) {
 }
 
 export function QuestItem({
-  quest, kingdom, onComplete, onStart, onDelete, onUndo,
+  quest, kingdom, onComplete, onStart, onDelete, onUndo, onEdit,
 }: {
   quest: Quest;
   kingdom?: string;
@@ -68,8 +69,22 @@ export function QuestItem({
   onStart?: () => void;
   onDelete?: () => void;
   onUndo?: () => void;
+  onEdit?: (title: string, v: CustomValue) => void;
 }) {
   const done = !!quest.completedAt;
+  const [editing, setEditing] = useState(false);
+  if (editing && onEdit) {
+    const initial: CustomValue = { xp: quest.xp, rewards: quest.rewards ?? (quest.focus ? questRewards(quest.type, quest.title, quest.focus) : undefined) };
+    return (
+      <li className="item editing">
+        <InlineEdit
+          name={quest.title} label="Nombre de la misión" autoXp={XP_RULES.quest[quest.type]} autoRewards={(t) => questRewards(quest.type, t)}
+          initial={initial} maxXp={CUSTOM_LIMITS.questXp} idPrefix={`edit-${quest.id}`}
+          onSave={(t, v) => { onEdit(t, v); setEditing(false); }} onCancel={() => setEditing(false)}
+        />
+      </li>
+    );
+  }
   return (
     <li className={done ? 'item done' : 'item'}>
       {done ? (
@@ -82,8 +97,8 @@ export function QuestItem({
         <span className="item-meta">
           <TypeChip type={quest.type} />
           {kingdom && <span className="kingdom-tag">🏰 {kingdom}</span>}
-          <span className="mono xp-tag">+{XP_RULES.quest[quest.type]} XP</span>
-          <RewardTags rewards={questRewards(quest.type, quest.title, quest.focus)} />
+          <span className="mono xp-tag">+{questXp(quest)} XP</span>
+          <RewardTags rewards={questAttributeRewards(quest)} />
         </span>
       </div>
       <div className="item-actions">
@@ -91,6 +106,9 @@ export function QuestItem({
           <button className="ghost small" onClick={onStart} title="Hacer Deep Work en esta misión">▶ Foco</button>
         )}
         {onUndo && done && <button className="ghost small" onClick={onUndo}>Deshacer</button>}
+        {onEdit && !done && (
+          <button className="icon-btn edit-btn" onClick={() => setEditing(true)} aria-label={`Editar ${quest.title}`} title="Editar XP y atributos">✎</button>
+        )}
         {onDelete && !done && (
           <button className="icon-btn" onClick={onDelete} aria-label={`Borrar ${quest.title}`} title="Borrar">×</button>
         )}
@@ -101,27 +119,22 @@ export function QuestItem({
 
 const TYPES: QuestType[] = ['daily', 'main', 'side'];
 
-/** Selector compacto del atributo que entrena una misión o hábito («Auto» = deducido del nombre). */
-export function AttributeSelect({ value, onChange }: { value: AttributeId | undefined; onChange: (v: AttributeId | undefined) => void }) {
-  return (
-    <select className="attr-select" aria-label="Atributo que entrena" title="Atributo que entrena" value={value ?? ''} onChange={(e) => onChange((e.target.value || undefined) as AttributeId | undefined)}>
-      <option value="">✨ Auto</option>
-      {ATTRIBUTES.map((a) => <option key={a.id} value={a.id}>{a.icon} {a.name}</option>)}
-    </select>
-  );
-}
-
 export function QuickAddQuest({
   onAdd, autoFocus = false,
-}: { onAdd: (title: string, type: QuestType, focus?: AttributeId) => void; autoFocus?: boolean }) {
+}: { onAdd: (title: string, type: QuestType, custom: CustomValue) => void; autoFocus?: boolean }) {
   const [title, setTitle] = useState('');
   const [type, setType] = useState<QuestType>('daily');
-  const [focus, setFocus] = useState<AttributeId | undefined>();
+  const [custom, setCustom] = useState<CustomValue>({});
+  const [open, setOpen] = useState(false);
+  const isCustom = custom.xp !== undefined || custom.rewards !== undefined;
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    onAdd(title, type, focus);
+    const rewards = custom.rewards && !sameRewards(custom.rewards, questRewards(type, title)) ? custom.rewards : undefined;
+    onAdd(title, type, { xp: custom.xp, rewards });
     setTitle('');
+    setCustom({});
+    setOpen(false);
   }
   return (
     <form className="quick-add" onSubmit={submit}>
@@ -149,22 +162,40 @@ export function QuickAddQuest({
             </button>
           ))}
         </div>
-        <AttributeSelect value={focus} onChange={setFocus} />
+        <CustomizeToggle open={open} onToggle={() => setOpen(!open)} custom={isCustom} />
         <button type="submit" className="primary" disabled={!title.trim()}>Crear</button>
       </div>
+      {open && (
+        <RewardEditor autoXp={XP_RULES.quest[type]} autoRewards={questRewards(type, title)} value={custom} onChange={setCustom} maxXp={CUSTOM_LIMITS.questXp} idPrefix="new-quest" />
+      )}
     </form>
   );
 }
 
 export function HabitItem({
-  state, habit, now, onToggle, onDelete,
+  state, habit, now, onToggle, onDelete, onEdit,
 }: {
   state: GameState;
   habit: Habit;
   now: number;
   onToggle: () => void;
   onDelete?: () => void;
+  onEdit?: (name: string, v: CustomValue) => void;
 }) {
+  const [editing, setEditing] = useState(false);
+  if (editing && onEdit) {
+    const auto = habitRewards(habit.name);
+    return (
+      <li className="item editing">
+        <InlineEdit
+          name={habit.name} label="Nombre del hábito" autoXp={XP_RULES.habit} autoRewards={(n) => habitRewards(n)}
+          initial={{ xp: habit.xp, rewards: sameRewards(habit.rewards, auto) ? undefined : habit.rewards }}
+          maxXp={CUSTOM_LIMITS.habitXp} idPrefix={`edit-${habit.id}`}
+          onSave={(n, v) => { onEdit(n, v); setEditing(false); }} onCancel={() => setEditing(false)}
+        />
+      </li>
+    );
+  }
   const today = dayKey(now);
   const done = isHabitDone(state, habit.id, today);
   const streak = habitStreak(state, habit.id, now);
@@ -189,10 +220,12 @@ export function HabitItem({
             ))}
           </span>
           <span className="mono streak">{streak > 0 ? `racha ${streak}` : 'sin racha'}</span>
+          <span className="mono xp-tag">+{habitXp(habit)} XP</span>
           <RewardTags rewards={habit.rewards} />
         </span>
       </div>
       <div className="item-actions">
+        {onEdit && <button className="icon-btn edit-btn" onClick={() => setEditing(true)} aria-label={`Editar ${habit.name}`} title="Editar XP y atributos">✎</button>}
         {onDelete && <button className="icon-btn" onClick={onDelete} aria-label={`Borrar ${habit.name}`} title="Borrar">×</button>}
       </div>
     </li>

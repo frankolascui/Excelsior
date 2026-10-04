@@ -9,7 +9,6 @@ export const BUILDINGS: Record<QuestType, { name: string; icon: string }> = {
   daily: { name: 'Herrería', icon: '⚒️' },
   main: { name: 'Torreón', icon: '🏰' },
 };
-export const SCAFFOLD_ICON = '🪵'; // construcción pendiente: solo cimientos
 
 export function addKingdom(s: GameState, name: string, now: number): GameState {
   return { ...s, kingdoms: [...s.kingdoms, { id: uid(), name: name.trim(), createdAt: now }] };

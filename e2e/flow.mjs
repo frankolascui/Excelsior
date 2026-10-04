@@ -23,7 +23,7 @@ await page.click('text=Crear personaje');
 await page.waitForSelector('text=¿Qué hago ahora?');
 
 // 1b. Tutorial con guía: aparece solo, señala cada pantalla y no vuelve tras saltarlo
-check(await seen('.tour .eyebrow:has-text("Maestro Sun · 1/10")'), 'el tutorial arranca con el guía');
+check(await seen('.tour .eyebrow:has-text("Hiperión · 1/13")'), 'el tutorial arranca con el guía');
 await page.click('.tour button:has-text("Siguiente")');
 check(await seen('[data-tour="now"].tour-target'), 'paso 2 señala «¿Qué hago ahora?»');
 await page.click('.tour button:has-text("Siguiente")');
@@ -88,7 +88,7 @@ const attr = async (name) => (await page.textContent(`.attr:has-text("${name}") 
 check(await attr('Voluntad') === '30,5 XP', 'Voluntad 30,5 XP (con decimales)');
 check(await attr('Maestría') === '50 XP', 'Maestría 50 XP');
 check(await attr('Sabiduría') === '3 XP', 'Sabiduría 3 XP');
-check((await page.textContent('.avatar-card')).includes('51 % hacia Constructor Disciplinado · 0 de 2 requisitos'), 'avatar al 51 % (media de requisitos)');
+check((await page.textContent('.avatar-card')).includes('hacia Iniciado · 0 de 2 requisitos'), 'avatar: siguiente es Iniciado (nivel 3 + 3 días)');
 const order = await page.$$eval('.screen > *', (els) => els.map((e) => e.className.split(' ')[0] + (e.className.includes('avatar') ? ':avatar' : '')));
 console.log('orden Home:', order.join(' > '));
 
@@ -100,7 +100,14 @@ check((await page.textContent('.levelbar .levelbar-foot')).includes('25 / 200'),
 // 7. Volver al día siguiente: racha y progreso
 await page.clock.fastForward('24:00:00');
 await page.reload();
+await page.click('.nav-item:has-text("Hoy")');
+check(await seen('.chronicle:has-text("La semana pasada ganaste")'), 'el lunes aparece la crónica semanal');
+check(await seen('.chronicle:has-text("Aceptar el reto")'), 'la crónica propone un boss como reto');
+await page.screenshot({ path: `${out}/04b-chronicle.png` });
+await page.click('.chronicle button:has-text("Entendido")');
+check(!(await page.$('.chronicle')), 'la crónica se cierra hasta la semana siguiente');
 await page.click('.nav-item:has-text("Personaje")');
+check((await page.$$('.ladder .rung')).length === 10, 'escalera con 10 avatares');
 check(await seen('text=125 XP global en total'), 'personaje muestra 125 XP totales');
 check(await seen('.chart-sub:has-text("125 XP en 30 días")'), 'gráfica de XP: 125 XP en 30 días');
 check((await page.$$('.heat rect')).length >= 175, 'mapa de actividad con al menos 26 semanas de cuadraditos en escritorio');
@@ -135,9 +142,11 @@ await page.click('.kingdom button:has-text("Construir")');
 await page.fill('.kingdom input', 'Aprender Git');
 await page.click('.kingdom button:has-text("Construir")');
 check(await seen('.kingdom-stage:has-text("Campamento · 0/2")'), 'reino con 2 cimientos: Campamento');
-await page.click('button[aria-label="Construir Terminar una calculadora"]');
+await page.waitForSelector('.city-scene .scaffold');
+await page.click('button[aria-label="Completar Terminar una calculadora"]');
 check(await seen('.toast:has-text("+50 XP")'), 'construir la torre da +50 XP');
 check(await seen('.kingdom-stage:has-text("Villa · 1/2")'), 'el reino pasa a Villa 1/2');
+check(await seen('.city-scene .bld.built') && await seen('.city-scene .palisade'), 'la ciudad dibuja el torreón y la empalizada de la villa');
 check(await seen('.kingdom-node[aria-label*="50 %"]'), 'el mapa muestra el reino al 50 %');
 check(await seen('.realm .chart-sub:has-text("Dominio 50 %")'), 'dominio del mapa 50 %');
 await page.click('.kingdom-node');
@@ -148,12 +157,57 @@ await page.screenshot({ path: `${out}/08-kingdom.png`, fullPage: true });
 // 7a3. Atributo elegido a mano al crear un hábito
 await page.click('.nav-item:has-text("Hábitos")');
 await page.fill('#new-habit', 'Tocar la guitarra');
-await page.selectOption('[data-tour="habits"] .attr-select', 'conexion');
+await page.click('[data-tour="habits"] .customize');
+await page.fill('#new-habit-xp', '15');
+await page.fill('#new-habit-creacion', '5');
 await page.click('[data-tour="habits"] button:has-text("Añadir")');
-check(await seen('.item:has-text("Tocar la guitarra") .rewards[aria-label="+4 Conexión"]'), 'hábito con atributo elegido: +4 Conexión');
+check(await seen('.item:has-text("Tocar la guitarra") .rewards[aria-label="+2 Voluntad, +5 Creación"]'), 'hábito a medida con varios atributos: +2 Voluntad, +5 Creación');
+check(await seen('.item:has-text("Tocar la guitarra") .xp-tag:has-text("+15 XP")'), 'hábito a medida da +15 XP');
+await page.click('button[aria-label="Editar Tocar la guitarra"]');
+await page.fill('[id$="-conexion"]', '3');
+await page.click('.inline-edit button:has-text("Guardar")');
+check(await seen('.item:has-text("Tocar la guitarra") .rewards[aria-label="+2 Voluntad, +3 Conexión, +5 Creación"]'), 'editar un hábito añade otro atributo');
+
+// 7a4. Arena: boss y tienda
+await page.click('.nav-item:has-text("Arena")');
+const coins = async () => Number((await page.textContent('.treasury-amount .coins')).replace(/[^0-9-]/g, ''));
+const before = await coins();
+check(before >= 25, `hay monedas para gastar (${before})`);
+await page.click('.boss-template:has-text("Hidra") button:has-text("Invocar")');
+check(await seen('.boss:has-text("Hidra de la Procrastinación")'), 'invocar la Hidra');
+await page.click('button[aria-label="Canjear Ver un episodio de una serie por 25 monedas"]');
+check(await seen('.toast:has-text("¡Disfrútalo!")'), 'canjear una recompensa');
+check(await coins() === before - 25, 'el canje resta 25 monedas');
+await page.click('.nav-item:has-text("Hábitos")');
+await page.click('button[aria-label="Completar Tocar la guitarra"]');
+check(await seen('.toast:has-text("HP a Hidra")'), 'completar un hábito golpea a la Hidra');
+await page.click('.nav-item:has-text("Arena")');
+check(await seen('.boss .mono:has-text("685 / 700 HP")'), 'la Hidra baja a 685/700 HP');
+await page.screenshot({ path: `${out}/09-arena.png`, fullPage: true });
+
+// 7a5. Tema y copia de seguridad
+await page.click('.nav-item:has-text("Personaje")');
+await page.click('.theme-swatch:has-text("Olimpo")');
+check((await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--c1').trim())) === '#ffd166', 'el tema Olimpo cambia los colores');
+await page.screenshot({ path: `${out}/10-theme.png`, fullPage: true });
+const [download] = await Promise.all([page.waitForEvent('download'), page.click('button:has-text("Exportar partida")')]);
+const backupPath = `${out}/backup.json`;
+await download.saveAs(backupPath);
+await page.setInputFiles('input[type=file]', backupPath);
+check(await seen('.import-confirm:has-text("Copia de Nicolas")'), 'importar muestra la copia antes de sustituir');
+await page.click('button:has-text("Sí, importar")');
+await page.waitForSelector('.nav');
+check((await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--c1').trim())) === '#ffd166', 'tras importar se conserva el tema');
+await page.click('.nav-item:has-text("Arena")');
+check(await seen('.boss:has-text("Hidra")'), 'tras importar se conserva la partida (Hidra activa)');
 
 // 7b. Cuenta atrás: se termina sola al llegar a 0
 await page.click('.nav-item:has-text("Deep Work")');
+await page.click('.chip-btn:has-text("Lluvia")');
+check(await seen('.chip-btn[aria-pressed=true]:has-text("Lluvia")') && await seen('.ambient-dock:has-text("Lluvia")'), 'sonido de lluvia de fondo');
+await page.click('.ambient-dock button[aria-label="Parar sonido de fondo"]');
+await page.fill('#ambient-link', 'https://www.youtube.com/watch?v=jfKfPfyJRdk');
+check(await page.isEnabled('.ambient-link button:has-text("Reproducir")'), 'acepta un enlace de YouTube');
 await page.click('[role=radio]:has-text("25")');
 await page.click('button:has-text("Empezar 25 min")');
 await page.clock.fastForward('25:02');

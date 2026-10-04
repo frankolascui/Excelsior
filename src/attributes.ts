@@ -1,7 +1,9 @@
 // Atributos y avatar. Recompensas hardcodeadas (sin editor todavía); el XP, el nivel
 // y el historial de cada atributo se derivan de las transacciones de XP.
 import type { AttributeId, AttributeRewards, GameState, QuestType } from './types';
-import { habitStreak, totalXp, uid, xpForLevel } from './game';
+import { dayKey, habitStreak, totalXp, uid, xpForLevel } from './game';
+import { defeatedBosses } from './bosses';
+import { kingdomProgress } from './kingdoms';
 
 export const ATTRIBUTES: { id: AttributeId; name: string; icon: string }[] = [
   { id: 'voluntad', name: 'Voluntad', icon: '⚔️' },
@@ -115,8 +117,9 @@ export function attributeHistory(s: GameState, id: AttributeId) {
 }
 
 // ---------- Avatar ----------
-// Para subir de avatar hay que cumplir TODOS sus requisitos: niveles (global y de atributos)
-// fijados aquí + las metas personales que el usuario asigne a ese avatar (dinero, peso, personas…).
+// Para subir de avatar hay que cumplir TODOS sus requisitos. Los fijos son iguales para todo el mundo
+// (nivel global, niveles de atributo y hazañas); además, cada uno puede jurar metas personales
+// (dinero, peso, personas…) para su siguiente avatar. Diseño y ritmos estimados: docs/progresion-avatares.md.
 
 export type AvatarRequirement =
   | { kind: 'globalLevel'; level: number }
@@ -125,11 +128,16 @@ export type AvatarRequirement =
   | { kind: 'deepWorkMinutes'; min: number }
   | { kind: 'questsCompleted'; min: number; type?: QuestType }
   | { kind: 'habitStreak'; days: number } // racha activa de cualquier hábito
-  | { kind: 'goal'; goalId: string }; // meta personal (Goal)
+  | { kind: 'goal'; goalId: string } // meta personal (Goal)
+  | { kind: 'bossesDefeated'; min: number }
+  | { kind: 'kingdomsCompleted'; min: number } // reinos con todas sus construcciones (mín. 3)
+  | { kind: 'activeDays'; min: number }; // días distintos con algo de XP
 
 export interface AvatarDef {
   id: string;
   name: string;
+  icon: string;
+  motto: string;
   requirements: AvatarRequirement[];
 }
 
@@ -137,13 +145,26 @@ const lvl = (level: number): AvatarRequirement => ({ kind: 'globalLevel', level 
 const attr = (id: AttributeId, level: number): AvatarRequirement => ({ kind: 'attributeLevel', id, level });
 const allAttrs = (level: number) => ATTRIBUTES.map((a) => attr(a.id, level));
 
+const feat = {
+  dw: (hours: number): AvatarRequirement => ({ kind: 'deepWorkMinutes', min: hours * 60 }),
+  streak: (days: number): AvatarRequirement => ({ kind: 'habitStreak', days }),
+  bosses: (min: number): AvatarRequirement => ({ kind: 'bossesDefeated', min }),
+  kingdoms: (min: number): AvatarRequirement => ({ kind: 'kingdomsCompleted', min }),
+  days: (min: number): AvatarRequirement => ({ kind: 'activeDays', min }),
+};
+
+// Ids antiguos conservados (las metas personales se guardan por avatarId).
 export const AVATARS: AvatarDef[] = [
-  { id: 'aprendiz', name: 'Aprendiz Constructor', requirements: [] },
-  { id: 'disciplinado', name: 'Constructor Disciplinado', requirements: [lvl(3), attr('voluntad', 2)] },
-  { id: 'artifice', name: 'Artífice', requirements: [lvl(6), attr('voluntad', 3), attr('maestria', 3)] },
-  { id: 'arquitecto', name: 'Arquitecto', requirements: [lvl(10), attr('voluntad', 4), attr('maestria', 4), attr('sabiduria', 3)] },
-  { id: 'fundador', name: 'Fundador', requirements: [lvl(15), ...allAttrs(4)] },
-  { id: 'prime', name: 'Constructor Prime', requirements: [lvl(25), ...allAttrs(6)] },
+  { id: 'aprendiz', name: 'Aprendiz', icon: '🪓', motto: 'Todo imperio empezó con una sola piedra.', requirements: [] },
+  { id: 'iniciado', name: 'Iniciado', icon: '🕯️', motto: 'Has encendido la llama.', requirements: [lvl(3), feat.days(3)] },
+  { id: 'disciplinado', name: 'Disciplinado', icon: '🛡️', motto: 'La disciplina es tu escudo.', requirements: [lvl(5), attr('voluntad', 3), feat.streak(7)] },
+  { id: 'artifice', name: 'Artífice', icon: '⚒️', motto: 'Tus manos ya crean cosas reales.', requirements: [lvl(8), attr('maestria', 5), feat.dw(10)] },
+  { id: 'arquitecto', name: 'Arquitecto', icon: '📐', motto: 'Piensas antes de construir.', requirements: [lvl(12), attr('sabiduria', 3), feat.kingdoms(1), feat.days(30)] },
+  { id: 'cazador', name: 'Cazador de Bestias', icon: '🏹', motto: 'Los monstruos ya te temen.', requirements: [lvl(16), attr('voluntad', 6), feat.bosses(3)] },
+  { id: 'forjador', name: 'Forjador', icon: '🔥', motto: 'Forjas tu carácter cada día.', requirements: [lvl(20), attr('maestria', 8), attr('conexion', 3), feat.dw(50)] },
+  { id: 'fundador', name: 'Fundador', icon: '🏰', motto: 'Has levantado reinos de la nada.', requirements: [lvl(25), ...allAttrs(4), feat.kingdoms(3), feat.streak(21)] },
+  { id: 'titan', name: 'Titán', icon: '⚡', motto: 'Caminas entre dioses.', requirements: [lvl(32), ...allAttrs(6), feat.bosses(10), feat.streak(30)] },
+  { id: 'prime', name: 'Excelsior', icon: '🌟', motto: 'Siempre más alto.', requirements: [lvl(40), ...allAttrs(8), feat.dw(200), feat.days(300)] },
 ];
 
 /** Requisitos fijos del avatar + metas personales asignadas a él. */
@@ -181,7 +202,7 @@ export function requirementStatus(s: GameState, req: AvatarRequirement, now: num
     case 'attributeXp':
       return check(totalAttributeXp(s), req.min, `${formatAttrXp(req.min)} XP de atributos`);
     case 'deepWorkMinutes':
-      return check(s.sessions.reduce((n, x) => n + x.minutes, 0), req.min, `${req.min} min de Deep Work`);
+      return check(s.sessions.reduce((n, x) => n + x.minutes, 0), req.min, req.min % 60 ? `${req.min} min de Deep Work` : `${req.min / 60} h de Deep Work`);
     case 'questsCompleted': {
       const done = s.quests.filter((q) => q.completedAt && (!req.type || q.type === req.type)).length;
       return check(done, req.min, `${req.min} misiones completadas`);
@@ -190,6 +211,17 @@ export function requirementStatus(s: GameState, req: AvatarRequirement, now: num
       const best = s.habits.reduce((m, h) => Math.max(m, habitStreak(s, h.id, now)), 0);
       return check(best, req.days, `Racha de ${req.days} días en un hábito`);
     }
+    case 'bossesDefeated':
+      return check(defeatedBosses(s, now).length, req.min, `${req.min} ${req.min === 1 ? 'boss derrotado' : 'bosses derrotados'}`);
+    case 'kingdomsCompleted': {
+      const done = s.kingdoms.filter((k) => {
+        const p = kingdomProgress(s, k.id);
+        return p.complete && p.total >= 3;
+      }).length;
+      return check(done, req.min, `${req.min} ${req.min === 1 ? 'reino completado' : 'reinos completados'} (mín. 3 construcciones)`);
+    }
+    case 'activeDays':
+      return check(new Set(s.xp.map((t) => dayKey(t.at))).size, req.min, `${req.min} días con progreso`);
     case 'goal': {
       const g = s.goals.find((x) => x.id === req.goalId);
       if (!g) return { met: true, progress: 1, label: 'Meta borrada' };

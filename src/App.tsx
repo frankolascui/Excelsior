@@ -3,6 +3,9 @@ import { useGame } from './store';
 import { levelInfo, totalXp } from './game';
 import { avatarInfo } from './attributes';
 import { isMuted, setMuted, sfx } from './sfx';
+import { Arena, CoinBadge } from './arena';
+import { AmbientDock } from './ambient-ui';
+import { coinBalance } from './economy';
 import { Character, Dashboard, DeepWork, Habits, Kingdoms, Onboarding, Quests, type Tab } from './screens';
 import type { Quest } from './types';
 import { loadTutorial, saveTutorial, Tutorial, type TutorialPrefs } from './tutorial';
@@ -11,6 +14,7 @@ const TABS: { id: Tab; label: string; glyph: string }[] = [
   { id: 'hoy', label: 'Hoy', glyph: '◆' },
   { id: 'misiones', label: 'Misiones', glyph: '✦' },
   { id: 'reinos', label: 'Reinos', glyph: '♖' },
+  { id: 'arena', label: 'Arena', glyph: '⚔' },
   { id: 'deepwork', label: 'Deep Work', glyph: '◷' },
   { id: 'habitos', label: 'Hábitos', glyph: '✓' },
   { id: 'personaje', label: 'Personaje', glyph: '♜' },
@@ -89,7 +93,7 @@ export default function App() {
             {t.id === 'deepwork' && state.activeTimer && <span className="live-dot" aria-label="Sesión en curso" />}
           </button>
         ))}
-        <div className="nav-level mono">Nv {level}</div>
+        <div className="nav-level mono">Nv {level} · <CoinBadge amount={coinBalance(state, Date.now())} /></div>
       </nav>
 
       <button className="sound-toggle" onClick={toggleSound} aria-pressed={!muted} aria-label={muted ? 'Activar sonido' : 'Silenciar sonido'} title={muted ? 'Activar sonido' : 'Silenciar sonido'}>
@@ -97,9 +101,10 @@ export default function App() {
       </button>
 
       <main className="main">
-        {tab === 'hoy' && <Dashboard game={game} go={go} focusQuest={focusQuest} />}
+        {tab === 'hoy' && <Dashboard game={game} go={go} focusQuest={focusQuest} guide={tutorial.guide} />}
         {tab === 'misiones' && <Quests game={game} focusQuest={focusQuest} />}
         {tab === 'reinos' && <Kingdoms game={game} focusQuest={focusQuest} />}
+        {tab === 'arena' && <Arena game={game} />}
         {tab === 'deepwork' && <DeepWork key={preselect ?? 'free'} game={game} preselect={preselect} clearPreselect={() => setPreselect(null)} />}
         {tab === 'habitos' && <Habits game={game} />}
         {tab === 'personaje' && (
@@ -110,6 +115,8 @@ export default function App() {
       {tourStep !== null && (
         <Tutorial step={tourStep} name={state.profile.name} guide={tutorial.guide} go={go} onStep={setTourStep} onClose={closeTour} />
       )}
+
+      <AmbientDock />
 
       <div className="toasts" aria-live="polite">
         {game.toasts.map((t) => (

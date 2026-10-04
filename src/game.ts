@@ -1,9 +1,10 @@
 // Reglas del juego: funciones puras sobre GameState. Toda la lógica de XP,
 // niveles, rachas y límites anti-farmeo vive aquí para poder probarla.
 import type {
-  ActiveTimer, AttributeId, GameState, Quest, QuestType, XPSource, XPTransaction, DeepWorkSession, DeepWorkArea, FocusPhase,
+  ActiveTimer, AttributeId, AttributeRewards, GameState, Habit, Quest, QuestType, XPSource, XPTransaction, DeepWorkSession, DeepWorkArea, FocusPhase,
 } from './types';
 import { deepWorkRewards, habitRewards, questRewards } from './attributes';
+import { defaultRewards } from './economy';
 
 // Valores iniciales; el spec (§7) pide balancearlos durante el testing.
 export const XP_RULES = {
@@ -33,7 +34,7 @@ const TITLES: [number, string][] = [
 
 export function emptyState(): GameState {
   return {
-    version: 4,
+    version: 5,
     profile: null,
     quests: [],
     habits: [],
@@ -43,6 +44,9 @@ export function emptyState(): GameState {
     activeTimer: null,
     kingdoms: [],
     goals: [],
+    rewards: [],
+    purchases: [],
+    bosses: [],
   };
 }
 
@@ -52,7 +56,14 @@ export function emptyState(): GameState {
  * v2 no daba Conexión/Creación y redondeaba la Voluntad del Deep Work).
  */
 export function migrate(raw: { version: number } & Record<string, unknown>): GameState {
-  const base = { ...emptyState(), ...raw, version: 4 } as GameState;
+  const s = migrateToV4(raw);
+  // v4 → v5: aparecen monedas, tienda de recompensas y bosses.
+  if (raw.version < 5) return { ...s, rewards: defaultRewards(Date.now()), purchases: [], bosses: [] };
+  return s;
+}
+
+function migrateToV4(raw: { version: number } & Record<string, unknown>): GameState {
+  const base = { ...emptyState(), ...raw, version: 5 } as GameState;
   // v3 → v4: los reinos pasan a tener construcciones (misiones) y aparecen las metas; no hay nada que recalcular.
   if (raw.version >= 3) return { ...base, kingdoms: base.kingdoms.map(({ id, name, createdAt }) => ({ id, name, createdAt: createdAt ?? Date.now() })) };
   const habits = base.habits.map((h) => ({ ...h, rewards: habitRewards(h.name) }));
@@ -170,27 +181,77 @@ export function createProfile(s: GameState, name: string, habitNames: string[], 
     ...s,
     profile: { name: name.trim(), createdAt: now },
     habits: habitNames.map((n) => ({ id: uid(), name: n, frequency: 'daily' as const, createdAt: now, rewards: habitRewards(n) })),
+    rewards: s.rewards.length ? s.rewards : defaultRewards(now),
   };
 }
 
 // ---------- Misiones ----------
 
-export function addQuest(
-  s: GameState, title: string, type: QuestType, now: number, kingdomId?: string, focus?: AttributeId,
-): GameState {
+/** Límites de lo personalizable: los topes diarios siguen protegiendo del farmeo. */
+export const CUSTOM_LIMITS = { questXp: 100, habitXp: 50, attribute: 20 };
+
+const clamp = (n: number, max: number) => Math.max(0, Math.min(max, Math.round(n * 10) / 10));
+
+/** Limpia unas recompensas a medida: sin negativos, sin ceros y con tope por atributo. */
+export function cleanRewards(r: AttributeRewards): AttributeRewards {
+  const out: AttributeRewards = {};
+  for (const [id, n] of Object.entries(r)) {
+    const v = clamp(Number(n) || 0, CUSTOM_LIMITS.attribute);
+    if (v > 0) out[id as AttributeId] = v;
+  }
+  return out;
+}
+
+export interface QuestOptions {
+  kingdomId?: string;
+  focus?: AttributeId;
+  xp?: number;
+  rewards?: AttributeRewards;
+}
+
+export function questXp(q: Quest): number {
+  return q.xp ?? XP_RULES.quest[q.type];
+}
+
+export function questAttributeRewards(q: Quest): AttributeRewards {
+  return q.rewards ?? questRewards(q.type, q.title, q.focus);
+}
+
+export function addQuest(s: GameState, title: string, type: QuestType, now: number, opts: QuestOptions = {}): GameState {
   const quest: Quest = { id: uid(), title: title.trim(), type, createdAt: now, completedAt: null };
-  if (kingdomId) quest.kingdomId = kingdomId;
-  if (focus) quest.focus = focus;
+  if (opts.kingdomId) quest.kingdomId = opts.kingdomId;
+  if (opts.focus) quest.focus = opts.focus;
+  if (opts.xp !== undefined) quest.xp = Math.round(clamp(opts.xp, CUSTOM_LIMITS.questXp));
+  if (opts.rewards) quest.rewards = cleanRewards(opts.rewards);
   return { ...s, quests: [...s.quests, quest] };
+}
+
+/** Edita una misión. `xp`/`rewards` a undefined vuelven al valor automático. Lo ya ganado no cambia. */
+export function updateQuest(
+  s: GameState, id: string, patch: { title?: string; type?: QuestType; xp?: number; rewards?: AttributeRewards },
+): GameState {
+  return {
+    ...s,
+    quests: s.quests.map((q) => {
+      if (q.id !== id) return q;
+      const next: Quest = { ...q, title: patch.title?.trim() || q.title, type: patch.type ?? q.type };
+      delete next.xp;
+      delete next.rewards;
+      delete next.focus;
+      if (patch.xp !== undefined) next.xp = Math.round(clamp(patch.xp, CUSTOM_LIMITS.questXp));
+      if (patch.rewards) next.rewards = cleanRewards(patch.rewards);
+      return next;
+    }),
+  };
 }
 
 export function completeQuest(s: GameState, id: string, now: number): ActionResult {
   const q = s.quests.find((x) => x.id === id);
   if (!q || q.completedAt) return { state: s, xp: 0 };
-  const base = XP_RULES.quest[q.type];
+  const base = questXp(q);
   const amount = cappedAmount(s, 'quest', base, now);
   let state: GameState = { ...s, quests: s.quests.map((x) => (x.id === id ? { ...x, completedAt: now } : x)) };
-  state = withXp(state, { at: now, amount, source: 'quest', sourceId: id, label: q.title, attributes: questRewards(q.type, q.title, q.focus) });
+  state = withXp(state, { at: now, amount, source: 'quest', sourceId: id, label: q.title, attributes: questAttributeRewards(q) });
   return { state, xp: amount, capped: amount < base };
 }
 
@@ -209,9 +270,33 @@ export function deleteQuest(s: GameState, id: string): GameState {
 
 // ---------- Hábitos ----------
 
-export function addHabit(s: GameState, name: string, now: number, focus?: AttributeId): GameState {
-  const habit = { id: uid(), name: name.trim(), frequency: 'daily' as const, createdAt: now, rewards: habitRewards(name, focus) };
+export function habitXp(h: Habit): number {
+  return h.xp ?? XP_RULES.habit;
+}
+
+export function addHabit(
+  s: GameState, name: string, now: number, opts: { focus?: AttributeId; xp?: number; rewards?: AttributeRewards } = {},
+): GameState {
+  const habit: Habit = {
+    id: uid(), name: name.trim(), frequency: 'daily', createdAt: now,
+    rewards: opts.rewards ? cleanRewards(opts.rewards) : habitRewards(name, opts.focus),
+  };
+  if (opts.xp !== undefined) habit.xp = Math.round(clamp(opts.xp, CUSTOM_LIMITS.habitXp));
   return { ...s, habits: [...s.habits, habit] };
+}
+
+/** Edita un hábito; los cambios valen para los próximos días (lo ya ganado no cambia). */
+export function updateHabit(s: GameState, id: string, patch: { name?: string; xp?: number; rewards?: AttributeRewards }): GameState {
+  return {
+    ...s,
+    habits: s.habits.map((h) => {
+      if (h.id !== id) return h;
+      const next: Habit = { ...h, name: patch.name?.trim() || h.name, rewards: patch.rewards ? cleanRewards(patch.rewards) : habitRewards(patch.name ?? h.name) };
+      delete next.xp;
+      if (patch.xp !== undefined) next.xp = Math.round(clamp(patch.xp, CUSTOM_LIMITS.habitXp));
+      return next;
+    }),
+  };
 }
 
 export function deleteHabit(s: GameState, id: string): GameState {
@@ -236,10 +321,11 @@ export function toggleHabit(s: GameState, habitId: string, now: number): ActionR
     };
   }
   const completion = { id: uid(), habitId, day, at: now };
-  const amount = cappedAmount(s, 'habit', XP_RULES.habit, now);
+  const base = habitXp(habit);
+  const amount = cappedAmount(s, 'habit', base, now);
   let state: GameState = { ...s, habitCompletions: [...s.habitCompletions, completion] };
   state = withXp(state, { at: now, amount, source: 'habit', sourceId: completion.id, label: habit.name, attributes: habit.rewards });
-  return { state, xp: amount, capped: amount < XP_RULES.habit };
+  return { state, xp: amount, capped: amount < base };
 }
 
 // ---------- Deep Work ----------

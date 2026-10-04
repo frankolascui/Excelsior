@@ -1,27 +1,33 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { useGame } from './store';
-import type { AttributeId, FocusPhase, Quest, QuestType } from './types';
-import { addGoal, avatarInfo, deepWorkRewards, deleteGoal, formatAttrXp, goalProgress, updateGoal } from './attributes';
-import { addKingdom, BUILDINGS, buildings, deleteKingdom, kingdomName, kingdomProgress, SCAFFOLD_ICON } from './kingdoms';
+import type { FocusPhase, Quest, QuestType } from './types';
+import { addGoal, avatarInfo, deepWorkRewards, deleteGoal, formatAttrXp, goalProgress, habitRewards, questRewards, updateGoal } from './attributes';
+import { CustomizeToggle, RewardEditor, sameRewards, type CustomValue } from './customize';
+import { addKingdom, BUILDINGS, buildings, deleteKingdom, kingdomName, kingdomProgress } from './kingdoms';
+import { CityScene } from './city';
+import { kingdomBonus } from './economy';
 import { RealmMap } from './realm';
-import { DEFAULT_GUIDE } from './tutorial';
+import { AmbientPanel } from './ambient-ui';
+import { AvatarLadder, SettingsPanel, WeeklyChronicle } from './settings';
 import { sfx } from './sfx';
 import { ActivityHeatmap, XpChart } from './charts';
 import {
-  addHabit, addQuest, cancelTimer, completeQuest, createProfile, dayKey, deepWorkMinutesOnDay,
+  addHabit, addQuest, cancelTimer, CUSTOM_LIMITS, updateHabit, updateQuest, completeQuest, createProfile, dayKey, deepWorkMinutesOnDay,
   deleteHabit, deleteQuest, focusPercent, habitStreak, isHabitDone, levelInfo, pendingQuests, setPhase, timerTotals,
   startTimer, stopTimer, suggest, toggleHabit, totalXp, undoQuest, xpOnDay, XP_RULES,
 } from './game';
 import {
-  AttributeList, AttributeSelect, AvatarCard, ConfirmButton, formatClock, formatMinutes, HabitItem, LevelBar, QuestItem,
+  AttributeList, AvatarCard, ConfirmButton, formatClock, formatMinutes, HabitItem, LevelBar, QuestItem,
   QuickAddQuest, RewardTags, useNow,
 } from './ui';
 
 export type Game = ReturnType<typeof useGame>;
-export type Tab = 'hoy' | 'misiones' | 'reinos' | 'deepwork' | 'habitos' | 'personaje';
+export type Tab = 'hoy' | 'misiones' | 'reinos' | 'arena' | 'deepwork' | 'habitos' | 'personaje';
 
 const CAP_QUEST = `Tope diario de XP por misiones alcanzado (${XP_RULES.dailyCap.quest}). La misión cuenta igual.`;
 const CAP_HABIT = `Tope diario de XP por hábitos alcanzado (${XP_RULES.dailyCap.habit}).`;
+/** Sonido y confeti al completar: martillazos en los reinos, fiesta en las principales. */
+const questOpts = (q: Quest) => ({ party: q.type === 'main', sound: q.kingdomId ? ('build' as const) : ('reward' as const) });
 
 // ---------- Registro ----------
 
@@ -67,7 +73,9 @@ export function Onboarding({ game }: { game: Game }) {
 
 // ---------- Hoy (Dashboard) ----------
 
-export function Dashboard({ game, go, focusQuest }: { game: Game; go: (t: Tab) => void; focusQuest: (q: Quest | null) => void }) {
+export function Dashboard({
+  game, go, focusQuest, guide,
+}: { game: Game; go: (t: Tab) => void; focusQuest: (q: Quest | null) => void; guide: string }) {
   const { state, act } = game;
   const now = useNow(30_000);
   const today = dayKey(now);
@@ -78,6 +86,7 @@ export function Dashboard({ game, go, focusQuest }: { game: Game; go: (t: Tab) =
 
   return (
     <div className="screen">
+      <WeeklyChronicle game={game} guide={guide} now={now} go={go} />
       <section className="now" aria-labelledby="now-h" data-tour="now">
         <p className="eyebrow" id="now-h">¿Qué hago ahora?</p>
         {s.kind === 'timer' && (
@@ -92,7 +101,7 @@ export function Dashboard({ game, go, focusQuest }: { game: Game; go: (t: Tab) =
             <p className="now-sub">Misión {s.quest.type === 'main' ? 'principal' : s.quest.type === 'daily' ? 'diaria' : 'secundaria'} · +{XP_RULES.quest[s.quest.type]} XP al completarla, +1 XP por minuto de foco</p>
             <div className="row">
               <button className="primary big" onClick={() => focusQuest(s.quest)}>▶ Empezar Deep Work</button>
-              <button className="secondary big" onClick={() => act((st) => completeQuest(st, s.quest.id, Date.now()), CAP_QUEST)}>✓ Ya la terminé</button>
+              <button className="secondary big" onClick={() => act((st) => completeQuest(st, s.quest.id, Date.now()), CAP_QUEST, questOpts(s.quest))}>✓ Ya la terminé</button>
             </div>
           </>
         )}
@@ -101,7 +110,7 @@ export function Dashboard({ game, go, focusQuest }: { game: Game; go: (t: Tab) =
             <h2>Hábito pendiente: {s.name}</h2>
             <p className="now-sub">No tienes misiones pendientes. Marca el hábito cuando lo hagas.</p>
             <div className="row">
-              <button className="primary big" onClick={() => act((st) => toggleHabit(st, s.habitId, Date.now()), CAP_HABIT)}>✓ Hecho</button>
+              <button className="primary big" onClick={() => act((st) => toggleHabit(st, s.habitId, Date.now()), CAP_HABIT, { sound: 'habit' })}>✓ Hecho</button>
               <button className="secondary big" onClick={() => go('misiones')}>+ Crear misión</button>
             </div>
           </>
@@ -110,7 +119,7 @@ export function Dashboard({ game, go, focusQuest }: { game: Game; go: (t: Tab) =
           <>
             <h2>Crea tu primera misión.</h2>
             <p className="now-sub">Algo concreto que quieras hacer hoy. Una sola línea basta.</p>
-            <QuickAddQuest onAdd={(t, ty, f) => act((st) => addQuest(st, t, ty, Date.now(), undefined, f))} />
+            <QuickAddQuest onAdd={(t, ty, c) => act((st) => addQuest(st, t, ty, Date.now(), c))} />
           </>
         )}
         {s.kind === 'done' && (
@@ -136,11 +145,11 @@ export function Dashboard({ game, go, focusQuest }: { game: Game; go: (t: Tab) =
           ) : (
             <ul className="list">
               {pending.slice(0, 5).map((q) => (
-                <QuestItem key={q.id} quest={q} kingdom={kingdomName(state, q.kingdomId)} onComplete={() => act((st) => completeQuest(st, q.id, Date.now()), CAP_QUEST)} onStart={() => focusQuest(q)} />
+                <QuestItem key={q.id} quest={q} kingdom={kingdomName(state, q.kingdomId)} onComplete={() => act((st) => completeQuest(st, q.id, Date.now()), CAP_QUEST, questOpts(q))} onStart={() => focusQuest(q)} />
               ))}
             </ul>
           )}
-          {s.kind !== 'create' && <QuickAddQuest onAdd={(t, ty, f) => act((st) => addQuest(st, t, ty, Date.now(), undefined, f))} />}
+          {s.kind !== 'create' && <QuickAddQuest onAdd={(t, ty, c) => act((st) => addQuest(st, t, ty, Date.now(), c))} />}
         </section>
 
         <section className="panel">
@@ -153,7 +162,7 @@ export function Dashboard({ game, go, focusQuest }: { game: Game; go: (t: Tab) =
           ) : (
             <ul className="list">
               {state.habits.map((h) => (
-                <HabitItem key={h.id} state={state} habit={h} now={now} onToggle={() => act((st) => toggleHabit(st, h.id, Date.now()), CAP_HABIT)} />
+                <HabitItem key={h.id} state={state} habit={h} now={now} onToggle={() => act((st) => toggleHabit(st, h.id, Date.now()), CAP_HABIT, { sound: 'habit' })} />
               ))}
             </ul>
           )}
@@ -200,7 +209,7 @@ export function Quests({ game, focusQuest }: { game: Game; focusQuest: (q: Quest
     <div className="screen">
       <h1 className="screen-title">Misiones</h1>
       <section className="panel" data-tour="quest-add">
-        <QuickAddQuest autoFocus onAdd={(t, ty, f) => act((st) => addQuest(st, t, ty, Date.now(), undefined, f))} />
+        <QuickAddQuest autoFocus onAdd={(t, ty, c) => act((st) => addQuest(st, t, ty, Date.now(), c))} />
         <p className="hint">Principal = lo importante. Diaria = para hoy. Secundaria = si sobra tiempo.</p>
       </section>
       <section className="panel">
@@ -212,8 +221,9 @@ export function Quests({ game, focusQuest }: { game: Game; focusQuest: (q: Quest
                 key={q.id}
                 quest={q}
                 kingdom={kingdomName(state, q.kingdomId)}
-                onComplete={() => act((st) => completeQuest(st, q.id, Date.now()), CAP_QUEST)}
+                onComplete={() => act((st) => completeQuest(st, q.id, Date.now()), CAP_QUEST, questOpts(q))}
                 onStart={() => focusQuest(q)}
+                onEdit={(t, v) => act((st) => updateQuest(st, q.id, { title: t, ...v }))}
                 onDelete={() => act((st) => deleteQuest(st, q.id))}
               />
             ))}
@@ -351,6 +361,7 @@ export function DeepWork({ game, preselect, clearPreselect }: { game: Game; pres
         </div>
         <button className="ghost" onClick={stop}>■ Terminar sesión</button>
         <ConfirmButton label="Descartar sin guardar" confirmLabel="Sí, descartar" onConfirm={() => act(cancelTimer)} />
+        <AmbientPanel />
       </div>
     );
   }
@@ -375,7 +386,7 @@ export function DeepWork({ game, preselect, clearPreselect }: { game: Game; pres
               <p className="now-sub">{result.label} <RewardTags rewards={deepWorkRewards(result.minutes)} /></p>
               {linked && (
                 <div className="row">
-                  <button className="primary" onClick={() => { act((s) => completeQuest(s, linked.id, Date.now()), CAP_QUEST); setResult({ ...result, questId: null }); }}>
+                  <button className="primary" onClick={() => { act((s) => completeQuest(s, linked.id, Date.now()), CAP_QUEST, questOpts(linked)); setResult({ ...result, questId: null }); }}>
                     ✓ Completar «{linked.title}» (+{XP_RULES.quest[linked.type]} XP)
                   </button>
                 </div>
@@ -410,6 +421,7 @@ export function DeepWork({ game, preselect, clearPreselect }: { game: Game; pres
           <button className="primary wide" onClick={() => start(target)}>▶ Empezar {target} min</button>
         </div>
       </div>
+      <AmbientPanel />
       <p className="hint">Durante la sesión puedes marcar Descanso o Me distraje. Solo el foco da XP (1 XP, +1 Maestría y +0,5 Voluntad por minuto). Foco real = foco ÷ (foco + distracción) × 100.</p>
 
       <section className="panel">
@@ -438,12 +450,16 @@ export function Habits({ game }: { game: Game }) {
   const { state, act } = game;
   const now = useNow(30_000);
   const [name, setName] = useState('');
-  const [focus, setFocus] = useState<AttributeId | undefined>();
+  const [custom, setCustom] = useState<CustomValue>({});
+  const [open, setOpen] = useState(false);
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    act((s) => addHabit(s, name, Date.now(), focus));
+    const rewards = custom.rewards && !sameRewards(custom.rewards, habitRewards(name)) ? custom.rewards : undefined;
+    act((s) => addHabit(s, name, Date.now(), { xp: custom.xp, rewards }));
     setName('');
+    setCustom({});
+    setOpen(false);
   }
   return (
     <div className="screen">
@@ -451,16 +467,17 @@ export function Habits({ game }: { game: Game }) {
       <section className="panel" data-tour="habits">
         <form className="quick-add inline" onSubmit={submit}>
           <input id="new-habit" value={name} onChange={(e) => setName(e.target.value)} placeholder="+ Nuevo hábito diario (ej. Leer 10 páginas)" maxLength={60} aria-label="Nombre del nuevo hábito" />
-          <AttributeSelect value={focus} onChange={setFocus} />
+          <CustomizeToggle open={open} onToggle={() => setOpen(!open)} custom={custom.xp !== undefined || custom.rewards !== undefined} />
           <button type="submit" className="primary" disabled={!name.trim()}>Añadir</button>
         </form>
+        {open && <RewardEditor autoXp={XP_RULES.habit} autoRewards={habitRewards(name)} value={custom} onChange={setCustom} maxXp={CUSTOM_LIMITS.habitXp} idPrefix="new-habit" />}
         <p className="hint">+{XP_RULES.habit} XP cada día que lo completes. Los puntos de la derecha son los últimos 7 días.</p>
       </section>
       <section className="panel">
         {state.habits.length === 0 ? <p className="empty">Añade tu primer hábito arriba.</p> : (
           <ul className="list">
             {state.habits.map((h) => (
-              <HabitItem key={h.id} state={state} habit={h} now={now} onToggle={() => act((s) => toggleHabit(s, h.id, Date.now()), CAP_HABIT)} onDelete={() => act((s) => deleteHabit(s, h.id))} />
+              <HabitItem key={h.id} state={state} habit={h} now={now} onToggle={() => act((s) => toggleHabit(s, h.id, Date.now()), CAP_HABIT, { sound: 'habit' })} onDelete={() => act((s) => deleteHabit(s, h.id))} onEdit={(n, v) => act((s) => updateHabit(s, h.id, { name: n, ...v }))} />
             ))}
           </ul>
         )}
@@ -500,6 +517,8 @@ export function Character({
 
       <AvatarCard state={state} now={now} showRequirements />
 
+      <AvatarLadder game={game} now={now} />
+
       <GoalsPanel game={game} now={now} />
 
       <section className="panel" aria-labelledby="attrs-detail-h" data-tour="attrs">
@@ -532,14 +551,7 @@ export function Character({
         )}
       </section>
 
-      <section className="panel" aria-labelledby="settings-h">
-        <h3 id="settings-h">Ajustes</h3>
-        <div className="settings-row">
-          <label htmlFor="guide-name">Nombre de tu guía</label>
-          <input id="guide-name" defaultValue={guide} maxLength={30} onBlur={(e) => setGuide(e.target.value.trim() || DEFAULT_GUIDE)} />
-          <button className="secondary" onClick={replayTutorial}>Repetir tutorial</button>
-        </div>
-      </section>
+      <SettingsPanel game={game} guide={guide} setGuide={setGuide} replayTutorial={replayTutorial} />
 
       <section className="panel quiet">
         <p className="muted">Los datos se guardan en este navegador. Borrar el personaje elimina misiones, hábitos e historial.</p>
@@ -593,44 +605,59 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
   const { state, act } = game;
   const kingdom = state.kingdoms.find((k) => k.id === kingdomId)!;
   const p = kingdomProgress(state, kingdomId);
-  const list = buildings(state, kingdomId).sort((a, b) => Number(!!b.completedAt) - Number(!!a.completedAt) || a.createdAt - b.createdAt);
+  const all = buildings(state, kingdomId).sort((a, b) => a.createdAt - b.createdAt);
+  const pending = all.filter((q) => !q.completedAt);
+  const built = all.filter((q) => q.completedAt);
+  const bonus = kingdomBonus(state, kingdomId);
   const [title, setTitle] = useState('');
   const [type, setType] = useState<QuestType>('side');
-  const [focus, setFocus] = useState<AttributeId | undefined>();
+  const [custom, setCustom] = useState<CustomValue>({});
+  const [open, setOpen] = useState(false);
+  const [showBuilt, setShowBuilt] = useState(false);
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    act((s) => addQuest(s, title, type, Date.now(), kingdomId, focus));
+    const rewards = custom.rewards && !sameRewards(custom.rewards, questRewards(type, title)) ? custom.rewards : undefined;
+    act((s) => addQuest(s, title, type, Date.now(), { kingdomId, xp: custom.xp, rewards }));
     setTitle('');
+    setCustom({});
+    setOpen(false);
   }
   return (
     <section id={`kingdom-${kingdomId}`} className={p.complete ? 'panel kingdom complete' : 'panel kingdom'} aria-labelledby={`k-${kingdomId}`}>
       <header className="kingdom-head">
         <div>
-          <h2 id={`k-${kingdomId}`} className="kingdom-name"><span aria-hidden="true">{p.icon} </span>{kingdom.name}</h2>
-          <p className="kingdom-stage">{p.stage} · {p.built}/{p.total} construcciones</p>
+          <h2 id={`k-${kingdomId}`} className="kingdom-name">{kingdom.name}</h2>
+          <p className="kingdom-stage">{p.stage} · {p.built}/{p.total} construcciones{bonus > 0 && ` · tributo +${bonus} 🪙`}</p>
         </div>
         <span className="kingdom-pct mono">{Math.round(p.progress * 100)} %</span>
       </header>
-      <div className="xpbar" role="progressbar" aria-label={`Progreso de ${kingdom.name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(p.progress * 100)}>
-        <div className="xpbar-fill" style={{ width: `${p.progress * 100}%` }} />
-      </div>
-      <div className="city" aria-label="Ciudad">
-        {list.length === 0 && <p className="empty city-empty">Tierras baldías. Planea tu primera construcción abajo.</p>}
-        {list.map((q) => (
-          <div key={q.id} className={`building b-${q.type} ${q.completedAt ? 'built' : 'pending'}`}>
-            <span className="building-icon" aria-hidden="true">{q.completedAt ? BUILDINGS[q.type].icon : SCAFFOLD_ICON}</span>
-            <span className="building-name">{q.title}</span>
-            <span className="building-type">{q.completedAt ? BUILDINGS[q.type].name : `Cimientos de ${BUILDINGS[q.type].name.toLowerCase()}`}</span>
-            {!q.completedAt && (
-              <span className="building-actions">
-                <button className="check" onClick={() => act((s) => completeQuest(s, q.id, Date.now()), CAP_QUEST)} aria-label={`Construir ${q.title}`} title="Completar">✓</button>
-                <button className="ghost small" onClick={() => focusQuest(q)} title="Deep Work en esta tarea">▶</button>
-              </span>
-            )}
-          </div>
-        ))}
-      </div>
+      <CityScene quests={all} progress={p.progress} complete={p.complete} stage={p.stage} icon={p.icon} />
+      {pending.length > 0 && (
+        <ul className="list">
+          {pending.map((q) => (
+            <QuestItem
+              key={q.id} quest={q}
+              onComplete={() => act((s) => completeQuest(s, q.id, Date.now()), CAP_QUEST, questOpts(q))}
+              onStart={() => focusQuest(q)}
+              onDelete={() => act((s) => deleteQuest(s, q.id))}
+              onEdit={(t, v) => act((s) => updateQuest(s, q.id, { title: t, ...v }))}
+            />
+          ))}
+        </ul>
+      )}
+      {built.length > 0 && (
+        <>
+          <button className="link" onClick={() => setShowBuilt(!showBuilt)} aria-expanded={showBuilt}>
+            {showBuilt ? 'Ocultar' : 'Ver'} lo construido ({built.length})
+          </button>
+          {showBuilt && (
+            <ul className="list">
+              {built.map((q) => <QuestItem key={q.id} quest={q} onUndo={() => act((s) => ({ state: undoQuest(s, q.id), xp: 0 }))} />)}
+            </ul>
+          )}
+        </>
+      )}
       <form className="quick-add" onSubmit={submit}>
         <input id={`b-${kingdomId}`} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="+ Nueva construcción (ej. Terminar una calculadora)" maxLength={80} aria-label="Nueva construcción" />
         <div className="quick-add-row">
@@ -641,9 +668,10 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
               </button>
             ))}
           </div>
-          <AttributeSelect value={focus} onChange={setFocus} />
+          <CustomizeToggle open={open} onToggle={() => setOpen(!open)} custom={custom.xp !== undefined || custom.rewards !== undefined} />
           <button type="submit" className="primary" disabled={!title.trim()}>Construir</button>
         </div>
+        {open && <RewardEditor autoXp={XP_RULES.quest[type]} autoRewards={questRewards(type, title)} value={custom} onChange={setCustom} maxXp={CUSTOM_LIMITS.questXp} idPrefix={`b-${kingdomId}`} />}
       </form>
       <ConfirmButton label="Borrar reino" confirmLabel="Sí, borrar (lo construido se conserva)" onConfirm={() => act((s) => deleteKingdom(s, kingdomId))} />
     </section>

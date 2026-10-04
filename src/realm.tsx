@@ -64,8 +64,8 @@ export function RealmMap({ state, onSelect }: { state: GameState; onSelect: (kin
         <svg width={W} height={H} role="img" aria-label={`Mapa con ${state.kingdoms.length} reinos. ${nodes.map((n) => `${n.k.name}: ${Math.round(n.p.progress * 100)} %`).join(', ')}`}>
           <defs>
             <radialGradient id="realm-bg" cx="50%" cy="50%" r="70%">
-              <stop offset="0%" stopColor="#1d1030" />
-              <stop offset="100%" stopColor="#050308" />
+              <stop offset="0%" style={{ stopColor: 'color-mix(in srgb, var(--c3) 22%, #050505)' }} />
+              <stop offset="100%" stopColor="#040404" />
             </radialGradient>
             <linearGradient id="realm-road" x1="0" x2="1">
               <stop offset="0%" stopColor="var(--c2)" />
