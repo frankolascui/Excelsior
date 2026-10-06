@@ -1,0 +1,281 @@
+/* ---------- Arena: bosses épicos, sagas e intro/victoria; tienda por categorías ----------
+   Complementa y sobrescribe las reglas «Arena» de styles.css (todo cuelga de .arena para ganar especificidad). */
+
+.arena { --tier: var(--c2); }
+
+/* Progreso de la escalera */
+.arena .arena-progress { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; color: var(--muted); }
+.arena .arena-progress b { color: var(--fg); margin-right: 4px; }
+
+/* Insignia de rango */
+.arena .tier-badge {
+  display: inline-flex; align-items: center; gap: 5px; align-self: flex-start;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 99px; white-space: nowrap;
+  color: var(--tier); border: 1px solid color-mix(in srgb, var(--tier) 55%, transparent);
+  background: color-mix(in srgb, var(--tier) 12%, transparent);
+}
+.arena .tier-badge > span { font-size: 9px; letter-spacing: 1px; }
+.arena .tier-badge.custom { color: var(--muted); border-color: var(--line); background: var(--surface-2); }
+.arena .saga-tag { font-size: 12.5px; color: var(--muted); }
+.arena .phase-tag { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 8px; border-radius: 99px; }
+.arena .phase-tag.herido { color: #fdba74; background: rgba(251, 146, 60, 0.12); border: 1px solid rgba(251, 146, 60, 0.4); }
+.arena .phase-tag.furioso { color: #fff; background: #e11d48; box-shadow: 0 0 14px rgba(225, 29, 72, 0.7); animation: rage-pulse 1.2s ease-in-out infinite; }
+@keyframes rage-pulse { 50% { box-shadow: 0 0 4px rgba(225, 29, 72, 0.3); } }
+
+/* ---------- Boss activo ---------- */
+.arena .boss {
+  position: relative; overflow: hidden;
+  grid-template-columns: auto 1fr auto; gap: 18px; align-items: center; padding: 16px 18px;
+  border-radius: 16px; border: 1px solid color-mix(in srgb, var(--tier) 40%, var(--line));
+  background:
+    radial-gradient(90% 140% at 0% 50%, color-mix(in srgb, var(--tier) 16%, transparent), transparent 60%),
+    linear-gradient(180deg, #111019, #08080d);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+.arena .boss::after { /* vetas de energía al fondo */
+  content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.35;
+  background: repeating-linear-gradient(115deg, transparent 0 22px, color-mix(in srgb, var(--tier) 7%, transparent) 22px 23px);
+}
+.arena .boss > * { position: relative; z-index: 1; }
+.arena .boss.phase-herido { border-color: rgba(251, 146, 60, 0.55); }
+.arena .boss.phase-furioso {
+  border-color: #e11d48;
+  background: radial-gradient(90% 140% at 0% 50%, rgba(225, 29, 72, 0.28), transparent 60%), linear-gradient(180deg, #1a0a10, #0a0508);
+  animation: rage-glow 1.6s ease-in-out infinite;
+}
+@keyframes rage-glow { 50% { box-shadow: 0 0 0 1px rgba(225, 29, 72, 0.4), 0 0 36px rgba(225, 29, 72, 0.35); } }
+.arena .boss-stage { width: 120px; height: 120px; }
+.arena .boss-stage .boss-art { animation: boss-breathe 3s ease-in-out infinite; filter: drop-shadow(0 0 18px color-mix(in srgb, var(--tier) 45%, transparent)); }
+.arena .boss.phase-furioso .boss-art { animation: boss-rage 0.9s ease-in-out infinite; filter: drop-shadow(0 0 22px rgba(225, 29, 72, 0.75)); }
+@keyframes boss-rage { 25% { transform: translate(-1px, 1px) scale(1.03); } 50% { transform: translate(1px, -1px); } 75% { transform: translate(-1px, 0) scale(1.02); } }
+.arena .boss.hit .boss-art { animation: boss-hit 0.5s ease; filter: drop-shadow(0 0 18px #fff) brightness(1.6); }
+.arena .boss-shadow { bottom: -6px; width: 70px; }
+.arena .boss-body { gap: 6px; }
+.arena .boss-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.arena .boss-name { font-size: 25px; line-height: 1.1; text-wrap: balance; }
+.arena .boss-lore { font-style: italic; color: color-mix(in srgb, var(--fg) 72%, var(--muted)); font-size: 15px; }
+.arena .hp-bar.big { height: 18px; margin-top: 4px; border: 1px solid #2a2a36; background: #0a0a10; box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.7); }
+.arena .hp-bar.big .hp-fill {
+  background: linear-gradient(90deg, #b91c1c, #ff3d5a 45%, var(--c1));
+  box-shadow: 0 0 16px rgba(255, 61, 90, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transition: width 0.7s cubic-bezier(.2, .9, .3, 1.1);
+}
+.arena .boss.phase-furioso .hp-fill { background: linear-gradient(90deg, #7f1d1d, #e11d48); animation: hp-throb 0.9s ease-in-out infinite; }
+@keyframes hp-throb { 50% { filter: brightness(1.35); } }
+.arena .hp-notch { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: rgba(0, 0, 0, 0.75); z-index: 2; }
+.arena .boss-hp-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.arena .boss-hp { font-size: 17px; font-weight: 700; }
+.arena .boss-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13.5px; color: var(--muted); }
+.arena .boss-meta .urgent { color: #fda4af; font-weight: 600; }
+.arena .loot { color: var(--gold); }
+.arena .boss-actions { align-self: start; }
+.arena .dmg-float { font-size: 26px; top: 0; right: -6px; z-index: 3; }
+
+/* ---------- Sagas ---------- */
+.arena .full-note { margin-top: -4px; }
+.arena .sagas { display: flex; flex-direction: column; gap: 14px; }
+.arena .saga {
+  border: 1px solid var(--line); border-radius: 14px; padding: 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent);
+}
+.arena .saga.done { border-color: color-mix(in srgb, #fbbf24 45%, var(--line)); }
+.arena .saga-head { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; margin-bottom: 10px; }
+.arena .saga-head h5 { margin: 0; font-family: var(--display); font-size: 18px; }
+.arena .saga-head p { grid-column: 1 / -1; }
+.arena .saga-count { color: var(--muted); font-size: 13px; }
+.arena .saga-chain { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
+.arena .saga-chain > li { position: relative; display: flex; min-width: 0; }
+.arena .saga-chain > li + li::before { /* flecha de la cadena */
+  content: '›'; position: absolute; left: -17px; top: 44px; width: 12px; text-align: center;
+  color: var(--muted); font-size: 24px; line-height: 1; font-weight: 700;
+}
+.arena .boss-template {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px;
+  padding: 12px; border-radius: 12px; background: #0d0d14;
+  border: 1px solid color-mix(in srgb, var(--tier) 30%, var(--line));
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.arena .boss-template.ready:hover { transform: translateY(-2px); box-shadow: 0 10px 28px color-mix(in srgb, var(--tier) 22%, transparent); }
+.arena .boss-template.fighting { border-color: #e11d48; box-shadow: inset 0 0 0 1px rgba(225, 29, 72, 0.35); }
+.arena .boss-template.locked { background: #08080c; border-style: dashed; border-color: #23232e; }
+.arena .boss-template.locked h5 { color: #6e6e85; }
+.arena .tpl-art { position: relative; width: 76px; height: 76px; }
+.arena .boss-template.ready .boss-art { filter: drop-shadow(0 0 10px color-mix(in srgb, var(--tier) 35%, transparent)); }
+.arena .tpl-lock { position: absolute; right: -4px; bottom: -2px; font-size: 18px; filter: grayscale(1) brightness(1.4); }
+.arena .tpl-wins {
+  position: absolute; right: -8px; top: -4px; padding: 1px 6px; border-radius: 99px; font-size: 11px; font-weight: 700;
+  background: var(--ok); color: #04150d;
+}
+.arena .tpl-body { display: flex; flex-direction: column; align-items: center; gap: 5px; width: 100%; flex: 1; }
+.arena .tpl-body .tier-badge { align-self: center; }
+.arena .boss-template h5 { font-size: 16px; line-height: 1.2; }
+.arena .tpl-lore { flex: 1; }
+.arena .lock-reason {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+  font-family: var(--mono); font-size: 13px; color: #c4c4d6; font-weight: 600;
+}
+.arena .tpl-stats { color: var(--muted); }
+.arena .tpl-stats .loot { white-space: nowrap; }
+.arena .boss-template.locked .tpl-stats { opacity: 0.6; }
+.arena .summon-btn { width: 100%; margin-top: auto; }
+.arena .tpl-state { margin-top: auto; font-weight: 700; color: #fda4af; font-size: 14px; padding: 9px 0; }
+.arena .custom-boss-btn { align-self: flex-start; }
+
+/* Últimos combates */
+.arena .combats li { display: flex; align-items: center; gap: 10px; }
+.arena .combat-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.arena .combat .boss-art.is-defeated { filter: grayscale(0.85) brightness(0.8); }
+
+/* ---------- Intro de invocación y victoria ---------- */
+.arena-overlay {
+  position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; overflow-y: auto;
+  background: radial-gradient(circle at 50% 40%, rgba(40, 8, 30, 0.85), rgba(0, 0, 0, 0.94) 65%);
+  animation: overlay-in 0.35s ease both;
+}
+@keyframes overlay-in { from { opacity: 0; } }
+.arena-overlay-card {
+  position: relative; width: min(460px, 100%); display: flex; flex-direction: column; align-items: center; gap: 10px;
+  text-align: center; padding: 28px 22px 24px; border-radius: 22px; overflow: hidden;
+  background: linear-gradient(180deg, #120d1c, #07060b); border: 1px solid color-mix(in srgb, var(--c2) 40%, var(--line));
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.8), 0 0 60px color-mix(in srgb, var(--c1) 18%, transparent);
+  animation: card-slam 0.6s cubic-bezier(.2, 1.4, .4, 1) both;
+}
+.arena-overlay-card > * { position: relative; }
+@keyframes card-slam { 0% { transform: scale(1.25); opacity: 0; } 60% { transform: scale(0.97); opacity: 1; } 75% { transform: translateX(-6px); } 85% { transform: translateX(5px); } 100% { transform: none; } }
+.intro-rays {
+  position: absolute !important; inset: -50%; z-index: 0; pointer-events: none; opacity: 0.5;
+  background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--tier, var(--c2)) 30%, transparent) 0 8deg, transparent 8deg 22deg);
+  mask-image: radial-gradient(circle at 50% 50%, #000 0 22%, transparent 55%);
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 0 22%, transparent 55%);
+  animation: rays 14s linear infinite;
+}
+.intro-rays.gold { --tier: #fbbf24; }
+@keyframes rays { to { transform: rotate(360deg); } }
+.intro-eyebrow { margin-bottom: 2px; }
+.intro-art { animation: rise 0.9s cubic-bezier(.2, 1.3, .4, 1) 0.15s both; filter: drop-shadow(0 0 30px color-mix(in srgb, var(--c1) 40%, transparent)); }
+.summon-intro .intro-art .boss-art { animation: boss-rage 0.5s ease-in-out 0.9s 3; }
+@keyframes rise { 0% { transform: translateY(40px) scale(0.3); opacity: 0; filter: brightness(4) blur(4px); } 100% { transform: none; opacity: 1; } }
+.intro-cry { font-family: var(--mono); font-size: 13px; letter-spacing: 0.2em; text-transform: uppercase; color: #fda4af; animation: fade-up 0.4s ease 0.6s both; }
+.intro-name {
+  font-family: var(--display); font-size: clamp(26px, 6vw, 34px); line-height: 1.1;
+  background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: fade-up 0.5s ease 0.7s both;
+}
+.intro-lore { font-style: italic; color: #d6d6e4; animation: fade-up 0.5s ease 0.85s both; }
+.intro-stats { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; font-size: 14px; animation: fade-up 0.5s ease 1s both; }
+.intro-stats .loot, .victory-loot { color: var(--gold); }
+.arena-overlay-card .primary.big { margin-top: 8px; min-width: 200px; background: var(--grad); color: var(--on-accent); animation: fade-up 0.5s ease 1.1s both; }
+@keyframes fade-up { from { transform: translateY(10px); opacity: 0; } }
+
+.victory { background: radial-gradient(circle at 50% 40%, rgba(60, 40, 6, 0.85), rgba(0, 0, 0, 0.94) 65%); }
+.victory .arena-overlay-card { border-color: rgba(251, 191, 36, 0.55); box-shadow: 0 30px 90px rgba(0, 0, 0, 0.8), 0 0 70px rgba(251, 191, 36, 0.25); }
+.intro-art.fallen .boss-art { animation: fall 1.1s ease-in 0.2s both; }
+@keyframes fall {
+  0% { transform: none; filter: none; }
+  30% { transform: translateX(-5px) rotate(-3deg); filter: brightness(2); }
+  100% { transform: translateY(8px) rotate(8deg) scale(0.92); filter: grayscale(1) brightness(0.55); }
+}
+.victory-title {
+  font-family: var(--display); font-size: clamp(40px, 11vw, 56px); line-height: 1; letter-spacing: 0.02em;
+  background: linear-gradient(180deg, #fff7d6, #fbbf24 55%, #b45309); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 18px rgba(251, 191, 36, 0.5)); animation: victory-pop 0.6s cubic-bezier(.2, 1.6, .4, 1) 0.9s both;
+}
+@keyframes victory-pop { 0% { transform: scale(2.2); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.victory .intro-name { font-size: clamp(20px, 5vw, 24px); }
+.victory-loot { font-size: 34px; font-weight: 800; animation: coin-bounce 0.7s cubic-bezier(.2, 1.8, .4, 1) 1.2s both; }
+@keyframes coin-bounce { 0% { transform: translateY(-30px) scale(0.6); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.victory-next { font-size: 15px; animation: fade-up 0.5s ease 1.4s both; }
+
+/* ---------- Tienda ---------- */
+.arena .shop-next {
+  display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 14px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--c1) 12%, transparent), transparent 80%);
+  border: 1px solid color-mix(in srgb, var(--c1) 30%, var(--line));
+}
+.arena .shop-next.ready { border-color: color-mix(in srgb, var(--ok) 40%, var(--line)); background: linear-gradient(90deg, rgba(52, 211, 153, 0.1), transparent 80%); }
+.arena .shop-next-icon { font-size: 34px; line-height: 1; }
+.arena .shop-next-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.arena .afford-bar { height: 8px; border-radius: 99px; background: #0a0a10; border: 1px solid var(--line); overflow: hidden; }
+.arena .afford-bar > div { height: 100%; border-radius: 99px; background: var(--grad); transition: width 0.6s ease; }
+.arena .afford-bar.small { height: 5px; width: 80%; }
+.arena .shop-filter { display: flex; flex-wrap: wrap; gap: 6px; }
+.arena .shop-filter .chip-btn { font-size: 14px; padding: 6px 12px; }
+.arena .reward-cat { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.arena .reward-cat.cat-grandes { color: #fbbf24; }
+.arena .shop { grid-template-columns: repeat(auto-fill, minmax(164px, 1fr)); gap: 12px; }
+.arena .reward { gap: 6px; padding: 18px 12px 12px; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.arena .reward.affordable { border-color: color-mix(in srgb, var(--c1) 55%, var(--line)); box-shadow: 0 0 22px color-mix(in srgb, var(--c1) 14%, transparent); }
+.arena .reward.affordable:hover { transform: translateY(-2px); }
+.arena .reward.locked { filter: none; opacity: 1; background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), var(--surface-2)); }
+.arena .reward.locked .reward-icon { filter: grayscale(0.7); opacity: 0.7; }
+.arena .reward-icon {
+  font-size: 34px; width: 62px; height: 62px; display: grid; place-items: center; border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--c2) 26%, transparent), transparent 70%);
+}
+.arena .reward-name { line-height: 1.25; flex: 1; }
+.arena .reward-cost { font-size: 16px; font-weight: 700; color: var(--gold); }
+.arena .reward-missing { color: #fda4af; font-family: var(--mono); }
+.arena .reward-ok { color: var(--ok); font-family: var(--mono); }
+.arena .reward-buy { width: 100%; margin-top: 4px; }
+.arena .reward-edit { position: absolute; top: 4px; right: 4px; font-size: 16px; }
+.arena .reward-count { position: absolute; top: 8px; left: 10px; font-size: 12px; color: var(--muted); }
+.arena .reward-editing { align-items: stretch; text-align: left; grid-column: span 2; gap: 8px; }
+.arena .reward-editing input { padding: 8px 10px; }
+.arena .reward-editing .attr-select { max-width: none; }
+.arena .reward-edit-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.arena .reward-edit-actions button { padding: 7px 11px; }
+.arena .new-reward-btn { align-self: flex-start; }
+.arena .reward-form { flex-direction: column; align-items: stretch; padding: 14px; border-radius: 14px; border: 1px dashed color-mix(in srgb, var(--c2) 40%, var(--line)); background: #0b0b12; }
+.arena .reward-form-title { display: flex; align-items: center; gap: 12px; }
+.arena .reward-preview { font-size: 30px; width: 52px; height: 52px; display: grid; place-items: center; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--c2) 30%, transparent), transparent 70%); }
+.arena .reward-form-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.arena .reward-form-row input { flex: 1 1 180px; }
+.arena .reward-form-row input[type=number] { flex: 0 1 110px; }
+.arena .icon-picker { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.arena .icon-pick { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); font-size: 19px; padding: 0; }
+.arena .icon-pick.on { border-color: var(--c1); box-shadow: 0 0 0 1px var(--c1), 0 0 12px color-mix(in srgb, var(--c1) 40%, transparent); }
+.arena .shop:has(.reward-editing) { align-items: start; }
+.arena .icon-own { white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; margin-left: 4px; }
+.arena .icon-own input { width: 54px; padding: 6px 8px; text-align: center; font-size: 18px; }
+
+/* Historial de canjes */
+.arena .purchase { display: flex; align-items: center; gap: 12px; }
+.arena .purchase-icon { font-size: 24px; width: 38px; height: 38px; flex: none; display: grid; place-items: center; border-radius: 10px; background: var(--surface-2); }
+.arena .purchase-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.arena .purchase-name { overflow-wrap: anywhere; }
+.arena .purchase-cost { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; white-space: nowrap; }
+
+/* ---------- Móvil ---------- */
+@media (max-width: 760px) {
+  .arena .saga-chain { grid-template-columns: 1fr; gap: 14px; }
+  .arena .saga-chain > li + li::before { content: '⌄'; left: 50%; top: -15px; margin-left: -6px; font-size: 18px; }
+  .arena .boss-template { flex-direction: row; text-align: left; align-items: flex-start; gap: 12px; }
+  .arena .tpl-body { align-items: flex-start; }
+  .arena .tpl-body .tier-badge { align-self: flex-start; }
+  .arena .lock-reason { justify-content: flex-start; }
+  .arena .tpl-art { flex: none; }
+  .arena .summon-btn { padding: 8px 12px; font-size: 15px; }
+}
+@media (max-width: 600px) {
+  .arena .boss { grid-template-columns: 84px 1fr; gap: 12px; padding: 14px; }
+  .arena .boss-stage { width: 84px; height: 84px; align-self: start; }
+  .arena .boss-stage .boss-art { width: 84px; height: 84px; }
+  .arena .boss-name { font-size: 20px; }
+  .arena .boss-lore { font-size: 14px; }
+  .arena .boss-body { grid-column: 1 / -1; grid-row: 2; }
+  .arena .boss-actions { grid-column: 2; grid-row: 1; justify-self: end; align-self: start; }
+  .arena .boss-actions .confirm { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+  .arena .shop { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .arena .reward-editing { grid-column: 1 / -1; }
+  .arena .reward { padding: 16px 8px 10px; }
+  .arena .shop-next-icon { font-size: 28px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arena .boss-stage .boss-art, .arena .boss.phase-furioso, .arena .boss.phase-furioso .boss-art, .arena .boss.phase-furioso .hp-fill,
+  .arena .boss.hit .boss-art, .arena .phase-tag.furioso, .arena .boss-template, .arena .reward,
+  .arena-overlay, .arena-overlay-card, .intro-rays, .intro-art, .intro-art .boss-art, .intro-cry, .intro-name, .intro-lore, .intro-stats,
+  .arena-overlay-card .primary.big, .victory-title, .victory-loot, .victory-next { animation: none !important; transition: none !important; }
+  .intro-art.fallen .boss-art { filter: grayscale(1) brightness(0.55); }
+}

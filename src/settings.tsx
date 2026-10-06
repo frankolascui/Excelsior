@@ -13,7 +13,7 @@ import { AccountPanel } from './account';
 import { ConfirmButton } from './ui';
 import { TOURS } from './tutorial';
 import { isUnlocked } from './unlocks';
-import { summonTemplate, BOSS_TEMPLATES, MAX_ACTIVE_BOSSES, activeBosses } from './bosses';
+import { summonBoss, summonCheck, BOSS_TEMPLATES } from './bosses';
 import { weekSummary } from './summary';
 import { formatMinutes } from './ui';
 import { DEFAULT_GUIDE } from './tutorial';
@@ -243,8 +243,10 @@ export function WeeklyChronicle({ game, guide, now, go }: { game: Game; guide: s
   const w = weekSummary(state, now);
   const [hidden, setHidden] = useState(() => seenWeek() === w.weekKey);
   if (hidden || (w.xp === 0 && w.prevXp === 0)) return null;
-  const challenge = BOSS_TEMPLATES.find((t) => t.id === w.challenge)!;
-  const canSummon = isUnlocked(state, 'arena') && activeBosses(state, now).length < MAX_ACTIVE_BOSSES && !state.bosses.some((b) => b.name === challenge.name && b.deadline > now);
+  // El reto respeta la escalera: si el boss de tu punto débil aún está bloqueado, se propone otro disponible.
+  const preferred = BOSS_TEMPLATES.find((t) => t.id === w.challenge);
+  const challenge = isUnlocked(state, 'arena') ? [preferred, ...BOSS_TEMPLATES].find((t) => t && summonCheck(state, t.id, now).ok) ?? null : null;
+  const canSummon = challenge !== null;
   const fmt = (ts: number) => new Date(ts).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
   function close() {
     try {
@@ -277,12 +279,12 @@ export function WeeklyChronicle({ game, guide, now, go }: { game: Game; guide: s
         ))}
       </p>
       <p>
-        Tu punto débil fue <strong>{w.weakest.icon} {w.weakest.name}</strong>.{isUnlocked(state, 'arena') && <> Reto: derrota a <strong>{challenge.icon} {challenge.name}</strong> esta semana.</>}
+        Tu punto débil fue <strong>{w.weakest.icon} {w.weakest.name}</strong>.{challenge && <> Reto: derrota a <strong>{challenge.icon} {challenge.name}</strong> esta semana.</>}
       </p>
       <ChronicleOath state={state} />
       <div className="settings-row">
         {canSummon && (
-          <button className="primary" onClick={() => { act((s) => summonTemplate(s, challenge.id, Date.now())); sfx.summon(); go('arena'); close(); }}>
+          <button className="primary" onClick={() => { act((s) => summonBoss(s, challenge!.id, Date.now()).state); sfx.summon(); go('arena'); close(); }}>
             Aceptar el reto
           </button>
         )}

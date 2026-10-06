@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   addHabit, addQuest, completeQuest, createProfile, emptyState, startTimer, stopTimer, toggleHabit, totalXp, undoQuest, updateHabit, updateQuest,
 } from './game';
-import { addReward, buyReward, coinBalance, refundPurchase } from './economy';
+import {
+  addReward, buyReward, coinBalance, defaultRewards, nextReward, purchaseCounts, refundPurchase, rewardCategory, updateReward,
+} from './economy';
 import { addBoss, bossReward, bossStatus, summonTemplate } from './bosses';
 import { attributeXp } from './attributes';
 import { addKingdom } from './kingdoms';
@@ -65,6 +67,41 @@ describe('monedas y recompensas', () => {
     for (const t of ['a', 'b', 'c']) s = addQuest(s, t, 'side', NOW, { kingdomId: k });
     for (const q of s.quests) s = completeQuest(s, q.id, NOW).state;
     expect(coinBalance(s, NOW)).toBe(9 + 30); // 45 XP → 9 + bonus 3×10
+  });
+});
+
+describe('tienda por categorías', () => {
+  it('las recompensas por defecto traen categoría y las antiguas (sin ella) se deducen', () => {
+    const defs = defaultRewards(NOW);
+    expect(defs.map((r) => r.category)).toEqual(['ocio', 'descanso', 'ocio', 'caprichos', 'ocio', 'grandes', 'grandes']);
+    const old = (name: string, cost: number) => rewardCategory({ name, cost });
+    expect(old('Ver un episodio de una serie', 25)).toBe('ocio');
+    expect(old('Comida trampa', 80)).toBe('caprichos');
+    expect(old('Día libre sin culpa', 350)).toBe('grandes');
+    expect(old('Siesta de 1 hora', 30)).toBe('descanso');
+    expect(rewardCategory({ name: 'Comida trampa', cost: 80, category: 'raro' })).toBe('caprichos');
+  });
+
+  it('crear con icono y categoría propios, y editar sin tocar los canjes ya hechos', () => {
+    let s = addQuest(base(), 'A', 'main', NOW);
+    s = completeQuest(s, s.quests[0].id, NOW).state; // 10 monedas
+    s = addReward(s, { name: '  Ir al cine ', icon: '🍿', cost: 9.6, category: 'ocio' }, NOW);
+    const r = s.rewards.at(-1)!;
+    expect(r).toMatchObject({ name: 'Ir al cine', icon: '🍿', cost: 10, category: 'ocio' });
+    s = buyReward(s, r.id, NOW).state;
+    s = updateReward(s, r.id, { cost: 40, icon: '🎬', category: 'grandes', name: '' });
+    expect(s.rewards.at(-1)).toMatchObject({ name: 'Ir al cine', icon: '🎬', cost: 40, category: 'grandes' });
+    expect(s.purchases[0]).toMatchObject({ icon: '🍿', cost: 10 });
+    expect(purchaseCounts(s)).toEqual({ [r.id]: 1 });
+    expect(coinBalance(s, NOW)).toBe(0);
+  });
+
+  it('propone el siguiente premio que aún no puedes pagar', () => {
+    let s = addQuest(base(), 'A', 'main', NOW);
+    s = completeQuest(s, s.quests[0].id, NOW).state; // 10 monedas
+    expect(nextReward(s, NOW)).toMatchObject({ reward: { name: 'Ver un episodio de una serie' }, missing: 15, xp: 75 });
+    s = { ...s, rewards: s.rewards.filter((r) => r.cost <= 10) };
+    expect(nextReward(s, NOW)).toBeNull();
   });
 });
 
