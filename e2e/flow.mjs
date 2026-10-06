@@ -100,6 +100,10 @@ await page.click('.nav-item:has-text("Hoy")');
 // 3. Completar misión → XP
 await page.click('button[aria-label="Completar Responder emails"]');
 check(await seen('.toast:has-text("+20 XP")'), 'toast +20 XP');
+check(await seen('.achv-pop:has-text("Primer Juramento")'), 'logro épico al completar la primera misión');
+await page.screenshot({ path: `${out}/03b-logro.png` });
+await page.click('.achv-pop');
+check(await seen('.nav-version:has-text("Excelsior RPG v1.")'), 'la versión de la app se ve en una esquina');
 check((await page.textContent('.levelbar .levelbar-foot')).includes('20 / 100'), 'barra de XP en 20/100');
 
 // 4. Deep Work vinculado a la misión principal (45 min simulados)
@@ -282,20 +286,20 @@ await page.fill('#ambient-link', 'https://www.youtube.com/watch?v=jfKfPfyJRdk');
 check(await page.isEnabled('.ambient-link button:has-text("Reproducir")'), 'acepta un enlace de YouTube');
 await page.fill('#dw-intent', 'Ejercicios de derivadas');
 check(await seen('.dw-area:has-text("Maestría")'), '«¿Qué vas a hacer?» deduce que es práctica (Maestría)');
-await page.click('[role=radio]:has-text("25 / 5")');
+await page.click('[role=radio]:has-text("50 / 10")');
 await page.click('button:has-text("Empezar Pomodoro")');
 check(await seen('.focus-label:has-text("Ejercicios de derivadas")') && await seen('.eyebrow:has-text("Pomodoro 1")'), 'Pomodoro en marcha con lo que vas a hacer');
-await page.clock.fastForward('25:02');
+await page.clock.fastForward('50:02');
 await page.waitForTimeout(500);
-check(await seen('.phase-pill:has-text("Descanso")') && (await page.$$('.pomo-dots i.on')).length === 1, 'al acabar los 25 min empieza el descanso y cuenta 1 pomodoro');
-await page.clock.fastForward('05:01');
+check(await seen('.phase-pill:has-text("Descanso")') && (await page.$$('.pomo-dots i.on')).length === 1, 'al acabar los 50 min empieza el descanso y cuenta 1 pomodoro');
+await page.clock.fastForward('10:01');
 await page.waitForTimeout(500);
 check(await seen('.phase-pill:has-text("Descanso terminado")'), 'avisa cuando acaba el descanso');
 await page.screenshot({ path: `${out}/09-pomodoro.png` });
 await page.click('button:has-text("Siguiente pomodoro")');
 check(await seen('.eyebrow:has-text("Pomodoro 2")'), 'empieza el segundo pomodoro');
 await page.click('text=Terminar sesión');
-check(await seen('text=25 min de foco · +25 XP'), 'Pomodoro: el descanso no da XP (25 min, +25 XP)');
+check(await seen('text=50 min de foco · +50 XP'), 'Pomodoro: el descanso no da XP (50 min, +50 XP)');
 check(await seen('.result:has-text("Ejercicios de derivadas")'), 'la sesión se llama como lo que ibas a hacer');
 
 // 7c. Modo admin: con contraseña, partida de pruebas con todo desbloqueado, sin tocar la real
@@ -390,6 +394,7 @@ await page.fill('[aria-label="Valor de hoy de Dinero"]', '500');
 await page.click('.metric:has-text("Dinero") button:has-text("Apuntar")');
 check(await seen('.metric:has-text("Dinero") .metric-value:has-text("500 €")'), 'medida: Dinero 500 €');
 check(await seen('.attr:has-text("Impacto")'), 'el quinto atributo se llama Impacto');
+check(await seen('.achievements .achv.got:has-text("Primer Juramento")'), 'Personaje muestra los logros conseguidos');
 check(await seen('.attr-desc:has-text("disciplina")'), 'los atributos tienen descripción');
 await page.click('.nav-item:has-text("Hábitos")');
 await page.fill('#new-habit', 'Gimnasio');

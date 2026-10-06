@@ -439,17 +439,17 @@ export function pomodoroStatus(t: ActiveTimer, now: number) {
   const done = t.pomoDone ?? 0;
   const focusLeft = Math.max(0, (done + 1) * t.pomodoro.focus * 60_000 - totals.focusMs);
   const restLeft = totals.phase === 'break' && t.restMs ? Math.max(0, t.restMs - (now - (t.phaseStartedAt ?? now))) : null;
-  return { done, focusLeft, restLeft, longNext: (done + 1) % 4 === 0 };
+  return { done, focusLeft, restLeft };
 }
 
-/** Al acabar un pomodoro: lo cuenta y empieza el descanso (largo cada 4). */
+/** Al acabar un pomodoro: lo cuenta y empieza el descanso. */
 export function pomodoroStep(s: GameState, now: number): GameState {
   const t = s.activeTimer;
   const st = t && pomodoroStatus(t, now);
   if (!t?.pomodoro || !st || (t.phase ?? 'focus') !== 'focus' || st.focusLeft > 0) return s;
   const done = st.done + 1;
   const next = setPhase(s, 'break', now);
-  return { ...next, activeTimer: { ...next.activeTimer!, pomoDone: done, restMs: t.pomodoro.rest * 60_000 * (done % 4 === 0 ? 3 : 1) } };
+  return { ...next, activeTimer: { ...next.activeTimer!, pomoDone: done, restMs: t.pomodoro.rest * 60_000 } };
 }
 
 export interface TimerTotals {

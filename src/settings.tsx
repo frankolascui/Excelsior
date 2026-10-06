@@ -18,6 +18,7 @@ import { weekSummary } from './summary';
 import { formatMinutes } from './ui';
 import { DEFAULT_GUIDE } from './tutorial';
 import { sfx } from './sfx';
+import { APP_VERSION_LABEL } from './version';
 
 // ---------- Ajustes ----------
 
@@ -35,6 +36,7 @@ export function SettingsScreen({
         <p className="muted">Borrar el personaje elimina misiones, hábitos e historial de este dispositivo.</p>
         <ConfirmButton label="Borrar personaje" confirmLabel="Sí, borrar todo" onConfirm={game.reset} />
       </section>
+      <p className="app-version mono">{APP_VERSION_LABEL}</p>
     </div>
   );
 }
@@ -53,8 +55,11 @@ function AdminPanel({ game, startTour }: { game: Game; startTour: (id: string) =
       else setWrong(true);
     }
     return (
-      <section className="panel quiet">
-        <button className="link" onClick={() => setOpen(!open)} aria-expanded={open}>🛠 Avanzado</button>
+      <section className="panel admin-entry">
+        <header className="panel-head">
+          <h3>🛠 Modo admin</h3>
+          <button className="ghost small" onClick={() => setOpen(!open)} aria-expanded={open}>{open ? 'Cerrar' : 'Abrir (avanzado)'}</button>
+        </header>
         {open && (
           <form className="admin-intro" onSubmit={enter}>
             <p className="hint">El modo admin abre una <strong>partida de pruebas aparte</strong> con todas las secciones desbloqueadas y atajos para subir de nivel. Tu partida real no se toca ni se sube a la nube; al salir vuelves a ella tal cual.</p>

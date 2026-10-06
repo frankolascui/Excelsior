@@ -89,7 +89,7 @@ export interface ActiveTimer {
   distractions?: number;
   /** Lo que dijiste que ibas a hacer (opcional); da nombre a la sesión si no hay misión. */
   intent?: string;
-  /** Pomodoro: minutos de foco y de descanso corto (el largo, cada 4, es el triple). */
+  /** Pomodoro: minutos de foco y de descanso de cada bloque. */
   pomodoro?: { focus: number; rest: number };
   pomoDone?: number;
   /** Duración del descanso automático en curso (ms); sin él, el descanso es manual. */
@@ -124,6 +124,8 @@ export interface Reward {
   icon: string;
   cost: number;
   createdAt: number;
+  /** Categoría de la tienda ('descanso', 'ocio', 'caprichos', 'grandes'). Sin ella se deduce del nombre y el precio. */
+  category?: string;
 }
 
 export interface Purchase {
@@ -148,6 +150,8 @@ export interface Boss {
   createdAt: number;
   deadline: number;
   reward: number; // monedas al derrotarlo
+  /** Plantilla de la escalera de bosses (hidra, medusa…). Sin ella (partidas antiguas o bosses propios) se busca por nombre. */
+  templateId?: string;
 }
 
 export interface GameState {
@@ -181,6 +185,8 @@ export interface GameState {
   dayLogs?: DayLog[];
   /** Eventos del calendario: exámenes, lanzamientos, llamadas… */
   events?: CalendarEvent[];
+  /** Logros conseguidos y cuándo (una vez conseguido, no se pierde). */
+  achievements?: { id: string; at: number }[];
 }
 
 export interface Metric {

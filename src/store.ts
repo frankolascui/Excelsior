@@ -11,6 +11,7 @@ import { kingdomBonus } from './economy';
 import { markLocalChange, markSynced, reconcile, scheduleSave, useCloud, type RemoteSave } from './cloud';
 
 import { ADMIN } from './admin';
+import { pendingAchievements, recordAchievements, type AchievementDef } from './achievements';
 
 // En modo admin se juega sobre una partida de pruebas aparte.
 const KEY = ADMIN ? 'excelsior:admin-sandbox' : 'excelsior:v1';
@@ -68,6 +69,8 @@ export function useGame() {
   const prevReady = useRef(readyFor(state));
   const prevDefeated = useRef(defeatedIds(state));
   const prevKingdoms = useRef(completedKingdoms(state));
+  const [achieved, setAchieved] = useState<AchievementDef[]>([]);
+  const dismissAchievement = useCallback(() => setAchieved((q) => q.slice(1)), []);
 
   const toast = useCallback((text: string, tone: Toast['tone'] = 'xp') => {
     const id = Date.now() + Math.random();
@@ -159,6 +162,20 @@ export function useGame() {
     prevKingdoms.current = kingdoms;
   }, [state]);
 
+  // Logros: se guardan al cumplirse y se celebran. La primera vez (partidas de antes) se guardan en silencio.
+  useEffect(() => {
+    if (!state.profile) return;
+    const list = pendingAchievements(state, Date.now());
+    if (list.length === 0 && state.achievements) return;
+    const next = recordAchievements(state, list, Date.now());
+    latest.current = next;
+    setState(next);
+    if (!state.achievements || list.length === 0) return;
+    setAchieved((q) => [...q, ...list]);
+    setTimeout(() => sfx.victory(), 200);
+    confetti({ count: 120 });
+  }, [state]);
+
 
   // Referencia al último estado para encadenar acciones rápidas (doble click) sin leer estado viejo.
   const latest = useRef(state);
@@ -212,5 +229,8 @@ export function useGame() {
     setState(latest.current);
   }, []);
 
-  return { state, act, toast, toasts, levelUp, levelUpFrom, dismissLevelUp: () => setLevelUp(null), reset, conflict, resolveConflict, cloudChecked };
+  return {
+    state, act, toast, toasts, levelUp, levelUpFrom, dismissLevelUp: () => setLevelUp(null), reset, conflict, resolveConflict, cloudChecked,
+    achieved, dismissAchievement,
+  };
 }

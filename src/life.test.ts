@@ -47,24 +47,22 @@ describe('Deep Work: qué vas a hacer y Pomodoro', () => {
     expect(attributeXp(r.state)).toMatchObject({ maestria: 10, sabiduria: 0, voluntad: 5 });
   });
 
-  it('Pomodoro 25/5: al acabar el foco empieza el descanso; cada 4, descanso largo', () => {
-    let s = startTimer(base(), null, 0, NOW, { pomodoro: { focus: 25, rest: 5 } });
-    expect(pomodoroStatus(s.activeTimer!, NOW + 10 * MIN)?.focusLeft).toBe(15 * MIN);
-    expect(pomodoroStep(s, NOW + 10 * MIN)).toBe(s);
-    let t = NOW + 25 * MIN;
+  it('Pomodoro 50/10: al acabar el foco empieza el descanso y cuenta el bloque', () => {
+    let s = startTimer(base(), null, 0, NOW, { pomodoro: { focus: 50, rest: 10 } });
+    expect(pomodoroStatus(s.activeTimer!, NOW + 20 * MIN)?.focusLeft).toBe(30 * MIN);
+    expect(pomodoroStep(s, NOW + 20 * MIN)).toBe(s);
+    let t = NOW + 50 * MIN;
     s = pomodoroStep(s, t);
     expect(s.activeTimer?.phase).toBe('break');
-    expect(pomodoroStatus(s.activeTimer!, t + 2 * MIN)).toMatchObject({ done: 1, restLeft: 3 * MIN });
-    expect(pomodoroStatus(s.activeTimer!, t + 9 * MIN)?.restLeft).toBe(0);
-    for (let i = 2; i <= 4; i++) {
-      t += 5 * MIN;
-      s = setPhase(s, 'focus', t);
-      t += 25 * MIN;
-      s = pomodoroStep(s, t);
-    }
-    expect(s.activeTimer).toMatchObject({ pomoDone: 4, restMs: 15 * MIN });
+    expect(pomodoroStatus(s.activeTimer!, t + 4 * MIN)).toMatchObject({ done: 1, restLeft: 6 * MIN });
+    expect(pomodoroStatus(s.activeTimer!, t + 12 * MIN)?.restLeft).toBe(0);
+    t += 12 * MIN;
+    s = setPhase(s, 'focus', t);
+    t += 50 * MIN;
+    s = pomodoroStep(s, t);
+    expect(s.activeTimer).toMatchObject({ pomoDone: 2, restMs: 10 * MIN });
     const r = stopTimer(s, t + MIN);
-    expect(r.session).toMatchObject({ minutes: 100, pomodoros: 4, breakMinutes: 16 });
+    expect(r.session).toMatchObject({ minutes: 100, pomodoros: 2, breakMinutes: 13 });
   });
 });
 

@@ -26,6 +26,7 @@ import { HeroJournal, ReviewBanner, TimedGoals } from './ritual';
 import { QuestCalendar } from './calendar';
 import { AvatarPortrait, initialOf } from './portrait';
 import { DayClose, MetricsPanel, UpcomingEvents } from './life-ui';
+import { AchievementsPanel } from './achievements-ui';
 import { latestMetric, logMetric } from './life';
 
 export type Game = ReturnType<typeof useGame>;
@@ -303,7 +304,7 @@ interface SessionResult {
 }
 
 const POMO_KEY = 'excelsior:pomodoro';
-const POMODOROS = [{ focus: 25, rest: 5 }, { focus: 50, rest: 10 }];
+const POMODOROS = [{ focus: 50, rest: 10 }, { focus: 90, rest: 30 }];
 
 const PHASE_LABEL = { focus: 'Foco', break: 'Descanso', distraction: 'Distracción' } as const;
 
@@ -315,7 +316,7 @@ export function DeepWork({ game, preselect, clearPreselect }: { game: Game; pres
   const [intent, setIntent] = useState('');
   const [pomo, setPomo] = useState(() => {
     try {
-      return localStorage.getItem(POMO_KEY) === '50' ? 1 : 0;
+      return localStorage.getItem(POMO_KEY) === '90' ? 1 : 0;
     } catch {
       return 0;
     }
@@ -413,7 +414,7 @@ export function DeepWork({ game, preselect, clearPreselect }: { game: Game; pres
         {title && <h1 className="focus-label">{title}</h1>}
         {timer.pomodoro && (
           <div className="pomo-dots" aria-label={`${pomoSt!.done} pomodoros completados`}>
-            {Array.from({ length: Math.max(4, Math.ceil((pomoSt!.done + 1) / 4) * 4) }, (_, i) => <i key={i} className={i < pomoSt!.done ? 'on' : ''} />)}
+            {Array.from({ length: Math.max(3, pomoSt!.done + 1) }, (_, i) => <i key={i} className={i < pomoSt!.done ? 'on' : ''} />)}
           </div>
         )}
         <div className="ring" role="timer" aria-live="off">
@@ -518,7 +519,7 @@ export function DeepWork({ game, preselect, clearPreselect }: { game: Game; pres
               </button>
             ))}
           </div>
-          <span className="mode-sub">{POMODOROS[pomo].focus} min de foco y {POMODOROS[pomo].rest} de descanso; cada 4, descanso largo de {POMODOROS[pomo].rest * 3}.</span>
+          <span className="mode-sub">Bloques largos para entrar en flow: {POMODOROS[pomo].focus} min de foco y {POMODOROS[pomo].rest} de descanso.</span>
           <button className="primary wide" onClick={() => start(POMODOROS[pomo])}>▶ Empezar Pomodoro</button>
         </div>
       </div>
@@ -641,6 +642,8 @@ export function Character({ game }: { game: Game }) {
       <TimedGoals game={game} />
 
       <GoalsPanel game={game} now={now} />
+
+      <AchievementsPanel state={state} now={now} />
 
       <HeroJournal state={state} />
 

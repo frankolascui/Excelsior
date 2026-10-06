@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { APP_VERSION_LABEL } from './version';
+import { AchievementPopup } from './achievements-ui';
 import { useGame } from './store';
 import { addHabit, deleteHabit, hasSeenTour, levelInfo, markTour, totalXp, xpForLevel } from './game';
 import { avatarInfo } from './attributes';
@@ -160,6 +162,7 @@ export default function App() {
           );
         })}
         <div className="nav-level mono">Nv {level} · <CoinBadge amount={coinBalance(state, Date.now())} /></div>
+        <div className="nav-version mono">{APP_VERSION_LABEL}</div>
       </nav>
 
       <div className="top-actions">
@@ -199,6 +202,8 @@ export default function App() {
       )}
 
       <AmbientDock />
+
+      {!game.levelUp && <AchievementPopup queue={game.achieved} dismiss={game.dismissAchievement} />}
 
       <div className="toasts" aria-live="polite">
         {game.toasts.map((t) => (
