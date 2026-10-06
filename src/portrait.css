@@ -1,11 +1,6 @@
-/* Aros de avatar: brillos de las gemas y resplandor de las piedras (animaciones base en styles.css) */
-.portrait .gem-sparkle { transform-box: fill-box; transform-origin: center; animation: gem-twinkle 2.6s ease-in-out infinite; }
-@keyframes gem-twinkle {
-  0%, 100% { opacity: 0.35; transform: scale(0.5) rotate(0deg); }
-  50% { opacity: 1; transform: scale(1.05) rotate(45deg); }
-}
-.portrait .gem-glow { transform-box: fill-box; transform-origin: center; animation: gem-pulse 2.2s ease-in-out infinite; }
-@keyframes gem-pulse { 50% { opacity: 0.45; transform: scale(0.82); } }
+/* Aros de avatar: solo movimiento sutil (resplandor que respira); las llamas usan .ring-flame de styles.css */
+.portrait .frame-pulse { transform-box: view-box; transform-origin: 100px 100px; animation: frame-pulse 3.2s ease-in-out infinite; }
+@keyframes frame-pulse { 50% { opacity: 0.6; } }
 @media (prefers-reduced-motion: reduce) {
-  .portrait .gem-sparkle, .portrait .gem-glow { animation: none; }
+  .portrait .frame-pulse { animation: none; }
 }

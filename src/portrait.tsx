@@ -1,7 +1,8 @@
-// Retrato del héroe con el aro de su avatar. Cada avatar tiene un aro más épico que el anterior,
-// forjado con metales y engastado con minerales y gemas talladas (más preciosas en cada rango).
+// Retrato del héroe con el aro de su avatar. Cada aro es una sola pieza esculpida (anillos biselados con un canal
+// entre ellos, cresta arriba, adornos a los lados y remate abajo) y cada avatar es más épico que el anterior:
+// más capas, mejor material y una silueta mayor, con pocas gemas grandes como punto focal.
 // Dentro va la inicial (o el icono del avatar); el día que haya foto de perfil, irá la foto.
-import { createContext, useContext, useId, type ReactNode, type SVGProps } from 'react';
+import { createContext, useContext, useId, type ReactNode } from 'react';
 import './portrait.css';
 
 const C = 100; // centro del lienzo 200×200
@@ -9,297 +10,239 @@ const C = 100; // centro del lienzo 200×200
 type Pt = readonly [number, number];
 const n2 = (n: number) => Math.round(n * 100) / 100;
 const ptsStr = (ps: readonly Pt[]) => ps.map(([x, y]) => `${n2(x)},${n2(y)}`).join(' ');
-/** Punto a distancia r y ángulo deg (0 = arriba, sentido horario) desde (cx, cy). */
-const polarAt = (cx: number, cy: number, r: number, deg: number): Pt => {
+/** Punto a distancia r y ángulo deg (0 = arriba, sentido horario) desde el centro. */
+const polar = (r: number, deg: number): Pt => {
   const a = ((deg - 90) * Math.PI) / 180;
-  return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+  return [C + r * Math.cos(a), C + r * Math.sin(a)];
 };
-const polar = (r: number, deg: number) => polarAt(C, C, r, deg);
-const around = (n: number, fn: (deg: number, i: number) => ReactNode) => Array.from({ length: n }, (_, i) => fn((360 / n) * i, i));
-/** Gira `rot` grados y lleva a (x, y) unos puntos locales («arriba» apunta hacia fuera si rot = ángulo polar). */
-const place = (ps: readonly Pt[], x: number, y: number, rot: number): Pt[] => {
-  const a = (rot * Math.PI) / 180, c = Math.cos(a), s = Math.sin(a);
-  return ps.map(([px, py]) => [x + px * c - py * s, y + px * s + py * c] as const);
-};
-/** Luz desde arriba a la izquierda: 1 = de cara a la luz, -1 = de espaldas. */
-const lit = (vx: number, vy: number) => { const l = Math.hypot(vx, vy) || 1; return (-vx - vy) / (l * Math.SQRT2); };
-const toneOf = (v: number) => (v > 0.5 ? 0 : v > 0.05 ? 1 : v > -0.45 ? 2 : 3);
+const around = (n: number, fn: (deg: number, i: number) => ReactNode, from = 0) =>
+  Array.from({ length: n }, (_, i) => fn(from + (360 / n) * i, i));
+/** Transformación para dibujar en coordenadas locales: «arriba» apunta hacia fuera en el ángulo deg. */
+const at = (r: number, deg: number) => { const [x, y] = polar(r, deg); return `translate(${n2(x)} ${n2(y)}) rotate(${n2(deg)})`; };
 
-/* ---------- Paleta de gemas y metales ---------- */
+/* ---------- Materiales ---------- */
 
-// [luz, medio, sombra, fondo]
+// [brillo, claro, medio, oscuro, sombra]
+const MATS = {
+  wood: ['#f0d3a8', '#c08d5a', '#8c5b33', '#5a3519', '#28160a'],
+  stone: ['#ece7de', '#b9b2a6', '#8a8379', '#59534b', '#26221e'],
+  iron: ['#f2f4f7', '#b6bcc5', '#7d848e', '#484d55', '#1a1c20'],
+  silver: ['#ffffff', '#e8edf4', '#b4bfcd', '#6f7b8d', '#2b323d'],
+  bronze: ['#ffe8c2', '#e0aa66', '#ad7433', '#6c4316', '#2e1c08'],
+  platinum: ['#ffffff', '#eef2f8', '#c5cedb', '#8792a6', '#363f50'],
+  huntgold: ['#fff0c4', '#e8bd5f', '#b5832a', '#74500f', '#342204'],
+  forged: ['#a7adb7', '#646a74', '#3d4149', '#23262c', '#0b0c0f'],
+  gold: ['#fffbe2', '#ffe17c', '#f0b431', '#a6670b', '#432803'],
+  ice: ['#ffffff', '#d9f4ff', '#93d2f0', '#3f86b6', '#10365a'],
+  rope: ['#fbeac4', '#ddbf88', '#b08f57', '#76592c', '#3a2a10'],
+  ivory: ['#fffdf4', '#f3e8cc', '#d6c497', '#9f8b5c', '#55482a'],
+  pearl: ['#ffffff', '#f5f8ff', '#d8def2', '#9099bb', '#3a4262'],
+} as const;
+type Mat = keyof typeof MATS;
+
+// Cabujones: [luz, medio, sombra, fondo]
 const GEMS = {
-  ruby: ['#ff8fb4', '#e0115f', '#a0083f', '#5a0321'],
-  sapphire: ['#a3c8ff', '#2563eb', '#173f9e', '#0a2160'],
-  emerald: ['#8af5c0', '#10b06a', '#08744a', '#033f27'],
-  amethyst: ['#ecc8ff', '#a855f7', '#6b21a8', '#3b0764'],
-  topaz: ['#d9faff', '#38d1f5', '#0e8fc0', '#064a6e'],
-  diamond: ['#ffffff', '#e4f4ff', '#a9cbe6', '#6f94b8'],
-  citrine: ['#fff6b0', '#facc15', '#c08a06', '#6b4702'],
-  amber: ['#ffe9a3', '#f5a623', '#b8650a', '#5e2e03'],
-  garnet: ['#ff8a7a', '#b3122e', '#760a1e', '#3d040f'],
-  obsidian: ['#a7adc6', '#3a3d4f', '#1b1c26', '#07070c'],
-  fireopal: ['#ffe2a6', '#ff8a1f', '#e0441a', '#7e1b06'],
-  quartz: ['#ffffff', '#eef4fa', '#bfcddc', '#7e8ea3'],
+  sapphire: ['#c4dcff', '#3b7bff', '#1a3fae', '#08174d'],
+  emerald: ['#b4ffd8', '#1fc77a', '#0a7444', '#02311b'],
+  amethyst: ['#f1d6ff', '#b46cff', '#6a23b0', '#2a0752'],
+  ruby: ['#ffc2d6', '#f0226d', '#9c0838', '#43021a'],
+  fireopal: ['#fff0b8', '#ff9a26', '#e04612', '#6e1704'],
+  topaz: ['#e6fcff', '#4fdcff', '#0f8fc8', '#053e63'],
+  star: ['#ffffff', '#eef6ff', 'color-mix(in srgb, var(--c2) 45%, #8fd3ff)', 'var(--c3)'],
+  theme: ['#ffe3f6', 'var(--c1)', 'var(--c2)', 'var(--c3)'],
 } as const;
 type GemName = keyof typeof GEMS;
 
-// [brillo, claro, medio, oscuro, sombra]
-const METALS = {
-  stone: ['#e0dad0', '#a8a094', '#7d766c', '#4f4a44', '#25221f'],
-  iron: ['#eef1f5', '#a9b0ba', '#6e757f', '#40454c', '#1e2125'],
-  copper: ['#ffe2c8', '#f0a070', '#c06a38', '#7a3a18', '#3f1c09'],
-  silver: ['#ffffff', '#e3e8ef', '#aeb8c6', '#6b7686', '#353d49'],
-  bronze: ['#fde3b4', '#d9a35e', '#a8722f', '#6b4416', '#36210a'],
-  platinum: ['#ffffff', '#eef3fa', '#c3cede', '#8794a8', '#465165'],
-  gold: ['#fffbe0', '#ffe07a', '#f2b632', '#a8680c', '#4f2f03'],
-  molten: ['#fffbd0', '#ffd65a', '#ff9a1f', '#d9480f', '#6e1903'],
-  whitegold: ['#f2fbff', '#a9cdec', '#5f86b3', '#2c4a72', '#0f1c33'],
-} as const;
-type Metal = keyof typeof METALS;
-const TIER_METALS: Metal[][] = [
-  ['stone'], ['iron', 'copper'], ['silver'], ['bronze'], ['platinum'],
-  ['gold'], ['molten', 'gold'], ['gold'], ['whitegold'], ['gold', 'platinum'],
+const TIER_MATS: Mat[][] = [
+  ['wood', 'stone', 'rope'], ['iron'], ['silver'], ['bronze'], ['platinum'],
+  ['huntgold', 'iron', 'wood', 'ivory'], ['forged'], ['gold', 'ivory'], ['ice'], ['gold', 'pearl'],
 ];
+const TIER_GEMS: GemName[][] = [[], [], ['sapphire'], ['emerald'], ['amethyst'], ['ruby'], ['fireopal'], ['ruby'], ['topaz'], ['star', 'theme']];
 
 const Ids = createContext('p');
 const useUrl = () => { const id = useContext(Ids); return (n: string) => `url(#${id}-${n})`; };
 
-function MetalGrad({ id, metal }: { id: string; metal: Metal }) {
-  const m = METALS[metal];
-  return (
-    <linearGradient id={`${id}-m-${metal}`} x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stopColor={m[0]} /><stop offset="22%" stopColor={m[1]} /><stop offset="46%" stopColor={m[2]} />
-      <stop offset="60%" stopColor={m[1]} /><stop offset="84%" stopColor={m[3]} /><stop offset="100%" stopColor={m[4]} />
-    </linearGradient>
-  );
-}
+/* ---------- Piezas ---------- */
 
-/* ---------- Piezas: brillos, gemas, metal ---------- */
-
-/** Destello de 4 puntas que titila. */
-function Sparkle({ x, y, s, delay }: { x: number; y: number; s: number; delay?: number }) {
-  const d = delay ?? ((Math.abs(x * 37 + y * 17) % 29) / 10);
-  const k = s * 0.2;
-  return (
-    <path className="gem-sparkle" style={{ animationDelay: `${n2(d)}s` }} fill="#fff"
-      d={`M${n2(x)} ${n2(y - s)}L${n2(x + k)} ${n2(y - k)}L${n2(x + s)} ${n2(y)}L${n2(x + k)} ${n2(y + k)}L${n2(x)} ${n2(y + s)}L${n2(x - k)} ${n2(y + k)}L${n2(x - s)} ${n2(y)}L${n2(x - k)} ${n2(y - k)}Z`} />
-  );
-}
-
-type Cut = 'brilliant' | 'emerald' | 'marquise' | 'trillion' | 'princess' | 'cabochon' | 'oval';
-
-const lens = (w: number, h: number, n = 7): Pt[] => {
-  const right = Array.from({ length: n + 1 }, (_, i) => { const s = i / n; return [w * Math.sin(Math.PI * s), -h + 2 * h * s] as const; });
-  const left = right.slice(1, -1).reverse().map(([x, y]) => [-x, y] as const);
-  return [...right, ...left];
-};
-const OUTLINES: Partial<Record<Cut, (r: number) => Pt[]>> = {
-  emerald: (r) => { const w = r * 0.7, h = r, c = w * 0.38; return [[-w + c, -h], [w - c, -h], [w, -h + c], [w, h - c], [w - c, h], [-w + c, h], [-w, h - c], [-w, -h + c]]; },
-  marquise: (r) => lens(r * 0.44, r),
-  trillion: (r) => Array.from({ length: 6 }, (_, i) => { const a = (i * 60 * Math.PI) / 180; const k = i % 2 ? r * 0.6 : r; return [k * Math.sin(a), -k * Math.cos(a)] as const; }),
-  princess: (r) => { const w = r * 0.74; return [[-w, -w], [w, -w], [w, w], [-w, w]]; },
-};
-
-/** Gema tallada: facetas en 3–4 tonos con luz de arriba a la izquierda, reflejo blanco y engaste opcional. */
-function Gem({ x, y, r, gem, cut = 'brilliant', rot = 0, set, sparkle = true, prongs }: {
-  x: number; y: number; r: number; gem: GemName; cut?: Cut; rot?: number; set?: Metal; sparkle?: boolean | number; prongs?: boolean;
-}) {
+/** Anillo biselado: canto oscuro, cuerpo con degradado de metal, brillo arriba y reflejo abajo. */
+function Ring({ r, w, mat }: { r: number; w: number; mat: Mat }) {
   const url = useUrl();
-  const tone = GEMS[gem];
-  const metal = set ? url(`m-${set}`) : undefined;
-  const edge = Math.max(0.6, r * 0.07);
-  const spark = sparkle === false ? null
-    : <Sparkle x={x - r * 0.32} y={y - r * 0.36} s={Math.max(3, r * 0.64)} delay={typeof sparkle === 'number' ? sparkle : undefined} />;
-  const shine = <ellipse cx={n2(x - r * 0.24)} cy={n2(y - r * 0.26)} rx={n2(r * 0.22)} ry={n2(r * 0.1)} fill="#fff" opacity={0.75} transform={`rotate(-45 ${n2(x - r * 0.24)} ${n2(y - r * 0.26)})`} />;
+  const m = MATS[mat];
+  return (
+    <g>
+      <circle cx={C} cy={C} r={r} fill="none" stroke={m[4]} strokeWidth={w + 2} />
+      <circle cx={C} cy={C} r={r} fill="none" stroke={url(`m-${mat}`)} strokeWidth={w} />
+      <circle cx={C} cy={C} r={n2(r + w * 0.24)} fill="none" stroke={url('hi-top')} strokeWidth={n2(w * 0.3)} />
+      <circle cx={C} cy={C} r={n2(r - w * 0.28)} fill="none" stroke={url('hi-bot')} strokeWidth={n2(w * 0.22)} />
+    </g>
+  );
+}
 
-  if (cut === 'cabochon' || cut === 'oval') {
-    const rx = cut === 'oval' ? r * 0.78 : r, ry = r;
-    const tr = `rotate(${rot} ${n2(x)} ${n2(y)})`;
-    return (
-      <g>
-        {metal && <ellipse cx={x} cy={y} rx={n2(rx + r * 0.22)} ry={n2(ry + r * 0.22)} fill={metal} transform={tr} />}
-        <g transform={tr}>
-          <ellipse cx={x} cy={y} rx={n2(rx)} ry={n2(ry)} fill={tone[3]} />
-          <ellipse cx={n2(x - rx * 0.06)} cy={n2(y - ry * 0.06)} rx={n2(rx * 0.86)} ry={n2(ry * 0.86)} fill={tone[2]} />
-          <ellipse cx={n2(x - rx * 0.12)} cy={n2(y - ry * 0.1)} rx={n2(rx * 0.66)} ry={n2(ry * 0.66)} fill={tone[1]} />
-          <ellipse cx={n2(x - rx * 0.2)} cy={n2(y - ry * 0.22)} rx={n2(rx * 0.36)} ry={n2(ry * 0.32)} fill={tone[0]} opacity={0.85} />
+/** Canal hundido entre dos anillos. */
+function Channel({ r, w, fill = '#0d0e13', className, filter }: { r: number; w: number; fill?: string; className?: string; filter?: string }) {
+  return <circle className={className} filter={filter} cx={C} cy={C} r={r} fill="none" stroke={fill} strokeWidth={w} />;
+}
+
+/** Pieza maciza con el degradado del material y canto oscuro. */
+function Solid({ d, points, mat, sw = 1.3 }: { d?: string; points?: string; mat: Mat; sw?: number }) {
+  const url = useUrl();
+  const p = { fill: url(`m-${mat}`), stroke: MATS[mat][4], strokeWidth: sw, strokeLinejoin: 'round' as const };
+  return d ? <path d={d} {...p} /> : <polygon points={points} {...p} />;
+}
+
+/** Cartela inferior (vacía), con marco del material y fondo hundido. */
+function Plaque({ y = 175, w = 60, h = 16, mat, inset = '#101118', glow }: { y?: number; w?: number; h?: number; mat: Mat; inset?: string; glow?: string }) {
+  const hex = (hw: number, hh: number) => ptsStr([[C - hw, y], [C - hw + hh, y - hh], [C + hw - hh, y - hh], [C + hw, y], [C + hw - hh, y + hh], [C - hw + hh, y + hh]]);
+  return (
+    <g>
+      <Solid points={hex(w / 2, h / 2)} mat={mat} sw={1.5} />
+      <polygon points={hex(w / 2 - 4, h / 2 - 3.2)} fill={inset} stroke={glow ?? MATS[mat][0]} strokeWidth={1} strokeOpacity={glow ? 1 : 0.55} />
+    </g>
+  );
+}
+
+/** Cabujón pulido en su bisel: el punto focal de cada aro. */
+function Cabochon({ x, y, r, gem, mat }: { x: number; y: number; r: number; gem: GemName; mat: Mat }) {
+  const url = useUrl();
+  const m = MATS[mat];
+  return (
+    <g>
+      <circle cx={x} cy={y} r={n2(r + 3)} fill={url(`m-${mat}`)} stroke={m[4]} strokeWidth={1.2} />
+      <circle cx={x} cy={y} r={n2(r + 3)} fill="none" stroke={url('hi-top')} strokeWidth={1} />
+      <circle cx={x} cy={y} r={r} fill={url(`g-${gem}`)} stroke={GEMS[gem][3]} strokeWidth={0.8} />
+      <ellipse cx={n2(x - r * 0.32)} cy={n2(y - r * 0.4)} rx={n2(r * 0.38)} ry={n2(r * 0.2)} fill="#fff" opacity={0.85}
+        transform={`rotate(-30 ${n2(x - r * 0.32)} ${n2(y - r * 0.4)})`} />
+      <circle cx={n2(x + r * 0.38)} cy={n2(y + r * 0.42)} r={n2(r * 0.13)} fill="#fff" opacity={0.45} />
+    </g>
+  );
+}
+
+function Rivet({ x, y, r, mat }: { x: number; y: number; r: number; mat: Mat }) {
+  const url = useUrl();
+  return (
+    <g>
+      <circle cx={n2(x)} cy={n2(y)} r={r} fill={url(`m-${mat}`)} stroke={MATS[mat][4]} strokeWidth={0.8} />
+      <circle cx={n2(x - r * 0.3)} cy={n2(y - r * 0.32)} r={n2(r * 0.34)} fill="#fff" opacity={0.7} />
+    </g>
+  );
+}
+
+/** Llama con núcleo claro; parpadea suave. */
+function Flame({ x, y, h, rot = 0, delay = 0 }: { x: number; y: number; h: number; rot?: number; delay?: number }) {
+  const url = useUrl();
+  const shape = (k: number) => { const s = h * k; return `M0 ${n2(s * 0.22)} C ${n2(-s * 0.44)} 0, ${n2(-s * 0.2)} ${n2(-s * 0.55)}, 0 ${n2(-s)} C ${n2(s * 0.2)} ${n2(-s * 0.55)}, ${n2(s * 0.44)} 0, 0 ${n2(s * 0.22)} Z`; };
+  return (
+    <g transform={`translate(${n2(x)} ${n2(y)}) rotate(${rot})`}>
+      <g className="ring-flame" style={{ animationDelay: `${delay}s` }}>
+        <path d={shape(1)} fill={url('fire')} />
+        <path d={shape(0.55)} fill="#fff4c4" opacity={0.9} />
+      </g>
+    </g>
+  );
+}
+
+/** Trenza / cuerda: cápsulas inclinadas a lo largo del canal. */
+function Braid({ r, n, len, w, tilt, mat }: { r: number; n: number; len: number; w: number; tilt: number; mat: Mat }) {
+  const url = useUrl();
+  return (
+    <g>
+      {around(n, (d) => (
+        <g key={d} transform={at(r, d)}>
+          <rect x={n2(-len / 2)} y={n2(-w / 2)} width={len} height={w} rx={n2(w / 2)} transform={`rotate(${tilt})`}
+            fill={url(`m-${mat}`)} stroke={MATS[mat][4]} strokeWidth={0.8} />
         </g>
-        {gem === 'fireopal' && (
-          <g opacity={0.9}>
-            <circle cx={n2(x + rx * 0.3)} cy={n2(y + ry * 0.1)} r={n2(r * 0.14)} fill="#6dffb0" />
-            <circle cx={n2(x - rx * 0.1)} cy={n2(y + ry * 0.42)} r={n2(r * 0.11)} fill="#7ad7ff" />
-            <circle cx={n2(x + rx * 0.05)} cy={n2(y - ry * 0.35)} r={n2(r * 0.1)} fill="#fff27a" />
-          </g>
-        )}
-        <ellipse cx={n2(x - rx * 0.3)} cy={n2(y - ry * 0.42)} rx={n2(rx * 0.24)} ry={n2(ry * 0.12)} fill="#fff" opacity={0.9}
-          transform={`rotate(-35 ${n2(x - rx * 0.3)} ${n2(y - ry * 0.42)})`} />
-        {spark}
-      </g>
-    );
-  }
-
-  if (cut === 'brilliant') {
-    const P = Array.from({ length: 8 }, (_, i) => polarAt(x, y, r, rot + i * 45));
-    const T = Array.from({ length: 8 }, (_, i) => polarAt(x, y, r * 0.56, rot + i * 45 + 22.5));
-    const facets: ReactNode[] = [];
-    for (let i = 0; i < 8; i++) {
-      const [sx, sy] = polarAt(0, 0, 1, rot + i * 45);
-      const [gx, gy] = polarAt(0, 0, 1, rot + i * 45 + 22.5);
-      facets.push(<polygon key={`s${i}`} points={ptsStr([T[(i + 7) % 8], P[i], T[i]])} fill={tone[toneOf(lit(sx, sy) + 0.12)]} />);
-      facets.push(<polygon key={`g${i}`} points={ptsStr([P[i], T[i], P[(i + 1) % 8]])} fill={tone[toneOf(-lit(gx, gy) * 0.9 - 0.12)]} />);
-    }
-    return (
-      <g>
-        {metal && <circle cx={n2(x)} cy={n2(y)} r={n2(r * 1.22)} fill={metal} />}
-        {metal && <circle cx={n2(x)} cy={n2(y)} r={n2(r * 1.22)} fill="none" stroke={METALS[set!][4]} strokeWidth={edge} opacity={0.6} />}
-        <polygon points={ptsStr(P)} fill={tone[2]} />
-        {facets}
-        <polygon points={ptsStr(T)} fill={tone[1]} />
-        <polygon points={ptsStr(P)} fill="none" stroke={tone[3]} strokeWidth={edge} strokeLinejoin="round" />
-        {shine}
-        {metal && prongs && [45, 135, 225, 315].map((a) => { const [px, py] = polarAt(x, y, r * 1.02, a); return <circle key={a} cx={n2(px)} cy={n2(py)} r={n2(Math.max(1, r * 0.17))} fill={METALS[set!][0]} stroke={METALS[set!][3]} strokeWidth={0.5} />; })}
-        {spark}
-      </g>
-    );
-  }
-
-  // Tallas escalonadas (esmeralda, marquesa, trillón, princesa): anillos de facetas hacia la mesa
-  const base = OUTLINES[cut]!(r);
-  const rings = [1, 0.74, 0.48].map((k) => place(base.map(([a, b]) => [a * k, b * k] as const), x, y, rot));
-  const facets: ReactNode[] = [];
-  for (let j = 0; j < 2; j++) {
-    const A = rings[j], B = rings[j + 1];
-    for (let i = 0; i < A.length; i++) {
-      const i2 = (i + 1) % A.length;
-      const mx = (A[i][0] + A[i2][0]) / 2 - x, my = (A[i][1] + A[i2][1]) / 2 - y;
-      const v = j === 0 ? lit(mx, my) + 0.1 : -lit(mx, my) * 0.8 - 0.1;
-      facets.push(<polygon key={`${j}-${i}`} points={ptsStr([A[i], A[i2], B[i2], B[i]])} fill={tone[toneOf(v)]} />);
-    }
-  }
-  return (
-    <g>
-      {metal && <polygon points={ptsStr(rings[0])} fill={metal} stroke={metal} strokeWidth={n2(Math.max(2.4, r * 0.42))} strokeLinejoin="round" />}
-      {facets}
-      <polygon points={ptsStr(rings[2])} fill={tone[1]} />
-      <polygon points={ptsStr(rings[0])} fill="none" stroke={tone[3]} strokeWidth={edge} strokeLinejoin="round" />
-      {shine}
-      {spark}
+      ))}
     </g>
   );
 }
 
-/** Cristal en bruto: prisma hexagonal con punta (cuarzo, esquirlas). */
-function Crystal({ x, y, w, h, rot, gem }: { x: number; y: number; w: number; h: number; rot: number; gem: GemName }) {
-  const tone = GEMS[gem];
-  const s = -h + w * 1.3, b = h * 0.55;
-  const faces: [Pt[], number][] = [
-    [[[-w, b], [-w, s], [0, -h], [-w * 0.3, s], [-w * 0.3, b]], -90],
-    [[[-w * 0.3, b], [-w * 0.3, s], [0, -h], [w * 0.3, s], [w * 0.3, b]], 999],
-    [[[w * 0.3, b], [w * 0.3, s], [0, -h], [w, s], [w, b]], 90],
-  ];
-  const outline = place([[-w, b], [-w, s], [0, -h], [w, s], [w, b]], x, y, rot);
+/** Filigrana: dos ondas entrelazadas dentro del canal. */
+function Filigree({ r, a, k, stroke, width = 1.6 }: { r: number; a: number; k: number; stroke: string; width?: number }) {
+  const wave = (phase: number) => Array.from({ length: 121 }, (_, i) => {
+    const deg = i * 3;
+    const [x, y] = polar(r + a * Math.sin((k * deg * Math.PI) / 180 + phase), deg);
+    return `${i ? 'L' : 'M'}${n2(x)} ${n2(y)}`;
+  }).join('') + 'Z';
+  return <g fill="none" stroke={stroke} strokeWidth={width}><path d={wave(0)} /><path d={wave(Math.PI)} /></g>;
+}
+
+/** Punta de rosa de los vientos: dos caras, una a la luz y otra en sombra. */
+function CompassPoint({ deg, r, len, w, mat }: { deg: number; r: number; len: number; w: number; mat: Mat }) {
+  const m = MATS[mat];
+  const lit = deg > 180 || deg === 0;
   return (
-    <g>
-      {faces.map(([ps, n], i) => {
-        const [vx, vy] = polarAt(0, 0, 1, rot + n);
-        const t = n === 999 ? 1 : toneOf(lit(vx, vy) + 0.1);
-        return <polygon key={i} points={ptsStr(place(ps, x, y, rot))} fill={tone[t]} />;
-      })}
-      <polygon points={ptsStr(outline)} fill="none" stroke={tone[3]} strokeWidth={0.8} strokeLinejoin="round" />
+    <g transform={at(r, deg)}>
+      <polygon points={`0,${-len} ${-w},0 0,${w * 0.7}`} fill={lit ? m[1] : m[2]} />
+      <polygon points={`0,${-len} ${w},0 0,${w * 0.7}`} fill={lit ? m[3] : m[3]} />
+      <polygon points={`0,${-len} ${-w},0 0,${w * 0.7} ${w},0`} fill="none" stroke={m[4]} strokeWidth={1.1} strokeLinejoin="round" />
     </g>
   );
 }
 
-/** Aro de metal con bisel: canto interior claro y canto exterior oscuro. */
-function Band({ r, w, metal, filter }: { r: number; w: number; metal: Metal; filter?: string }) {
-  const url = useUrl();
-  const m = METALS[metal];
+/** Esquirla de cristal facetada (hielo), en coordenadas locales que apuntan hacia «arriba». */
+function Shard({ x, y, h, w, rot, mat = 'ice' }: { x: number; y: number; h: number; w: number; rot: number; mat?: Mat }) {
+  const m = MATS[mat];
   return (
-    <g filter={filter}>
-      <circle cx={C} cy={C} r={r} fill="none" stroke={url(`m-${metal}`)} strokeWidth={w} />
-      <circle cx={C} cy={C} r={n2(r - w / 2 + 0.7)} fill="none" stroke={m[0]} strokeWidth={1.4} opacity={0.85} />
-      <circle cx={C} cy={C} r={n2(r + w / 2 - 0.7)} fill="none" stroke={m[4]} strokeWidth={1.4} />
+    <g transform={`translate(${n2(x)} ${n2(y)}) rotate(${rot})`}>
+      <polygon points={`${-w / 2},0 ${n2(-w * 0.42)},${n2(-h * 0.62)} 0,${-h} 0,0`} fill={m[1]} />
+      <polygon points={`0,0 0,${-h} ${n2(w * 0.42)},${n2(-h * 0.58)} ${w / 2},0`} fill={m[3]} />
+      <polygon points={`${n2(-w * 0.16)},0 0,${n2(-h * 0.92)} ${n2(w * 0.14)},0`} fill={m[0]} opacity={0.75} />
+      <polygon points={`${-w / 2},0 ${n2(-w * 0.42)},${n2(-h * 0.62)} 0,${-h} ${n2(w * 0.42)},${n2(-h * 0.58)} ${w / 2},0`}
+        fill="none" stroke={m[4]} strokeWidth={1} strokeLinejoin="round" />
     </g>
   );
 }
 
-/** Roca en bruto, con cara iluminada y cara en sombra. */
-const ROCK_J = [1, 0.78, 0.96, 0.7, 0.92, 0.8, 1.06, 0.74];
-function Rock({ deg, r, s, seed }: { deg: number; r: number; s: number; seed: number }) {
-  const [x, y] = polar(r, deg);
-  const shades = [['#8a847a', '#b9b2a6', '#4a4641'], ['#77716a', '#a69f94', '#3d3a36'], ['#958d80', '#c7bfb1', '#57524b']][seed % 3];
-  const pts = Array.from({ length: 7 }, (_, i) => polarAt(x, y, s * ROCK_J[(i + seed) % ROCK_J.length], i * (360 / 7) + seed * 23));
-  const inner = pts.map(([px, py]) => [x + (px - x) * 0.62 - s * 0.12, y + (py - y) * 0.62 - s * 0.14] as const);
+/** Rayo con núcleo blanco y filo eléctrico. */
+function Bolt({ x, y, rot, s = 1 }: { x: number; y: number; rot: number; s?: number }) {
   return (
-    <g>
-      <polygon points={ptsStr(pts)} fill={shades[2]} />
-      <polygon points={ptsStr(pts.map(([px, py]) => [x + (px - x) * 0.9 - s * 0.06, y + (py - y) * 0.9 - s * 0.07] as const))} fill={shades[0]} />
-      <polygon points={ptsStr(inner)} fill={shades[1]} />
-    </g>
+    <path fill="#fffbe6" stroke="#3fd4ff" strokeWidth={1.6} strokeLinejoin="round"
+      transform={`translate(${n2(x)} ${n2(y)}) rotate(${rot}) scale(${s})`} d="M3 -16 L-7 1 L-1 1 L-4 15 L8 -4 L2 -4 L6 -16 Z" />
   );
 }
 
-/** Llama pequeña apuntando hacia fuera en el ángulo `deg`. */
-function Flame({ deg, r, h, fill, delay = 0 }: { deg: number; r: number; h: number; fill: string; delay?: number }) {
-  const [x, y] = polar(r, deg);
-  return (
-    <g transform={`translate(${n2(x)} ${n2(y)}) rotate(${deg})`}>
-      <path className="ring-flame" style={{ animationDelay: `${n2(delay)}s` }} fill={fill}
-        d={`M0 ${h * 0.25} C ${-h * 0.42} 0, ${-h * 0.18} ${-h * 0.55}, 0 ${-h} C ${h * 0.18} ${-h * 0.55}, ${h * 0.42} 0, 0 ${h * 0.25} Z`} />
-    </g>
-  );
-}
-
-/** Hoja de laurel de jade. */
+/** Hoja de laurel esmaltada. */
 function Leaf({ deg, r, side }: { deg: number; r: number; side: 1 | -1 }) {
-  const [x, y] = polar(r, deg);
   return (
-    <g transform={`translate(${n2(x)} ${n2(y)}) rotate(${n2(deg + 90 + side * 35)})`}>
-      <ellipse rx={4.6} ry={10.5} fill="#136b3c" />
-      <ellipse cx={-1.2} cy={-0.6} rx={2.6} ry={8.6} fill="#3fbf7a" />
-      <ellipse cx={-1.6} cy={-3} rx={0.9} ry={4} fill="#b6f5cf" opacity={0.8} />
+    <g transform={`${at(r, deg)} rotate(${90 + side * 35})`}>
+      <path d="M0 -11.5 C 7 -5, 7 5, 0 11.5 C -7 5, -7 -5, 0 -11.5 Z" fill="#14683b" stroke="#062a16" strokeWidth={0.9} />
+      <path d="M0 -10.5 C -5.6 -4, -5.6 4, 0 10.5 Z" fill="#3cbf78" />
+      <path d="M0 -10 L0 10" stroke="#ffe17c" strokeWidth={0.9} opacity={0.8} />
     </g>
   );
 }
 
-/** Rayo con núcleo blanco y filo de topacio. */
-function Bolt({ deg, r }: { deg: number; r: number }) {
-  const [x, y] = polar(r, deg);
+/** Ala (local: crece hacia +x y hacia arriba): plumas remeras de marfil y coberteras de oro. */
+function Wing() {
+  const url = useUrl();
   return (
-    <path className="ring-bolt" fill="#fffbe0" stroke="#38d1f5" strokeWidth={1.4} strokeLinejoin="round"
-      transform={`translate(${n2(x)} ${n2(y)}) rotate(${deg}) scale(0.95)`} d="M2 -14 L-6 1 L-1 1 L-3 13 L6 -3 L1 -3 Z" />
-  );
-}
-
-/** Punta de flecha tallada (sílex de obsidiana o granate), con lascas en dos tonos. */
-function Arrowhead({ deg, r, gem }: { deg: number; r: number; gem: GemName }) {
-  const [x, y] = polar(r, deg);
-  const t = GEMS[gem];
-  return (
-    <g transform={`translate(${n2(x)} ${n2(y)}) rotate(${deg}) scale(1.15)`}>
-      <path d="M0 -12 L0 3 L-8 7 Z" fill={t[1]} />
-      <path d="M0 -12 L8 7 L0 3 Z" fill={t[2]} />
-      <path d="M0 -12 L-2.6 -3 L0 -1 Z" fill={t[0]} />
-      <path d="M-4.2 0.5 L-6.5 5.6 L-2.2 3.6 Z" fill={t[0]} opacity={0.7} />
-      <path d="M0 -12 L8 7 L0 3 L-8 7 Z" fill="none" stroke={t[3]} strokeWidth={0.9} strokeLinejoin="round" />
+    <g strokeLinejoin="round">
+      <path d="M0 -4 C 10 -28, 28 -48, 50 -58 Q 45 -47, 55 -41 Q 46 -33, 58 -25 Q 48 -18, 55 -8 Q 44 -4, 47 7 Q 36 5, 34 16 Q 18 12, 0 10 Z"
+        fill={url('m-pearl')} stroke={MATS.gold[3]} strokeWidth={1.4} />
+      <path d="M14 -6 L50 -58 M16 -2 L55 -41 M17 2 L58 -25 M16 5 L55 -8 M12 8 L47 7" fill="none" stroke={MATS.gold[3]} strokeWidth={1} opacity={0.55} />
+      <path d="M0 -3 C 7 -18, 18 -30, 32 -37 Q 28 -27, 36 -22 Q 28 -15, 34 -8 Q 25 -4, 27 4 Q 14 6, 0 8 Z"
+        fill={url('m-gold')} stroke={MATS.gold[4]} strokeWidth={1.2} />
+      <path d="M3 -4 C 9 -16, 18 -26, 29 -33" fill="none" stroke="#fffbe2" strokeWidth={1.2} opacity={0.8} />
     </g>
   );
 }
 
-function Pearl({ x, y, r }: { x: number; y: number; r: number }) {
-  return (
-    <g>
-      <circle cx={n2(x)} cy={n2(y)} r={r} fill="#b9aab8" />
-      <circle cx={n2(x - r * 0.12)} cy={n2(y - r * 0.12)} r={n2(r * 0.84)} fill="#f6efe8" />
-      <circle cx={n2(x - r * 0.34)} cy={n2(y - r * 0.36)} r={n2(r * 0.3)} fill="#fff" />
-    </g>
-  );
+function Star8({ x, y, r, inner }: { x: number; y: number; r: number; inner: number }) {
+  return ptsStr(Array.from({ length: 16 }, (_, i) => {
+    const a = ((i * 22.5 - 90) * Math.PI) / 180, k = i % 2 ? inner : i % 4 ? r * 0.72 : r;
+    return [x + k * Math.cos(a), y + k * Math.sin(a)] as const;
+  }));
 }
 
-function StarShape({ x, y, r, inner = 0.45, ...rest }: { x: number; y: number; r: number; inner?: number } & SVGProps<SVGPolygonElement>) {
-  const pts = Array.from({ length: 10 }, (_, i) => polarAt(x, y, i % 2 ? r * inner : r, i * 36));
-  return <polygon points={ptsStr(pts)} {...rest} />;
+/** Engranaje: dientes trapezoidales con un hueco central (para no tapar la cara). */
+function gearPath(n: number, rIn: number, rBase: number, rTip: number) {
+  const step = 360 / n;
+  const pts: Pt[] = [];
+  for (let i = 0; i < n; i++) {
+    const c = i * step;
+    pts.push(polar(rBase, c - step / 2), polar(rBase, c - step * 0.3), polar(rTip, c - step * 0.19), polar(rTip, c + step * 0.19), polar(rBase, c + step * 0.3));
+  }
+  return `M${pts.map(([x, y]) => `${n2(x)} ${n2(y)}`).join('L')}Z M${C - rIn} ${C} a${rIn} ${rIn} 0 1 0 ${rIn * 2} 0 a${rIn} ${rIn} 0 1 0 ${-rIn * 2} 0Z`;
 }
 
 /* ---------- Retrato ---------- */
@@ -310,225 +253,277 @@ export function AvatarPortrait({
   const id = useId().replace(/:/g, '');
   const g = (n: string) => `url(#${id}-${n})`;
   const t = Math.max(0, Math.min(9, tier));
-  const epic = t >= 6;
+  const shadow = g('shadow');
   const glow = g('glow');
+
+  /* Detrás de la cara: aura, halo de rayos, alas y flechas */
+  const back = (
+    <>
+      {t >= 8 && <circle className="frame-pulse" cx={C} cy={C} r={104} fill={g('aura')} />}
+      {t === 9 && (
+        <g className="ring-spin-slow" opacity={0.8}>
+          {around(16, (d, i) => (
+            <polygon key={d} transform={at(80, d)} points={`-2.8,0 0,${i % 2 ? -14 : -25} 2.8,0`} fill={i % 2 ? '#fff3c4' : '#ffcf4a'} />
+          ), 11.25)}
+        </g>
+      )}
+      {t === 9 && (
+        <g filter={shadow}>
+          {[1, -1].map((side) => (
+            <g key={side} transform={side === 1 ? 'translate(158 98) rotate(-6) scale(1.18)' : 'translate(42 98) scale(-1 1) rotate(-6) scale(1.18)'}>
+              <Wing />
+            </g>
+          ))}
+        </g>
+      )}
+      {t === 5 && (
+        <g filter={shadow}>
+          {[1, -1].map((side) => (
+            <g key={side} transform={side === 1 ? '' : 'translate(200 0) scale(-1 1)'}>
+              <line x1={32} y1={168} x2={166} y2={34} stroke={MATS.wood[4]} strokeWidth={5.6} strokeLinecap="round" />
+              <line x1={32} y1={168} x2={166} y2={34} stroke={g('m-wood')} strokeWidth={3.6} strokeLinecap="round" />
+              <g transform="translate(166 34) rotate(45) scale(1.35)">
+                <Solid points="0,-17 7,-1 2.2,-2.5 0,2 -2.2,-2.5 -7,-1" mat="iron" sw={1.1} />
+              </g>
+              <g transform="translate(34 166) rotate(45) scale(1.25)">
+                <path d="M0 -12 L-7 -2 L-7 9 L0 2 Z" fill="#c8323c" stroke="#4a0c12" strokeWidth={0.9} />
+                <path d="M0 -12 L7 -2 L7 9 L0 2 Z" fill="#8f1d27" stroke="#4a0c12" strokeWidth={0.9} />
+              </g>
+            </g>
+          ))}
+        </g>
+      )}
+    </>
+  );
+
+  /* El aro, una sola pieza con sombra */
+  let frame: ReactNode = null;
+  switch (t) {
+    case 0: // Aprendiz: aro de madera atado con cuerda y una clave de piedra
+      frame = (
+        <>
+          <Ring r={68.5} w={11} mat="wood" />
+          <g fill="none" stroke="#4a2a12" strokeWidth={1} opacity={0.55} strokeLinecap="round">
+            <circle cx={C} cy={C} r={66} strokeDasharray="40 14 22 30" />
+            <circle cx={C} cy={C} r={69} strokeDasharray="18 26 50 10" strokeDashoffset={20} />
+            <circle cx={C} cy={C} r={71.5} strokeDasharray="60 20 15 25" strokeDashoffset={45} />
+          </g>
+          {[90, 270, 180].map((d) => (
+            <g key={d} transform={at(68.5, d)}>
+              {[-5.2, -1.6, 2].map((x) => <rect key={x} x={x} y={-8.5} width={3.2} height={17} rx={1.4} fill={g('m-rope')} stroke={MATS.rope[4]} strokeWidth={0.7} />)}
+            </g>
+          ))}
+          <g transform={at(68.5, 0)}><Solid points="-9,-10 9,-10 6.5,9 -6.5,9" mat="stone" sw={1.4} /><polygon points="-6.5,-7.5 6.5,-7.5 5,-4.5 -5,-4.5" fill="#fff" opacity={0.35} /></g>
+        </>
+      );
+      break;
+    case 1: // Iniciado: doble aro de hierro con un candil y su llama
+      frame = (
+        <>
+          <Channel r={68.6} w={4} />
+          <Ring r={64.6} w={4.6} mat="iron" />
+          <Ring r={73.4} w={7} mat="iron" />
+          {around(4, (d) => { const [x, y] = polar(73.4, d); return <Rivet key={d} x={x} y={y} r={2.6} mat="iron" />; }, 45)}
+          <Flame x={C} y={13} h={27} />
+          <Solid d="M86 12 L114 12 C 112 20, 106 24, 100 24 C 94 24, 88 20, 86 12 Z" mat="iron" />
+          <Solid points="96,23 104,23 106,29 94,29" mat="iron" sw={1.1} />
+          <g transform={at(73.4, 180)}><Solid points="0,9 -6,0 0,-5 6,0" mat="iron" /></g>
+        </>
+      );
+      break;
+    case 2: // Disciplinado: plata con escudo de zafiro en la cresta
+      frame = (
+        <>
+          <Channel r={69.4} w={5} fill="#0c1220" />
+          <Ring r={64.6} w={4.6} mat="silver" />
+          <Ring r={75} w={7.4} mat="silver" />
+          {[90, 270].map((d) => <g key={d} transform={at(80, d)}><Solid points="0,-9 6,0 0,5 -6,0" mat="silver" /></g>)}
+          <g transform={at(79, 180)}><Solid points="0,10 -7,0 0,-5 7,0" mat="silver" /></g>
+          <Solid d="M81 0 L119 0 L119 16 C119 28 109 35 100 41 C91 35 81 28 81 16 Z" mat="silver" sw={1.5} />
+          <path d="M85 4 L115 4 L115 16 C115 26 107 32 100 36.5 C93 32 85 26 85 16 Z" fill="none" stroke="#ffffff" strokeWidth={1.1} opacity={0.75} />
+          <Cabochon x={C} y={17} r={7.5} gem="sapphire" mat="silver" />
+        </>
+      );
+      break;
+    case 3: // Artífice: engranaje de bronce con una esmeralda engastada
+      frame = (
+        <>
+          <path d={gearPath(16, 66, 76.5, 85)} fill={g('m-bronze')} stroke={MATS.bronze[4]} strokeWidth={1.4} strokeLinejoin="round" fillRule="evenodd" />
+          <circle cx={C} cy={C} r={76.5} fill="none" stroke={g('hi-top')} strokeWidth={1.4} />
+          <Channel r={71} w={3.6} />
+          {around(8, (d) => { const [x, y] = polar(71, d); return <Rivet key={d} x={x} y={y} r={2} mat="bronze" />; }, 22.5)}
+          <Ring r={64.6} w={5} mat="bronze" />
+          <g transform={at(72, 0)}><Solid points={ptsStr(Array.from({ length: 6 }, (_, i) => { const a = (i * 60 * Math.PI) / 180; return [12 * Math.sin(a), -12 * Math.cos(a)] as const; }))} mat="bronze" sw={1.4} /></g>
+          <Cabochon x={C} y={28} r={7} gem="emerald" mat="bronze" />
+        </>
+      );
+      break;
+    case 4: // Arquitecto: brújula de platino con filigrana y una amatista al norte
+      frame = (
+        <>
+          {[45, 135, 225, 315].map((d) => <CompassPoint key={d} deg={d} r={79} len={13} w={5} mat="platinum" />)}
+          {[0, 90, 270].map((d) => <CompassPoint key={d} deg={d} r={79} len={d === 0 ? 30 : 20} w={d === 0 ? 9 : 7.5} mat="platinum" />)}
+          <Channel r={72.2} w={10} fill="color-mix(in srgb, var(--c3) 22%, #0b0c14)" />
+          <Filigree r={72.2} a={3.4} k={8} stroke="#dfe6f0" />
+          <Ring r={64.6} w={4.6} mat="platinum" />
+          <Ring r={79.6} w={4.6} mat="platinum" />
+          <Plaque mat="platinum" w={54} y={178} />
+          <Cabochon x={C} y={28} r={6.5} gem="amethyst" mat="platinum" />
+        </>
+      );
+      break;
+    case 5: // Cazador de Bestias: oro antiguo con empuñadura de cuero, flechas cruzadas, colmillos y rubí
+      frame = (
+        <>
+          <Channel r={70.6} w={7} fill="#2a1608" />
+          <Braid r={70.6} n={40} len={7.6} w={3.6} tilt={62} mat="wood" />
+          <Ring r={64.6} w={4.6} mat="huntgold" />
+          <Ring r={77} w={5.6} mat="huntgold" />
+          {[-1, 1].map((s) => (
+            <g key={s} transform={`translate(${C + s * 30} 175) scale(${s} 1)`}>
+              <path d="M0 -2 C 6 6, 7 16, 2 26 C 0 17, -3 8, -6 2 Z" fill={g('m-ivory')} stroke={MATS.ivory[4]} strokeWidth={1} strokeLinejoin="round" />
+            </g>
+          ))}
+          <Plaque mat="huntgold" w={58} y={176} inset="#1c1006" />
+          <Solid d="M84 30 L100 8 L116 30 L100 38 Z" mat="huntgold" sw={1.4} />
+          <Cabochon x={C} y={25} r={7.5} gem="ruby" mat="huntgold" />
+        </>
+      );
+      break;
+    case 6: // Forjador: acero ennegrecido con canal de metal fundido, llamas y ópalo de fuego
+      frame = (
+        <>
+          <g filter={glow}>
+            {[-34, -17, 0, 17, 34].map((a, i) => (
+              <Flame key={a} x={C + a * 0.4} y={20} h={[26, 36, 50, 36, 26][i]} rot={a * 1.1} delay={i * 0.17} />
+            ))}
+            {[90, 270].map((d, i) => { const [x, y] = polar(80, d); return <Flame key={d} x={x} y={y} h={24} rot={d} delay={0.3 + i * 0.2} />; })}
+          </g>
+          <Channel r={70.6} w={7} fill="#ff6a12" className="frame-pulse" filter={glow} />
+          <Channel r={70.6} w={2.2} fill="#ffe28a" />
+          <Ring r={64.4} w={5} mat="forged" />
+          <Ring r={77.4} w={7.4} mat="forged" />
+          {[35, 145, 215, 325].map((d) => (
+            <g key={d} transform={at(77.4, d)}><polyline points="-1,4 1.5,1 -1.2,-1.5 1,-4.5" fill="none" stroke="#ff9a2e" strokeWidth={1.4} strokeLinecap="round" /></g>
+          ))}
+          <Plaque mat="forged" w={62} y={178} inset="#1a0b05" glow="#ff8a2a" />
+          <Solid d="M87 18 L113 18 L118 30 L100 40 L82 30 Z" mat="forged" sw={1.4} />
+          <Cabochon x={C} y={27} r={8} gem="fireopal" mat="forged" />
+        </>
+      );
+      break;
+    case 7: // Fundador: oro real trenzado, laurel esmaltado y corona con rubí
+      frame = (
+        <>
+          {[-1, 1].map((side) => around(11, (d, i) => (i > 0
+            ? <Leaf key={`${side}${d}`} deg={side === 1 ? 180 - d / 2.6 : 180 + d / 2.6} r={i % 2 ? 86 : 89} side={side as 1 | -1} /> : null)))}
+          <Channel r={71.4} w={8} fill="#2a1a03" />
+          <Braid r={71.4} n={60} len={10} w={4.6} tilt={56} mat="gold" />
+          <Ring r={64.6} w={5} mat="gold" />
+          <Ring r={78.8} w={5.6} mat="gold" />
+          <Plaque mat="gold" w={64} y={179} inset="#1a1203" />
+          <Solid points="74,32 66,-2 85,14 100,-10 115,14 134,-2 126,32" mat="gold" sw={1.5} />
+          <polygon points="78,28 72,8 86,19 100,0 114,19 128,8 122,28" fill="none" stroke="#fffbe2" strokeWidth={1} opacity={0.6} strokeLinejoin="round" />
+          <Solid d="M71 25 H129 V37 H71 Z" mat="gold" sw={1.4} />
+          {[[66, -2], [100, -10], [134, -2]].map(([x, y]) => <Rivet key={x} x={x} y={y} r={4} mat="ivory" />)}
+          <Cabochon x={C} y={20} r={8} gem="ruby" mat="gold" />
+        </>
+      );
+      break;
+    case 8: // Titán: acero de hielo, canal eléctrico, corona de cristales y rayos
+      frame = (
+        <>
+          <g filter={glow}>
+            {[90, 270].map((d) => { const [x, y] = polar(92, d); return <Bolt key={d} x={x} y={y} rot={d} s={1.45} />; })}
+          </g>
+          {[[-34, 22, 10], [34, 22, 10], [-56, 16, 9], [56, 16, 9]].map(([d, h, w]) => { const [x, y] = polar(76, d); return <Shard key={d} x={x} y={y} h={h} w={w} rot={d} />; })}
+          {[[-15, 34, 12, -16], [15, 34, 12, 16], [0, 50, 15, 0]].map(([dx, h, w, rot]) => <Shard key={dx} x={C + dx} y={26} h={h} w={w} rot={rot} />)}
+          {[[-13, 12], [0, 20], [13, 12]].map(([dx, h]) => <Shard key={dx} x={C + dx} y={182} h={h} w={9} rot={180} />)}
+          <Channel r={71} w={6} fill="#2fb6ec" className="frame-pulse" filter={glow} />
+          <Channel r={71} w={2} fill="#eafcff" />
+          <Ring r={64.6} w={5} mat="ice" />
+          <Ring r={78} w={7} mat="ice" />
+          <Plaque mat="ice" w={62} y={178} inset="#081a2c" glow="#5fe0ff" />
+          <Cabochon x={C} y={29} r={7.5} gem="topaz" mat="ice" />
+        </>
+      );
+      break;
+    case 9: // Excelsior: oro celestial con esmalte del tema, estrella de ocho puntas y diamante estelar
+      frame = (
+        <>
+          <Channel r={71.6} w={9} fill={g('enamel')} />
+          <Filigree r={71.6} a={3} k={10} stroke="#ffe17c" width={1.3} />
+          <Ring r={64.6} w={5} mat="gold" />
+          <Ring r={80} w={6.4} mat="gold" />
+          {[90, 270].map((d) => { const [x, y] = polar(80, d); return <Cabochon key={d} x={x} y={y} r={5.5} gem="theme" mat="gold" />; })}
+          <Plaque mat="gold" w={68} y={180} inset="color-mix(in srgb, var(--c3) 35%, #0b0a14)" />
+          <polygon points={Star8({ x: C, y: 16, r: 31, inner: 10 })} fill={g('m-gold')} stroke={MATS.gold[4]} strokeWidth={1.5} strokeLinejoin="round" />
+          <polygon points={Star8({ x: C, y: 16, r: 22, inner: 8 })} fill="none" stroke="#fffbe2" strokeWidth={1} opacity={0.7} strokeLinejoin="round" />
+          <Cabochon x={C} y={16} r={9.5} gem="star" mat="gold" />
+        </>
+      );
+      break;
+  }
+
   return (
     <Ids.Provider value={id}>
       <svg className={`portrait tier-${t}${dim ? ' dim' : ''}`} viewBox="0 0 200 200" width={size} height={size} role="img" aria-label={title ?? label}>
         <defs>
-          {TIER_METALS[t].map((m) => <MetalGrad key={m} id={id} metal={m} />)}
+          {TIER_MATS[t].map((name) => {
+            const m = MATS[name];
+            return (
+              <linearGradient key={name} id={`${id}-m-${name}`} x1="0" y1="0" x2="0.25" y2="1">
+                <stop offset="0%" stopColor={m[0]} /><stop offset="22%" stopColor={m[1]} /><stop offset="52%" stopColor={m[2]} />
+                <stop offset="82%" stopColor={m[3]} /><stop offset="100%" stopColor={m[2]} />
+              </linearGradient>
+            );
+          })}
+          {TIER_GEMS[t].map((name) => {
+            const c = GEMS[name];
+            return (
+              <radialGradient key={name} id={`${id}-g-${name}`} cx="38%" cy="32%" r="75%">
+                <stop offset="0%" stopColor={c[0]} /><stop offset="35%" stopColor={c[1]} /><stop offset="78%" stopColor={c[2]} /><stop offset="100%" stopColor={c[3]} />
+              </radialGradient>
+            );
+          })}
+          <linearGradient id={`${id}-hi-top`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#fff" stopOpacity="0.85" /><stop offset="45%" stopColor="#fff" stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id={`${id}-hi-bot`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="55%" stopColor="#fff" stopOpacity="0" /><stop offset="100%" stopColor="#fff" stopOpacity="0.5" />
+          </linearGradient>
           <linearGradient id={`${id}-fire`} x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0%" stopColor="#ff4d2e" /><stop offset="60%" stopColor="#ffb23e" /><stop offset="100%" stopColor="#fff1a8" />
+            <stop offset="0%" stopColor="#ff3d1f" /><stop offset="55%" stopColor="#ffa22e" /><stop offset="100%" stopColor="#fff1a8" />
           </linearGradient>
-          <linearGradient id={`${id}-prism`} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#ff5f8f" /><stop offset="20%" stopColor="#ffc56b" /><stop offset="40%" stopColor="#fffbe0" />
-            <stop offset="58%" stopColor="#6fe3ff" /><stop offset="78%" stopColor="#a78bfa" /><stop offset="100%" stopColor="#ff7ad9" />
+          <linearGradient id={`${id}-enamel`} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="color-mix(in srgb, var(--c1) 70%, #1a0b24)" /><stop offset="50%" stopColor="color-mix(in srgb, var(--c2) 60%, #120a20)" /><stop offset="100%" stopColor="color-mix(in srgb, var(--c3) 70%, #0b0716)" />
           </linearGradient>
+          <radialGradient id={`${id}-aura`}>
+            <stop offset="55%" stopColor={t === 8 ? '#3fd4ff' : '#ffe17c'} stopOpacity="0.45" />
+            <stop offset="78%" stopColor={t === 8 ? '#5b6cff' : 'var(--c1)'} stopOpacity="0.18" />
+            <stop offset="100%" stopColor="var(--c1)" stopOpacity="0" />
+          </radialGradient>
           <radialGradient id={`${id}-face`} cx="35%" cy="30%" r="80%">
             <stop offset="0%" stopColor="color-mix(in srgb, var(--c3) 55%, #1a1a24)" /><stop offset="100%" stopColor="#0c0c14" />
           </radialGradient>
-          <radialGradient id={`${id}-aura`}>
-            <stop offset="55%" stopColor={t === 8 ? '#38d1f5' : '#ffe07a'} stopOpacity="0.5" />
-            <stop offset="78%" stopColor={t === 8 ? '#6d5cff' : 'var(--c1)'} stopOpacity="0.22" />
-            <stop offset="100%" stopColor="var(--c1)" stopOpacity="0" />
-          </radialGradient>
           <clipPath id={`${id}-clip`}><circle cx={C} cy={C} r={60} /></clipPath>
-          <filter id={`${id}-glow`} x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3.2" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
-          <filter id={`${id}-blur`} x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4" /></filter>
+          <filter id={`${id}-shadow`} x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="2.5" stdDeviation="2.4" floodColor="#000" floodOpacity="0.75" />
+          </filter>
+          <filter id={`${id}-glow`} x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="3" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
         </defs>
 
-        {/* Fondo: aura y rayos en los avatares altos */}
-        {t >= 8 && <circle className="ring-aura" cx={C} cy={C} r={99} fill={g('aura')} />}
-        {t >= 9 && (
-          <g className="ring-spin-slow">
-            {around(24, (d, i) => {
-              const [x1, y1] = polar(72, d); const [x2, y2] = polar(i % 2 ? 93 : 101, d);
-              return <line key={d} x1={n2(x1)} y1={n2(y1)} x2={n2(x2)} y2={n2(y2)} stroke={i % 2 ? '#fff6c8' : '#ffd25a'} strokeWidth={i % 2 ? 2 : 3.5} strokeLinecap="round" opacity={i % 2 ? 0.55 : 0.75} />;
-            })}
-          </g>
-        )}
-
-        {/* 0 · Aprendiz: piedra de granito con un cuarzo en bruto */}
-        {t === 0 && (
-          <>
-            <Band r={68} w={8} metal="stone" />
-            <circle cx={C} cy={C} r={68} fill="none" stroke="#efe9df" strokeWidth={1.8} strokeDasharray="0.1 7" strokeLinecap="round" opacity={0.7} />
-            <circle cx={C} cy={C} r={67} fill="none" stroke="#1f1c19" strokeWidth={1.6} strokeDasharray="0.1 9" strokeDashoffset={3} strokeLinecap="round" opacity={0.8} />
-            {[34, 72, 108, 145, 180, 215, 252, 288, 326].map((d, i) => <Rock key={d} deg={d} r={i % 2 ? 70 : 68.5} s={i % 3 === 0 ? 9 : 7.2} seed={i} />)}
-            <Crystal x={92} y={27} w={4} h={13} rot={-26} gem="quartz" />
-            <Crystal x={108} y={27} w={3.8} h={12} rot={28} gem="quartz" />
-            <Crystal x={100} y={23} w={5.2} h={18} rot={0} gem="quartz" />
-            <Rock deg={0} r={69} s={8} seed={4} />
-            <Sparkle x={96} y={10} s={5} />
-          </>
-        )}
-
-        {/* 1 · Iniciado: hierro con filete de cobre y un ámbar que sostiene la llama */}
-        {t === 1 && (
-          <>
-            <Band r={68} w={8} metal="iron" />
-            <circle cx={C} cy={C} r={68} fill="none" stroke={g('m-copper')} strokeWidth={2.6} />
-            {around(8, (d) => { if (d === 0) return null; const [x, y] = polar(68, d); return (
-              <g key={d}><circle cx={n2(x)} cy={n2(y)} r={3} fill={g('m-copper')} stroke="#3f1c09" strokeWidth={0.7} /><circle cx={n2(x - 0.9)} cy={n2(y - 0.9)} r={1} fill="#ffe2c8" /></g>
-            ); })}
-            <Flame deg={0} r={79} h={22} fill={g('fire')} />
-            <Gem x={C} y={30} r={9} cut="oval" gem="amber" set="copper" />
-          </>
-        )}
-
-        {/* 2 · Disciplinado: plata con cuatro escudos engastados de zafiros */}
-        {t === 2 && (
-          <>
-            <Band r={79} w={3.5} metal="silver" />
-            <Band r={68} w={8} metal="silver" />
-            {around(8, (d) => { const [x, y] = polar(79, d + 22.5); return <circle key={d} cx={n2(x)} cy={n2(y)} r={2.6} fill="#e3e8ef" stroke="#3d4552" strokeWidth={0.8} />; })}
-            {around(4, (d) => { const [x, y] = polar(73, d); return (
-              <g key={d}>
-                <g transform={`translate(${n2(x)} ${n2(y)}) rotate(${d})`}>
-                  <path d="M-12 -12 L12 -12 L12 0 C12 8 5 13 0 16 C-5 13 -12 8 -12 0 Z" fill={g('m-silver')} stroke="#353d49" strokeWidth={1.3} strokeLinejoin="round" />
-                  <path d="M-9.5 -9.5 L9.5 -9.5 L9.5 0 C9.5 6.4 4 10.4 0 12.8 C-4 10.4 -9.5 6.4 -9.5 0 Z" fill="none" stroke="#ffffff" strokeWidth={1} opacity={0.7} />
-                </g>
-                <Gem x={polar(74, d)[0]} y={polar(74, d)[1]} r={7.5} gem="sapphire" rot={22.5} />
-              </g>
-            ); })}
-          </>
-        )}
-
-        {/* 3 · Artífice: engranaje de bronce con esmeraldas */}
-        {t === 3 && (
-          <>
-            <g className="ring-spin-slow">
-              {around(24, (d) => { const [x, y] = polar(77, d); return <rect key={d} x={n2(x - 4.5)} y={n2(y - 6.5)} width={9} height={13} rx={1.6} fill={g('m-bronze')} stroke="#36210a" strokeWidth={0.9} transform={`rotate(${d} ${n2(x)} ${n2(y)})`} />; })}
-            </g>
-            <Band r={69} w={12} metal="bronze" />
-            {around(6, (d) => { const [x, y] = polar(69, d + 30); return (
-              <g key={d}><polygon points={ptsStr(Array.from({ length: 6 }, (_, i) => polarAt(x, y, 3, i * 60)))} fill="#6b4416" stroke="#36210a" strokeWidth={0.6} /><circle cx={n2(x - 0.6)} cy={n2(y - 0.6)} r={1.1} fill="#fde3b4" /></g>
-            ); })}
-            {around(6, (d) => { const [x, y] = polar(69, d); return <Gem key={d} x={x} y={y} r={7.5} cut="emerald" gem="emerald" rot={d} set="bronze" />; })}
-          </>
-        )}
-
-        {/* 4 · Arquitecto: dial de platino de precisión con amatistas talladas en los puntos cardinales */}
-        {t === 4 && (
-          <>
-            <circle cx={C} cy={C} r={91} fill="none" stroke="#c3cede" strokeWidth={1.8} strokeDasharray="2 6" opacity={0.75} />
-            {around(60, (d, i) => {
-              if (i % 15 === 0) return null;
-              const five = i % 5 === 0;
-              const [x1, y1] = polar(72, d); const [x2, y2] = polar(five ? 81 : 77, d);
-              return <line key={d} x1={n2(x1)} y1={n2(y1)} x2={n2(x2)} y2={n2(y2)} stroke={five ? '#eef3fa' : '#8794a8'} strokeWidth={five ? 2.6 : 1.6} strokeLinecap="round" />;
-            })}
-            <Band r={67} w={7} metal="platinum" />
-            {around(4, (d) => { const [x, y] = polar(84, d + 45); return <Gem key={d} x={x} y={y} r={3.6} gem="diamond" sparkle={false} />; })}
-            {around(4, (d) => { const [x, y] = polar(80, d); return <Gem key={d} x={x} y={y} r={13} cut="marquise" gem="amethyst" rot={d} set="platinum" />; })}
-          </>
-        )}
-
-        {/* 5 · Cazador de Bestias: oro con puntas de flecha de obsidiana y granate, y rubíes */}
-        {t === 5 && (
-          <>
-            <g className="ring-spin">
-              <circle cx={C} cy={C} r={84} fill="none" stroke="var(--c1)" strokeWidth={1.4} opacity={0.55} />
-              {around(8, (d, i) => <Arrowhead key={d} deg={d} r={85} gem={i % 2 ? 'garnet' : 'obsidian'} />)}
-            </g>
-            <Band r={68} w={9} metal="gold" />
-            {around(4, (d) => { const [x, y] = polar(68, d); return <Pearl key={d} x={x} y={y} r={2.8} />; })}
-            {around(4, (d) => { const [x, y] = polar(68, d + 45); return <Gem key={d} x={x} y={y} r={7} gem="ruby" set="gold" prongs />; })}
-          </>
-        )}
-
-        {/* 6 · Forjador: oro fundido entre llamas, con grandes rubíes y ópalos de fuego */}
-        {t === 6 && (
-          <>
-            <g filter={glow}>
-              {around(14, (d, i) => <Flame key={d} deg={d} r={70} h={i % 2 ? 19 : 28} fill={g('fire')} delay={i * 0.13} />)}
-            </g>
-            <Band r={68} w={9} metal="molten" filter={glow} />
-            <g filter={g('blur')}>
-              {around(6, (d, i) => { const [x, y] = polar(68, d); return <circle key={d} className="gem-glow" style={{ animationDelay: `${i * 0.35}s` }} cx={n2(x)} cy={n2(y)} r={13} fill={i % 2 ? '#ff8a1f' : '#ff2d6f'} />; })}
-            </g>
-            {around(6, (d, i) => { const [x, y] = polar(68, d); return i % 2
-              ? <Gem key={d} x={x} y={y} r={9.5} cut="oval" gem="fireopal" rot={d} set="molten" />
-              : <Gem key={d} x={x} y={y} r={9.5} gem="ruby" set="gold" prongs />; })}
-          </>
-        )}
-
-        {/* 7 · Fundador: oro real con laurel de jade, perlas y corona engastada */}
-        {t === 7 && (
-          <>
-            {[-1, 1].map((side) => around(12, (d, i) => (i > 0 && i < 10
-              ? <Leaf key={`${side}${d}`} deg={side === 1 ? 180 - d / 2.4 : 180 + d / 2.4} r={81} side={side as 1 | -1} /> : null)))}
-            <Band r={68} w={11} metal="gold" />
-            {around(36, (d) => (Math.abs(((d + 180) % 360) - 180) < 22 || [90, 180, 270].some((k) => Math.abs(d - k) < 12)
-              ? null : <Pearl key={d} x={polar(68, d)[0]} y={polar(68, d)[1]} r={2.5} />))}
-            {[90, 270].map((d) => <Gem key={d} x={polar(68, d)[0]} y={polar(68, d)[1]} r={6} gem="sapphire" set="gold" />)}
-            <Gem x={C} y={168} r={7.5} gem="ruby" set="gold" prongs />
-            <polygon points="72,38 67,11 79,24 85,13 93,23 100,1 107,23 115,13 121,24 133,11 128,38" fill={g('m-gold')} stroke="#4f2f03" strokeWidth={1.4} strokeLinejoin="round" />
-            <polygon points="76,35 73,19 80,28 85,20 93,28 100,10 107,28 115,20 120,28 127,19 124,35" fill="none" stroke="#fffbe0" strokeWidth={1} strokeLinejoin="round" opacity={0.6} />
-            <rect x={69} y={28} width={62} height={12} rx={2.5} fill={g('m-gold')} stroke="#4f2f03" strokeWidth={1.3} />
-            {[[67, 11], [85, 13], [100, 1], [115, 13], [133, 11]].map(([x, y]) => <Pearl key={x} x={x} y={y} r={3.4} />)}
-            <Gem x={82} y={34} r={4.8} gem="ruby" sparkle={false} />
-            <Gem x={118} y={34} r={4.8} gem="sapphire" sparkle={false} />
-            <Gem x={C} y={34} r={6.2} cut="emerald" gem="emerald" rot={90} />
-          </>
-        )}
-
-        {/* 8 · Titán: oro blanco cuajado de diamantes, topacios eléctricos y rayos */}
-        {t === 8 && (
-          <>
-            <g className="ring-dash">
-              <circle cx={C} cy={C} r={79} fill="none" stroke="#38d1f5" strokeWidth={2.6} strokeDasharray="14 10" opacity={0.85} />
-            </g>
-            <g filter={glow}>{around(6, (d) => <Bolt key={d} deg={d + 30} r={89} />)}</g>
-            <Band r={67} w={10} metal="whitegold" filter={glow} />
-            {around(18, (d, i) => (i % 6 === 0 ? null : <Gem key={d} x={polar(67, d)[0]} y={polar(67, d)[1]} r={3.9} gem="diamond" sparkle={i % 3 === 0} />))}
-            <g filter={g('blur')}>
-              {around(3, (d, i) => <circle key={d} className="gem-glow" style={{ animationDelay: `${i * 0.5}s` }} cx={n2(polar(70, d)[0])} cy={n2(polar(70, d)[1])} r={13} fill="#38d1f5" />)}
-            </g>
-            {around(3, (d) => <Gem key={d} x={polar(70, d)[0]} y={polar(70, d)[1]} r={11.5} cut="trillion" gem="topaz" rot={d} set="whitegold" />)}
-          </>
-        )}
-
-        {/* 9 · Excelsior: diamantes y gemas de todos los colores, esquirlas en órbita, estrella con diamante y alas */}
-        {t === 9 && (
-          <>
-            {[-1, 1].map((side) => (
-              <g key={side} transform={`translate(${C + side * 64} ${C + 10}) scale(${side} 1)`}>
-                <path d="M0 0 C 14 -16, 34 -22, 50 -14 C 38 -8, 22 -3, 0 8 Z" fill={g('m-gold')} stroke="#4f2f03" strokeWidth={1} />
-                <path d="M0 6 C 14 -4, 30 -6, 45 0 C 32 4, 18 8, 0 13 Z" fill={g('m-gold')} stroke="#4f2f03" strokeWidth={1} />
-                <path d="M0 12 C 12 8, 24 9, 36 16 C 24 17, 12 17, 0 18 Z" fill={g('m-gold')} stroke="#4f2f03" strokeWidth={1} />
-                <Gem x={46} y={-13} r={3.2} gem="diamond" sparkle={false} />
-                <Gem x={41} y={0} r={2.8} gem="topaz" sparkle={false} />
-              </g>
-            ))}
-            <g className="ring-orbit">
-              {around(8, (d, i) => { const [x, y] = polar(88, d + 22.5); return <Crystal key={d} x={x} y={y} w={3.6} h={9} rot={d + 22.5} gem={(['diamond', 'amethyst', 'diamond', 'topaz', 'diamond', 'ruby', 'diamond', 'emerald'] as const)[i]} />; })}
-            </g>
-            <Band r={80} w={3.5} metal="gold" />
-            <Band r={68} w={12} metal="gold" filter={glow} />
-            <circle className="ring-spin" cx={C} cy={C} r={68} fill="none" stroke={g('prism')} strokeWidth={6} opacity={0.55} />
-            {around(12, (d, i) => {
-              if (i === 0) return null;
-              const [x, y] = polar(68, d);
-              if (i % 2 === 0) return <Gem key={d} x={x} y={y} r={i === 6 ? 8 : 6} gem="diamond" set="platinum" prongs={i === 6} />;
-              const k = (i - 1) / 2;
-              const gem = (['ruby', 'emerald', 'sapphire', 'amethyst', 'topaz', 'citrine'] as const)[k];
-              const cut = (['brilliant', 'emerald', 'brilliant', 'marquise', 'trillion', 'brilliant'] as const)[k];
-              return <Gem key={d} x={x} y={y} r={cut === 'brilliant' ? 6.4 : 8} cut={cut} gem={gem} rot={d} set="gold" />;
-            })}
-            <StarShape x={C} y={19} r={21} fill={g('m-gold')} stroke="#4f2f03" strokeWidth={1.4} strokeLinejoin="round" filter={glow} />
-            <StarShape x={C} y={19} r={14} fill="none" stroke="#fffbe0" strokeWidth={1.1} strokeLinejoin="round" opacity={0.7} />
-            <Gem x={C} y={20} r={7.5} gem="diamond" set="platinum" prongs sparkle={0.2} />
-            <Sparkle x={150} y={36} s={5} delay={1.1} />
-            <Sparkle x={44} y={150} s={4} delay={1.9} />
-          </>
-        )}
+        {back}
 
         {/* Cara: foto el día que exista; mientras, la inicial o el icono */}
-        <circle cx={C} cy={C} r={60} fill={g('face')} stroke={epic ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.08)'} strokeWidth={1.5} />
+        <circle cx={C} cy={C} r={60} fill={g('face')} />
         {photo
           ? <image href={photo} x={40} y={40} width={120} height={120} clipPath={`url(#${id}-clip)`} preserveAspectRatio="xMidYMid slice" />
           : <text x={C} y={C} textAnchor="middle" dominantBaseline="central" className="portrait-label" fontSize={label.length > 1 ? 50 : 64}>{label}</text>}
+
+        <g filter={shadow}>{frame}</g>
       </svg>
     </Ids.Provider>
   );

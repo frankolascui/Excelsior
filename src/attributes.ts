@@ -25,7 +25,7 @@ export const ATTRIBUTES: AttributeDef[] = [
   {
     id: 'sabiduria', name: 'Sabiduría', icon: '🧠',
     desc: 'Lo teórico: entender y saber. En mates, conocer las fórmulas y cuándo se usan.',
-    examples: 'Leer, estudiar, hacer apuntes, ver un curso, Deep Work de Estudio.',
+    examples: 'Leer, estudiar, hacer apuntes, ver un curso, Deep Work de estudio o lectura.',
   },
   {
     id: 'maestria', name: 'Maestría', icon: '🔨',
