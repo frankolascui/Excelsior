@@ -50,7 +50,7 @@ await page.click('text=Entrar como invitado');
 await page.fill('#hero-name', 'Nicolas');
 await page.click('text=Crear personaje');
 await page.click('.tour button:has-text("Saltar")');
-await page.click('.nav-item:has-text("Personaje")');
+await page.click('button[aria-label="Ajustes"]');
 check(await page.isVisible('#account-h'), 'Ajustes muestra la sección Cuenta');
 await page.fill('#login-email', 'nico@test.com');
 await page.click('text=Enviarme un código');
@@ -83,9 +83,15 @@ await p2.click('text=Enviarme un código');
 await p2.fill('#login-code', '123456');
 await p2.click('button:has-text("Entrar")');
 check(await p2.waitForSelector('text=¿Qué hago ahora?', { timeout: 5000 }).then(() => true, () => false), 'el otro dispositivo carga la partida de la nube');
-await p2.click('.tour button:has-text("Saltar")').catch(() => {});
+await p2.waitForTimeout(500);
+check(!(await p2.isVisible('.tour')), 'el tutorial ya visto en el PC no se repite en el móvil');
 await p2.goto(url + '#misiones');
 check(await p2.isVisible('text=Misión del PC'), 'y ve las misiones creadas en el PC');
+await p2.fill('input[placeholder^="+ Nueva misión"]', 'Misión del móvil');
+await p2.click('button:has-text("Crear")');
+await p2.waitForTimeout(2500);
+check(await p2.isVisible('text=Misión del PC') && !(await p2.isVisible('#hero-name')), 'crear algo tras cargar la nube no deshace la partida');
+check(remote.state.profile.name === 'Nicolas' && remote.state.quests.some((q) => q.title === 'Misión del móvil') && remote.state.quests.some((q) => q.title === 'Misión del PC'), 'la nube tiene las misiones de los dos dispositivos');
 
 // Dispositivo 3 con otra partida local: elige cuál se queda.
 const other = await browser.newContext({ viewport: { width: 1280, height: 860 } });
@@ -96,7 +102,7 @@ await p3.click('text=Entrar como invitado');
 await p3.fill('#hero-name', 'Otro');
 await p3.click('text=Crear personaje');
 await p3.click('.tour button:has-text("Saltar")');
-await p3.click('.nav-item:has-text("Personaje")');
+await p3.click('button[aria-label="Ajustes"]');
 await p3.fill('#login-email', 'nico@test.com');
 await p3.click('text=Enviarme un código');
 await p3.fill('#login-code', '123456');
@@ -104,7 +110,8 @@ await p3.click('button:has-text("Entrar")');
 check(await p3.waitForSelector('text=Tienes dos partidas', { timeout: 5000 }).then(() => true, () => false), 'con dos partidas pregunta cuál quedarse');
 await p3.screenshot({ path: 'e2e/11-conflict.png' });
 await p3.click('button:has-text("La de la nube")');
-check(await p3.waitForSelector('text=Nicolas', { timeout: 3000 }).then(() => true, () => false), 'elegir la nube carga la partida de Nicolas');
+await p3.waitForTimeout(500);
+check(await p3.evaluate(() => JSON.parse(localStorage.getItem('excelsior:v1')).profile.name) === 'Nicolas', 'elegir la nube carga la partida de Nicolas');
 check(remote.state.profile.name === 'Nicolas', 'la nube conserva la partida elegida');
 
 // Dispositivo 4 con otro email nuevo: entra desde la portada y crea su personaje en la nube.
@@ -125,7 +132,7 @@ await p4.waitForTimeout(2500);
 check(remote?.state?.profile?.name === 'Nueva', 'el personaje nuevo se guarda en la nube');
 await p4.click('.tour button:has-text("Saltar")');
 await p4.click('.nav-item:has-text("Gremios")');
-check(await p4.isVisible('text=Próximamente'), 'con cuenta, los gremios no piden registro');
+check(await p4.isVisible('.locked-screen:has-text("nivel 5")'), 'los gremios se abren en el nivel 5');
 remote = saved;
 
 check(errors.length === 0, `sin errores de la app ${errors.join(' | ')}`);

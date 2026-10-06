@@ -24,27 +24,37 @@ await page.fill('#hero-name', 'Nicolas');
 await page.click('text=Crear personaje');
 await page.waitForSelector('text=¿Qué hago ahora?');
 
-// 1b. Tutorial con guía: aparece solo, señala cada pantalla y no vuelve tras saltarlo
-check(await seen('.tour .eyebrow:has-text("Hiperión · 1/7")'), 'el tutorial arranca con el guía');
+// 1b. Tutorial con guía: aparece solo, obliga a elegir hábitos y no vuelve tras saltarlo
+check(await seen('.tour .eyebrow:has-text("Hiperión · 1/6")'), 'el tutorial arranca con el guía');
 await page.click('.tour button:has-text("Siguiente")');
-check(await seen('[data-tour="now"].tour-target'), 'paso 2 señala «¿Qué hago ahora?»');
-await page.click('.tour button:has-text("Siguiente")');
-check(await seen('.nav-item.on:has-text("Misiones")') && await seen('[data-tour="quest-add"].tour-target'), 'paso 3 lleva a Misiones y señala el formulario');
-await page.waitForTimeout(1200);
-await page.screenshot({ path: `${out}/00-tutorial.png` });
-await page.click('.tour button:has-text("Siguiente")');
-check(await seen('.tour-chips .pick.on:has-text("Leer")'), 'paso 4: elegir hábitos dentro del tutorial');
+check(await seen('.nav-item.on:has-text("Hábitos")') && await seen('.tour-chips'), 'paso 2: Hiperión pide elegir hábitos');
+check(!(await page.isVisible('.tour-chips .pick.on')), 'no hay hábitos predeterminados');
+check(await page.isDisabled('.tour button:has-text("Siguiente")'), 'no se avanza sin elegir al menos uno');
+await page.click('.tour-chips .pick:has-text("Leer")');
 await page.click('.tour-chips .pick:has-text("Meditar")');
 check(await seen('[data-tour="habits"] >> text=Meditar'), 'elegir un hábito en el tutorial lo crea');
 await page.click('.tour-chips .pick:has-text("Meditar")');
 check(!(await page.isVisible('[data-tour="habits"] >> text=Meditar')), 'y quitarlo lo borra');
+await page.click('.tour button:has-text("Siguiente")');
+check(await seen('[data-tour="now"].tour-target'), 'paso 3 señala «¿Qué hago ahora?»');
+await page.click('.tour button:has-text("Siguiente")');
+check(await seen('.nav-item.on:has-text("Misiones")') && await seen('[data-tour="quest-add"].tour-target'), 'paso 4 lleva a Misiones y señala el formulario');
+await page.waitForTimeout(1200);
+await page.screenshot({ path: `${out}/00-tutorial.png` });
 await page.click('.tour button:has-text("Saltar")');
 check(!(await page.$('.tour')) && !(await page.$('.tour-target')), 'saltar cierra el tutorial y quita el foco');
 await page.reload();
 await page.waitForSelector('.nav');
 check(!(await seen('.tour')), 'el tutorial no vuelve a salir al recargar');
 await page.click('.nav-item:has-text("Gremios")');
-check(await seen('text=Necesitas registrarte para unirte a un gremio'), 'invitado: los gremios piden registrarse');
+check(await seen('text=Se desbloquea en el nivel 5'), 'las secciones avanzadas están bloqueadas por nivel');
+await page.click('.nav-item:has-text("Reinos")');
+check(await seen('text=Se desbloquea en el nivel 2'), 'Reinos se abre en el nivel 2');
+await page.click('.nav-item:has-text("Hoy")');
+// Entrenar se añade desde la lista de Hábitos (lo usan pasos siguientes)
+await page.click('.nav-item:has-text("Hábitos")');
+await page.fill('#new-habit', 'Entrenar');
+await page.click('[data-tour="habits"] button:has-text("Añadir")');
 await page.click('.nav-item:has-text("Hoy")');
 await page.click('.nav-item:has-text("Hoy")');
 check(await seen('text=Crea tu primera misión.'), 'dashboard guía a crear la primera misión');
@@ -113,7 +123,7 @@ await page.clock.fastForward('24:00:00');
 await page.reload();
 await page.click('.nav-item:has-text("Hoy")');
 check(await seen('.chronicle:has-text("La semana pasada ganaste")'), 'el lunes aparece la crónica semanal');
-check(await seen('.chronicle:has-text("Aceptar el reto")'), 'la crónica propone un boss como reto');
+check(!(await page.isVisible('.chronicle:has-text("Aceptar el reto")')), 'sin la Arena desbloqueada, la crónica no propone bosses');
 await page.screenshot({ path: `${out}/04b-chronicle.png` });
 await page.click('.chronicle button:has-text("Entendido")');
 check(!(await page.$('.chronicle')), 'la crónica se cierra hasta la semana siguiente');
@@ -145,6 +155,10 @@ await page.screenshot({ path: `${out}/05b-goals.png`, fullPage: true });
 
 // 7a2. Reinos: cada tarea es una construcción
 await page.click('.nav-item:has-text("Reinos")');
+check(await seen('.tour .tour-title:has-text("Los Reinos")'), 'al abrir Reinos por primera vez, Hiperión la presenta');
+await page.click('.tour button:has-text("Siguiente")');
+check(await seen('[data-tour="kingdom-add"].tour-target'), 'el tutorial de Reinos señala dónde fundar');
+await page.click('.tour button:has-text("¡A por ello!")');
 await page.fill('#new-kingdom', 'Reino de la Programación');
 await page.click('button:has-text("Fundar")');
 await page.fill('.kingdom input', 'Terminar una calculadora');
@@ -181,6 +195,17 @@ check(await seen('.item:has-text("Tocar la guitarra") .rewards[aria-label="+2 Vo
 
 // 7a4. Arena: boss y tienda
 await page.click('.nav-item:has-text("Arena")');
+check(await seen('.locked-screen:has-text("nivel 3")'), 'en nivel 2 la Arena sigue bloqueada');
+// Una sesión larga de Deep Work sube al nivel 3 y abre la Arena.
+await page.click('.nav-item:has-text("Deep Work")');
+await page.click('button.mode-card:has-text("Sesión libre")');
+await page.clock.fastForward('02:30:00');
+await page.waitForTimeout(300);
+await page.click('text=Terminar sesión');
+check(await seen('.unlock-line:has-text("Arena")'), 'subir a nivel 3 anuncia la Arena desbloqueada');
+await page.click('.levelup button:has-text("Ir a Arena")');
+check(await seen('.tour .tour-title:has-text("La Arena")'), 'Hiperión presenta la Arena');
+await page.click('.tour button:has-text("Saltar")');
 const coins = async () => Number((await page.textContent('.treasury-amount .coins')).replace(/[^0-9-]/g, ''));
 const before = await coins();
 check(before >= 25, `hay monedas para gastar (${before})`);
@@ -196,8 +221,9 @@ await page.click('.nav-item:has-text("Arena")');
 check(await seen('.boss .mono:has-text("685 / 700 HP")'), 'la Hidra baja a 685/700 HP');
 await page.screenshot({ path: `${out}/09-arena.png`, fullPage: true });
 
-// 7a5. Tema y copia de seguridad
-await page.click('.nav-item:has-text("Personaje")');
+// 7a5. Tema y copia de seguridad, en la rueda de ajustes
+await page.click('button[aria-label="Ajustes"]');
+check(await seen('h1:has-text("Ajustes")'), 'la rueda abre Ajustes');
 await page.click('.theme-swatch:has-text("Olimpo")');
 check((await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--c1').trim())) === '#ffd166', 'el tema Olimpo cambia los colores');
 await page.screenshot({ path: `${out}/10-theme.png`, fullPage: true });
@@ -225,6 +251,26 @@ await page.clock.fastForward('25:02');
 await page.waitForTimeout(500);
 check(await seen('text=25 min de foco · +25 XP'), 'cuenta atrás de 25 min se registra sola');
 
+// 7c. Modo admin: partida de pruebas con todo desbloqueado, sin tocar la real
+await page.click('button[aria-label="Ajustes"]');
+await page.click('button:has-text("Avanzado")');
+await page.click('button:has-text("Entrar en modo admin")');
+await page.waitForSelector('#hero-name');
+await page.fill('#hero-name', 'Pruebas');
+await page.click('text=Crear personaje');
+check(await seen('.admin-bar'), 'modo admin: barra visible y partida de pruebas nueva');
+await page.click('.tour button:has-text("Saltar")');
+check(!(await page.$('.nav-item.locked')), 'modo admin: todas las secciones desbloqueadas');
+await page.click('button[aria-label="Ajustes"]');
+await page.click('.admin-panel button:has-text("+2000 XP")');
+check(await seen('.levelup'), 'modo admin: +2000 XP sube de nivel');
+await page.click('.levelup button.primary');
+if (await seen('.tour')) await page.click('.tour button:has-text("Saltar")');
+await page.click('button[aria-label="Ajustes"]');
+await page.click('.admin-panel button:has-text("Salir del modo admin")');
+await page.waitForSelector('.nav');
+check(!(await page.$('.admin-bar')) && (await page.textContent('.nav-level')).includes('Nv 3'), 'al salir vuelve la partida real intacta');
+
 // 8. Móvil
 await page.setViewportSize({ width: 390, height: 844 });
 await page.click('.nav-item:has-text("Hoy")');
@@ -238,3 +284,4 @@ await page.screenshot({ path: `${out}/07-mobile-light.png`, fullPage: true });
 const appErrors = errors.filter((e) => !/Failed to load resource/.test(e));
 check(appErrors.length === 0, `sin errores de la app ${appErrors.join(' | ')}`);
 await browser.close();
+

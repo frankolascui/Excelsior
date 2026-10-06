@@ -8,8 +8,7 @@ import { CityScene } from './city';
 import { kingdomBonus } from './economy';
 import { RealmMap } from './realm';
 import { AmbientPanel } from './ambient-ui';
-import { AvatarLadder, SettingsPanel, WeeklyChronicle } from './settings';
-import { AccountPanel } from './account';
+import { AvatarLadder, WeeklyChronicle } from './settings';
 import { useCloud } from './cloud';
 import { sfx } from './sfx';
 import { ActivityHeatmap, XpChart } from './charts';
@@ -24,7 +23,7 @@ import {
 } from './ui';
 
 export type Game = ReturnType<typeof useGame>;
-export type Tab = 'hoy' | 'misiones' | 'reinos' | 'arena' | 'gremios' | 'deepwork' | 'habitos' | 'personaje';
+export type Tab = 'hoy' | 'misiones' | 'reinos' | 'arena' | 'gremios' | 'deepwork' | 'habitos' | 'personaje' | 'ajustes';
 
 const CAP_QUEST = `Tope diario de XP por misiones alcanzado (${XP_RULES.dailyCap.quest}). La misión cuenta igual.`;
 const CAP_HABIT = `Tope diario de XP por hábitos alcanzado (${XP_RULES.dailyCap.habit}).`;
@@ -34,8 +33,6 @@ const questOpts = (q: Quest) => ({ party: q.type === 'main', sound: q.kingdomId 
 // ---------- Registro ----------
 
 export const STARTER_HABITS = ['Leer', 'Entrenar', 'Meditar', 'Journaling', 'Llamar a alguien', 'Escribir', 'Caminar', 'Dormir bien'];
-/** Hábitos con los que empieza todo personaje; el tutorial deja cambiarlos. */
-const DEFAULT_HABITS = ['Leer', 'Entrenar'];
 
 export function Onboarding({ game, onBack }: { game: Game; onBack?: () => void }) {
   const [name, setName] = useState('');
@@ -43,7 +40,7 @@ export function Onboarding({ game, onBack }: { game: Game; onBack?: () => void }
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    game.act((s) => createProfile(s, name, DEFAULT_HABITS, Date.now()));
+    game.act((s) => createProfile(s, name, [], Date.now()));
   }
   if (cloud.email && !game.cloudChecked) {
     return (
@@ -477,7 +474,14 @@ export function Habits({ game }: { game: Game }) {
         <p className="hint">+{XP_RULES.habit} XP cada día que lo completes. Los puntos de la derecha son los últimos 7 días.</p>
       </section>
       <section className="panel">
-        {state.habits.length === 0 ? <p className="empty">Añade tu primer hábito arriba.</p> : (
+        {state.habits.length === 0 ? (
+          <div>
+            <p className="empty">Aún no tienes hábitos. Escribe uno arriba o elige alguno:</p>
+            <div className="chips">
+              {STARTER_HABITS.map((h) => <button key={h} className="pick" onClick={() => act((s) => addHabit(s, h, Date.now()))}>+ {h}</button>)}
+            </div>
+          </div>
+        ) : (
           <ul className="list">
             {state.habits.map((h) => (
               <HabitItem key={h.id} state={state} habit={h} now={now} onToggle={() => act((s) => toggleHabit(s, h.id, Date.now()), CAP_HABIT, { sound: 'habit' })} onDelete={() => act((s) => deleteHabit(s, h.id))} onEdit={(n, v) => act((s) => updateHabit(s, h.id, { name: n, ...v }))} />
@@ -492,10 +496,8 @@ export function Habits({ game }: { game: Game }) {
 
 // ---------- Personaje y progreso ----------
 
-export function Character({
-  game, guide, setGuide, replayTutorial,
-}: { game: Game; guide: string; setGuide: (name: string) => void; replayTutorial: () => void }) {
-  const { state, reset } = game;
+export function Character({ game }: { game: Game }) {
+  const { state } = game;
   const now = useNow(60_000);
   const xp = totalXp(state);
   const info = levelInfo(xp);
@@ -504,7 +506,7 @@ export function Character({
   const bestStreak = state.habits.reduce((m, h) => Math.max(m, habitStreak(state, h.id, now)), 0);
   const activeDays = new Set(state.xp.map((t) => dayKey(t.at))).size;
   const history = [...state.xp].reverse().slice(0, 15);
-  const SOURCE = { quest: 'Misión', habit: 'Hábito', deepwork: 'Deep Work' } as const;
+  const SOURCE = { quest: 'Misión', habit: 'Hábito', deepwork: 'Deep Work', admin: 'Admin' } as const;
 
   return (
     <div className="screen">
@@ -555,13 +557,6 @@ export function Character({
         )}
       </section>
 
-      <AccountPanel />
-      <SettingsPanel game={game} guide={guide} setGuide={setGuide} replayTutorial={replayTutorial} />
-
-      <section className="panel quiet">
-        <p className="muted">Los datos se guardan en este navegador. Borrar el personaje elimina misiones, hábitos e historial.</p>
-        <ConfirmButton label="Borrar personaje" confirmLabel="Sí, borrar todo" onConfirm={reset} />
-      </section>
     </div>
   );
 }
@@ -592,7 +587,7 @@ export function Kingdoms({ game, focusQuest }: { game: Game; focusQuest: (q: Que
       <h1 className="screen-title">Reinos</h1>
       <p className="hint">Un reino es un proyecto. Cada tarea es una construcción y tu ciudad crece al completarlas: campamento, aldea, villa, ciudad amurallada y reino glorioso.</p>
       <RealmMap state={state} onSelect={showKingdom} />
-      <section className="panel">
+      <section className="panel" data-tour="kingdom-add">
         <form className="quick-add inline" onSubmit={submit}>
           <input id="new-kingdom" value={name} onChange={(e) => setName(e.target.value)} placeholder="+ Fundar un reino (ej. Reino de la Programación)" maxLength={50} aria-label="Nombre del nuevo reino" />
           <button type="submit" className="primary" disabled={!name.trim()}>Fundar</button>

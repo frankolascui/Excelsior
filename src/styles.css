@@ -128,8 +128,9 @@ p { margin: 0; }
     border-right: 0; border-top: 1px solid var(--line); z-index: 10;
   }
   .nav-brand, .nav-level { display: none; }
-  .nav-item { flex-direction: column; gap: 2px; padding: 6px 4px; flex: 1; font-size: 11.5px; text-align: center; }
-  .nav-glyph { font-size: 19px; }
+  .nav-item { flex-direction: column; gap: 2px; padding: 6px 1px; flex: 1 1 0; min-width: 0; font-size: 10px; text-align: center; }
+  .nav-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nav-glyph { font-size: 18px; }
   .live-dot { position: absolute; top: 6px; right: calc(50% - 18px); margin: 0; }
   .main { margin-left: 0; padding: 20px 16px 110px; }
   .screen-title { font-size: 28px; }
@@ -440,12 +441,13 @@ button.check:active { transform: scale(0.88); }
 .eyebrow { color: var(--c2); }
 .link { color: var(--c1); }
 .onboarding { background: radial-gradient(70% 50% at 50% 0%, color-mix(in srgb, var(--c3) 25%, transparent), transparent 70%), var(--bg); }
-.sound-toggle {
-  position: fixed; z-index: 20; top: calc(14px + env(safe-area-inset-top, 0px)); right: 16px;
+.top-actions { position: fixed; z-index: 20; top: calc(14px + env(safe-area-inset-top, 0px)); right: 16px; display: flex; gap: 8px; }
+.icon-round {
   width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line);
-  background: rgba(16, 16, 24, 0.85); font-size: 17px; display: grid; place-items: center;
+  background: rgba(16, 16, 24, 0.85); font-size: 17px; display: grid; place-items: center; color: var(--fg);
 }
-.sound-toggle:hover { border-color: var(--c2); }
+.icon-round:hover, .icon-round.on { border-color: var(--c2); }
+.app.admin .top-actions { top: calc(44px + env(safe-area-inset-top, 0px)); }
 
 /* ---------- Deep Work ---------- */
 .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -496,7 +498,7 @@ button.mode-card:hover { transform: translateY(-2px); box-shadow: 0 0 0 1px colo
 .phase-btn.distract:hover { background: rgba(251, 113, 133, 0.12); }
 @media (max-width: 760px) {
   .main { padding-top: 64px; }
-  .sound-toggle { top: calc(12px + env(safe-area-inset-top, 0px)); right: 16px; }
+  .top-actions { top: calc(12px + env(safe-area-inset-top, 0px)); right: 16px; }
 }
 
 .primary { color: var(--on-accent); }
@@ -837,3 +839,22 @@ button.mode-card:hover { transform: translateY(-2px); box-shadow: 0 0 0 1px colo
 .require-account h3 { margin-bottom: 4px; }
 .tour-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
 .stack-gap { display: flex; flex-direction: column; gap: 20px; }
+
+/* Secciones bloqueadas por nivel */
+.nav-item.locked { opacity: 0.55; }
+.nav-lock { margin-left: auto; font-size: 11px; color: var(--muted); }
+.nav-new { margin-left: auto; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 6px; border-radius: 99px; background: linear-gradient(90deg, var(--c1), var(--c3)); color: var(--on-accent); animation: pulse 1.6s ease-in-out infinite; }
+.locked-screen { text-align: center; align-items: center; display: flex; flex-direction: column; gap: 10px; padding: 40px 20px; }
+.locked-icon { font-size: 48px; }
+.unlock-line { margin: 4px 0; padding: 8px 12px; border-radius: 12px; background: color-mix(in srgb, var(--c2) 15%, transparent); border: 1px solid color-mix(in srgb, var(--c2) 40%, transparent); }
+
+/* Modo admin */
+.admin-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 30; padding: 6px 12px; text-align: center; font-size: 13px; font-weight: 700; background: repeating-linear-gradient(45deg, #ffcf3f, #ffcf3f 12px, #f5b700 12px, #f5b700 24px); color: #111; }
+.admin-bar .link { color: #111; text-decoration: underline; font-weight: 800; }
+.app.admin { padding-top: 32px; }
+.admin-panel { border-color: #ffcf3f; }
+.admin-intro { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; align-items: flex-start; }
+@media (max-width: 760px) {
+  .nav-lock { display: none; }
+  .nav-new { position: absolute; top: 2px; right: 6px; width: 8px; height: 8px; padding: 0; font-size: 0; margin: 0; }
+}

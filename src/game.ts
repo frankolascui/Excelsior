@@ -464,3 +464,23 @@ export function suggest(s: GameState, now: number): Suggestion {
   if (habit) return { kind: 'habit', habitId: habit.id, name: habit.name };
   return { kind: 'done' };
 }
+
+// ---------- Tutoriales vistos ----------
+
+export function hasSeenTour(s: GameState, id: string): boolean {
+  return s.tours?.includes(id) ?? false;
+}
+
+export function markTour(s: GameState, id: string): GameState {
+  return hasSeenTour(s, id) ? s : { ...s, tours: [...(s.tours ?? []), id] };
+}
+
+/** Modo admin: XP de prueba repartido entre todos los atributos (solo en la partida de pruebas). */
+export function grantAdminXp(s: GameState, amount: number, now: number): GameState {
+  const per = Math.round((amount / 10) * 10) / 10;
+  const tx: XPTransaction = {
+    id: uid(), at: now, amount, source: 'admin', sourceId: 'admin', label: 'Modo admin',
+    attributes: { voluntad: per, sabiduria: per, maestria: per, conexion: per, creacion: per },
+  };
+  return { ...s, xp: [...s.xp, tx] };
+}

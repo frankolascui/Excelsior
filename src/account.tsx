@@ -1,4 +1,4 @@
-// Cuenta: entrar con email + código de 6 dígitos, estado del guardado y conflicto de partidas.
+// Cuenta: entrar con email + código del correo (Supabase envía 6–10 dígitos según su configuración), estado del guardado y conflicto de partidas.
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { cloudEnabled, sendCode, signOut, useCloud, verifyCode, type RemoteSave } from './cloud';
 import { levelInfo, totalXp } from './game';
@@ -35,8 +35,8 @@ export function LoginForm({ onDone }: { onDone?: () => void }) {
         </>
       ) : (
         <>
-          <label htmlFor="login-code">Código de 6 dígitos enviado a <strong>{email}</strong></label>
-          <input id="login-code" inputMode="numeric" autoComplete="one-time-code" maxLength={10} required value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} placeholder="123456" className="code-input mono" autoFocus />
+          <label htmlFor="login-code">Escribe el código que te hemos enviado a <strong>{email}</strong></label>
+          <input id="login-code" inputMode="numeric" autoComplete="one-time-code" maxLength={10} required value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} placeholder="12345678" className="code-input mono" autoFocus />
           <span className="settings-row">
             <button className="primary" disabled={busy || code.length < 6}>{busy ? 'Comprobando…' : 'Entrar'}</button>
             <button type="button" className="link" onClick={() => { setStep('email'); setCode(''); setError(null); }}>Cambiar email</button>

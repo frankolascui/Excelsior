@@ -119,6 +119,23 @@ export function markSynced() {
   }
 }
 
+// Última vez que el jugador cambió algo en este dispositivo.
+const LOCAL_KEY = 'excelsior:local-at';
+export function markLocalChange() {
+  try {
+    localStorage.setItem(LOCAL_KEY, String(Date.now()));
+  } catch {
+    /* ignorado */
+  }
+}
+function localChangedAt(): number {
+  try {
+    return Number(localStorage.getItem(LOCAL_KEY)) || 0;
+  } catch {
+    return 0;
+  }
+}
+
 export type Reconcile =
   | { kind: 'pushed' }
   | { kind: 'adopt'; remote: RemoteSave }
@@ -135,7 +152,8 @@ export async function reconcile(local: GameState): Promise<Reconcile> {
   }
   if (!local.profile) return { kind: 'adopt', remote };
   if (seen === null) return { kind: 'conflict', remote }; // primer login aquí con partidas en ambos lados
-  if (remote.updatedAt > seen) return { kind: 'adopt', remote };
+  // La nube cambió desde la última sincronización: si aquí también hubo cambios, que elija el jugador.
+  if (remote.updatedAt > seen) return localChangedAt() > seen ? { kind: 'conflict', remote } : { kind: 'adopt', remote };
   await pushSave(local);
   markSynced();
   return { kind: 'pushed' };

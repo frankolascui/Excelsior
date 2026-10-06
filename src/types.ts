@@ -56,7 +56,7 @@ export interface DeepWorkSession {
   focusPct?: number; // foco / (foco + distracción) × 100
 }
 
-export type XPSource = 'quest' | 'habit' | 'deepwork';
+export type XPSource = 'quest' | 'habit' | 'deepwork' | 'admin';
 
 export interface XPTransaction {
   id: string;
@@ -151,4 +151,6 @@ export interface GameState {
   rewards: Reward[];
   purchases: Purchase[];
   bosses: Boss[];
+  /** Tutoriales ya vistos ('intro', 'reinos', 'arena', 'gremios'). Viaja con la partida, no con el dispositivo. */
+  tours?: string[];
 }

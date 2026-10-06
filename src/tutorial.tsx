@@ -41,52 +41,89 @@ interface Step {
   pickHabits?: boolean; // muestra los hábitos sugeridos para elegir
 }
 
-export const STEPS: Step[] = [
-  {
-    tab: 'hoy',
-    title: 'Bienvenido',
-    text: ({ name, guide }) =>
-      `Hola, ${name}. Soy ${guide}, tu guía. Aquí tu vida es el juego: haces cosas reales y ganas XP para subir de nivel. Te enseño lo básico en 5 pasos.`,
-  },
-  {
-    tab: 'hoy',
-    target: 'now',
-    title: '¿Qué hago ahora?',
-    text: () => '¿No sabes por dónde empezar? Mira aquí. Siempre te propongo una sola cosa.',
-  },
-  {
-    tab: 'misiones',
-    target: 'quest-add',
-    title: 'Misiones',
-    text: () =>
-      `Apunta tus tareas y márcalas al terminar. La Principal es la más importante del día (+${XP_RULES.quest.main} XP).`,
-  },
-  {
-    tab: 'habitos',
-    target: 'habits',
-    title: 'Elige tus hábitos',
-    text: () => `Lo que quieres hacer cada día. Elige unos pocos; cada uno que marques te da +${XP_RULES.habit} XP. Regla: nunca falles dos días seguidos.`,
-    pickHabits: true,
-  },
-  {
-    tab: 'deepwork',
-    target: 'modes',
-    title: 'Deep Work',
-    text: () => 'Pulsa empezar y concéntrate. Cada minuto de foco da 1 XP.',
-  },
-  {
-    tab: 'arena',
-    target: 'shop',
-    title: 'Premios',
-    text: () => 'Cada 5 XP ganas una moneda. Cámbialas por premios reales: un episodio, salir con amigos…',
-  },
-  {
-    tab: 'hoy',
-    title: 'Tu primera misión',
-    text: ({ guide }) =>
-      `Eso es todo. Reinos, avatares y bestias los irás descubriendo. Ahora crea tu misión principal de hoy. Si me necesitas: Personaje → Ajustes → Repetir tutorial. — ${guide}`,
-  },
-];
+/** Tutorial de bienvenida y uno corto por cada sección que se desbloquea con el nivel. */
+export const TOURS: Record<string, Step[]> = {
+  intro: [
+    {
+      tab: 'hoy',
+      title: 'Bienvenido',
+      text: ({ name, guide }) =>
+        `Hola, ${name}. Soy ${guide}, tu guía. Aquí tu vida es el juego: haces cosas reales y ganas XP para subir de nivel. Te enseño lo básico en un minuto.`,
+    },
+    {
+      tab: 'habitos',
+      target: 'habits',
+      title: 'Elige tus hábitos',
+      text: () =>
+        `Lo primero: ¿qué quieres hacer cada día? Elige al menos un hábito (puedes cambiarlos cuando quieras). Cada día que lo cumplas ganas +${XP_RULES.habit} XP. Regla: nunca falles dos días seguidos.`,
+      pickHabits: true,
+    },
+    {
+      tab: 'hoy',
+      target: 'now',
+      title: '¿Qué hago ahora?',
+      text: () => '¿No sabes por dónde empezar? Mira aquí. Siempre te propongo una sola cosa.',
+    },
+    {
+      tab: 'misiones',
+      target: 'quest-add',
+      title: 'Misiones',
+      text: () =>
+        `Apunta tus tareas y márcalas al terminar. La Principal es la más importante del día (+${XP_RULES.quest.main} XP).`,
+    },
+    {
+      tab: 'deepwork',
+      target: 'modes',
+      title: 'Deep Work',
+      text: () => 'Pulsa empezar y concéntrate. Cada minuto de foco da 1 XP.',
+    },
+    {
+      tab: 'hoy',
+      title: 'Tu primera misión',
+      text: ({ guide }) =>
+        `Eso es todo por ahora. Al subir de nivel se abrirán los Reinos (nivel 2), la Arena (nivel 3) y los Gremios (nivel 5), y te los enseñaré entonces. Ahora crea tu misión principal de hoy. — ${guide}`,
+    },
+  ],
+  reinos: [
+    {
+      tab: 'reinos',
+      target: 'realm',
+      title: 'Los Reinos',
+      text: () =>
+        'Has desbloqueado los Reinos. Un reino es un proyecto grande: «Aprender a programar», «Ponerme en forma»… Este es tu mapa.',
+    },
+    {
+      tab: 'reinos',
+      target: 'kingdom-add',
+      title: 'Funda tu primer reino',
+      text: () =>
+        'Ponle nombre y añade sus tareas: cada una es una construcción. Al completarlas, el campamento crece hasta ser un reino glorioso que te paga monedas.',
+    },
+  ],
+  arena: [
+    {
+      tab: 'arena',
+      target: 'bosses',
+      title: 'La Arena',
+      text: () =>
+        'Has desbloqueado la Arena. Invoca una bestia: es un reto con plazo. Todo lo que haces le quita vida y, si cae a tiempo, te llevas su botín.',
+    },
+    {
+      tab: 'arena',
+      target: 'shop',
+      title: 'El tesoro',
+      text: () => 'Cada 5 XP ganas una moneda. Cámbialas aquí por premios reales que eliges tú: un episodio, salir con amigos…',
+    },
+  ],
+  gremios: [
+    {
+      tab: 'gremios',
+      title: 'Los Gremios',
+      text: () => 'Has llegado lejos. Pronto podrás formar un gremio con tus amigos y enfrentaros juntos a las bestias. Para eso necesitarás una cuenta.',
+    },
+  ],
+};
+
 
 function useTyped(text: string): string {
   const reduce = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -101,12 +138,14 @@ function useTyped(text: string): string {
 }
 
 export function Tutorial({
-  step, name, guide, go, onStep, onClose, habits, onToggleHabit,
+  tour, step, name, guide, go, onStep, onClose, habits, onToggleHabit,
 }: {
-  step: number; name: string; guide: string; go: (t: Tab) => void; onStep: (i: number) => void; onClose: () => void;
+  tour: string; step: number; name: string; guide: string; go: (t: Tab) => void; onStep: (i: number) => void; onClose: () => void;
   habits: string[]; onToggleHabit: (name: string) => void;
 }) {
+  const STEPS = TOURS[tour];
   const s = STEPS[step];
+  const blocked = !!s.pickHabits && habits.length === 0; // hay que elegir al menos un hábito
   const text = s.text({ name, guide });
   const typed = useTyped(text);
   const [hasTarget, setHasTarget] = useState(false);
@@ -130,17 +169,17 @@ export function Tutorial({
       el?.classList.remove('tour-target');
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
+  }, [tour, step]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose();
-      if (e.key === 'ArrowRight') last ? onClose() : onStep(step + 1);
+      if (e.key === 'ArrowRight' && !blocked) last ? onClose() : onStep(step + 1);
       if (e.key === 'ArrowLeft' && step > 0) onStep(step - 1);
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [step, last, onClose, onStep]);
+  }, [step, last, onClose, onStep, blocked]);
 
   return (
     <>
@@ -170,7 +209,7 @@ export function Tutorial({
             <button className="link" onClick={onClose}>Saltar</button>
             <span className="tour-nav">
               {step > 0 && <button className="ghost" onClick={() => onStep(step - 1)}>Atrás</button>}
-              <button className="primary" onClick={() => (last ? onClose() : onStep(step + 1))} autoFocus>
+              <button className="primary" disabled={blocked} title={blocked ? 'Elige al menos un hábito' : undefined} onClick={() => (last ? onClose() : onStep(step + 1))} autoFocus>
                 {last ? '¡A por ello!' : 'Siguiente'}
               </button>
             </span>

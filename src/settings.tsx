@@ -5,7 +5,12 @@ import { AVATARS, avatarInfo, avatarRequirements, ATTRIBUTES, formatAttrXp, requ
 import { applyTheme, CUSTOM_ID, loadTheme, saveTheme, THEMES, type Theme } from './theme';
 import { exportBackup, parseBackup, restorePrefs, type ImportResult } from './backup';
 import { save } from './store';
-import { levelInfo, totalXp } from './game';
+import { grantAdminXp, levelInfo, totalXp } from './game';
+import { ADMIN, setAdmin } from './admin';
+import { AccountPanel } from './account';
+import { ConfirmButton } from './ui';
+import { TOURS } from './tutorial';
+import { isUnlocked } from './unlocks';
 import { summonTemplate, BOSS_TEMPLATES, MAX_ACTIVE_BOSSES, activeBosses } from './bosses';
 import { weekSummary } from './summary';
 import { formatMinutes } from './ui';
@@ -14,7 +19,66 @@ import { sfx } from './sfx';
 
 // ---------- Ajustes ----------
 
-export function SettingsPanel({
+export function SettingsScreen({
+  game, guide, setGuide, startTour,
+}: { game: Game; guide: string; setGuide: (name: string) => void; startTour: (id: string) => void }) {
+  return (
+    <div className="screen">
+      <h1 className="screen-title">Ajustes</h1>
+      <AccountPanel />
+      <SettingsPanel game={game} guide={guide} setGuide={setGuide} replayTutorial={() => startTour('intro')} />
+      <AdminPanel game={game} startTour={startTour} />
+      <section className="panel quiet">
+        <h3>Zona peligrosa</h3>
+        <p className="muted">Borrar el personaje elimina misiones, hábitos e historial de este dispositivo.</p>
+        <ConfirmButton label="Borrar personaje" confirmLabel="Sí, borrar todo" onConfirm={game.reset} />
+      </section>
+    </div>
+  );
+}
+
+/** Modo admin: partida de pruebas aparte con todo desbloqueado y atajos para probar. */
+function AdminPanel({ game, startTour }: { game: Game; startTour: (id: string) => void }) {
+  const [open, setOpen] = useState(ADMIN);
+  if (!ADMIN) {
+    return (
+      <section className="panel quiet">
+        <button className="link" onClick={() => setOpen(!open)} aria-expanded={open}>🛠 Avanzado</button>
+        {open && (
+          <div className="admin-intro">
+            <p className="hint">El modo admin abre una <strong>partida de pruebas aparte</strong> con todas las secciones desbloqueadas y atajos para subir de nivel. Tu partida real no se toca ni se sube a la nube; al salir vuelves a ella tal cual.</p>
+            <button className="secondary" onClick={() => setAdmin(true)}>Entrar en modo admin</button>
+          </div>
+        )}
+      </section>
+    );
+  }
+  const { act, state } = game;
+  return (
+    <section className="panel admin-panel">
+      <h3>🛠 Modo admin</h3>
+      <p className="hint">Estás en la partida de pruebas: nivel {levelInfo(totalXp(state)).level}, {totalXp(state)} XP.</p>
+      <h4 className="sub-h">XP de prueba (sube nivel, atributos y monedas)</h4>
+      <div className="settings-row">
+        {[100, 500, 2000, 10000].map((n) => (
+          <button key={n} className="secondary" onClick={() => act((s) => ({ state: grantAdminXp(s, n, Date.now()), xp: n }))}>+{n} XP</button>
+        ))}
+      </div>
+      <h4 className="sub-h">Tutoriales</h4>
+      <div className="settings-row">
+        {Object.keys(TOURS).map((id) => <button key={id} className="ghost" onClick={() => startTour(id)}>Ver «{id}»</button>)}
+        <button className="ghost" onClick={() => act((s) => ({ ...s, tours: [] }))}>Olvidar tutoriales vistos</button>
+      </div>
+      <h4 className="sub-h">Salir</h4>
+      <div className="settings-row">
+        <ConfirmButton label="Vaciar partida de pruebas" confirmLabel="Sí, vaciar" onConfirm={game.reset} />
+        <button className="primary" onClick={() => setAdmin(false)}>Salir del modo admin</button>
+      </div>
+    </section>
+  );
+}
+
+function SettingsPanel({
   game, guide, setGuide, replayTutorial,
 }: { game: Game; guide: string; setGuide: (name: string) => void; replayTutorial: () => void }) {
   const [theme, setTheme] = useState<Theme>(loadTheme);
@@ -197,7 +261,7 @@ export function WeeklyChronicle({ game, guide, now, go }: { game: Game; guide: s
   const [hidden, setHidden] = useState(() => seenWeek() === w.weekKey);
   if (hidden || (w.xp === 0 && w.prevXp === 0)) return null;
   const challenge = BOSS_TEMPLATES.find((t) => t.id === w.challenge)!;
-  const canSummon = activeBosses(state, now).length < MAX_ACTIVE_BOSSES && !state.bosses.some((b) => b.name === challenge.name && b.deadline > now);
+  const canSummon = isUnlocked(state, 'arena') && activeBosses(state, now).length < MAX_ACTIVE_BOSSES && !state.bosses.some((b) => b.name === challenge.name && b.deadline > now);
   const fmt = (ts: number) => new Date(ts).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
   function close() {
     try {
@@ -230,7 +294,7 @@ export function WeeklyChronicle({ game, guide, now, go }: { game: Game; guide: s
         ))}
       </p>
       <p>
-        Tu punto débil fue <strong>{w.weakest.icon} {w.weakest.name}</strong>. Reto: derrota a <strong>{challenge.icon} {challenge.name}</strong> esta semana.
+        Tu punto débil fue <strong>{w.weakest.icon} {w.weakest.name}</strong>.{isUnlocked(state, 'arena') && <> Reto: derrota a <strong>{challenge.icon} {challenge.name}</strong> esta semana.</>}
       </p>
       <div className="settings-row">
         {canSummon && (

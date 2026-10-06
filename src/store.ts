@@ -8,9 +8,12 @@ import { sfx } from './sfx';
 import { confetti } from './confetti';
 import { bossStatus } from './bosses';
 import { kingdomBonus } from './economy';
-import { markSynced, reconcile, scheduleSave, useCloud, type RemoteSave } from './cloud';
+import { markLocalChange, markSynced, reconcile, scheduleSave, useCloud, type RemoteSave } from './cloud';
 
-const KEY = 'excelsior:v1';
+import { ADMIN } from './admin';
+
+// En modo admin se juega sobre una partida de pruebas aparte.
+const KEY = ADMIN ? 'excelsior:admin-sandbox' : 'excelsior:v1';
 
 function load(): GameState {
   try {
@@ -53,6 +56,7 @@ export function useGame() {
   const [state, setState] = useState<GameState>(load);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [levelUp, setLevelUp] = useState<number | null>(null);
+  const [levelUpFrom, setLevelUpFrom] = useState(1);
   const prevLevel = useRef(levelInfo(totalXp(state)).level);
   const prevAvatar = useRef(avatarInfo(state, Date.now()).index);
   const prevDefeated = useRef(defeatedIds(state));
@@ -67,9 +71,10 @@ export function useGame() {
   useEffect(() => save(state), [state]);
 
   // Nube: al entrar (o al abrir con sesión) se decide qué partida manda; después, cada cambio se sube.
-  const { userId } = useCloud();
+  const cloudUser = useCloud().userId;
+  const userId = ADMIN ? null : cloudUser; // la partida de pruebas nunca se sube
   const [conflict, setConflict] = useState<RemoteSave | null>(null);
-  const [cloudChecked, setCloudChecked] = useState(false);
+  const [cloudChecked, setCloudChecked] = useState(ADMIN);
   const reconciled = useRef<string | null>(null);
   useEffect(() => {
     if (!userId || reconciled.current === userId) return;
@@ -92,6 +97,7 @@ export function useGame() {
     prevAvatar.current = avatarInfo(next, Date.now()).index;
     prevDefeated.current = defeatedIds(next);
     prevKingdoms.current = completedKingdoms(next);
+    latest.current = next; // si no, la siguiente acción partiría de la partida anterior
     setState(next);
     markSynced();
   }
@@ -107,6 +113,7 @@ export function useGame() {
   useEffect(() => {
     const lvl = levelInfo(totalXp(state)).level;
     if (lvl > prevLevel.current) {
+      setLevelUpFrom(prevLevel.current);
       setLevelUp(lvl);
       sfx.levelUp();
       confetti({ big: true });
@@ -161,6 +168,7 @@ export function useGame() {
       const next = 'state' in r ? r.state : r;
       latest.current = next;
       setState(next);
+      markLocalChange();
       if ('state' in r) {
         if (r.xp > 0) {
           toast(`+${r.xp} XP`);
@@ -197,5 +205,5 @@ export function useGame() {
     setState(latest.current);
   }, []);
 
-  return { state, act, toast, toasts, levelUp, dismissLevelUp: () => setLevelUp(null), reset, conflict, resolveConflict, cloudChecked };
+  return { state, act, toast, toasts, levelUp, levelUpFrom, dismissLevelUp: () => setLevelUp(null), reset, conflict, resolveConflict, cloudChecked };
 }
