@@ -18,6 +18,8 @@ const seen = (sel) => page.waitForSelector(sel, { timeout: 3000 }).then(() => tr
 const check = (cond, msg) => { if (!cond) { console.error('FALLO:', msg); process.exitCode = 1; } else console.log('ok:', msg); };
 
 // 1. Crear cuenta / personaje
+check(await seen('text=Entrar como invitado') && await page.isVisible('#login-email'), 'la entrada pide email y ofrece invitado');
+await page.click('text=Entrar como invitado');
 await page.fill('#hero-name', 'Nicolas');
 await page.click('text=Crear personaje');
 await page.waitForSelector('text=¿Qué hago ahora?');
@@ -30,11 +32,20 @@ await page.click('.tour button:has-text("Siguiente")');
 check(await seen('.nav-item.on:has-text("Misiones")') && await seen('[data-tour="quest-add"].tour-target'), 'paso 3 lleva a Misiones y señala el formulario');
 await page.waitForTimeout(1200);
 await page.screenshot({ path: `${out}/00-tutorial.png` });
+await page.click('.tour button:has-text("Siguiente")');
+check(await seen('.tour-chips .pick.on:has-text("Leer")'), 'paso 4: elegir hábitos dentro del tutorial');
+await page.click('.tour-chips .pick:has-text("Meditar")');
+check(await seen('[data-tour="habits"] >> text=Meditar'), 'elegir un hábito en el tutorial lo crea');
+await page.click('.tour-chips .pick:has-text("Meditar")');
+check(!(await page.isVisible('[data-tour="habits"] >> text=Meditar')), 'y quitarlo lo borra');
 await page.click('.tour button:has-text("Saltar")');
 check(!(await page.$('.tour')) && !(await page.$('.tour-target')), 'saltar cierra el tutorial y quita el foco');
 await page.reload();
 await page.waitForSelector('.nav');
 check(!(await seen('.tour')), 'el tutorial no vuelve a salir al recargar');
+await page.click('.nav-item:has-text("Gremios")');
+check(await seen('text=Necesitas registrarte para unirte a un gremio'), 'invitado: los gremios piden registrarse');
+await page.click('.nav-item:has-text("Hoy")');
 await page.click('.nav-item:has-text("Hoy")');
 check(await seen('text=Crea tu primera misión.'), 'dashboard guía a crear la primera misión');
 await page.screenshot({ path: `${out}/01-empty.png`, fullPage: true });

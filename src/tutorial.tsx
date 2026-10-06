@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import type { Tab } from './screens';
 import { XP_RULES } from './game';
 import { sfx } from './sfx';
+import { STARTER_HABITS } from './screens';
 
 const KEY = 'excelsior:tutorial';
 export const DEFAULT_GUIDE = 'Hiperión';
@@ -37,6 +38,7 @@ interface Step {
   target?: string; // valor de data-tour del elemento a señalar
   title: string;
   text: (ctx: { name: string; guide: string }) => string;
+  pickHabits?: boolean; // muestra los hábitos sugeridos para elegir
 }
 
 export const STEPS: Step[] = [
@@ -62,8 +64,9 @@ export const STEPS: Step[] = [
   {
     tab: 'habitos',
     target: 'habits',
-    title: 'Hábitos',
-    text: () => `Lo que quieres hacer cada día. Márcalo y gana +${XP_RULES.habit} XP. Regla: nunca falles dos días seguidos.`,
+    title: 'Elige tus hábitos',
+    text: () => `Lo que quieres hacer cada día. Elige unos pocos; cada uno que marques te da +${XP_RULES.habit} XP. Regla: nunca falles dos días seguidos.`,
+    pickHabits: true,
   },
   {
     tab: 'deepwork',
@@ -98,8 +101,11 @@ function useTyped(text: string): string {
 }
 
 export function Tutorial({
-  step, name, guide, go, onStep, onClose,
-}: { step: number; name: string; guide: string; go: (t: Tab) => void; onStep: (i: number) => void; onClose: () => void }) {
+  step, name, guide, go, onStep, onClose, habits, onToggleHabit,
+}: {
+  step: number; name: string; guide: string; go: (t: Tab) => void; onStep: (i: number) => void; onClose: () => void;
+  habits: string[]; onToggleHabit: (name: string) => void;
+}) {
   const s = STEPS[step];
   const text = s.text({ name, guide });
   const typed = useTyped(text);
@@ -150,6 +156,13 @@ export function Tutorial({
             <span className="sr-only">{text}</span>
             <span aria-hidden="true">{typed}</span>
           </p>
+          {s.pickHabits && (
+            <div className="tour-chips" role="group" aria-label="Hábitos sugeridos">
+              {STARTER_HABITS.map((h) => (
+                <button key={h} className={habits.includes(h) ? 'pick on' : 'pick'} aria-pressed={habits.includes(h)} onClick={() => onToggleHabit(h)}>{h}</button>
+              ))}
+            </div>
+          )}
           <div className="tour-dots" aria-hidden="true">
             {STEPS.map((_, i) => <span key={i} className={i === step ? 'on' : i < step ? 'past' : ''} />)}
           </div>

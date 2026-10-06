@@ -1,5 +1,5 @@
 // Cuenta: entrar con email + código de 6 dígitos, estado del guardado y conflicto de partidas.
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import { cloudEnabled, sendCode, signOut, useCloud, verifyCode, type RemoteSave } from './cloud';
 import { levelInfo, totalXp } from './game';
 import type { GameState } from './types';
@@ -94,6 +94,70 @@ export function ConflictDialog({ local, remote, onChoose }: { local: GameState; 
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ---------- Entrada e invitado ----------
+
+const GUEST_KEY = 'excelsior:guest';
+export function loadGuest(): boolean {
+  try {
+    return localStorage.getItem(GUEST_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+export function saveGuest(on: boolean) {
+  try {
+    if (on) localStorage.setItem(GUEST_KEY, '1');
+    else localStorage.removeItem(GUEST_KEY);
+  } catch {
+    /* ignorado */
+  }
+}
+
+/** Primera pantalla: entrar con email es lo principal; invitado, la alternativa. */
+export function Welcome({ onGuest }: { onGuest: () => void }) {
+  return (
+    <main className="onboarding">
+      <div className="onboarding-card">
+        <p className="eyebrow">Life RPG</p>
+        <h1 className="brand">Excelsior</h1>
+        <p className="lede">Un RPG construido alrededor de tu vida real. Entra con tu email: te mandamos un código, sin contraseñas.</p>
+        <LoginForm />
+        <div className="or-divider" aria-hidden="true"><span>o</span></div>
+        <button className="ghost" onClick={onGuest}>Entrar como invitado</button>
+        <p className="fineprint">Como invitado tu partida se queda solo en este navegador y no tendrás funciones online (gremios, amigos…). Puedes crear tu cuenta más tarde sin perder nada.</p>
+      </div>
+    </main>
+  );
+}
+
+/** Envuelve una función online: los invitados ven por qué necesitan cuenta y pueden crearla ahí mismo. */
+export function RequireAccount({ feature, children }: { feature: string; children: ReactNode }) {
+  const cloud = useCloud();
+  if (!cloudEnabled || cloud.email) return <>{children}</>;
+  return (
+    <section className="panel require-account">
+      <h3>🔒 Necesitas registrarte para {feature}</h3>
+      <p className="hint">Es gratis y sin contraseña: escribe tu email y te mandamos un código. Tu partida actual se sube a tu cuenta.</p>
+      <LoginForm />
+    </section>
+  );
+}
+
+/** Pantalla de gremios: de momento solo el aviso de lo que viene. */
+export function Guilds() {
+  return (
+    <div className="screen">
+      <h1 className="screen-title">Gremios</h1>
+      <RequireAccount feature="unirte a un gremio">
+        <section className="panel">
+          <h3>Próximamente</h3>
+          <p className="muted">Forma un gremio con tus amigos, enfrentaos juntos a bosses y progresad en equipo. Nadie podrá cargar con más del 30 % del trabajo.</p>
+        </section>
+      </RequireAccount>
     </div>
   );
 }

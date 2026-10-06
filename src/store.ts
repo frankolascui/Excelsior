@@ -69,6 +69,7 @@ export function useGame() {
   // Nube: al entrar (o al abrir con sesión) se decide qué partida manda; después, cada cambio se sube.
   const { userId } = useCloud();
   const [conflict, setConflict] = useState<RemoteSave | null>(null);
+  const [cloudChecked, setCloudChecked] = useState(false);
   const reconciled = useRef<string | null>(null);
   useEffect(() => {
     if (!userId || reconciled.current === userId) return;
@@ -78,7 +79,8 @@ export function useGame() {
         if (r.kind === 'adopt') adopt(r.remote.state);
         if (r.kind === 'conflict') setConflict(r.remote);
       })
-      .catch(() => toast('No se pudo leer tu partida de la nube', 'info'));
+      .catch(() => toast('No se pudo leer tu partida de la nube', 'info'))
+      .finally(() => setCloudChecked(true));
   }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (userId && reconciled.current === userId && !conflict) scheduleSave(state);
@@ -195,5 +197,5 @@ export function useGame() {
     setState(latest.current);
   }, []);
 
-  return { state, act, toast, toasts, levelUp, dismissLevelUp: () => setLevelUp(null), reset, conflict, resolveConflict };
+  return { state, act, toast, toasts, levelUp, dismissLevelUp: () => setLevelUp(null), reset, conflict, resolveConflict, cloudChecked };
 }

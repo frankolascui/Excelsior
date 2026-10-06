@@ -5,7 +5,9 @@ import { avatarInfo } from './attributes';
 import { isMuted, setMuted, sfx } from './sfx';
 import { Arena, CoinBadge } from './arena';
 import { AmbientDock } from './ambient-ui';
-import { ConflictDialog } from './account';
+import { ConflictDialog, Guilds, loadGuest, saveGuest, Welcome } from './account';
+import { cloudEnabled, useCloud } from './cloud';
+import { addHabit, deleteHabit } from './game';
 import { coinBalance } from './economy';
 import { Character, Dashboard, DeepWork, Habits, Kingdoms, Onboarding, Quests, type Tab } from './screens';
 import type { Quest } from './types';
@@ -16,6 +18,7 @@ const TABS: { id: Tab; label: string; glyph: string }[] = [
   { id: 'misiones', label: 'Misiones', glyph: '✦' },
   { id: 'reinos', label: 'Reinos', glyph: '♖' },
   { id: 'arena', label: 'Arena', glyph: '⚔' },
+  { id: 'gremios', label: 'Gremios', glyph: '⛨' },
   { id: 'deepwork', label: 'Deep Work', glyph: '◷' },
   { id: 'habitos', label: 'Hábitos', glyph: '✓' },
   { id: 'personaje', label: 'Personaje', glyph: '♜' },
@@ -35,6 +38,8 @@ export default function App() {
   const [tutorial, setTutorial] = useState<TutorialPrefs>(loadTutorial);
   const [tourStep, setTourStep] = useState<number | null>(null);
   const profileId = state.profile?.createdAt ?? null;
+  const cloud = useCloud();
+  const [guest, setGuest] = useState(loadGuest);
 
   // Cada personaje nuevo ve el tutorial una vez.
   useEffect(() => {
@@ -79,7 +84,17 @@ export default function App() {
     go('deepwork');
   }
 
-  if (!state.profile) return <Onboarding game={game} />;
+  if (!state.profile) {
+    if (cloudEnabled && !cloud.ready) return null;
+    if (cloudEnabled && !cloud.email && !guest) return <Welcome onGuest={() => { saveGuest(true); setGuest(true); }} />;
+    return <Onboarding game={game} onBack={cloudEnabled ? () => { saveGuest(false); setGuest(false); } : undefined} />;
+  }
+
+  /** Paso del tutorial «Hábitos»: activar o quitar uno de los hábitos sugeridos. */
+  function toggleStarterHabit(name: string) {
+    const existing = state.habits.find((h) => h.name === name);
+    game.act((s) => (existing ? deleteHabit(s, existing.id) : addHabit(s, name, Date.now())));
+  }
 
   const level = levelInfo(totalXp(state)).level;
 
@@ -106,6 +121,7 @@ export default function App() {
         {tab === 'misiones' && <Quests game={game} focusQuest={focusQuest} />}
         {tab === 'reinos' && <Kingdoms game={game} focusQuest={focusQuest} />}
         {tab === 'arena' && <Arena game={game} />}
+        {tab === 'gremios' && <Guilds />}
         {tab === 'deepwork' && <DeepWork key={preselect ?? 'free'} game={game} preselect={preselect} clearPreselect={() => setPreselect(null)} />}
         {tab === 'habitos' && <Habits game={game} />}
         {tab === 'personaje' && (
@@ -114,7 +130,7 @@ export default function App() {
       </main>
 
       {tourStep !== null && (
-        <Tutorial step={tourStep} name={state.profile.name} guide={tutorial.guide} go={go} onStep={setTourStep} onClose={closeTour} />
+        <Tutorial step={tourStep} name={state.profile.name} guide={tutorial.guide} go={go} onStep={setTourStep} onClose={closeTour} habits={state.habits.map((h) => h.name)} onToggleHabit={toggleStarterHabit} />
       )}
 
       <AmbientDock />

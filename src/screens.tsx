@@ -9,8 +9,8 @@ import { kingdomBonus } from './economy';
 import { RealmMap } from './realm';
 import { AmbientPanel } from './ambient-ui';
 import { AvatarLadder, SettingsPanel, WeeklyChronicle } from './settings';
-import { AccountPanel, LoginForm } from './account';
-import { cloudEnabled, useCloud } from './cloud';
+import { AccountPanel } from './account';
+import { useCloud } from './cloud';
 import { sfx } from './sfx';
 import { ActivityHeatmap, XpChart } from './charts';
 import {
@@ -24,7 +24,7 @@ import {
 } from './ui';
 
 export type Game = ReturnType<typeof useGame>;
-export type Tab = 'hoy' | 'misiones' | 'reinos' | 'arena' | 'deepwork' | 'habitos' | 'personaje';
+export type Tab = 'hoy' | 'misiones' | 'reinos' | 'arena' | 'gremios' | 'deepwork' | 'habitos' | 'personaje';
 
 const CAP_QUEST = `Tope diario de XP por misiones alcanzado (${XP_RULES.dailyCap.quest}). La misión cuenta igual.`;
 const CAP_HABIT = `Tope diario de XP por hábitos alcanzado (${XP_RULES.dailyCap.habit}).`;
@@ -33,19 +33,25 @@ const questOpts = (q: Quest) => ({ party: q.type === 'main', sound: q.kingdomId 
 
 // ---------- Registro ----------
 
-const STARTER_HABITS = ['Leer', 'Entrenar', 'Meditar', 'Journaling', 'Llamar a alguien', 'Escribir', 'Caminar', 'Dormir bien'];
+export const STARTER_HABITS = ['Leer', 'Entrenar', 'Meditar', 'Journaling', 'Llamar a alguien', 'Escribir', 'Caminar', 'Dormir bien'];
+/** Hábitos con los que empieza todo personaje; el tutorial deja cambiarlos. */
+const DEFAULT_HABITS = ['Leer', 'Entrenar'];
 
-export function Onboarding({ game }: { game: Game }) {
+export function Onboarding({ game, onBack }: { game: Game; onBack?: () => void }) {
   const [name, setName] = useState('');
-  const [picked, setPicked] = useState<string[]>(['Leer', 'Entrenar']);
-  const [login, setLogin] = useState(false);
   const cloud = useCloud();
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    game.act((s) => createProfile(s, name, picked, Date.now()));
+    game.act((s) => createProfile(s, name, DEFAULT_HABITS, Date.now()));
   }
-  const toggle = (h: string) => setPicked((p) => (p.includes(h) ? p.filter((x) => x !== h) : [...p, h]));
+  if (cloud.email && !game.cloudChecked) {
+    return (
+      <main className="onboarding">
+        <div className="onboarding-card"><p className="lede">Cargando tu partida…</p></div>
+      </main>
+    );
+  }
   return (
     <main className="onboarding">
       <div className="onboarding-card">
@@ -57,23 +63,11 @@ export function Onboarding({ game }: { game: Game }) {
             <span>¿Cómo se llama tu personaje?</span>
             <input id="hero-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre" maxLength={30} autoFocus />
           </label>
-          <fieldset className="field">
-            <legend>Elige tus primeros hábitos (puedes cambiarlos luego)</legend>
-            <div className="chips">
-              {STARTER_HABITS.map((h) => (
-                <button type="button" key={h} className={picked.includes(h) ? 'pick on' : 'pick'} aria-pressed={picked.includes(h)} onClick={() => toggle(h)}>
-                  {h}
-                </button>
-              ))}
-            </div>
-          </fieldset>
           <button type="submit" className="primary big" disabled={!name.trim()}>Crear personaje</button>
         </form>
-        {cloudEnabled && !cloud.email && (login ? <LoginForm /> : (
-          <button type="button" className="link" onClick={() => setLogin(true)}>¿Ya juegas en otro dispositivo? Entra con tu email</button>
-        ))}
-        {cloud.email && <p className="muted small-text">Conectado como {cloud.email}. Si tenías partida en la nube, se cargará ahora.</p>}
-        <p className="fineprint">Tus datos se guardan en este navegador{cloudEnabled ? ' y, si entras con tu email, también en la nube' : ''}.</p>
+        {cloud.email && <p className="muted small-text">Conectado como {cloud.email}.</p>}
+        {!cloud.email && onBack && <button type="button" className="link" onClick={onBack}>← Entrar con email en vez de como invitado</button>}
+        <p className="fineprint">{cloud.email ? 'Tu partida se guarda en la nube.' : 'Tu partida se guarda solo en este navegador.'}</p>
       </div>
     </main>
   );
@@ -472,7 +466,8 @@ export function Habits({ game }: { game: Game }) {
   return (
     <div className="screen">
       <h1 className="screen-title">Hábitos</h1>
-      <section className="panel" data-tour="habits">
+      <div className="stack-gap" data-tour="habits">
+      <section className="panel">
         <form className="quick-add inline" onSubmit={submit}>
           <input id="new-habit" value={name} onChange={(e) => setName(e.target.value)} placeholder="+ Nuevo hábito diario (ej. Leer 10 páginas)" maxLength={60} aria-label="Nombre del nuevo hábito" />
           <CustomizeToggle open={open} onToggle={() => setOpen(!open)} custom={custom.xp !== undefined || custom.rewards !== undefined} />
@@ -490,6 +485,7 @@ export function Habits({ game }: { game: Game }) {
           </ul>
         )}
       </section>
+      </div>
     </div>
   );
 }

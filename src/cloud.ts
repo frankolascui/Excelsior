@@ -43,23 +43,28 @@ if (cloudEnabled) {
 
 // ---------- Login ----------
 
-const ERRORS: [RegExp, string][] = [
-  [/rate|too many|seconds/i, 'Has pedido demasiados códigos. Espera un minuto y vuelve a intentarlo.'],
-  [/expired|invalid|token/i, 'Código incorrecto o caducado. Pide uno nuevo.'],
-  [/email/i, 'Ese email no parece válido.'],
-];
-function friendly(msg: string): string {
-  return ERRORS.find(([re]) => re.test(msg))?.[1] ?? 'No se pudo conectar. Revisa tu conexión e inténtalo otra vez.';
+/** Traduce el error de Supabase y deja el original entre paréntesis para poder diagnosticarlo. */
+function friendly(err: { message: string; code?: string; status?: number }, step: 'send' | 'verify'): string {
+  const m = `${err.code ?? ''} ${err.message}`;
+  let text: string;
+  if (/rate|too many|seconds/i.test(m)) text = 'Has pedido demasiados códigos. Espera un poco y vuelve a intentarlo.';
+  else if (/sending|smtp|mail.*(send|deliver)/i.test(m)) text = 'El servidor no pudo enviar el correo. Revisa la configuración SMTP en Supabase.';
+  else if (/signup.*(disabled|not allowed)/i.test(m)) text = 'Los registros nuevos están desactivados en Supabase (Authentication → Sign In / Providers → Email).';
+  else if (step === 'verify' && /expired|invalid|token|otp/i.test(m)) text = 'Código incorrecto o caducado. Pide uno nuevo.';
+  else if (step === 'send' && /email_address_invalid|invalid.*email|email.*invalid|validate email/i.test(m)) text = 'Ese email no parece válido.';
+  else if (/fetch|network|load failed/i.test(m)) text = 'No se pudo conectar con el servidor. Revisa tu conexión.';
+  else text = 'Algo falló al conectar con el servidor.';
+  return `${text} (${err.message})`;
 }
 
 export async function sendCode(email: string): Promise<string | null> {
   const { error } = await sb().auth.signInWithOtp({ email: email.trim(), options: { shouldCreateUser: true } });
-  return error ? friendly(error.message) : null;
+  return error ? friendly(error, 'send') : null;
 }
 
 export async function verifyCode(email: string, code: string): Promise<string | null> {
   const { error } = await sb().auth.verifyOtp({ email: email.trim(), token: code.trim(), type: 'email' });
-  return error ? friendly(error.message) : null;
+  return error ? friendly(error, 'verify') : null;
 }
 
 export async function signOut() {
