@@ -2,7 +2,7 @@
 // entre ellos, cresta arriba, adornos a los lados y remate abajo) y cada avatar es más épico que el anterior:
 // más capas, mejor material y una silueta mayor, con pocas gemas grandes como punto focal.
 // Dentro va la inicial (o el icono del avatar); el día que haya foto de perfil, irá la foto.
-import { createContext, useContext, useId, type ReactNode } from 'react';
+import { createContext, useContext, useId, type CSSProperties, type ReactNode } from 'react';
 import './portrait.css';
 
 const C = 100; // centro del lienzo 200×200
@@ -128,12 +128,12 @@ function Rivet({ x, y, r, mat }: { x: number; y: number; r: number; mat: Mat }) 
 }
 
 /** Llama con núcleo claro; parpadea suave. */
-function Flame({ x, y, h, rot = 0, delay = 0 }: { x: number; y: number; h: number; rot?: number; delay?: number }) {
+function Flame({ x, y, h, rot = 0, delay = 0, strong }: { x: number; y: number; h: number; rot?: number; delay?: number; strong?: boolean }) {
   const url = useUrl();
   const shape = (k: number) => { const s = h * k; return `M0 ${n2(s * 0.22)} C ${n2(-s * 0.44)} 0, ${n2(-s * 0.2)} ${n2(-s * 0.55)}, 0 ${n2(-s)} C ${n2(s * 0.2)} ${n2(-s * 0.55)}, ${n2(s * 0.44)} 0, 0 ${n2(s * 0.22)} Z`; };
   return (
     <g transform={`translate(${n2(x)} ${n2(y)}) rotate(${rot})`}>
-      <g className="ring-flame" style={{ animationDelay: `${delay}s` }}>
+      <g className={strong ? 'fx-fire' : 'ring-flame'} style={{ animationDelay: `${delay}s` }}>
         <path d={shape(1)} fill={url('fire')} />
         <path d={shape(0.55)} fill="#fff4c4" opacity={0.9} />
       </g>
@@ -245,6 +245,47 @@ function gearPath(n: number, rIn: number, rBase: number, rTip: number) {
   return `M${pts.map(([x, y]) => `${n2(x)} ${n2(y)}`).join('L')}Z M${C - rIn} ${C} a${rIn} ${rIn} 0 1 0 ${rIn * 2} 0 a${rIn} ${rIn} 0 1 0 ${-rIn * 2} 0Z`;
 }
 
+/* ---------- Animación: brillos, destellos y partículas (solo transform y opacity) ---------- */
+
+/** Reflejo de luz que recorre el bisel de un anillo y se apaga; luego espera y vuelve. */
+function Sheen({ r, w, dur = 7, delay = 0, strength = 1, reverse }: { r: number; w: number; dur?: number; delay?: number; strength?: number; reverse?: boolean }) {
+  const gap = n2(2 * Math.PI * r);
+  const wide = 34, narrow = 14;
+  return (
+    <g className={`fx-sheen${reverse ? ' rev' : ''}`} style={{ animationDuration: `${dur}s`, animationDelay: `${delay}s` }}>
+      <circle cx={C} cy={C} r={r} fill="none" stroke="#fff" strokeOpacity={n2(0.28 * strength)} strokeWidth={n2(w * 0.85)} strokeLinecap="round" strokeDasharray={`${wide} ${gap}`} />
+      <circle cx={C} cy={C} r={r} fill="none" stroke="#fff" strokeOpacity={n2(0.85 * strength)} strokeWidth={n2(w * 0.32)} strokeLinecap="round" strokeDasharray={`${narrow} ${gap}`} strokeDashoffset={-(wide - narrow) / 2} />
+    </g>
+  );
+}
+
+/** Destello de cuatro puntas que aparece, gira y se apaga sobre una gema. */
+function Glint({ x, y, s, delay = 0, dur = 4.8 }: { x: number; y: number; s: number; delay?: number; dur?: number }) {
+  const k = s * 0.18;
+  return (
+    <path className="fx-glint" style={{ animationDelay: `${delay}s`, animationDuration: `${dur}s` }} fill="#fff"
+      d={`M${n2(x)} ${n2(y - s)}L${n2(x + k)} ${n2(y - k)}L${n2(x + s)} ${n2(y)}L${n2(x + k)} ${n2(y + k)}L${n2(x)} ${n2(y + s)}L${n2(x - k)} ${n2(y + k)}L${n2(x - s)} ${n2(y)}L${n2(x - k)} ${n2(y - k)}Z`} />
+  );
+}
+
+/** Aro de luz que late alrededor del bisel de una gema. */
+function Halo({ x, y, r, color }: { x: number; y: number; r: number; color: string }) {
+  return <circle className="fx-halo" cx={x} cy={y} r={r} fill="none" stroke={color} strokeWidth={2.2} />;
+}
+
+/** Ascua que sube y se apaga. */
+function Ember({ x, y, dx, delay }: { x: number; y: number; dx: number; delay: number }) {
+  return <circle className="fx-ember" style={{ animationDelay: `${delay}s`, ['--dx' as string]: `${dx}px` } as CSSProperties} cx={x} cy={y} r={2.3} fill="#ffd36a" />;
+}
+
+const SHIELD = 'M81 0 L119 0 L119 16 C119 28 109 35 100 41 C91 35 81 28 81 16 Z';
+const ICE_CREST = [[-15, 34, 12, -16], [15, 34, 12, 16], [0, 50, 15, 0]] as const;
+// [x, y, deriva lateral, retraso]
+const EMBERS6: [number, number, number, number][] = [
+  [93, 4, -5, 0], [104, -2, 4, -0.7], [99, 10, 2, -1.4], [110, 8, 6, -2.1], [88, 12, -7, -1.1],
+  [22, 96, -3, -0.4], [178, 96, 3, -1.8], [70, 170, -2, -2.5], [131, 172, 2, -0.9],
+];
+
 /* ---------- Retrato ---------- */
 
 export function AvatarPortrait({
@@ -253,31 +294,25 @@ export function AvatarPortrait({
   const id = useId().replace(/:/g, '');
   const g = (n: string) => `url(#${id}-${n})`;
   const t = Math.max(0, Math.min(9, tier));
-  const shadow = g('shadow');
-  const glow = g('glow');
 
   /* Detrás de la cara: aura, halo de rayos, alas y flechas */
   const back = (
     <>
       {t >= 8 && <circle className="frame-pulse" cx={C} cy={C} r={104} fill={g('aura')} />}
       {t === 9 && (
-        <g className="ring-spin-slow" opacity={0.8}>
+        <g className="fx-spin" style={{ animationDuration: '40s' }} opacity={0.8}>
           {around(16, (d, i) => (
             <polygon key={d} transform={at(80, d)} points={`-2.8,0 0,${i % 2 ? -14 : -25} 2.8,0`} fill={i % 2 ? '#fff3c4' : '#ffcf4a'} />
           ), 11.25)}
         </g>
       )}
-      {t === 9 && (
-        <g filter={shadow}>
-          {[1, -1].map((side) => (
-            <g key={side} transform={side === 1 ? 'translate(158 98) rotate(-6) scale(1.18)' : 'translate(42 98) scale(-1 1) rotate(-6) scale(1.18)'}>
-              <Wing />
-            </g>
-          ))}
+      {t === 9 && [1, -1].map((side) => (
+        <g key={side} transform={side === 1 ? 'translate(158 98) rotate(-6) scale(1.18)' : 'translate(42 98) scale(-1 1) rotate(-6) scale(1.18)'}>
+          <g className="fx-flap"><Wing /></g>
         </g>
-      )}
+      ))}
       {t === 5 && (
-        <g filter={shadow}>
+        <g filter={g('drop')}>
           {[1, -1].map((side) => (
             <g key={side} transform={side === 1 ? '' : 'translate(200 0) scale(-1 1)'}>
               <line x1={32} y1={168} x2={166} y2={34} stroke={MATS.wood[4]} strokeWidth={5.6} strokeLinecap="round" />
@@ -296,8 +331,12 @@ export function AvatarPortrait({
     </>
   );
 
-  /* El aro, una sola pieza con sombra */
+  /* El aro en tres capas: `under` (lo que se mueve bajo los anillos: canales, texturas, llamas),
+     `frame` (la pieza estática con sombra) y `over` (brillos, destellos y partículas encima).
+     Lo animado queda fuera del filtro de sombra para que el navegador no lo recalcule en cada fotograma. */
+  let under: ReactNode = null;
   let frame: ReactNode = null;
+  let over: ReactNode = null;
   switch (t) {
     case 0: // Aprendiz: aro de madera atado con cuerda y una clave de piedra
       frame = (
@@ -316,20 +355,22 @@ export function AvatarPortrait({
           <g transform={at(68.5, 0)}><Solid points="-9,-10 9,-10 6.5,9 -6.5,9" mat="stone" sw={1.4} /><polygon points="-6.5,-7.5 6.5,-7.5 5,-4.5 -5,-4.5" fill="#fff" opacity={0.35} /></g>
         </>
       );
+      over = <Sheen r={68.5} w={11} dur={9} strength={0.45} />;
       break;
     case 1: // Iniciado: doble aro de hierro con un candil y su llama
+      under = <Flame x={C} y={13} h={27} strong />;
       frame = (
         <>
           <Channel r={68.6} w={4} />
           <Ring r={64.6} w={4.6} mat="iron" />
           <Ring r={73.4} w={7} mat="iron" />
           {around(4, (d) => { const [x, y] = polar(73.4, d); return <Rivet key={d} x={x} y={y} r={2.6} mat="iron" />; }, 45)}
-          <Flame x={C} y={13} h={27} />
           <Solid d="M86 12 L114 12 C 112 20, 106 24, 100 24 C 94 24, 88 20, 86 12 Z" mat="iron" />
           <Solid points="96,23 104,23 106,29 94,29" mat="iron" sw={1.1} />
           <g transform={at(73.4, 180)}><Solid points="0,9 -6,0 0,-5 6,0" mat="iron" /></g>
         </>
       );
+      over = <Sheen r={73.4} w={7} dur={8} strength={0.8} />;
       break;
     case 2: // Disciplinado: plata con escudo de zafiro en la cresta
       frame = (
@@ -339,86 +380,157 @@ export function AvatarPortrait({
           <Ring r={75} w={7.4} mat="silver" />
           {[90, 270].map((d) => <g key={d} transform={at(80, d)}><Solid points="0,-9 6,0 0,5 -6,0" mat="silver" /></g>)}
           <g transform={at(79, 180)}><Solid points="0,10 -7,0 0,-5 7,0" mat="silver" /></g>
-          <Solid d="M81 0 L119 0 L119 16 C119 28 109 35 100 41 C91 35 81 28 81 16 Z" mat="silver" sw={1.5} />
+          <Solid d={SHIELD} mat="silver" sw={1.5} />
           <path d="M85 4 L115 4 L115 16 C115 26 107 32 100 36.5 C93 32 85 26 85 16 Z" fill="none" stroke="#ffffff" strokeWidth={1.1} opacity={0.75} />
           <Cabochon x={C} y={17} r={7.5} gem="sapphire" mat="silver" />
         </>
       );
+      over = (
+        <>
+          <Sheen r={75} w={7.4} dur={7} />
+          <Sheen r={64.6} w={4.6} dur={7} delay={-3.5} reverse />
+          <clipPath id={`${id}-shield`}><path d={SHIELD} /></clipPath>
+          <g clipPath={`url(#${id}-shield)`}><g transform="rotate(25 100 20)"><rect className="fx-sweep" x={60} y={-20} width={11} height={80} fill="#fff" opacity={0.6} /></g></g>
+          <Glint x={C - 2.5} y={14} s={7} delay={-1} />
+        </>
+      );
       break;
-    case 3: // Artífice: engranaje de bronce con una esmeralda engastada
+    case 3: // Artífice: engranaje de bronce que gira, con una esmeralda engastada
+      under = (
+        <>
+          <circle cx={C} cy={C} r={78} fill="none" stroke="#000" strokeWidth={14} opacity={0.45} filter={g('soft')} />
+          <g className="fx-spin" style={{ animationDuration: '36s' }}>
+            <path d={gearPath(16, 66, 76.5, 85)} fill={g('m-bronze')} stroke={MATS.bronze[4]} strokeWidth={1.4} strokeLinejoin="round" fillRule="evenodd" />
+            <Channel r={71} w={3.6} />
+            {around(8, (d) => { const [x, y] = polar(71, d); return <Rivet key={d} x={x} y={y} r={2} mat="bronze" />; }, 22.5)}
+          </g>
+          <circle cx={C} cy={C} r={76.5} fill="none" stroke={g('hi-top')} strokeWidth={1.4} />
+        </>
+      );
       frame = (
         <>
-          <path d={gearPath(16, 66, 76.5, 85)} fill={g('m-bronze')} stroke={MATS.bronze[4]} strokeWidth={1.4} strokeLinejoin="round" fillRule="evenodd" />
-          <circle cx={C} cy={C} r={76.5} fill="none" stroke={g('hi-top')} strokeWidth={1.4} />
-          <Channel r={71} w={3.6} />
-          {around(8, (d) => { const [x, y] = polar(71, d); return <Rivet key={d} x={x} y={y} r={2} mat="bronze" />; }, 22.5)}
           <Ring r={64.6} w={5} mat="bronze" />
           <g transform={at(72, 0)}><Solid points={ptsStr(Array.from({ length: 6 }, (_, i) => { const a = (i * 60 * Math.PI) / 180; return [12 * Math.sin(a), -12 * Math.cos(a)] as const; }))} mat="bronze" sw={1.4} /></g>
           <Cabochon x={C} y={28} r={7} gem="emerald" mat="bronze" />
         </>
       );
-      break;
-    case 4: // Arquitecto: brújula de platino con filigrana y una amatista al norte
-      frame = (
+      over = (
         <>
+          <Sheen r={64.6} w={5} dur={7} />
+          <Glint x={C - 2.5} y={25} s={7} delay={-2} />
+        </>
+      );
+      break;
+    case 4: // Arquitecto: brújula de platino (la rosa oscila como una aguja) con filigrana que gira
+      under = (
+        <g className="fx-swing">
           {[45, 135, 225, 315].map((d) => <CompassPoint key={d} deg={d} r={79} len={13} w={5} mat="platinum" />)}
           {[0, 90, 270].map((d) => <CompassPoint key={d} deg={d} r={79} len={d === 0 ? 30 : 20} w={d === 0 ? 9 : 7.5} mat="platinum" />)}
+        </g>
+      );
+      frame = (
+        <>
           <Channel r={72.2} w={10} fill="color-mix(in srgb, var(--c3) 22%, #0b0c14)" />
-          <Filigree r={72.2} a={3.4} k={8} stroke="#dfe6f0" />
+          <g className="fx-spin rev" style={{ animationDuration: '48s' }}><Filigree r={72.2} a={3.4} k={8} stroke="#dfe6f0" /></g>
           <Ring r={64.6} w={4.6} mat="platinum" />
           <Ring r={79.6} w={4.6} mat="platinum" />
           <Plaque mat="platinum" w={54} y={178} />
           <Cabochon x={C} y={28} r={6.5} gem="amethyst" mat="platinum" />
         </>
       );
+      over = (
+        <>
+          <Sheen r={79.6} w={4.6} dur={6.5} />
+          <Glint x={C - 2} y={25.5} s={7} delay={-2.5} />
+        </>
+      );
       break;
-    case 5: // Cazador de Bestias: oro antiguo con empuñadura de cuero, flechas cruzadas, colmillos y rubí
-      frame = (
+    case 5: // Cazador de Bestias: oro antiguo con cuero que corre, flechas cruzadas, colmillos que se mecen y rubí
+      under = (
         <>
           <Channel r={70.6} w={7} fill="#2a1608" />
-          <Braid r={70.6} n={40} len={7.6} w={3.6} tilt={62} mat="wood" />
-          <Ring r={64.6} w={4.6} mat="huntgold" />
-          <Ring r={77} w={5.6} mat="huntgold" />
-          {[-1, 1].map((s) => (
+          <g className="fx-spin" style={{ animationDuration: '30s' }}><Braid r={70.6} n={40} len={7.6} w={3.6} tilt={62} mat="wood" /></g>
+          {[-1, 1].map((s, i) => (
             <g key={s} transform={`translate(${C + s * 30} 175) scale(${s} 1)`}>
-              <path d="M0 -2 C 6 6, 7 16, 2 26 C 0 17, -3 8, -6 2 Z" fill={g('m-ivory')} stroke={MATS.ivory[4]} strokeWidth={1} strokeLinejoin="round" />
+              <g className="fx-dangle" style={{ animationDelay: `${-i * 1.3}s` }}>
+                <path d="M0 -2 C 6 6, 7 16, 2 26 C 0 17, -3 8, -6 2 Z" fill={g('m-ivory')} stroke={MATS.ivory[4]} strokeWidth={1} strokeLinejoin="round" />
+              </g>
             </g>
           ))}
+        </>
+      );
+      frame = (
+        <>
+          <Ring r={64.6} w={4.6} mat="huntgold" />
+          <Ring r={77} w={5.6} mat="huntgold" />
           <Plaque mat="huntgold" w={58} y={176} inset="#1c1006" />
           <Solid d="M84 30 L100 8 L116 30 L100 38 Z" mat="huntgold" sw={1.4} />
           <Cabochon x={C} y={25} r={7.5} gem="ruby" mat="huntgold" />
         </>
       );
+      over = (
+        <>
+          <Sheen r={77} w={5.6} dur={6} />
+          <Halo x={C} y={25} r={11} color={GEMS.ruby[1]} />
+          <Glint x={C - 2.5} y={22} s={8} delay={-1.5} />
+          <Glint x={166} y={34} s={6} delay={-3} dur={5} />
+          <Glint x={34} y={34} s={6} delay={-0.5} dur={5} />
+        </>
+      );
       break;
-    case 6: // Forjador: acero ennegrecido con canal de metal fundido, llamas y ópalo de fuego
+    case 6: // Forjador: acero ennegrecido con metal fundido que fluye, llamas vivas, ascuas y ópalo de fuego
+      under = (
+        <>
+          <ellipse cx={C} cy={12} rx={30} ry={26} fill={g('fireglow')} />
+          {[90, 270].map((d) => { const [x, y] = polar(84, d); return <ellipse key={d} cx={x} cy={y} rx={16} ry={12} fill={g('fireglow')} />; })}
+          {[-34, -17, 0, 17, 34].map((a, i) => (
+            <Flame key={a} x={C + a * 0.4} y={20} h={[26, 36, 50, 36, 26][i]} rot={a * 1.1} delay={-i * 0.23} strong />
+          ))}
+          {[90, 270].map((d, i) => { const [x, y] = polar(80, d); return <Flame key={d} x={x} y={y} h={24} rot={d} delay={-0.3 - i * 0.4} strong />; })}
+          <circle cx={C} cy={C} r={70.6} fill="none" stroke="#ff6a12" strokeWidth={13} opacity={0.3} />
+          <Channel r={70.6} w={7} fill="#ff6a12" className="fx-throb" />
+          <g className="fx-spin" style={{ animationDuration: '14s' }}>
+            <circle cx={C} cy={C} r={70.6} fill="none" stroke="#ffe28a" strokeWidth={4.2} strokeLinecap="round" strokeDasharray="14 22 5 30 22 26 8 34" />
+          </g>
+          <Channel r={70.6} w={1.6} fill="#fff4c4" />
+        </>
+      );
       frame = (
         <>
-          <g filter={glow}>
-            {[-34, -17, 0, 17, 34].map((a, i) => (
-              <Flame key={a} x={C + a * 0.4} y={20} h={[26, 36, 50, 36, 26][i]} rot={a * 1.1} delay={i * 0.17} />
-            ))}
-            {[90, 270].map((d, i) => { const [x, y] = polar(80, d); return <Flame key={d} x={x} y={y} h={24} rot={d} delay={0.3 + i * 0.2} />; })}
-          </g>
-          <Channel r={70.6} w={7} fill="#ff6a12" className="frame-pulse" filter={glow} />
-          <Channel r={70.6} w={2.2} fill="#ffe28a" />
           <Ring r={64.4} w={5} mat="forged" />
           <Ring r={77.4} w={7.4} mat="forged" />
-          {[35, 145, 215, 325].map((d) => (
-            <g key={d} transform={at(77.4, d)}><polyline points="-1,4 1.5,1 -1.2,-1.5 1,-4.5" fill="none" stroke="#ff9a2e" strokeWidth={1.4} strokeLinecap="round" /></g>
-          ))}
           <Plaque mat="forged" w={62} y={178} inset="#1a0b05" glow="#ff8a2a" />
           <Solid d="M87 18 L113 18 L118 30 L100 40 L82 30 Z" mat="forged" sw={1.4} />
           <Cabochon x={C} y={27} r={8} gem="fireopal" mat="forged" />
         </>
       );
+      over = (
+        <>
+          {[35, 145, 215, 325].map((d, i) => (
+            <g key={d} transform={at(77.4, d)}><polyline className="fx-throb" style={{ animationDelay: `${-i * 0.7}s` }} points="-1,4 1.5,1 -1.2,-1.5 1,-4.5" fill="none" stroke="#ffb347" strokeWidth={1.5} strokeLinecap="round" /></g>
+          ))}
+          <Sheen r={77.4} w={7.4} dur={6} strength={0.6} />
+          <Halo x={C} y={27} r={11.5} color="#ff9a26" />
+          <Glint x={C - 3} y={24} s={8} delay={-2} />
+          {EMBERS6.map(([x, y, dx, delay], i) => <Ember key={i} x={x} y={y} dx={dx} delay={delay} />)}
+        </>
+      );
       break;
-    case 7: // Fundador: oro real trenzado, laurel esmaltado y corona con rubí
+    case 7: // Fundador: oro real con trenza que corre, laurel que se mece y corona con rubí
+      under = (
+        <>
+          {[-1, 1].map((side) => (
+            <g key={side} className={`fx-sway${side === 1 ? '' : ' rev'}`}>
+              {around(11, (d, i) => (i > 0
+                ? <Leaf key={d} deg={side === 1 ? 180 - d / 2.6 : 180 + d / 2.6} r={i % 2 ? 86 : 89} side={side as 1 | -1} /> : null))}
+            </g>
+          ))}
+          <Channel r={71.4} w={8} fill="#2a1a03" />
+          <g className="fx-spin" style={{ animationDuration: '40s' }}><Braid r={71.4} n={60} len={10} w={4.6} tilt={56} mat="gold" /></g>
+        </>
+      );
       frame = (
         <>
-          {[-1, 1].map((side) => around(11, (d, i) => (i > 0
-            ? <Leaf key={`${side}${d}`} deg={side === 1 ? 180 - d / 2.6 : 180 + d / 2.6} r={i % 2 ? 86 : 89} side={side as 1 | -1} /> : null)))}
-          <Channel r={71.4} w={8} fill="#2a1a03" />
-          <Braid r={71.4} n={60} len={10} w={4.6} tilt={56} mat="gold" />
           <Ring r={64.6} w={5} mat="gold" />
           <Ring r={78.8} w={5.6} mat="gold" />
           <Plaque mat="gold" w={64} y={179} inset="#1a1203" />
@@ -429,30 +541,74 @@ export function AvatarPortrait({
           <Cabochon x={C} y={20} r={8} gem="ruby" mat="gold" />
         </>
       );
+      over = (
+        <>
+          <Sheen r={78.8} w={5.6} dur={6} />
+          <Sheen r={64.6} w={5} dur={6} delay={-3} reverse />
+          <Halo x={C} y={20} r={12} color={GEMS.ruby[1]} />
+          <Glint x={C - 3} y={17} s={8.5} delay={-1} />
+          {[[66, -2], [100, -10], [134, -2]].map(([x, y], i) => <Glint key={x} x={x - 1} y={y - 1} s={5} delay={-0.6 - i * 1.4} dur={4.2} />)}
+        </>
+      );
       break;
-    case 8: // Titán: acero de hielo, canal eléctrico, corona de cristales y rayos
+    case 8: // Titán: acero de hielo, canal eléctrico con arcos, rayos que restallan, cristales que titilan y chispas en órbita
+      under = (
+        <>
+          <circle cx={C} cy={C} r={71} fill="none" stroke="#2fb6ec" strokeWidth={13} opacity={0.3} />
+          <Channel r={71} w={6} fill="#2fb6ec" className="fx-throb" />
+          <g className="fx-spin" style={{ animationDuration: '5s' }}>
+            <circle className="fx-flicker" cx={C} cy={C} r={71} fill="none" stroke="#f2feff" strokeWidth={2.6} strokeLinecap="round" strokeDasharray="3 26 12 44 2 30 9 60" />
+          </g>
+          <g className="fx-spin rev" style={{ animationDuration: '8s' }}>
+            <circle className="fx-flicker" style={{ animationDelay: '-0.4s' }} cx={C} cy={C} r={71} fill="none" stroke="#9cecff" strokeWidth={1.8} strokeLinecap="round" strokeDasharray="8 40 4 70 14 50" />
+          </g>
+          <Channel r={71} w={1.2} fill="#eafcff" />
+        </>
+      );
       frame = (
         <>
-          <g filter={glow}>
-            {[90, 270].map((d) => { const [x, y] = polar(92, d); return <Bolt key={d} x={x} y={y} rot={d} s={1.45} />; })}
-          </g>
           {[[-34, 22, 10], [34, 22, 10], [-56, 16, 9], [56, 16, 9]].map(([d, h, w]) => { const [x, y] = polar(76, d); return <Shard key={d} x={x} y={y} h={h} w={w} rot={d} />; })}
-          {[[-15, 34, 12, -16], [15, 34, 12, 16], [0, 50, 15, 0]].map(([dx, h, w, rot]) => <Shard key={dx} x={C + dx} y={26} h={h} w={w} rot={rot} />)}
+          {ICE_CREST.map(([dx, h, w, rot]) => <Shard key={dx} x={C + dx} y={26} h={h} w={w} rot={rot} />)}
           {[[-13, 12], [0, 20], [13, 12]].map(([dx, h]) => <Shard key={dx} x={C + dx} y={182} h={h} w={9} rot={180} />)}
-          <Channel r={71} w={6} fill="#2fb6ec" className="frame-pulse" filter={glow} />
-          <Channel r={71} w={2} fill="#eafcff" />
           <Ring r={64.6} w={5} mat="ice" />
           <Ring r={78} w={7} mat="ice" />
           <Plaque mat="ice" w={62} y={178} inset="#081a2c" glow="#5fe0ff" />
           <Cabochon x={C} y={29} r={7.5} gem="topaz" mat="ice" />
         </>
       );
+      over = (
+        <>
+          {ICE_CREST.map(([dx, h, w, rot], i) => (
+            <g key={dx} transform={`translate(${C + dx} 26) rotate(${rot})`}>
+              <polygon className="fx-shimmer" style={{ animationDelay: `${-i * 0.9}s` }} points={`${n2(-w * 0.45)},0 ${n2(-w * 0.38)},${n2(-h * 0.6)} 0,${-h} 0,0`} fill="#fff" />
+            </g>
+          ))}
+          {[90, 270].map((d) => { const [x, y] = polar(92, d); return <ellipse key={`g${d}`} cx={x} cy={y} rx={20} ry={16} fill={g('boltglow')} />; })}
+          {[90, 270].map((d, i) => { const [x, y] = polar(92, d); return <g key={d} className="fx-bolt" style={{ animationDelay: `${-i * 1.1}s` }}><Bolt x={x} y={y} rot={d} s={1.45} /></g>; })}
+          <Sheen r={78} w={7} dur={5.5} />
+          <Halo x={C} y={29} r={11.5} color="#4fdcff" />
+          <Glint x={C - 2.5} y={26} s={8} delay={-2.2} />
+          <g className="fx-spin" style={{ animationDuration: '16s' }}>
+            {around(6, (d, i) => (
+              <g key={d} transform={at(93, d)}><polygon className="fx-twinkle" style={{ animationDelay: `${-i * 0.5}s` }} points="0,-3.4 2,0 0,3.4 -2,0" fill="#dff8ff" /></g>
+            ), 15)}
+          </g>
+        </>
+      );
       break;
-    case 9: // Excelsior: oro celestial con esmalte del tema, estrella de ocho puntas y diamante estelar
+    case 9: // Excelsior: oro celestial, alas que baten, estrella con destello giratorio, filigrana que fluye y estrellas en órbita
+      under = (
+        <>
+          <g transform="translate(100 16)"><g className="fx-spin" style={{ animationDuration: '14s', transformOrigin: '0px 0px' }}>
+            <path d="M0 -44 L4 -4 L44 0 L4 4 L0 44 L-4 4 L-44 0 L-4 -4 Z" fill="#fff6d6" opacity={0.55} />
+            <path d="M0 -30 L3 -3 L30 0 L3 3 L0 30 L-3 3 L-30 0 L-3 -3 Z" fill="#fff" opacity={0.6} transform="rotate(45)" />
+          </g></g>
+          <Channel r={71.6} w={9} fill={g('enamel')} />
+          <g className="fx-spin rev" style={{ animationDuration: '40s' }}><Filigree r={71.6} a={3} k={10} stroke="#ffe17c" width={1.3} /></g>
+        </>
+      );
       frame = (
         <>
-          <Channel r={71.6} w={9} fill={g('enamel')} />
-          <Filigree r={71.6} a={3} k={10} stroke="#ffe17c" width={1.3} />
           <Ring r={64.6} w={5} mat="gold" />
           <Ring r={80} w={6.4} mat="gold" />
           {[90, 270].map((d) => { const [x, y] = polar(80, d); return <Cabochon key={d} x={x} y={y} r={5.5} gem="theme" mat="gold" />; })}
@@ -460,6 +616,20 @@ export function AvatarPortrait({
           <polygon points={Star8({ x: C, y: 16, r: 31, inner: 10 })} fill={g('m-gold')} stroke={MATS.gold[4]} strokeWidth={1.5} strokeLinejoin="round" />
           <polygon points={Star8({ x: C, y: 16, r: 22, inner: 8 })} fill="none" stroke="#fffbe2" strokeWidth={1} opacity={0.7} strokeLinejoin="round" />
           <Cabochon x={C} y={16} r={9.5} gem="star" mat="gold" />
+        </>
+      );
+      over = (
+        <>
+          <Sheen r={80} w={6.4} dur={5} />
+          <Sheen r={64.6} w={5} dur={5} delay={-2.5} reverse />
+          <Halo x={C} y={16} r={14} color="#fff3c4" />
+          <Glint x={C - 3.5} y={12} s={10} delay={-0.8} dur={3.6} />
+          {[90, 270].map((d, i) => { const [x, y] = polar(80, d); return <Glint key={d} x={x - 1.5} y={y - 2} s={6} delay={-1.8 - i * 1.6} />; })}
+          <g className="fx-spin rev" style={{ animationDuration: '26s' }}>
+            {around(6, (d, i) => (
+              <g key={d} transform={at(95, d)}><path className="fx-twinkle" style={{ animationDelay: `${-i * 0.6}s` }} d="M0 -5 L1.2 -1.2 L5 0 L1.2 1.2 L0 5 L-1.2 1.2 L-5 0 L-1.2 -1.2 Z" fill="#fff6c8" /></g>
+            ), 30)}
+          </g>
         </>
       );
       break;
@@ -508,11 +678,19 @@ export function AvatarPortrait({
           </radialGradient>
           <clipPath id={`${id}-clip`}><circle cx={C} cy={C} r={60} /></clipPath>
           <filter id={`${id}-shadow`} x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="2.4" /><feOffset dy="2.5" result="o" />
+            <feFlood floodColor="#000" floodOpacity="0.75" /><feComposite in2="o" operator="in" />
+          </filter>
+          <filter id={`${id}-drop`} x="-20%" y="-20%" width="140%" height="140%">
             <feDropShadow dx="0" dy="2.5" stdDeviation="2.4" floodColor="#000" floodOpacity="0.75" />
           </filter>
-          <filter id={`${id}-glow`} x="-40%" y="-40%" width="180%" height="180%">
-            <feGaussianBlur stdDeviation="3" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-          </filter>
+          <filter id={`${id}-soft`} x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.4" /></filter>
+          <radialGradient id={`${id}-fireglow`}>
+            <stop offset="0%" stopColor="#ffb340" stopOpacity="0.7" /><stop offset="100%" stopColor="#ff5a12" stopOpacity="0" />
+          </radialGradient>
+          <radialGradient id={`${id}-boltglow`}>
+            <stop offset="0%" stopColor="#7fe6ff" stopOpacity="0.75" /><stop offset="100%" stopColor="#2fb6ec" stopOpacity="0" />
+          </radialGradient>
         </defs>
 
         {back}
@@ -523,7 +701,11 @@ export function AvatarPortrait({
           ? <image href={photo} x={40} y={40} width={120} height={120} clipPath={`url(#${id}-clip)`} preserveAspectRatio="xMidYMid slice" />
           : <text x={C} y={C} textAnchor="middle" dominantBaseline="central" className="portrait-label" fontSize={label.length > 1 ? 50 : 64}>{label}</text>}
 
-        <g filter={shadow}>{frame}</g>
+        {/* Sombra del aro: copia estática debajo, para que no oscurezca los canales animados */}
+        <g filter={g('shadow')} aria-hidden="true">{frame}</g>
+        {under}
+        {frame}
+        {over}
       </svg>
     </Ids.Provider>
   );

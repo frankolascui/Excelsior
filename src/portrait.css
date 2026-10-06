@@ -1,6 +1,95 @@
-/* Aros de avatar: solo movimiento sutil (resplandor que respira); las llamas usan .ring-flame de styles.css */
-.portrait .frame-pulse { transform-box: view-box; transform-origin: 100px 100px; animation: frame-pulse 3.2s ease-in-out infinite; }
-@keyframes frame-pulse { 50% { opacity: 0.6; } }
+/* Aros de avatar en movimiento. Solo se animan transform y opacity (baratos aunque haya una docena de retratos),
+   y nada animado vive dentro de un filtro. Con «reducir movimiento» todo queda quieto y los brillos se ocultan. */
+.portrait .fx-spin, .portrait .fx-sheen, .portrait .fx-swing, .portrait .frame-pulse { transform-box: view-box; transform-origin: 100px 100px; }
+.portrait .fx-glint, .portrait .fx-halo, .portrait .fx-bolt, .portrait .fx-twinkle, .portrait .fx-fire, .portrait .fx-ember { transform-box: fill-box; transform-origin: center; }
+
+/* Giro continuo (texturas de los canales, engranaje, halo, órbitas) */
+.portrait .fx-spin { animation: fx-rot 30s linear infinite; }
+.portrait .fx-spin.rev { animation-direction: reverse; }
+@keyframes fx-rot { to { transform: rotate(360deg); } }
+
+/* Reflejo que barre el bisel y se apaga */
+.portrait .fx-sheen { animation: fx-sheen 7s ease-in-out infinite; }
+.portrait .fx-sheen.rev { animation-name: fx-sheen-rev; }
+@keyframes fx-sheen {
+  0% { transform: rotate(-175deg); opacity: 0; }
+  8%, 36% { opacity: 1; }
+  46%, 100% { transform: rotate(25deg); opacity: 0; }
+}
+@keyframes fx-sheen-rev {
+  0% { transform: rotate(60deg); opacity: 0; }
+  8%, 36% { opacity: 1; }
+  46%, 100% { transform: rotate(-150deg); opacity: 0; }
+}
+
+/* Destello sobre las gemas */
+.portrait .fx-glint { animation: fx-glint 4.8s ease-in-out infinite; }
+@keyframes fx-glint {
+  0%, 68% { transform: scale(0) rotate(0deg); opacity: 0; }
+  80% { transform: scale(1) rotate(45deg); opacity: 1; }
+  92%, 100% { transform: scale(0) rotate(90deg); opacity: 0; }
+}
+.portrait .fx-halo { animation: fx-halo 2.8s ease-out infinite; }
+@keyframes fx-halo {
+  0% { transform: scale(0.9); opacity: 0.75; }
+  70%, 100% { transform: scale(1.35); opacity: 0; }
+}
+
+/* Resplandor que respira (canales fundidos y eléctricos, grietas) */
+.portrait .fx-throb { animation: fx-throb 2.4s ease-in-out infinite; }
+@keyframes fx-throb { 50% { opacity: 0.55; } }
+.portrait .frame-pulse { animation: fx-throb 3.2s ease-in-out infinite; }
+
+/* Llamas del Forjador: más vivas que la llama base */
+.portrait .fx-fire { transform-origin: 50% 100%; animation: fx-fire 0.7s ease-in-out infinite alternate; }
+@keyframes fx-fire {
+  0% { transform: scale(1.06, 0.78) rotate(-4deg); opacity: 0.85; }
+  50% { transform: scale(0.94, 1.08) rotate(2deg); opacity: 1; }
+  100% { transform: scale(1, 1.2) rotate(4deg); opacity: 0.95; }
+}
+.portrait .fx-ember { animation: fx-ember 2.8s ease-out infinite; }
+@keyframes fx-ember {
+  0% { transform: translate(0, 0) scale(1); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translate(var(--dx, 0), -26px) scale(0.3); opacity: 0; }
+}
+
+/* Electricidad del Titán */
+.portrait .fx-flicker { animation: fx-flicker 1.3s steps(1) infinite; }
+@keyframes fx-flicker { 0% { opacity: 1; } 20% { opacity: 0.3; } 32% { opacity: 1; } 58% { opacity: 0.6; } 64% { opacity: 1; } 86% { opacity: 0.15; } }
+.portrait .fx-bolt { animation: fx-bolt 3.4s ease-out infinite; }
+@keyframes fx-bolt {
+  0%, 60% { transform: scale(1); opacity: 0.9; }
+  63% { opacity: 0.2; }
+  66% { transform: scale(1.18); opacity: 1; }
+  70% { opacity: 0.35; }
+  74% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 0.9; }
+}
+.portrait .fx-shimmer { animation: fx-shimmer 3.2s ease-in-out infinite; opacity: 0; }
+@keyframes fx-shimmer { 0%, 55%, 100% { opacity: 0; } 72% { opacity: 0.85; } }
+.portrait .fx-twinkle { animation: fx-twinkle 2.2s ease-in-out infinite; }
+@keyframes fx-twinkle { 50% { transform: scale(0.45); opacity: 0.35; } }
+
+/* Movimientos suaves: brújula, laurel, colmillos y alas */
+.portrait .fx-swing { animation: fx-swing 7s ease-in-out infinite; }
+@keyframes fx-swing { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+.portrait .fx-sway { transform-box: view-box; transform-origin: 100px 182px; animation: fx-sway 5s ease-in-out infinite; }
+.portrait .fx-sway.rev { animation-delay: -2.5s; }
+@keyframes fx-sway { 0%, 100% { transform: rotate(-1.6deg); } 50% { transform: rotate(1.6deg); } }
+.portrait .fx-dangle { transform-box: view-box; transform-origin: 0 0; animation: fx-dangle 3.6s ease-in-out infinite; }
+@keyframes fx-dangle { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
+.portrait .fx-flap { transform-box: view-box; transform-origin: 0 0; animation: fx-flap 3.4s ease-in-out infinite; }
+@keyframes fx-flap { 0%, 100% { transform: rotate(2deg) scale(1); } 45% { transform: rotate(-9deg) scale(1.03); } }
+
+/* Barrido de luz sobre el escudo */
+.portrait .fx-sweep { animation: fx-sweep 5.5s ease-in-out infinite; }
+@keyframes fx-sweep { 0% { transform: translateX(0); } 35%, 100% { transform: translateX(62px); } }
+
+/* Retratos bloqueados (en gris): quietos, que el filtro de gris no se recalcule a cada fotograma */
+.portrait.dim * { animation-play-state: paused !important; }
+
 @media (prefers-reduced-motion: reduce) {
-  .portrait .frame-pulse { animation: none; }
+  .portrait [class*='fx-'], .portrait .frame-pulse { animation: none !important; }
+  .portrait .fx-sheen, .portrait .fx-glint, .portrait .fx-halo, .portrait .fx-ember, .portrait .fx-shimmer, .portrait .fx-sweep { display: none; }
 }
