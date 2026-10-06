@@ -53,5 +53,5 @@ node e2e/flow.mjs out  # prueba de extremo a extremo con Playwright (requiere bu
 ## Futuro (no implementado)
 - Perfil personalizable (foto, biografía) cuando haya red social.
 
-## Publicar en GitHub Pages
-Cada push a `main` pasa los tests y publica `dist/` (`.github/workflows/deploy.yml`). Requisito una sola vez: Settings → Pages → Source: «GitHub Actions».
+## Publicar
+La web se publica en **Netlify** desde este repo (build `npm run build`, carpeta `dist`). GitHub Actions (`.github/workflows/ci.yml`) solo pasa tests y build en cada push.
