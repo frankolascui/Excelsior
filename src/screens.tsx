@@ -8,20 +8,23 @@ import { CityScene } from './city';
 import { kingdomBonus } from './economy';
 import { RealmMap } from './realm';
 import { AmbientPanel } from './ambient-ui';
-import { AvatarLadder, WeeklyChronicle } from './settings';
+import { WeeklyChronicle } from './settings';
+import { HeroPath } from './heropath';
 import { useCloud } from './cloud';
 import { sfx } from './sfx';
 import { ActivityHeatmap, XpChart } from './charts';
 import {
   addHabit, addQuest, cancelTimer, CUSTOM_LIMITS, updateHabit, updateQuest, completeQuest, createProfile, dayKey, deepWorkMinutesOnDay,
-  deleteHabit, deleteQuest, focusPercent, habitStreak, isHabitDone, levelInfo, pendingQuests, setPhase, timerTotals,
+  deleteHabit, deleteQuest, focusPercent, habitStreak, isHabitDone, levelInfo, pendingQuests, setQuestDeadline, setPhase, timerTotals,
   startTimer, stopTimer, suggest, toggleHabit, totalXp, undoQuest, xpOnDay, XP_RULES,
 } from './game';
 import {
   AttributeList, AvatarCard, ConfirmButton, formatClock, formatMinutes, HabitItem, LevelBar, QuestItem,
   QuickAddQuest, RewardTags, useNow,
 } from './ui';
-import { HeroJournal, TimedGoals } from './ritual';
+import { HeroJournal, ReviewBanner, TimedGoals } from './ritual';
+import { QuestCalendar } from './calendar';
+import { AvatarPortrait, initialOf } from './portrait';
 
 export type Game = ReturnType<typeof useGame>;
 export type Tab = 'hoy' | 'misiones' | 'reinos' | 'arena' | 'gremios' | 'deepwork' | 'habitos' | 'personaje' | 'ajustes';
@@ -79,7 +82,7 @@ export function Dashboard({
   const { state, act } = game;
   const now = useNow(30_000);
   const today = dayKey(now);
-  const pending = pendingQuests(state);
+  const pending = pendingQuests(state, now);
   const doneToday = state.quests.filter((q) => q.completedAt && dayKey(q.completedAt) === today);
   const habitsDone = state.habits.filter((h) => isHabitDone(state, h.id, today)).length;
   const s = suggest(state, now);
@@ -87,6 +90,7 @@ export function Dashboard({
   return (
     <div className="screen">
       <WeeklyChronicle game={game} guide={guide} now={now} go={go} />
+      <ReviewBanner state={state} now={now} guide={guide} />
       <section className="now" aria-labelledby="now-h" data-tour="now">
         <p className="eyebrow" id="now-h">¿Qué hago ahora?</p>
         {s.kind === 'timer' && (
@@ -145,7 +149,7 @@ export function Dashboard({
           ) : (
             <ul className="list">
               {pending.slice(0, 5).map((q) => (
-                <QuestItem key={q.id} quest={q} kingdom={kingdomName(state, q.kingdomId)} onComplete={() => act((st) => completeQuest(st, q.id, Date.now()), CAP_QUEST, questOpts(q))} onStart={() => focusQuest(q)} />
+                <QuestItem key={q.id} quest={q} kingdom={kingdomName(state, q.kingdomId)} onComplete={() => act((st) => completeQuest(st, q.id, Date.now()), CAP_QUEST, questOpts(q))} onStart={() => focusQuest(q)} onDeadline={(d) => act((st) => setQuestDeadline(st, q.id, d))} />
               ))}
             </ul>
           )}
@@ -201,13 +205,48 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
 
 // ---------- Misiones ----------
 
+const VIEW_KEY = 'excelsior:quests-view';
+
 export function Quests({ game, focusQuest }: { game: Game; focusQuest: (q: Quest) => void }) {
   const { state, act } = game;
-  const pending = pendingQuests(state);
+  const now = useNow(60_000);
+  const pending = pendingQuests(state, now);
   const done = state.quests.filter((q) => q.completedAt).sort((a, b) => b.completedAt! - a.completedAt!).slice(0, 15);
+  const [view, setView] = useState<'list' | 'calendar'>(() => {
+    try {
+      return localStorage.getItem(VIEW_KEY) === 'calendar' ? 'calendar' : 'list';
+    } catch {
+      return 'list';
+    }
+  });
+  function pickView(v: 'list' | 'calendar') {
+    setView(v);
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      /* ignorado */
+    }
+  }
+  const toggle = (
+    <div className="segmented view-toggle" role="radiogroup" aria-label="Vista de misiones">
+      {(['list', 'calendar'] as const).map((v) => (
+        <button key={v} type="button" role="radio" aria-checked={view === v} className={view === v ? 'seg on' : 'seg'} onClick={() => pickView(v)}>
+          {v === 'list' ? '☰ Lista' : '📅 Calendario'}
+        </button>
+      ))}
+    </div>
+  );
+  if (view === 'calendar') {
+    return (
+      <div className="screen">
+        <div className="title-row"><h1 className="screen-title">Misiones</h1>{toggle}</div>
+        <QuestCalendar game={game} now={now} focusQuest={focusQuest} capNote={CAP_QUEST} questOpts={questOpts} />
+      </div>
+    );
+  }
   return (
     <div className="screen">
-      <h1 className="screen-title">Misiones</h1>
+      <div className="title-row"><h1 className="screen-title">Misiones</h1>{toggle}</div>
       <section className="panel" data-tour="quest-add">
         <QuickAddQuest autoFocus onAdd={(t, ty, c) => act((st) => addQuest(st, t, ty, Date.now(), c))} />
         <p className="hint">Principal = lo importante. Diaria = para hoy. Secundaria = si sobra tiempo.</p>
@@ -224,6 +263,7 @@ export function Quests({ game, focusQuest }: { game: Game; focusQuest: (q: Quest
                 onComplete={() => act((st) => completeQuest(st, q.id, Date.now()), CAP_QUEST, questOpts(q))}
                 onStart={() => focusQuest(q)}
                 onEdit={(t, v) => act((st) => updateQuest(st, q.id, { title: t, ...v }))}
+                onDeadline={(d) => act((st) => setQuestDeadline(st, q.id, d))}
                 onDelete={() => act((st) => deleteQuest(st, q.id))}
               />
             ))}
@@ -502,6 +542,7 @@ export function Character({ game }: { game: Game }) {
   const now = useNow(60_000);
   const xp = totalXp(state);
   const info = levelInfo(xp);
+  const avatar = avatarInfo(state, now);
   const dwTotal = state.sessions.reduce((n, x) => n + x.minutes, 0);
   const questsDone = state.quests.filter((q) => q.completedAt).length;
   const bestStreak = state.habits.reduce((m, h) => Math.max(m, habitStreak(state, h.id, now)), 0);
@@ -513,10 +554,13 @@ export function Character({ game }: { game: Game }) {
     <div className="screen">
       <h1 className="screen-title">Personaje</h1>
       <section className="panel hero-card">
-        <div className="emblem" aria-hidden="true"><span className="mono">{info.level}</span></div>
+        <div className="hero-portrait">
+          <AvatarPortrait tier={avatar.index} label={initialOf(state.profile?.name)} size={132} title={`Aro de ${avatar.current.name}`} />
+          <span className="hero-level mono" aria-label={`Nivel ${info.level}`}>{info.level}</span>
+        </div>
         <div className="stack tight">
           <h2 className="hero-name">{state.profile?.name}</h2>
-          <p className="hero-title">Nivel global {info.level}</p>
+          <p className="hero-title">{avatar.current.icon} {avatar.current.name} · Nivel global {info.level}</p>
           <p className="muted">{xp} XP global en total</p>
         </div>
         <LevelBar state={state} compact />
@@ -524,7 +568,7 @@ export function Character({ game }: { game: Game }) {
 
       <AvatarCard state={state} now={now} showRequirements />
 
-      <AvatarLadder game={game} now={now} />
+      <HeroPath state={state} now={now} />
 
       <TimedGoals game={game} />
 

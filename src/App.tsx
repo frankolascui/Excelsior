@@ -14,7 +14,7 @@ import type { Quest } from './types';
 import { loadTutorial, saveTutorial, Tutorial, TOURS, type TutorialPrefs } from './tutorial';
 import { isUnlocked, unlockedBetween, unlockLevel, UNLOCKS } from './unlocks';
 import { ADMIN, setAdmin } from './admin';
-import { onRitualRequest, openRitual, RitualDialog } from './ritual';
+import { onReviewRequest, onRitualRequest, openRitual, ReviewDialog, RitualDialog } from './ritual';
 
 const TABS: { id: Tab; label: string; glyph: string }[] = [
   { id: 'hoy', label: 'Hoy', glyph: '◆' },
@@ -47,6 +47,8 @@ export default function App() {
   const level = levelInfo(totalXp(state)).level;
   const introSeen = hasSeenTour(state, 'intro');
   const [ritual, setRitual] = useState(false);
+  const [review, setReview] = useState(false);
+  useEffect(() => onReviewRequest(() => setReview(true)), []);
   const avatar = avatarInfo(state, Date.now());
 
   // El ritual se abre desde la tarjeta de avatar, el camino del héroe o la subida de nivel.
@@ -205,6 +207,7 @@ export default function App() {
       </div>
 
       {ritual && !tour && <RitualDialog game={game} guide={tutorial.guide} onClose={() => setRitual(false)} />}
+      {review && !tour && !ritual && <ReviewDialog game={game} guide={tutorial.guide} onClose={() => setReview(false)} />}
 
       {game.conflict && <ConflictDialog local={state} remote={game.conflict} onChoose={game.resolveConflict} />}
 

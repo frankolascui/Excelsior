@@ -24,6 +24,7 @@ export interface Quest {
   focus?: AttributeId; // (v4) atributo elegido a mano; sin él se deduce del título
   xp?: number; // XP a medida; sin él, el del tipo
   rewards?: AttributeRewards; // atributos a medida (varios); sin él, se deducen
+  deadline?: string; // fecha límite (YYYY-MM-DD local)
 }
 
 export interface Habit {
@@ -158,6 +159,15 @@ export interface GameState {
   ascended?: string[];
   /** Respuestas que diste a Hiperión en cada ritual de ascensión. */
   rituals?: Ritual[];
+  /** Revisiones de Hiperión de los objetivos con fecha (días 30, 60, 90…). */
+  reviews?: GoalReview[];
+}
+
+export interface GoalReview {
+  batch: number; // createdAt de los objetivos revisados (los que se juraron juntos)
+  day: number; // día de la revisión desde que se juraron
+  at: number;
+  note: string;
 }
 
 export interface RitualAnswer {

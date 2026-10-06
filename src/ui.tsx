@@ -3,10 +3,11 @@ import { useEffect, useState, type FormEvent } from 'react';
 import type { AttributeRewards, GameState, Habit, Quest, QuestType } from './types';
 import { ATTRIBUTES, attributeHistory, attributeLevel, attributeXp, avatarInfo, formatAttrXp, habitRewards, questRewards } from './attributes';
 import {
-  CUSTOM_LIMITS, dayKey, habitStreak, habitXp, isHabitDone, levelInfo, QUEST_LABEL, questAttributeRewards, questXp, shiftDay, totalXp, XP_RULES,
+  daysUntil, CUSTOM_LIMITS, dayKey, habitStreak, habitXp, isHabitDone, levelInfo, QUEST_LABEL, questAttributeRewards, questXp, shiftDay, totalXp, XP_RULES,
 } from './game';
 import { CustomizeToggle, InlineEdit, RewardEditor, sameRewards, type CustomValue } from './customize';
 import { RitualCTA } from './ritual';
+import { AvatarPortrait, initialOf } from './portrait';
 
 export function useNow(intervalMs = 1000): number {
   const [now, setNow] = useState(() => Date.now());
@@ -61,8 +62,24 @@ export function TypeChip({ type }: { type: QuestType }) {
   return <span className={`chip chip-${type}`}>{QUEST_LABEL[type]}</span>;
 }
 
+/** Fecha corta: «12 oct». */
+export function shortDate(day: string): string {
+  const [y, m, d] = day.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+}
+
+/** «hoy», «mañana», «en 3 días», «vencida hace 2 días» o la fecha si queda lejos. */
+export function deadlineLabel(day: string, now: number): { text: string; tone: 'late' | 'soon' | 'later' } {
+  const d = daysUntil(day, now)!;
+  if (d < 0) return { text: `vencida hace ${-d} ${d === -1 ? 'día' : 'días'}`, tone: 'late' };
+  if (d === 0) return { text: 'vence hoy', tone: 'soon' };
+  if (d === 1) return { text: 'vence mañana', tone: 'soon' };
+  if (d <= 7) return { text: `vence en ${d} días`, tone: d <= 2 ? 'soon' : 'later' };
+  return { text: `vence el ${shortDate(day)}`, tone: 'later' };
+}
+
 export function QuestItem({
-  quest, kingdom, onComplete, onStart, onDelete, onUndo, onEdit,
+  quest, kingdom, onComplete, onStart, onDelete, onUndo, onEdit, onDeadline,
 }: {
   quest: Quest;
   kingdom?: string;
@@ -71,9 +88,12 @@ export function QuestItem({
   onDelete?: () => void;
   onUndo?: () => void;
   onEdit?: (title: string, v: CustomValue) => void;
+  onDeadline?: (day: string | null) => void;
 }) {
   const done = !!quest.completedAt;
   const [editing, setEditing] = useState(false);
+  const [dating, setDating] = useState(false);
+  const due = quest.deadline && !done ? deadlineLabel(quest.deadline, Date.now()) : null;
   if (editing && onEdit) {
     const initial: CustomValue = { xp: quest.xp, rewards: quest.rewards ?? (quest.focus ? questRewards(quest.type, quest.title, quest.focus) : undefined) };
     return (
@@ -97,16 +117,29 @@ export function QuestItem({
         <span className="item-title">{quest.title}</span>
         <span className="item-meta">
           <TypeChip type={quest.type} />
+          {due && (onDeadline
+            ? <button type="button" className={`due due-${due.tone}`} onClick={() => setDating(!dating)} title="Cambiar la fecha límite">📅 {due.text}</button>
+            : <span className={`due due-${due.tone}`}>📅 {due.text}</span>)}
           {kingdom && <span className="kingdom-tag">🏰 {kingdom}</span>}
           <span className="mono xp-tag">+{questXp(quest)} XP</span>
           <RewardTags rewards={questAttributeRewards(quest)} />
         </span>
+        {dating && onDeadline && (
+          <span className="due-edit">
+            <input type="date" value={quest.deadline ?? ''} autoFocus aria-label={`Fecha límite de ${quest.title}`}
+              onChange={(e) => { onDeadline(e.target.value || null); if (e.target.value) setDating(false); }} />
+            {quest.deadline && <button type="button" className="link" onClick={() => { onDeadline(null); setDating(false); }}>Quitar fecha</button>}
+          </span>
+        )}
       </div>
       <div className="item-actions">
         {onStart && !done && (
           <button className="ghost small" onClick={onStart} title="Hacer Deep Work en esta misión">▶ Foco</button>
         )}
         {onUndo && done && <button className="ghost small" onClick={onUndo}>Deshacer</button>}
+        {onDeadline && !done && !quest.deadline && (
+          <button className="icon-btn" onClick={() => setDating(!dating)} aria-label={`Poner fecha límite a ${quest.title}`} title="Poner fecha límite">📅</button>
+        )}
         {onEdit && !done && (
           <button className="icon-btn edit-btn" onClick={() => setEditing(true)} aria-label={`Editar ${quest.title}`} title="Editar XP y atributos">✎</button>
         )}
@@ -121,9 +154,10 @@ export function QuestItem({
 const TYPES: QuestType[] = ['daily', 'main', 'side'];
 
 export function QuickAddQuest({
-  onAdd, autoFocus = false,
-}: { onAdd: (title: string, type: QuestType, custom: CustomValue) => void; autoFocus?: boolean }) {
+  onAdd, autoFocus = false, fixedDeadline,
+}: { onAdd: (title: string, type: QuestType, custom: CustomValue & { deadline?: string }) => void; autoFocus?: boolean; fixedDeadline?: string }) {
   const [title, setTitle] = useState('');
+  const [deadline, setDeadline] = useState('');
   const [type, setType] = useState<QuestType>('daily');
   const [custom, setCustom] = useState<CustomValue>({});
   const [open, setOpen] = useState(false);
@@ -132,8 +166,9 @@ export function QuickAddQuest({
     e.preventDefault();
     if (!title.trim()) return;
     const rewards = custom.rewards && !sameRewards(custom.rewards, questRewards(type, title)) ? custom.rewards : undefined;
-    onAdd(title, type, { xp: custom.xp, rewards });
+    onAdd(title, type, { xp: custom.xp, rewards, deadline: fixedDeadline ?? (deadline || undefined) });
     setTitle('');
+    setDeadline('');
     setCustom({});
     setOpen(false);
   }
@@ -163,6 +198,12 @@ export function QuickAddQuest({
             </button>
           ))}
         </div>
+        {!fixedDeadline && (
+          <label className="deadline-field" title="Fecha límite (opcional)">
+            <span aria-hidden="true">📅</span>
+            <input id="new-quest-deadline" type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} aria-label="Fecha límite (opcional)" />
+          </label>
+        )}
         <CustomizeToggle open={open} onToggle={() => setOpen(!open)} custom={isCustom} />
         <button type="submit" className="primary" disabled={!title.trim()}>Crear</button>
       </div>
@@ -264,7 +305,7 @@ export function AvatarCard({ state, now, showRequirements = false }: { state: Ga
   const a = avatarInfo(state, now);
   return (
     <section className={a.ready ? 'panel avatar-card ritual-ready' : 'panel avatar-card'} aria-labelledby="avatar-h" data-tour="avatar">
-      <div className="avatar-sigil" aria-hidden="true"><span className="mono">{a.index + 1}</span></div>
+      <AvatarPortrait tier={a.index} label={initialOf(state.profile?.name)} size={92} title={`Aro de ${a.current.name}`} />
       <div className="avatar-body">
         <p className="eyebrow">Avatar actual</p>
         <h3 id="avatar-h" className="avatar-name">{a.current.name}</h3>

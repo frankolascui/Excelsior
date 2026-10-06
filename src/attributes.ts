@@ -1,6 +1,6 @@
 // Atributos y avatar. Recompensas hardcodeadas (sin editor todavía); el XP, el nivel
 // y el historial de cada atributo se derivan de las transacciones de XP.
-import type { AttributeId, AttributeRewards, GameState, QuestType, RitualAnswer } from './types';
+import type { AttributeId, AttributeRewards, GameState, Goal, QuestType, RitualAnswer } from './types';
 import { dayKey, habitStreak, totalXp, uid, xpForLevel } from './game';
 import { defeatedBosses } from './bosses';
 import { kingdomProgress } from './kingdoms';
@@ -294,4 +294,54 @@ export function updateGoal(s: GameState, id: string, current: number): GameState
 
 export function deleteGoal(s: GameState, id: string): GameState {
   return { ...s, goals: s.goals.filter((g) => g.id !== id) };
+}
+
+// ---------- Revisiones de los objetivos con fecha ----------
+
+const DAY = 86_400_000;
+
+/** Días de revisión de un grupo de objetivos: cada 30 días y el último día del plazo. */
+export function reviewDays(goals: Goal[]): number[] {
+  const created = goals[0].createdAt;
+  const total = Math.max(1, Math.round((Math.max(...goals.map((g) => g.deadline ?? created)) - created) / DAY));
+  const days: number[] = [];
+  for (let d = 30; d < total; d += 30) days.push(d);
+  days.push(total);
+  return days;
+}
+
+export interface DueReview {
+  batch: number;
+  day: number;
+  final: boolean;
+  goals: Goal[];
+}
+
+/** Revisión pendiente más antigua: la última parada alcanzada de un grupo que aún no se ha revisado. */
+export function dueReview(s: GameState, now: number): DueReview | null {
+  const batches = new Map<number, Goal[]>();
+  for (const g of s.goals) if (g.deadline) batches.set(g.createdAt, [...(batches.get(g.createdAt) ?? []), g]);
+  for (const [batch, goals] of [...batches].sort((a, b) => a[0] - b[0])) {
+    const elapsed = Math.floor((now - batch) / DAY);
+    const days = reviewDays(goals);
+    const reached = days.filter((d) => d <= elapsed).at(-1);
+    if (reached === undefined) continue;
+    const done = (s.reviews ?? []).some((r) => r.batch === batch && r.day >= reached);
+    if (!done) return { batch, day: reached, final: reached === days.at(-1), goals };
+  }
+  return null;
+}
+
+export function recordReview(s: GameState, batch: number, day: number, note: string, now: number): GameState {
+  return { ...s, reviews: [...(s.reviews ?? []), { batch, day, at: now, note: note.trim() }] };
+}
+
+/** Renegociar: más plazo para un objetivo. */
+export function extendGoal(s: GameState, id: string, days: number): GameState {
+  return { ...s, goals: s.goals.map((g) => (g.id === id && g.deadline ? { ...g, deadline: g.deadline + days * DAY } : g)) };
+}
+
+/** Renegociar: otra meta para el mismo objetivo. */
+export function setGoalTarget(s: GameState, id: string, target: number): GameState {
+  return { ...s, goals: s.goals.map((g) => (g.id === id ? { ...g, target } : g)) };
 }

@@ -1,13 +1,13 @@
 // Ajustes (tema, guía, tutorial, copia de seguridad), escalera de avatares y crónica semanal.
 import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import type { Game, Tab } from './screens';
-import { AVATARS, avatarInfo, avatarRequirements, ATTRIBUTES, formatAttrXp, requirementStatus } from './attributes';
+import { avatarInfo, ATTRIBUTES, formatAttrXp } from './attributes';
 import { applyTheme, CUSTOM_ID, loadTheme, saveTheme, THEMES, type Theme } from './theme';
 import { exportBackup, parseBackup, restorePrefs, type ImportResult } from './backup';
 import { save } from './store';
 import { adminToLevel, grantAdminXp, levelInfo, simulatePastDays, totalXp } from './game';
 import { ADMIN, checkAdminPassword, setAdmin } from './admin';
-import { openRitual, RitualCTA } from './ritual';
+import { ChronicleOath, openRitual } from './ritual';
 import { AccountPanel } from './account';
 import { ConfirmButton } from './ui';
 import { TOURS } from './tutorial';
@@ -239,53 +239,6 @@ function SettingsPanel({
   );
 }
 
-// ---------- Escalera de avatares ----------
-
-export function AvatarLadder({ game, now }: { game: Game; now: number }) {
-  const { state } = game;
-  const info = avatarInfo(state, now);
-  const [open, setOpen] = useState<string | null>(info.next?.id ?? null);
-  return (
-    <section className="panel" aria-labelledby="ladder-h" data-tour="ladder">
-      <header className="panel-head"><h3 id="ladder-h">Camino del héroe</h3><span className="count mono">{info.index + 1}/{AVATARS.length}</span></header>
-      <p className="hint">Los requisitos son los mismos para todo el mundo y cada avatar admite tus propias metas reales. Cuando los cumplas, {DEFAULT_GUIDE} te espera para el ritual de ascensión.</p>
-      <ol className="ladder">
-        {AVATARS.map((a, i) => {
-          const state_ = i < info.index ? 'past' : i === info.index ? 'current' : i === info.index + 1 ? 'next' : 'locked';
-          const reqs = avatarRequirements(state, a).map((r) => requirementStatus(state, r, now));
-          const shown = open === a.id;
-          return (
-            <li key={a.id} className={`rung ${state_}`}>
-              <button className="rung-head" onClick={() => setOpen(shown ? null : a.id)} aria-expanded={shown}>
-                <span className="rung-icon" aria-hidden="true">{state_ === 'locked' ? '🔒' : a.icon}</span>
-                <span className="rung-name">{a.name}</span>
-                <span className="rung-state muted small-text">
-                  {state_ === 'past' ? 'superado' : state_ === 'current' ? 'actual' : state_ === 'next' && info.ready ? '🕯️ ritual' : `${reqs.filter((r) => r.met).length}/${reqs.length}`}
-                </span>
-              </button>
-              {shown && (
-                <div className="rung-body">
-                  <p className="rung-motto">«{a.motto}»</p>
-                  {state_ === 'next' && info.ready && <RitualCTA state={state} now={now} />}
-                  {reqs.length === 0 ? <p className="muted small-text">Punto de partida.</p> : (
-                    <ul className="reqs">
-                      {reqs.map((r, j) => (
-                        <li key={j} className={r.met ? 'req met' : 'req'}>
-                          <span aria-hidden="true">{r.met ? '✓' : '○'}</span> {r.label}{!r.met && <span className="mono muted"> · {Math.floor(r.progress * 100)} %</span>}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-            </li>
-          );
-        })}
-      </ol>
-    </section>
-  );
-}
-
 // ---------- Crónica semanal ----------
 
 const SEEN_KEY = 'excelsior:chronicle-seen';
@@ -339,6 +292,7 @@ export function WeeklyChronicle({ game, guide, now, go }: { game: Game; guide: s
       <p>
         Tu punto débil fue <strong>{w.weakest.icon} {w.weakest.name}</strong>.{isUnlocked(state, 'arena') && <> Reto: derrota a <strong>{challenge.icon} {challenge.name}</strong> esta semana.</>}
       </p>
+      <ChronicleOath state={state} />
       <div className="settings-row">
         {canSummon && (
           <button className="primary" onClick={() => { act((s) => summonTemplate(s, challenge.id, Date.now())); sfx.summon(); go('arena'); close(); }}>

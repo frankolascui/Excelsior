@@ -79,6 +79,24 @@ check(await seen('h2:has-text("Terminar el tema 3 de Física")'), '¿Qué hago a
 await page.fill('#new-quest', 'Responder emails');
 await page.click('button:has-text("Crear")');
 
+// 2b. Fecha límite y calendario
+await page.click('.nav-item:has-text("Misiones")');
+await page.fill('#new-quest', 'Entregar el trabajo de Historia');
+await page.fill('#new-quest-deadline', '2026-10-05');
+await page.click('[data-tour="quest-add"] button:has-text("Crear")');
+check(await seen('.item:has-text("Entregar el trabajo de Historia") .due-soon:has-text("vence mañana")'), 'misión con fecha límite: «vence mañana»');
+await page.click('[role=radio]:has-text("Calendario")');
+check(await seen('.cal-day.sel.today') && await seen('.cal-day:has(.cal-q:has-text("Entregar el trabajo"))'), 'el calendario muestra la misión en su fecha');
+await page.click('.cal-day:has(.cal-q:has-text("Entregar el trabajo"))');
+check(await seen('#cal-day-h:has-text("5 oct")'), 'pulsar un día muestra sus misiones');
+await page.fill('.cal-add #new-quest', 'Repasar Física');
+await page.click('.cal-add button:has-text("Crear")');
+check(await seen('.cal-day:has(.cal-q:has-text("Repasar Física"))'), 'crear una misión desde el calendario le pone esa fecha');
+await page.screenshot({ path: `${out}/02b-calendar.png`, fullPage: true });
+await page.click('[role=radio]:has-text("Lista")');
+for (const t of ['Entregar el trabajo de Historia', 'Repasar Física']) await page.click(`button[aria-label="Borrar ${t}"]`);
+await page.click('.nav-item:has-text("Hoy")');
+
 // 3. Completar misión → XP
 await page.click('button[aria-label="Completar Responder emails"]');
 check(await seen('.toast:has-text("+20 XP")'), 'toast +20 XP');
@@ -139,7 +157,10 @@ await page.screenshot({ path: `${out}/04b-chronicle.png` });
 await page.click('.chronicle button:has-text("Entendido")');
 check(!(await page.$('.chronicle')), 'la crónica se cierra hasta la semana siguiente');
 await page.click('.nav-item:has-text("Personaje")');
-check((await page.$$('.ladder .rung')).length === 10, 'escalera con 10 avatares');
+check((await page.$$('.hero-path .path-node')).length === 10, 'camino del héroe con 10 avatares en el mapa');
+check(await seen('.hero-card .portrait.tier-0'), 'retrato con el aro de Aprendiz');
+await page.click('.path-node:has-text("Titán")', { force: true }); // el aro gira: nunca está «quieto»
+check(await seen('.path-detail:has-text("Titán") >> text=Más adelante'), 'pulsar un avatar del camino muestra sus requisitos');
 check(await seen('text=125 XP global en total'), 'personaje muestra 125 XP totales');
 check(await seen('.chart-sub:has-text("125 XP en 30 días")'), 'gráfica de XP: 125 XP en 30 días');
 check((await page.$$('.heat rect')).length >= 175, 'mapa de actividad con al menos 26 semanas de cuadraditos en escritorio');
@@ -331,6 +352,19 @@ check(await seen('#timed-goals-h') && await seen('.goal:has-text("Ahorrar") >> t
 check(await seen('.goal:has-text("Ahorrar") >> text=requisito de Forjador'), 'los objetivos cuentan para Forjador');
 check(await seen('.journal:has-text("Quiero dejar de posponer mi proyecto.")'), 'Tu camino guarda tus respuestas');
 await page.screenshot({ path: `${out}/14-camino.png`, fullPage: true });
+
+// 7e. Revisión de Hiperión al día 30 de los objetivos
+for (let i = 0; i < 4; i++) await page.clock.fastForward(8 * 24 * 3600 * 1000); // 32 días, en tramos (el reloj no admite saltos tan grandes)
+await page.reload();
+await page.click('.nav-item:has-text("Hoy")');
+check(await seen('.review-banner:has-text("Día 30")'), 'a los 30 días Hiperión pide revisar los objetivos');
+await page.click('.review-banner button:has-text("Revisar")');
+await page.fill('[aria-label="Valor actual de Ahorrar"]', '400');
+await page.fill('#review-note', 'Gasto demasiado en comida fuera.');
+await page.click('.ritual button:has-text("Guardar revisión")');
+check(!(await page.$('.review-banner')), 'tras revisar, el aviso desaparece hasta el día 60');
+await page.click('.nav-item:has-text("Personaje")');
+check(await seen('.goal:has-text("Ahorrar") >> text=400 / 1500'), 'la revisión actualiza el objetivo');
 
 await page.click('button[aria-label="Ajustes"]');
 await page.click('.admin-panel button:has-text("Salir del modo admin")');

@@ -217,6 +217,7 @@ export interface QuestOptions {
   focus?: AttributeId;
   xp?: number;
   rewards?: AttributeRewards;
+  deadline?: string;
 }
 
 export function questXp(q: Quest): number {
@@ -233,7 +234,30 @@ export function addQuest(s: GameState, title: string, type: QuestType, now: numb
   if (opts.focus) quest.focus = opts.focus;
   if (opts.xp !== undefined) quest.xp = Math.round(clamp(opts.xp, CUSTOM_LIMITS.questXp));
   if (opts.rewards) quest.rewards = cleanRewards(opts.rewards);
+  if (opts.deadline) quest.deadline = opts.deadline;
   return { ...s, quests: [...s.quests, quest] };
+}
+
+/** Pone o quita (null) la fecha límite de una misión. */
+export function setQuestDeadline(s: GameState, id: string, day: string | null): GameState {
+  return {
+    ...s,
+    quests: s.quests.map((q) => {
+      if (q.id !== id) return q;
+      const next = { ...q };
+      if (day) next.deadline = day;
+      else delete next.deadline;
+      return next;
+    }),
+  };
+}
+
+/** Días que faltan hasta la fecha límite (0 = hoy, negativo = vencida), o null si no tiene. */
+export function daysUntil(day: string | undefined, now: number): number | null {
+  if (!day) return null;
+  const [y, m, d] = day.split('-').map(Number);
+  const today = new Date(now);
+  return Math.round((new Date(y, m - 1, d).getTime() - new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()) / 86_400_000);
 }
 
 /** Edita una misión. `xp`/`rewards` a undefined vuelven al valor automático. Lo ya ganado no cambia. */
@@ -458,16 +482,32 @@ export type Suggestion =
 
 const QUEST_PRIORITY: Record<QuestType, number> = { main: 0, daily: 1, side: 2 };
 
-export function pendingQuests(s: GameState): Quest[] {
+/**
+ * Pendientes por urgencia: primero lo vencido o que vence en 2 días (por fecha),
+ * luego por tipo (Principal → Diaria → Secundaria) y antigüedad.
+ */
+export function pendingQuests(s: GameState, now = Date.now()): Quest[] {
+  const urgent = (q: Quest) => {
+    const d = daysUntil(q.deadline, now);
+    return d !== null && d <= 2 ? d : null;
+  };
   return s.quests
     .filter((q) => !q.completedAt)
-    .sort((a, b) => QUEST_PRIORITY[a.type] - QUEST_PRIORITY[b.type] || a.createdAt - b.createdAt);
+    .sort((a, b) => {
+      const ua = urgent(a), ub = urgent(b);
+      if (ua !== null || ub !== null) {
+        if (ua === null) return 1;
+        if (ub === null) return -1;
+        if (ua !== ub) return ua - ub;
+      }
+      return QUEST_PRIORITY[a.type] - QUEST_PRIORITY[b.type] || a.createdAt - b.createdAt;
+    });
 }
 
 export function suggest(s: GameState, now: number): Suggestion {
   if (s.activeTimer) return { kind: 'timer' };
   if (s.quests.length === 0) return { kind: 'create' };
-  const quest = pendingQuests(s)[0];
+  const quest = pendingQuests(s, now)[0];
   if (quest) return { kind: 'quest', quest };
   const day = dayKey(now);
   const habit = s.habits.find((h) => !isHabitDone(s, h.id, day));

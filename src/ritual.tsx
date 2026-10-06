@@ -3,10 +3,13 @@
 import { useState } from 'react';
 import type { Game } from './screens';
 import type { GameState, RitualAnswer } from './types';
-import { AVATARS, avatarInfo, completeRitual, deleteGoal, formatAttrXp, goalProgress, updateGoal } from './attributes';
+import {
+  AVATARS, avatarInfo, completeRitual, deleteGoal, dueReview, extendGoal, formatAttrXp, goalProgress, recordReview, setGoalTarget, updateGoal,
+} from './attributes';
 import { GuidePortrait } from './tutorial';
 import { confetti } from './confetti';
 import { sfx } from './sfx';
+import { AvatarPortrait, initialOf } from './portrait';
 
 const DAY_MS = 86_400_000;
 
@@ -143,7 +146,7 @@ export function RitualDialog({ game, guide, onClose }: { game: Game; guide: stri
       <div className="overlay ritual-overlay" role="dialog" aria-modal="true" aria-labelledby="ascend-h">
         <div className="levelup ascension">
           <p className="eyebrow">Ascensión</p>
-          <div className="ascend-icon" aria-hidden="true">{target.icon}</div>
+          <div className="ascend-icon"><AvatarPortrait tier={AVATARS.indexOf(target)} label={initialOf(state.profile?.name)} size={150} title={`Tu nuevo aro de ${target.name}`} /></div>
           <h2 id="ascend-h">Ahora eres {target.name}</h2>
           <p className="rung-motto">«{target.motto}»</p>
           <p className="muted small-text">Tus respuestas quedan en Personaje → Tu camino.</p>
@@ -220,7 +223,10 @@ export function TimedGoals({ game }: { game: Game }) {
   if (goals.length === 0) return null;
   return (
     <section className="panel" aria-labelledby="timed-goals-h">
-      <header className="panel-head"><h3 id="timed-goals-h">Objetivos a 3 meses</h3></header>
+      <header className="panel-head">
+        <h3 id="timed-goals-h">Objetivos a 3 meses</h3>
+        {dueReview(state, Date.now()) && <button className="primary small" onClick={openReview}>Revisar con Hiperión</button>}
+      </header>
       <ul className="list">
         {goals.map((g) => {
           const p = goalProgress(g);
@@ -274,5 +280,131 @@ export function HeroJournal({ state }: { state: GameState }) {
         })}
       </ol>
     </section>
+  );
+}
+
+// ---------- Revisiones de Hiperión (días 30, 60, 90…) ----------
+
+const REVIEW_EVENT = 'excelsior:review';
+
+export function openReview() {
+  window.dispatchEvent(new CustomEvent(REVIEW_EVENT));
+}
+
+export function onReviewRequest(fn: () => void): () => void {
+  window.addEventListener(REVIEW_EVENT, fn);
+  return () => window.removeEventListener(REVIEW_EVENT, fn);
+}
+
+function reviewIntro(name: string, day: number, final: boolean): string {
+  if (final) return `${name}, se acabó el plazo. Mira qué has cumplido. Lo que no, renegócialo con honestidad: más tiempo, otra meta o dejarlo ir.`;
+  if (day <= 30) return `${name}, llevas ${day} días desde que juraste tus objetivos. Actualiza cómo vas y dime qué te está frenando.`;
+  return `${name}, ${day} días. Ya ves la meta: actualiza tus números y decide qué vas a apretar.`;
+}
+
+/** Aviso en Hoy cuando toca revisar los objetivos. */
+export function ReviewBanner({ state, now, guide }: { state: GameState; now: number; guide: string }) {
+  const due = dueReview(state, now);
+  if (!due) return null;
+  return (
+    <section className="panel review-banner" aria-labelledby="review-banner-h">
+      <span className="tour-portrait" aria-hidden="true"><GuidePortrait /></span>
+      <div>
+        <p className="eyebrow">{guide} · Día {due.day}</p>
+        <h3 id="review-banner-h">{due.final ? 'Fin del plazo de tus objetivos' : 'Toca revisar tus objetivos'}</h3>
+      </div>
+      <button className="primary" onClick={openReview}>Revisar</button>
+    </section>
+  );
+}
+
+export function ReviewDialog({ game, guide, onClose }: { game: Game; guide: string; onClose: () => void }) {
+  const { state, act } = game;
+  const [due] = useState(() => dueReview(state, Date.now()));
+  const [note, setNote] = useState('');
+  const [editing, setEditing] = useState<string | null>(null);
+  const [target, setTarget] = useState('');
+  if (!due) return null;
+  const goals = state.goals.filter((g) => g.createdAt === due.batch && g.deadline);
+  const allMet = goals.length > 0 && goals.every((g) => goalProgress(g) >= 1);
+
+  function finish() {
+    act((s) => recordReview(s, due!.batch, due!.day, note, Date.now()));
+    if (allMet) {
+      sfx.victory();
+      confetti({ big: true });
+    } else sfx.tick();
+    onClose();
+  }
+
+  return (
+    <div className="overlay ritual-overlay" role="dialog" aria-modal="true" aria-labelledby="review-h">
+      <div className="overlay-card ritual">
+        <div className="ritual-head">
+          <span className="tour-portrait" aria-hidden="true"><GuidePortrait /></span>
+          <div>
+            <p className="eyebrow">{guide} · Revisión del día {due.day}</p>
+            <h2 id="review-h" className="tour-title">{due.final ? 'Fin del plazo' : 'Cómo vas'}</h2>
+          </div>
+        </div>
+        <p className="ritual-text">{reviewIntro(state.profile?.name ?? '', due.day, due.final)}</p>
+        <ul className="list">
+          {goals.map((g) => {
+            const p = goalProgress(g);
+            const left = Math.ceil((g.deadline! - Date.now()) / DAY_MS);
+            return (
+              <li key={g.id} className={p >= 1 ? 'item goal done-goal' : 'item goal'}>
+                <div className="item-body">
+                  <span className="item-title">{g.name}</span>
+                  <div className="attr-bar"><div style={{ width: `${p * 100}%` }} /></div>
+                  <span className="mono muted small-text">
+                    {formatAttrXp(g.current)} / {formatAttrXp(g.target)} {g.unit} · {Math.floor(p * 100)} % · {p >= 1 ? 'cumplido' : left > 0 ? `quedan ${left} días` : 'plazo terminado'}
+                  </span>
+                  {due.final && p < 1 && (
+                    <span className="renegotiate">
+                      <button className="ghost small" onClick={() => act((s) => extendGoal(s, g.id, 30))}>+30 días</button>
+                      {editing === g.id ? (
+                        <form className="admin-inline" onSubmit={(e) => { e.preventDefault(); if (target !== '' && !Number.isNaN(Number(target))) act((s) => setGoalTarget(s, g.id, Number(target))); setEditing(null); }}>
+                          <input type="number" step="any" value={target} onChange={(e) => setTarget(e.target.value)} aria-label={`Nueva meta de ${g.name}`} autoFocus />
+                          <button type="submit" className="ghost small">Guardar</button>
+                        </form>
+                      ) : <button className="ghost small" onClick={() => { setEditing(g.id); setTarget(String(g.target)); }}>Cambiar la meta</button>}
+                      <button className="ghost small danger" onClick={() => act((s) => deleteGoal(s, g.id))}>Dejarlo</button>
+                    </span>
+                  )}
+                </div>
+                <div className="item-actions goal-actions">
+                  <input type="number" step="any" className="goal-input" aria-label={`Valor actual de ${g.name}`} value={g.current}
+                    onChange={(e) => e.target.value !== '' && act((s) => updateGoal(s, g.id, Number(e.target.value)))} />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+        <label className="field">
+          <span className="ritual-text">{allMet ? '¿Qué ha hecho que lo consigas?' : '¿Qué te está frenando y qué vas a cambiar?'}</span>
+          <textarea id="review-note" rows={3} maxLength={600} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Escríbelo en una frase. Hiperión te lo recordará." />
+        </label>
+        <div className="tour-actions">
+          <button className="link" onClick={onClose}>Más tarde</button>
+          <button className="primary" onClick={finish}>Guardar revisión</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Para la crónica semanal: tu porqué y tu último juramento. */
+export function ChronicleOath({ state }: { state: GameState }) {
+  const rituals = state.rituals ?? [];
+  if (rituals.length === 0) return null;
+  const why = rituals.find((r) => r.avatarId === 'iniciado')?.answers[0]?.a;
+  const lastNote = [...(state.reviews ?? [])].reverse().find((r) => r.note)?.note;
+  return (
+    <div className="chron-oath">
+      {why && <p><span className="muted small-text">Tu porqué</span><br />«{why}»</p>}
+      <blockquote className="oath small">{rituals.at(-1)!.oath}</blockquote>
+      {lastNote && <p className="small-text"><span className="muted">En tu última revisión dijiste:</span> «{lastNote}»</p>}
+    </div>
   );
 }
