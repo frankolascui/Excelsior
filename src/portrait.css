@@ -1,0 +1,11 @@
+/* Aros de avatar: brillos de las gemas y resplandor de las piedras (animaciones base en styles.css) */
+.portrait .gem-sparkle { transform-box: fill-box; transform-origin: center; animation: gem-twinkle 2.6s ease-in-out infinite; }
+@keyframes gem-twinkle {
+  0%, 100% { opacity: 0.35; transform: scale(0.5) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1.05) rotate(45deg); }
+}
+.portrait .gem-glow { transform-box: fill-box; transform-origin: center; animation: gem-pulse 2.2s ease-in-out infinite; }
+@keyframes gem-pulse { 50% { opacity: 0.45; transform: scale(0.82); } }
+@media (prefers-reduced-motion: reduce) {
+  .portrait .gem-sparkle, .portrait .gem-glow { animation: none; }
+}
