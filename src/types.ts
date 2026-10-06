@@ -102,6 +102,7 @@ export interface Goal {
   current: number;
   avatarId: string;
   createdAt: number;
+  deadline?: number; // objetivos con fecha (p. ej. los de 3 meses del Ritual del Iniciado)
 }
 
 /** Recompensa de la tienda: algo que te das a ti mismo pagando monedas. */
@@ -153,4 +154,20 @@ export interface GameState {
   bosses: Boss[];
   /** Tutoriales ya vistos ('intro', 'reinos', 'arena', 'gremios'). Viaja con la partida, no con el dispositivo. */
   tours?: string[];
+  /** Avatares a los que ya has ascendido con su ritual. Sin el campo (partidas antiguas) se calculan como antes. */
+  ascended?: string[];
+  /** Respuestas que diste a Hiperión en cada ritual de ascensión. */
+  rituals?: Ritual[];
+}
+
+export interface RitualAnswer {
+  q: string;
+  a: string;
+}
+
+export interface Ritual {
+  avatarId: string;
+  at: number;
+  answers: RitualAnswer[];
+  oath: string;
 }

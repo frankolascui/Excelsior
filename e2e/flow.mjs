@@ -14,6 +14,17 @@ page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 await page.clock.install({ time: new Date('2026-10-04T09:00:00') });
 await page.goto(url);
 
+/** Sesión libre de Deep Work de `minutes` minutos; cierra la subida de nivel salvo que se pida conservarla. */
+async function deepWork(minutes, keepLevelUp = false) {
+  await page.click('.nav-item:has-text("Deep Work")');
+  await page.click('button.mode-card:has-text("Sesión libre")');
+  await page.clock.fastForward(minutes * 60_000);
+  await page.waitForTimeout(300);
+  await page.click('text=Terminar sesión');
+  if (!keepLevelUp && await seen('.levelup')) await page.click('.levelup button.primary');
+  if (!keepLevelUp && await seen('.tour')) await page.click('.tour button:has-text("Saltar")');
+}
+
 const seen = (sel) => page.waitForSelector(sel, { timeout: 3000 }).then(() => true, () => false);
 const check = (cond, msg) => { if (!cond) { console.error('FALLO:', msg); process.exitCode = 1; } else console.log('ok:', msg); };
 
@@ -47,9 +58,9 @@ await page.reload();
 await page.waitForSelector('.nav');
 check(!(await seen('.tour')), 'el tutorial no vuelve a salir al recargar');
 await page.click('.nav-item:has-text("Gremios")');
-check(await seen('text=Se desbloquea en el nivel 5'), 'las secciones avanzadas están bloqueadas por nivel');
+check(await seen('text=Se desbloquea en el nivel 7'), 'las secciones avanzadas están bloqueadas por nivel (Gremios, 7)');
 await page.click('.nav-item:has-text("Reinos")');
-check(await seen('text=Se desbloquea en el nivel 2'), 'Reinos se abre en el nivel 2');
+check(await seen('text=Se desbloquea en el nivel 3'), 'Reinos se abre en el nivel 3');
 await page.click('.nav-item:has-text("Hoy")');
 // Entrenar se añade desde la lista de Hábitos (lo usan pasos siguientes)
 await page.click('.nav-item:has-text("Hábitos")');
@@ -153,8 +164,13 @@ check(await seen('.goal >> text=1 / 10 personas'), 'meta personal suma +1');
 check(await seen('.req:has-text("Hablar con desconocidos")'), 'la meta aparece como requisito del avatar');
 await page.screenshot({ path: `${out}/05b-goals.png`, fullPage: true });
 
-// 7a2. Reinos: cada tarea es una construcción
+// 7a2. Reinos: cada tarea es una construcción. Se abren en el nivel 3 (300 XP): 125 + 180 min de foco.
 await page.click('.nav-item:has-text("Reinos")');
+check(await seen('.locked-screen:has-text("nivel 3")'), 'en nivel 2 los Reinos siguen bloqueados');
+await deepWork(180, true);
+check(await seen('.unlock-line:has-text("Reinos")'), 'subir a nivel 3 anuncia los Reinos desbloqueados');
+check(!(await page.$('.unlock-line:has-text("Ritual")')), 'Iniciado aún no tiene el ritual (falta la meta personal)');
+await page.click('.levelup button:has-text("Ir a Reinos")');
 check(await seen('.tour .tour-title:has-text("Los Reinos")'), 'al abrir Reinos por primera vez, Hiperión la presenta');
 await page.click('.tour button:has-text("Siguiente")');
 check(await seen('[data-tour="kingdom-add"].tour-target'), 'el tutorial de Reinos señala dónde fundar');
@@ -195,14 +211,12 @@ check(await seen('.item:has-text("Tocar la guitarra") .rewards[aria-label="+2 Vo
 
 // 7a4. Arena: boss y tienda
 await page.click('.nav-item:has-text("Arena")');
-check(await seen('.locked-screen:has-text("nivel 3")'), 'en nivel 2 la Arena sigue bloqueada');
-// Una sesión larga de Deep Work sube al nivel 3 y abre la Arena.
-await page.click('.nav-item:has-text("Deep Work")');
-await page.click('button.mode-card:has-text("Sesión libre")');
-await page.clock.fastForward('02:30:00');
-await page.waitForTimeout(300);
-await page.click('text=Terminar sesión');
-check(await seen('.unlock-line:has-text("Arena")'), 'subir a nivel 3 anuncia la Arena desbloqueada');
+check(await seen('.locked-screen:has-text("nivel 5")'), 'en nivel 3 la Arena sigue bloqueada');
+// La Arena se abre en el nivel 5 (1000 XP): sesiones largas de Deep Work hasta llegar.
+await deepWork(240);
+await deepWork(240);
+await deepWork(180, true);
+check(await seen('.unlock-line:has-text("Arena")'), 'subir a nivel 5 anuncia la Arena desbloqueada');
 await page.click('.levelup button:has-text("Ir a Arena")');
 check(await seen('.tour .tour-title:has-text("La Arena")'), 'Hiperión presenta la Arena');
 await page.click('.tour button:has-text("Saltar")');
@@ -251,10 +265,21 @@ await page.clock.fastForward('25:02');
 await page.waitForTimeout(500);
 check(await seen('text=25 min de foco · +25 XP'), 'cuenta atrás de 25 min se registra sola');
 
-// 7c. Modo admin: partida de pruebas con todo desbloqueado, sin tocar la real
+// 7c. Modo admin: con contraseña, partida de pruebas con todo desbloqueado, sin tocar la real
+const realLevel = (await page.textContent('.nav-level')).match(/Nv \d+/)[0];
 await page.click('button[aria-label="Ajustes"]');
 await page.click('button:has-text("Avanzado")');
+await page.fill('#admin-pw', 'no-es-la-buena');
 await page.click('button:has-text("Entrar en modo admin")');
+check(await seen('text=Contraseña incorrecta.'), 'el modo admin pide contraseña y rechaza una incorrecta');
+check(!(await page.$('.admin-bar')), 'con contraseña incorrecta no entra');
+if (process.env.ADMIN_PW) {
+  await page.fill('#admin-pw', process.env.ADMIN_PW);
+  await page.click('button:has-text("Entrar en modo admin")');
+} else {
+  console.log('aviso: sin ADMIN_PW, se entra en modo admin a mano');
+  await page.evaluate(() => { localStorage.setItem('excelsior:admin-mode', '1'); location.reload(); });
+}
 await page.waitForSelector('#hero-name');
 await page.fill('#hero-name', 'Pruebas');
 await page.click('text=Crear personaje');
@@ -267,9 +292,50 @@ check(await seen('.levelup'), 'modo admin: +2000 XP sube de nivel');
 await page.click('.levelup button.primary');
 if (await seen('.tour')) await page.click('.tour button:has-text("Saltar")');
 await page.click('button[aria-label="Ajustes"]');
+await page.fill('#admin-level', '9');
+await page.click('.admin-panel button:has-text("Saltar al nivel")');
+check(await seen('#lvl-h:has-text("Nivel 9")'), 'modo admin: saltar al nivel 9');
+await page.click('.levelup button.primary');
+if (await seen('.tour')) await page.click('.tour button:has-text("Saltar")');
+
+// 7d. Rituales: cumplir los requisitos no asciende solo; Hiperión hace el ritual
+await page.click('button[aria-label="Ajustes"]');
+await page.click('.admin-panel button:has-text("7 días")');
+check(await seen('.toast:has-text("Ritual disponible: Iniciado")'), 'simular 7 días cumple Iniciado y avisa del ritual');
+await page.click('.nav-item:has-text("Personaje")');
+check(await seen('.nav-item:has-text("Personaje") .nav-new:has-text("ritual")'), 'Personaje marca el ritual pendiente');
+check((await page.textContent('.avatar-card .avatar-name')).trim() === 'Aprendiz', 'sin ritual sigues siendo Aprendiz');
+await page.click('.avatar-card .ritual-cta');
+check(await seen('.ritual:has-text("Ritual de ascensión")'), 'se abre el ritual con Hiperión');
+await page.click('.ritual button:has-text("Empezar")');
+check(await page.isDisabled('.ritual button:has-text("Siguiente")'), 'no se avanza sin responder');
+await page.fill('#ritual-answer', 'Quiero dejar de posponer mi proyecto.');
+await page.click('.ritual button:has-text("Siguiente")');
+await page.fill('#ritual-answer', 'Programo 3 horas cada mañana y entreno.');
+await page.click('.ritual button:has-text("Siguiente")');
+check(await seen('.ritual:has-text("objetivos medibles a 3 meses")'), 'el Ritual del Iniciado pide objetivos a 3 meses');
+check(await page.isDisabled('.ritual button:has-text("Siguiente")'), 'hace falta al menos un objetivo');
+await page.fill('[aria-label="Objetivo 1"]', 'Ahorrar');
+await page.fill('[aria-label="Valor actual del objetivo 1"]', '0');
+await page.fill('[aria-label="Meta del objetivo 1"]', '1500');
+await page.fill('[aria-label="Unidad del objetivo 1"]', '€');
+await page.screenshot({ path: `${out}/12-ritual.png` });
+await page.click('.ritual button:has-text("Siguiente")');
+check(await seen('.oath:has-text("Juro encender la llama")'), 'el ritual termina con un juramento');
+await page.click('.ritual button:has-text("Lo juro")');
+check(await seen('#ascend-h:has-text("Ahora eres Iniciado")'), 'ceremonia: asciendes a Iniciado');
+await page.screenshot({ path: `${out}/13-ascension.png` });
+await page.click('.ascension button:has-text("Continuar")');
+check((await page.textContent('.avatar-card .avatar-name')).trim() === 'Iniciado', 'la tarjeta de avatar ya dice Iniciado');
+check(await seen('#timed-goals-h') && await seen('.goal:has-text("Ahorrar") >> text=quedan 90 días'), 'Objetivos a 3 meses con cuenta atrás');
+check(await seen('.goal:has-text("Ahorrar") >> text=requisito de Forjador'), 'los objetivos cuentan para Forjador');
+check(await seen('.journal:has-text("Quiero dejar de posponer mi proyecto.")'), 'Tu camino guarda tus respuestas');
+await page.screenshot({ path: `${out}/14-camino.png`, fullPage: true });
+
+await page.click('button[aria-label="Ajustes"]');
 await page.click('.admin-panel button:has-text("Salir del modo admin")');
 await page.waitForSelector('.nav');
-check(!(await page.$('.admin-bar')) && (await page.textContent('.nav-level')).includes('Nv 3'), 'al salir vuelve la partida real intacta');
+check(!(await page.$('.admin-bar')) && (await page.textContent('.nav-level')).includes(realLevel), `al salir vuelve la partida real intacta (${realLevel})`);
 
 // 8. Móvil
 await page.setViewportSize({ width: 390, height: 844 });

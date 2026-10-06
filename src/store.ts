@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { GameState } from './types';
 import { emptyState, levelInfo, migrate, totalXp } from './game';
-import { avatarInfo } from './attributes';
+import { avatarInfo, ensureAscended } from './attributes';
 import { sfx } from './sfx';
 import { confetti } from './confetti';
 import { bossStatus } from './bosses';
@@ -20,7 +20,7 @@ function load(): GameState {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed?.version >= 1 && parsed?.version <= emptyState().version) return migrate(parsed);
+      if (parsed?.version >= 1 && parsed?.version <= emptyState().version) return ensureAscended(migrate(parsed), Date.now());
     }
   } catch {
     /* almacenamiento no disponible: se juega sin guardar */
@@ -46,6 +46,13 @@ function completedKingdoms(s: GameState): Set<string> {
   return new Set(s.kingdoms.filter((k) => kingdomBonus(s, k.id) > 0).map((k) => k.id));
 }
 
+/** Nombre del avatar cuyo ritual ya puedes hacer, o null. */
+function readyFor(s: GameState): string | null {
+  if (!s.profile) return null;
+  const a = avatarInfo(s, Date.now());
+  return a.ready ? a.next!.name : null;
+}
+
 export interface Toast {
   id: number;
   text: string;
@@ -58,7 +65,7 @@ export function useGame() {
   const [levelUp, setLevelUp] = useState<number | null>(null);
   const [levelUpFrom, setLevelUpFrom] = useState(1);
   const prevLevel = useRef(levelInfo(totalXp(state)).level);
-  const prevAvatar = useRef(avatarInfo(state, Date.now()).index);
+  const prevReady = useRef(readyFor(state));
   const prevDefeated = useRef(defeatedIds(state));
   const prevKingdoms = useRef(completedKingdoms(state));
 
@@ -92,9 +99,9 @@ export function useGame() {
   }, [state, userId, conflict]);
 
   function adopt(remote: GameState) {
-    const next = migrate(remote as unknown as Parameters<typeof migrate>[0]);
+    const next = ensureAscended(migrate(remote as unknown as Parameters<typeof migrate>[0]), Date.now());
     prevLevel.current = levelInfo(totalXp(next)).level;
-    prevAvatar.current = avatarInfo(next, Date.now()).index;
+    prevReady.current = readyFor(next);
     prevDefeated.current = defeatedIds(next);
     prevKingdoms.current = completedKingdoms(next);
     latest.current = next; // si no, la siguiente acción partiría de la partida anterior
@@ -122,13 +129,13 @@ export function useGame() {
   }, [state]);
 
   useEffect(() => {
-    const avatar = avatarInfo(state, Date.now());
-    if (avatar.index > prevAvatar.current) {
-      toast(`${avatar.current.icon} Nuevo avatar: ${avatar.current.name}`, 'level');
+    // Al cumplir los requisitos del siguiente avatar, Hiperión avisa del ritual (la ascensión la celebra el ritual).
+    const ready = readyFor(state);
+    if (ready && ready !== prevReady.current) {
+      toast(`🕯️ Ritual disponible: ${ready}. Hiperión te espera`, 'level');
       sfx.levelUp();
-      confetti({ big: true, count: 220 });
     }
-    prevAvatar.current = avatar.index;
+    prevReady.current = ready;
 
     const defeated = defeatedIds(state);
     for (const b of state.bosses) {

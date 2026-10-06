@@ -6,6 +6,7 @@ import {
   CUSTOM_LIMITS, dayKey, habitStreak, habitXp, isHabitDone, levelInfo, QUEST_LABEL, questAttributeRewards, questXp, shiftDay, totalXp, XP_RULES,
 } from './game';
 import { CustomizeToggle, InlineEdit, RewardEditor, sameRewards, type CustomValue } from './customize';
+import { RitualCTA } from './ritual';
 
 export function useNow(intervalMs = 1000): number {
   const [now, setNow] = useState(() => Date.now());
@@ -262,7 +263,7 @@ export function RewardTags({ rewards }: { rewards: AttributeRewards }) {
 export function AvatarCard({ state, now, showRequirements = false }: { state: GameState; now: number; showRequirements?: boolean }) {
   const a = avatarInfo(state, now);
   return (
-    <section className="panel avatar-card" aria-labelledby="avatar-h" data-tour="avatar">
+    <section className={a.ready ? 'panel avatar-card ritual-ready' : 'panel avatar-card'} aria-labelledby="avatar-h" data-tour="avatar">
       <div className="avatar-sigil" aria-hidden="true"><span className="mono">{a.index + 1}</span></div>
       <div className="avatar-body">
         <p className="eyebrow">Avatar actual</p>
@@ -272,12 +273,13 @@ export function AvatarCard({ state, now, showRequirements = false }: { state: Ga
         </div>
         <p className="levelbar-foot mono">
           {a.next
-            ? `${Math.floor(a.progress * 100)} % hacia ${a.next.name} · ${a.met} de ${a.requirements.length} requisitos`
+            ? a.ready ? `Cumples todo lo que pide ${a.next.name}` : `${Math.floor(a.progress * 100)} % hacia ${a.next.name} · ${a.met} de ${a.requirements.length} requisitos`
             : 'Avatar máximo alcanzado'}
         </p>
+        <RitualCTA state={state} now={now} />
         {showRequirements && a.next && (
           <ul className="reqs" aria-label={`Requisitos para ${a.next.name}`}>
-            <li className="req-head">Para desbloquear {a.next.name}:</li>
+            <li className="req-head">Para ascender a {a.next.name}:</li>
             {a.requirements.map((r) => (
               <li key={r.label} className={r.met ? 'req met' : 'req'}>
                 <span aria-hidden="true">{r.met ? '✓' : '○'}</span> {r.label}

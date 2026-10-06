@@ -132,7 +132,7 @@ await p4.waitForTimeout(2500);
 check(remote?.state?.profile?.name === 'Nueva', 'el personaje nuevo se guarda en la nube');
 await p4.click('.tour button:has-text("Saltar")');
 await p4.click('.nav-item:has-text("Gremios")');
-check(await p4.isVisible('.locked-screen:has-text("nivel 5")'), 'los gremios se abren en el nivel 5');
+check(await p4.isVisible('.locked-screen:has-text("nivel 7")'), 'los gremios se abren en el nivel 7');
 remote = saved;
 
 check(errors.length === 0, `sin errores de la app ${errors.join(' | ')}`);

@@ -14,6 +14,7 @@ import type { Quest } from './types';
 import { loadTutorial, saveTutorial, Tutorial, TOURS, type TutorialPrefs } from './tutorial';
 import { isUnlocked, unlockedBetween, unlockLevel, UNLOCKS } from './unlocks';
 import { ADMIN, setAdmin } from './admin';
+import { onRitualRequest, openRitual, RitualDialog } from './ritual';
 
 const TABS: { id: Tab; label: string; glyph: string }[] = [
   { id: 'hoy', label: 'Hoy', glyph: '◆' },
@@ -45,6 +46,14 @@ export default function App() {
   const [guest, setGuest] = useState(loadGuest);
   const level = levelInfo(totalXp(state)).level;
   const introSeen = hasSeenTour(state, 'intro');
+  const [ritual, setRitual] = useState(false);
+  const avatar = avatarInfo(state, Date.now());
+
+  // El ritual se abre desde la tarjeta de avatar, el camino del héroe o la subida de nivel.
+  useEffect(() => onRitualRequest((force) => {
+    const a = avatarInfo(game.state, Date.now());
+    if (a.next && (a.ready || (force && ADMIN))) setRitual(true);
+  }), [game.state]);
 
   // Tutorial de bienvenida: una vez por partida (se guarda en la partida, así no se repite en otro dispositivo).
   useEffect(() => {
@@ -144,6 +153,7 @@ export default function App() {
               {!open && <span className="nav-lock mono">Nv {unlockLevel(t.id)}</span>}
               {open && unlockLevel(t.id) !== null && !hasSeenTour(state, t.id) && introSeen && <span className="nav-new">nuevo</span>}
               {t.id === 'deepwork' && state.activeTimer && <span className="live-dot" aria-label="Sesión en curso" />}
+              {t.id === 'personaje' && avatar.ready && <span className="nav-new">ritual</span>}
             </button>
           );
         })}
@@ -194,6 +204,8 @@ export default function App() {
         ))}
       </div>
 
+      {ritual && !tour && <RitualDialog game={game} guide={tutorial.guide} onClose={() => setRitual(false)} />}
+
       {game.conflict && <ConflictDialog local={state} remote={game.conflict} onChoose={game.resolveConflict} />}
 
       {game.levelUp && (
@@ -202,7 +214,8 @@ export default function App() {
             <p className="eyebrow">Subes de nivel</p>
             <div className="emblem big" aria-hidden="true"><span className="mono">{game.levelUp}</span></div>
             <h2 id="lvl-h">Nivel {game.levelUp}</h2>
-            <p className="muted">Nivel global · {avatarInfo(state, Date.now()).current.name}</p>
+            <p className="muted">Nivel global · {avatar.current.name}</p>
+            {avatar.ready && <p className="unlock-line">🕯️ Ritual disponible: <strong>{avatar.next!.icon} {avatar.next!.name}</strong></p>}
             {newlyUnlocked.map((u) => (
               <p key={u.tab} className="unlock-line">🔓 Desbloqueado: <strong>{u.icon} {u.name}</strong></p>
             ))}
@@ -210,6 +223,8 @@ export default function App() {
               <button className="primary big" autoFocus onClick={() => { game.dismissLevelUp(); go(newlyUnlocked[0].tab); }}>
                 Ir a {newlyUnlocked[0].name}
               </button>
+            ) : avatar.ready ? (
+              <button className="primary big" autoFocus onClick={() => { game.dismissLevelUp(); openRitual(); }}>Hacer el ritual</button>
             ) : (
               <button className="primary big" onClick={game.dismissLevelUp} autoFocus>Seguir</button>
             )}

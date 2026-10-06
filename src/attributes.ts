@@ -1,6 +1,6 @@
 // Atributos y avatar. Recompensas hardcodeadas (sin editor todavía); el XP, el nivel
 // y el historial de cada atributo se derivan de las transacciones de XP.
-import type { AttributeId, AttributeRewards, GameState, QuestType } from './types';
+import type { AttributeId, AttributeRewards, GameState, QuestType, RitualAnswer } from './types';
 import { dayKey, habitStreak, totalXp, uid, xpForLevel } from './game';
 import { defeatedBosses } from './bosses';
 import { kingdomProgress } from './kingdoms';
@@ -235,24 +235,55 @@ export function isAvatarUnlocked(s: GameState, avatar: AvatarDef, now: number): 
   return avatarRequirements(s, avatar).every((r) => requirementStatus(s, r, now).met);
 }
 
+/** Avatares alcanzados con la regla antigua (automática): para partidas anteriores a los rituales. */
+function legacyIndex(s: GameState, now: number): number {
+  let i = 0;
+  while (i + 1 < AVATARS.length && isAvatarUnlocked(s, AVATARS[i + 1], now)) i++;
+  return i;
+}
+
 /**
- * Avatar actual: el último desbloqueado en orden (no se salta ninguno).
+ * Avatar actual: el último al que has ascendido con su ritual (en orden, sin saltos).
+ * `ready`: cumples los requisitos del siguiente y Hiperión te espera para el ritual.
  * Progreso hacia el siguiente: media del progreso de sus requisitos.
  */
 export function avatarInfo(s: GameState, now: number) {
   let i = 0;
-  while (i + 1 < AVATARS.length && isAvatarUnlocked(s, AVATARS[i + 1], now)) i++;
+  if (s.ascended) while (i + 1 < AVATARS.length && s.ascended.includes(AVATARS[i + 1].id)) i++;
+  else i = legacyIndex(s, now);
   const current = AVATARS[i];
   const next = AVATARS[i + 1] ?? null;
   const requirements = next ? avatarRequirements(s, next).map((r) => requirementStatus(s, r, now)) : [];
   const progress = !next ? 1 : requirements.length ? requirements.reduce((n, r) => n + r.progress, 0) / requirements.length : 1;
-  return { index: i, current, next, progress, requirements, met: requirements.filter((r) => r.met).length };
+  const met = requirements.filter((r) => r.met).length;
+  return { index: i, current, next, progress, requirements, met, ready: !!next && met === requirements.length };
+}
+
+/** Congela el avatar de las partidas anteriores a los rituales, para que no lo pierdan ni asciendan solas. */
+export function ensureAscended(s: GameState, now: number): GameState {
+  if (s.ascended || !s.profile) return s;
+  return { ...s, ascended: AVATARS.slice(1, legacyIndex(s, now) + 1).map((a) => a.id) };
+}
+
+/** Termina el ritual: guarda las respuestas, asciende al avatar y añade los objetivos que hayas jurado. */
+export function completeRitual(
+  s: GameState, avatarId: string,
+  r: { answers: RitualAnswer[]; oath: string; goals?: { name: string; unit: string; start: number; target: number; avatarId: string; deadline?: number }[] },
+  now: number,
+): GameState {
+  let next: GameState = {
+    ...s,
+    ascended: [...new Set([...(ensureAscended(s, now).ascended ?? []), avatarId])],
+    rituals: [...(s.rituals ?? []), { avatarId, at: now, answers: r.answers, oath: r.oath }],
+  };
+  for (const g of r.goals ?? []) next = addGoal(next, g, now);
+  return next;
 }
 
 // ---------- Metas ----------
 
 export function addGoal(
-  s: GameState, g: { name: string; unit: string; start: number; target: number; avatarId: string }, now: number,
+  s: GameState, g: { name: string; unit: string; start: number; target: number; avatarId: string; deadline?: number }, now: number,
 ): GameState {
   return { ...s, goals: [...s.goals, { ...g, name: g.name.trim(), unit: g.unit.trim(), current: g.start, id: uid(), createdAt: now }] };
 }

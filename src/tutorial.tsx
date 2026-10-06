@@ -81,7 +81,7 @@ export const TOURS: Record<string, Step[]> = {
       tab: 'hoy',
       title: 'Tu primera misión',
       text: ({ guide }) =>
-        `Eso es todo por ahora. Al subir de nivel se abrirán los Reinos (nivel 2), la Arena (nivel 3) y los Gremios (nivel 5), y te los enseñaré entonces. Ahora crea tu misión principal de hoy. — ${guide}`,
+        `Eso es todo por ahora. Al subir de nivel se abrirán los Reinos (nivel 3), la Arena (nivel 5) y los Gremios (nivel 7), y te los enseñaré entonces. Ahora crea tu misión principal de hoy. — ${guide}`,
     },
   ],
   reinos: [

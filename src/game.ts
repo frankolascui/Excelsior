@@ -5,6 +5,7 @@ import type {
 } from './types';
 import { deepWorkRewards, habitRewards, questRewards } from './attributes';
 import { defaultRewards } from './economy';
+import { ADMIN } from './admin';
 
 // Valores iniciales; el spec (§7) pide balancearlos durante el testing.
 export const XP_RULES = {
@@ -14,6 +15,7 @@ export const XP_RULES = {
   // Anti-farmeo: tope diario de XP por misiones y por hábitos.
   // El Deep Work no tiene tope diario porque está limitado por tiempo real.
   dailyCap: { quest: 200, habit: 100 },
+  capPerLevel: { quest: 25, habit: 10 }, // cada nivel sube el tope diario
   maxSessionMinutes: 240,
   minSessionMinutes: 1,
 };
@@ -158,8 +160,15 @@ export function habitStreak(s: GameState, habitId: string, now: number): number 
   return streak;
 }
 
+/** Tope diario de XP: crece con el nivel con el que empezaste el día (más nivel, más margen). */
+export function dailyCap(s: GameState, source: 'quest' | 'habit', now: number): number {
+  const level = levelInfo(totalXp(s) - xpOnDay(s, dayKey(now))).level;
+  return XP_RULES.dailyCap[source] + XP_RULES.capPerLevel[source] * (level - 1);
+}
+
 function cappedAmount(s: GameState, source: 'quest' | 'habit', base: number, now: number): number {
-  const left = XP_RULES.dailyCap[source] - xpOnDay(s, dayKey(now), source);
+  if (ADMIN) return base; // la partida de pruebas no tiene topes
+  const left = dailyCap(s, source, now) - xpOnDay(s, dayKey(now), source);
   return Math.max(0, Math.min(base, left));
 }
 
@@ -182,6 +191,7 @@ export function createProfile(s: GameState, name: string, habitNames: string[], 
     profile: { name: name.trim(), createdAt: now },
     habits: habitNames.map((n) => ({ id: uid(), name: n, frequency: 'daily' as const, createdAt: now, rewards: habitRewards(n) })),
     rewards: s.rewards.length ? s.rewards : defaultRewards(now),
+    ascended: [], // se asciende de avatar con los rituales de Hiperión
   };
 }
 
@@ -483,4 +493,38 @@ export function grantAdminXp(s: GameState, amount: number, now: number): GameSta
     attributes: { voluntad: per, sabiduria: per, maestria: per, conexion: per, creacion: per },
   };
   return { ...s, xp: [...s.xp, tx] };
+}
+
+/** Modo admin: XP justo para llegar al nivel indicado (si ya lo tienes, no hace nada). */
+export function adminToLevel(s: GameState, level: number, now: number): GameState {
+  const missing = xpForLevel(Math.max(1, Math.floor(level))) - totalXp(s);
+  return missing > 0 ? grantAdminXp(s, missing, now) : s;
+}
+
+/**
+ * Modo admin: rellena los últimos `days` días (sin contar hoy) como si hubieras jugado:
+ * todos tus hábitos hechos y una hora de Deep Work cada día. Sirve para probar rachas, días activos y avatares.
+ */
+export function simulatePastDays(s: GameState, days: number, now: number): GameState {
+  let next = s;
+  for (let d = days; d >= 1; d--) {
+    const at = new Date(shiftDay(now, -d)).setHours(12, 0, 0, 0);
+    const day = dayKey(at);
+    for (const h of next.habits) {
+      if (isHabitDone(next, h.id, day)) continue;
+      const completion = { id: uid(), habitId: h.id, day, at };
+      next = withXp({ ...next, habitCompletions: [...next.habitCompletions, completion] }, {
+        at, amount: habitXp(h), source: 'habit', sourceId: completion.id, label: h.name, attributes: h.rewards,
+      });
+    }
+    if (!next.sessions.some((x) => dayKey(x.endedAt) === day)) {
+      const session: DeepWorkSession = {
+        id: uid(), questId: null, label: 'Sesión simulada', area: 'general', startedAt: at - 3600000, endedAt: at, minutes: 60, focusPct: 100,
+      };
+      next = withXp({ ...next, sessions: [...next.sessions, session] }, {
+        at, amount: 60 * XP_RULES.deepWorkPerMinute, source: 'deepwork', sourceId: session.id, label: session.label, attributes: deepWorkRewards(60),
+      });
+    }
+  }
+  return next;
 }

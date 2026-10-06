@@ -4,7 +4,7 @@ import {
   toggleHabit, totalXp, undoQuest,
 } from './game';
 import {
-  addGoal, AVATARS, attributeHistory, attributeLevel, attributeXp, avatarInfo, deleteGoal, formatAttrXp, goalProgress, habitRewards,
+  addGoal, AVATARS, attributeHistory, attributeLevel, attributeXp, avatarInfo, avatarRequirements, completeRitual, deleteGoal, ensureAscended, formatAttrXp, goalProgress, habitRewards,
   questRewards, requirementStatus, updateGoal,
 } from './attributes';
 
@@ -80,20 +80,44 @@ describe('niveles de atributo y avatar', () => {
     const oneDay = avatarInfo(withXp(300, {}), NOW);
     expect(oneDay.current.name).toBe('Aprendiz');
     expect(oneDay.progress).toBeCloseTo((1 + 1 / 3) / 2);
-    expect(avatarInfo(withXp(300, {}, 3), NOW)).toMatchObject({ current: { name: 'Iniciado' }, next: { name: 'Disciplinado' } });
+    // Con los requisitos cumplidos no se asciende solo: queda el ritual pendiente.
+    const ready = withXp(300, {}, 3);
+    expect(avatarInfo(ready, NOW)).toMatchObject({ current: { name: 'Aprendiz' }, next: { name: 'Iniciado' }, ready: true });
+    const done = completeRitual(ready, 'iniciado', { answers: [{ q: '¿Por qué?', a: 'Porque sí' }], oath: 'Juro' }, NOW);
+    expect(avatarInfo(done, NOW)).toMatchObject({ current: { name: 'Iniciado' }, next: { name: 'Disciplinado' }, ready: false });
+    expect(done.rituals).toEqual([{ avatarId: 'iniciado', at: NOW, answers: [{ q: '¿Por qué?', a: 'Porque sí' }], oath: 'Juro' }]);
+  });
+
+  it('el Ritual del Iniciado guarda objetivos a 3 meses como requisito de Forjador', () => {
+    const deadline = NOW + 90 * 86_400_000;
+    const s = completeRitual(withXp(300, {}, 3), 'iniciado', {
+      answers: [], oath: 'Juro', goals: [{ name: 'Ahorrar', unit: '€', start: 0, target: 1500, avatarId: 'forjador', deadline }],
+    }, NOW);
+    expect(s.goals).toMatchObject([{ name: 'Ahorrar', avatarId: 'forjador', deadline, current: 0 }]);
+    const forjador = AVATARS.find((a) => a.id === 'forjador')!;
+    expect(avatarRequirements(s, forjador).at(-1)).toEqual({ kind: 'goal', goalId: s.goals[0].id });
+  });
+
+  it('las partidas anteriores a los rituales conservan su avatar y ya no ascienden solas', () => {
+    const legacy: GameState = { ...withXp(300, {}, 3), ascended: undefined };
+    expect(avatarInfo(legacy, NOW).current.name).toBe('Iniciado'); // regla antigua mientras no se congela
+    const frozen = ensureAscended(legacy, NOW);
+    expect(frozen.ascended).toEqual(['iniciado']);
+    expect(avatarInfo(frozen, NOW).current.name).toBe('Iniciado');
+    expect(ensureAscended(base(), NOW).ascended).toEqual([]); // las nuevas ya traen el campo
   });
 
   it('las metas personales bloquean el avatar hasta cumplirse (subiendo o bajando)', () => {
     let s = withXp(300, {}, 3);
     s = addGoal(s, { name: 'Pesar', unit: 'kg', start: 80, target: 75, avatarId: 'iniciado' }, NOW);
-    expect(avatarInfo(s, NOW).current.name).toBe('Aprendiz');
+    expect(avatarInfo(s, NOW)).toMatchObject({ current: { name: 'Aprendiz' }, ready: false });
     const goal = s.goals[0];
     s = updateGoal(s, goal.id, 77.5);
     expect(goalProgress(s.goals[0])).toBeCloseTo(0.5);
     expect(avatarInfo(s, NOW).requirements[2]).toMatchObject({ met: false, label: 'Pesar: 77,5 / 75 kg' });
     s = updateGoal(s, goal.id, 75);
-    expect(avatarInfo(s, NOW).current.name).toBe('Iniciado');
-    expect(avatarInfo(deleteGoal(s, goal.id), NOW).current.name).toBe('Iniciado');
+    expect(avatarInfo(s, NOW).ready).toBe(true);
+    expect(avatarInfo(deleteGoal(s, goal.id), NOW).ready).toBe(true);
   });
 
   it('la escalera tiene 10 avatares y acaba en Excelsior', () => {

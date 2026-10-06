@@ -5,9 +5,9 @@ import { levelInfo, totalXp } from './game';
 import { ADMIN } from './admin';
 
 export const UNLOCKS: { tab: Tab; level: number; name: string; icon: string }[] = [
-  { tab: 'reinos', level: 2, name: 'Reinos', icon: '🏰' },
-  { tab: 'arena', level: 3, name: 'Arena', icon: '⚔️' },
-  { tab: 'gremios', level: 5, name: 'Gremios', icon: '🛡️' },
+  { tab: 'reinos', level: 3, name: 'Reinos', icon: '🏰' },
+  { tab: 'arena', level: 5, name: 'Arena', icon: '⚔️' },
+  { tab: 'gremios', level: 7, name: 'Gremios', icon: '🛡️' },
 ];
 
 export function unlockLevel(tab: Tab): number | null {

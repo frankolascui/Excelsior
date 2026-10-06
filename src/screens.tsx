@@ -21,12 +21,13 @@ import {
   AttributeList, AvatarCard, ConfirmButton, formatClock, formatMinutes, HabitItem, LevelBar, QuestItem,
   QuickAddQuest, RewardTags, useNow,
 } from './ui';
+import { HeroJournal, TimedGoals } from './ritual';
 
 export type Game = ReturnType<typeof useGame>;
 export type Tab = 'hoy' | 'misiones' | 'reinos' | 'arena' | 'gremios' | 'deepwork' | 'habitos' | 'personaje' | 'ajustes';
 
-const CAP_QUEST = `Tope diario de XP por misiones alcanzado (${XP_RULES.dailyCap.quest}). La misión cuenta igual.`;
-const CAP_HABIT = `Tope diario de XP por hábitos alcanzado (${XP_RULES.dailyCap.habit}).`;
+const CAP_QUEST = 'Tope diario de XP por misiones alcanzado: la misión cuenta igual. Sube de nivel para ampliarlo.';
+const CAP_HABIT = 'Tope diario de XP por hábitos alcanzado. Sube de nivel para ampliarlo.';
 /** Sonido y confeti al completar: martillazos en los reinos, fiesta en las principales. */
 const questOpts = (q: Quest) => ({ party: q.type === 'main', sound: q.kingdomId ? ('build' as const) : ('reward' as const) });
 
@@ -525,7 +526,11 @@ export function Character({ game }: { game: Game }) {
 
       <AvatarLadder game={game} now={now} />
 
+      <TimedGoals game={game} />
+
       <GoalsPanel game={game} now={now} />
+
+      <HeroJournal state={state} />
 
       <section className="panel" aria-labelledby="attrs-detail-h" data-tour="attrs">
         <h3 id="attrs-detail-h">Atributos</h3>
@@ -685,7 +690,7 @@ function GoalsPanel({ game, now }: { game: Game; now: number }) {
   const next = avatarInfo(state, now).next;
   const [form, setForm] = useState({ name: '', unit: '', start: '', target: '' });
   if (!next) return null;
-  const goals = state.goals.filter((g) => g.avatarId === next.id);
+  const goals = state.goals.filter((g) => g.avatarId === next.id && !g.deadline); // los de 3 meses tienen su panel
   const valid = form.name.trim() && form.start !== '' && form.target !== '' && !Number.isNaN(Number(form.start)) && !Number.isNaN(Number(form.target));
   function submit(e: FormEvent) {
     e.preventDefault();

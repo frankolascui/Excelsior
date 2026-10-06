@@ -27,3 +27,11 @@ Los ritmos son **una estimación, no un dato**. Suponen un «día comprometido»
 Con las reglas automáticas, Conexión y Creación suben unas 20 veces más despacio que Maestría. A partir de Fundador («todos los atributos a N»), ese será el cuello de botella. Hay dos salidas:
 - **Ya disponible:** asignar a mano esos atributos con ⚙/✎ en hábitos y misiones (por ejemplo, «Quedar con amigos» → Conexión 5, «Escribir» → Creación 5).
 - **Pendiente de decidir:** reducir el Deep Work a +0,5 de Maestría por minuto, o subir lo que dan Conexión y Creación. No lo he cambiado porque la regla del Deep Work la fijó Nicolas.
+
+## Rituales de ascensión (desde 2026-10-06)
+Cumplir los requisitos ya **no** te sube de avatar solo: aparece «🕯️ Ritual disponible» (aviso, tarjeta de avatar, camino del héroe, Personaje y subida de nivel) y Hiperión te hace unas preguntas antes de ascender. Las respuestas se guardan en la partida (`rituals`) y se ven en Personaje → «Tu camino».
+- **Iniciado:** tu porqué, cómo es tu día ideal dentro de 3 meses y de 1 a 3 objetivos medibles a 3 meses (con fecha). Esos objetivos pasan a ser requisito de **Forjador**, el avatar que se alcanza más o menos a los 3 meses.
+- **Forjador:** qué has aprendido y, si quieres, objetivos de los 3 meses siguientes (requisito de Fundador).
+- **Resto:** una pregunta de reflexión propia de cada avatar y, opcional, una meta real para el siguiente.
+- Todos terminan con un juramento y una ceremonia.
+- Las partidas anteriores conservan el avatar que ya tenían (se congela al cargar) y desde ahí siguen con rituales.

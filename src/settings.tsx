@@ -1,12 +1,13 @@
 // Ajustes (tema, guía, tutorial, copia de seguridad), escalera de avatares y crónica semanal.
-import { useRef, useState, type ChangeEvent } from 'react';
+import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import type { Game, Tab } from './screens';
 import { AVATARS, avatarInfo, avatarRequirements, ATTRIBUTES, formatAttrXp, requirementStatus } from './attributes';
 import { applyTheme, CUSTOM_ID, loadTheme, saveTheme, THEMES, type Theme } from './theme';
 import { exportBackup, parseBackup, restorePrefs, type ImportResult } from './backup';
 import { save } from './store';
-import { grantAdminXp, levelInfo, totalXp } from './game';
-import { ADMIN, setAdmin } from './admin';
+import { adminToLevel, grantAdminXp, levelInfo, simulatePastDays, totalXp } from './game';
+import { ADMIN, checkAdminPassword, setAdmin } from './admin';
+import { openRitual, RitualCTA } from './ritual';
 import { AccountPanel } from './account';
 import { ConfirmButton } from './ui';
 import { TOURS } from './tutorial';
@@ -40,30 +41,71 @@ export function SettingsScreen({
 /** Modo admin: partida de pruebas aparte con todo desbloqueado y atajos para probar. */
 function AdminPanel({ game, startTour }: { game: Game; startTour: (id: string) => void }) {
   const [open, setOpen] = useState(ADMIN);
+  const [password, setPassword] = useState('');
+  const [wrong, setWrong] = useState(false);
+  const [xp, setXp] = useState('');
+  const [toLevel, setToLevel] = useState('');
   if (!ADMIN) {
+    async function enter(e: FormEvent) {
+      e.preventDefault();
+      if (await checkAdminPassword(password)) setAdmin(true);
+      else setWrong(true);
+    }
     return (
       <section className="panel quiet">
         <button className="link" onClick={() => setOpen(!open)} aria-expanded={open}>🛠 Avanzado</button>
         {open && (
-          <div className="admin-intro">
+          <form className="admin-intro" onSubmit={enter}>
             <p className="hint">El modo admin abre una <strong>partida de pruebas aparte</strong> con todas las secciones desbloqueadas y atajos para subir de nivel. Tu partida real no se toca ni se sube a la nube; al salir vuelves a ella tal cual.</p>
-            <button className="secondary" onClick={() => setAdmin(true)}>Entrar en modo admin</button>
-          </div>
+            <label className="field">
+              <span>Contraseña de admin</span>
+              <input id="admin-pw" type="password" value={password} autoComplete="off" onChange={(e) => { setPassword(e.target.value); setWrong(false); }} />
+            </label>
+            {wrong && <p className="error-text" role="alert">Contraseña incorrecta.</p>}
+            <button type="submit" className="secondary" disabled={!password}>Entrar en modo admin</button>
+          </form>
         )}
       </section>
     );
   }
   const { act, state } = game;
+  const now = Date.now();
+  const avatar = avatarInfo(state, now);
+  const customXp = Math.floor(Number(xp));
+  const level = Math.floor(Number(toLevel));
   return (
     <section className="panel admin-panel">
       <h3>🛠 Modo admin</h3>
-      <p className="hint">Estás en la partida de pruebas: nivel {levelInfo(totalXp(state)).level}, {totalXp(state)} XP.</p>
+      <p className="hint">Partida de pruebas: nivel {levelInfo(totalXp(state)).level}, {totalXp(state)} XP, avatar {avatar.current.name}. Aquí no hay topes diarios de XP.</p>
       <h4 className="sub-h">XP de prueba (sube nivel, atributos y monedas)</h4>
       <div className="settings-row">
-        {[100, 500, 2000, 10000].map((n) => (
+        {[100, 500, 2000].map((n) => (
           <button key={n} className="secondary" onClick={() => act((s) => ({ state: grantAdminXp(s, n, Date.now()), xp: n }))}>+{n} XP</button>
         ))}
+        <form className="admin-inline" onSubmit={(e) => { e.preventDefault(); if (customXp > 0) act((s) => ({ state: grantAdminXp(s, customXp, Date.now()), xp: customXp })); setXp(''); }}>
+          <input id="admin-xp" type="number" min={1} value={xp} onChange={(e) => setXp(e.target.value)} placeholder="XP" aria-label="XP a sumar" />
+          <button type="submit" className="ghost" disabled={!(customXp > 0)}>Sumar</button>
+        </form>
+        <form className="admin-inline" onSubmit={(e) => { e.preventDefault(); if (level > 1) act((s) => adminToLevel(s, level, Date.now())); setToLevel(''); }}>
+          <input id="admin-level" type="number" min={2} max={60} value={toLevel} onChange={(e) => setToLevel(e.target.value)} placeholder="Nivel" aria-label="Saltar al nivel" />
+          <button type="submit" className="ghost" disabled={!(level > 1)}>Saltar al nivel</button>
+        </form>
       </div>
+      <h4 className="sub-h">Simular días pasados</h4>
+      <p className="hint">Rellena los últimos días como si hubieras jugado: todos tus hábitos hechos y 1 h de Deep Work al día. Sirve para probar rachas, días activos y avatares.</p>
+      <div className="settings-row">
+        {[1, 7, 30, 90].map((d) => (
+          <button key={d} className="secondary" onClick={() => act((s) => simulatePastDays(s, d, Date.now()))}>{d} {d === 1 ? 'día' : 'días'}</button>
+        ))}
+      </div>
+      {avatar.next && (
+        <>
+          <h4 className="sub-h">Rituales</h4>
+          <div className="settings-row">
+            <button className="ghost" onClick={() => openRitual(true)}>Abrir ritual de {avatar.next.name}{avatar.ready ? '' : ' (sin requisitos)'}</button>
+          </div>
+        </>
+      )}
       <h4 className="sub-h">Tutoriales</h4>
       <div className="settings-row">
         {Object.keys(TOURS).map((id) => <button key={id} className="ghost" onClick={() => startTour(id)}>Ver «{id}»</button>)}
@@ -206,7 +248,7 @@ export function AvatarLadder({ game, now }: { game: Game; now: number }) {
   return (
     <section className="panel" aria-labelledby="ladder-h" data-tour="ladder">
       <header className="panel-head"><h3 id="ladder-h">Camino del héroe</h3><span className="count mono">{info.index + 1}/{AVATARS.length}</span></header>
-      <p className="hint">Los requisitos son los mismos para todo el mundo. Además, cada avatar admite tus propias metas reales.</p>
+      <p className="hint">Los requisitos son los mismos para todo el mundo y cada avatar admite tus propias metas reales. Cuando los cumplas, {DEFAULT_GUIDE} te espera para el ritual de ascensión.</p>
       <ol className="ladder">
         {AVATARS.map((a, i) => {
           const state_ = i < info.index ? 'past' : i === info.index ? 'current' : i === info.index + 1 ? 'next' : 'locked';
@@ -218,12 +260,13 @@ export function AvatarLadder({ game, now }: { game: Game; now: number }) {
                 <span className="rung-icon" aria-hidden="true">{state_ === 'locked' ? '🔒' : a.icon}</span>
                 <span className="rung-name">{a.name}</span>
                 <span className="rung-state muted small-text">
-                  {state_ === 'past' ? 'superado' : state_ === 'current' ? 'actual' : `${reqs.filter((r) => r.met).length}/${reqs.length}`}
+                  {state_ === 'past' ? 'superado' : state_ === 'current' ? 'actual' : state_ === 'next' && info.ready ? '🕯️ ritual' : `${reqs.filter((r) => r.met).length}/${reqs.length}`}
                 </span>
               </button>
               {shown && (
                 <div className="rung-body">
                   <p className="rung-motto">«{a.motto}»</p>
+                  {state_ === 'next' && info.ready && <RitualCTA state={state} now={now} />}
                   {reqs.length === 0 ? <p className="muted small-text">Punto de partida.</p> : (
                     <ul className="reqs">
                       {reqs.map((r, j) => (
