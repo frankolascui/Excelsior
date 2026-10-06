@@ -108,6 +108,9 @@
 .iso-roads.paved polygon { fill: #4a4652; }
 .iso-plaza { fill: #3b3025; }
 .iso-plaza.paved { fill: #55505d; }
+.iso-court polygon { fill: color-mix(in srgb, var(--c3) 10%, #25472f); stroke: rgba(255, 255, 255, 0.06); stroke-width: 1; }
+.iso-court .court-path { fill: #3a2c1f; stroke: none; }
+.iso-court .court-path.paved { fill: #4a4652; }
 .iso-plaza-ring { fill: none; stroke: rgba(255, 255, 255, 0.07); stroke-width: 1; stroke-dasharray: 3 3; }
 
 .m-wood.t { fill: #946a40; } .m-wood.l { fill: #7a5431; } .m-wood.r { fill: #563921; }
@@ -155,6 +158,77 @@
 
 .cloud-shadow { animation: cloud-shadow linear infinite; }
 @keyframes cloud-shadow { from { transform: translateX(-160px); } to { transform: translateX(calc(var(--w) + 160px)); } }
+
+/* ---------- Castillo del reino (mejora con cada construcción) ---------- */
+.castle .c-stone { fill: #6c6777; }
+.castle .c-shade { fill: rgba(0, 0, 0, 0.22); }
+.castle .c-brick { fill: none; stroke: rgba(0, 0, 0, 0.22); stroke-width: 0.7; }
+.castle .c-course { stroke: rgba(0, 0, 0, 0.38); stroke-width: 1.6; }
+.castle .c-wood { fill: #7a5431; }
+.castle .c-plank { fill: none; stroke: rgba(0, 0, 0, 0.3); stroke-width: 0.8; }
+.castle .c-roof { fill: color-mix(in srgb, var(--c3) 48%, #6e2c1d); }
+.castle .c-roof.gold { fill: #e3b23c; }
+.castle .c-roof-shade { fill: rgba(0, 0, 0, 0.26); }
+.castle .c-ledge { fill: #5a5563; }
+.castle .c-ledge.gold { fill: #d6a636; }
+.castle .c-corbel { stroke: #34313c; stroke-width: 1.4; }
+.castle .c-door { fill: #22150b; }
+.castle .c-win { fill: #ffd27a; opacity: 0.3; }
+.castle .c-win.lit { opacity: 1; filter: drop-shadow(0 0 4px #ffb347); animation: torch 3s ease-in-out infinite; }
+.castle .c-mound { fill: #2b2118; stroke: color-mix(in srgb, var(--c3) 15%, #35583b); stroke-width: 1.5; }
+.castle .c-fence, .castle .c-fence-iso { fill: #6b4a2b; stroke: #2d1d0f; stroke-width: 0.6; }
+.castle .c-moat { fill: color-mix(in srgb, var(--c3) 30%, #173a57); }
+.castle .c-glint { fill: none; stroke: rgba(255, 255, 255, 0.28); stroke-width: 1; stroke-linecap: round; }
+.castle .c-gate { fill: #120b05; }
+.castle .c-portcullis { fill: none; stroke: #77717f; stroke-width: 1.2; }
+.castle .c-bridge { fill: #7a5431; stroke: #3a2513; stroke-width: 0.6; }
+.castle .c-chain { fill: none; stroke: #b9b4c2; stroke-width: 0.9; stroke-dasharray: 1.6 1; }
+.castle .c-drape { fill: var(--c1); }
+.castle .c-drape-band { stroke: #ffd27a; stroke-width: 1.4; }
+.castle .banner.c-royal { fill: var(--c1); stroke: #ffd27a; stroke-width: 0.8; }
+.castle .c-mound-iso { fill: rgba(96, 74, 48, 0.42); stroke: rgba(150, 120, 80, 0.25); stroke-width: 1; }
+.c-crown path { fill: #ffd24a; stroke: #9a6f12; stroke-width: 0.6; filter: drop-shadow(0 0 4px rgba(255, 210, 74, 0.7)); }
+.c-crown .c-crown-band { fill: #e0a92c; }
+.c-crown .c-gem { fill: #ff5d8f; }
+.m-gold.l { fill: #e8b947; } .m-gold.r { fill: #b4841f; }
+.m-goldtrim.t { fill: #ecc562; } .m-goldtrim.l { fill: #d2a136; } .m-goldtrim.r { fill: #9c7420; }
+.iso-win.dim { opacity: 0.3; animation: none; }
+.c-spark { fill: #fff3c4; filter: drop-shadow(0 0 3px #ffd27a); transform-box: fill-box; transform-origin: center; animation: sparkle 2.4s ease-in-out infinite; }
+@keyframes sparkle { 0%, 100% { transform: scale(0.35) rotate(0deg); opacity: 0.25; } 50% { transform: scale(1) rotate(45deg); opacity: 1; } }
+.castle-aura { animation: pool 4.5s ease-in-out infinite; pointer-events: none; }
+
+/* Lo que traerá la próxima mejora, esbozado en discontinua (como los cimientos de los edificios) */
+.c-ghost { animation: ghost 2.8s ease-in-out infinite; pointer-events: none; }
+.c-ghost :is(path, rect, circle, ellipse, polygon, polyline, line) {
+  fill: none !important; stroke: #ffd27a !important; stroke-width: 0.8 !important; stroke-dasharray: 3 2.5 !important;
+  opacity: 0.42 !important; filter: none !important; animation: none !important;
+}
+@keyframes ghost { 50% { opacity: 0.4; } }
+
+/* La pieza recién ganada salta y el castillo celebra el nuevo nivel */
+.cp-new { transform-box: fill-box; transform-origin: 50% 100%; animation: castle-pop 0.9s cubic-bezier(.3, 1.6, .5, 1) 0.5s both; }
+@keyframes castle-pop { 0% { transform: scale(0.2, 0); opacity: 0; } 40% { opacity: 1; } 70% { transform: scale(1.08, 1.06); } 100% { transform: none; } }
+.castle-burst { pointer-events: none; }
+.castle-burst .burst-ring { fill: none; stroke: #ffd27a; stroke-width: 2; opacity: 0; transform-box: fill-box; transform-origin: center; animation: burst-ring 1.3s ease-out 0.75s both; }
+.castle-burst .burst-rays { stroke: #ffe39a; stroke-width: 2; stroke-linecap: round; opacity: 0; transform-box: fill-box; transform-origin: center; animation: burst-rays 1.2s ease-out 0.8s both; }
+.castle-burst .burst-text { fill: #ffe39a; font-family: var(--display); font-size: 15px; font-weight: 700; paint-order: stroke; stroke: #000; stroke-width: 3px; opacity: 0; animation: burst-text 3s ease-out 0.85s both; }
+@keyframes burst-ring { 0% { transform: scale(0.2); opacity: 0.95; } 100% { transform: scale(1.7); opacity: 0; } }
+@keyframes burst-rays { 0% { transform: scale(0.3) rotate(0deg); opacity: 0; } 25% { opacity: 1; } 100% { transform: scale(1.35) rotate(20deg); opacity: 0; } }
+@keyframes burst-text { 0% { transform: translateY(10px); opacity: 0; } 15% { transform: translateY(0); opacity: 1; } 75% { opacity: 1; } 100% { transform: translateY(-16px); opacity: 0; } }
+
+/* Pie con el nivel del castillo */
+.castle-cap {
+  position: absolute; left: 8px; z-index: 2; margin: 0; max-width: calc(100% - 16px);
+  padding: 4px 10px; border-radius: 999px; font-size: 12.5px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: var(--fg); background: rgba(6, 5, 12, 0.66); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  border: 1px solid color-mix(in srgb, var(--c2) 30%, var(--line));
+}
+.castle-cap .cap-name { color: var(--muted); }
+.castle-cap.max { color: #ffe39a; border-color: color-mix(in srgb, #ffd27a 55%, transparent); }
+.castle-cap.up { border-color: #ffd27a; animation: cap-up 1.2s ease-in-out 0.8s 3; }
+@keyframes cap-up { 50% { box-shadow: 0 0 14px rgba(255, 210, 122, 0.7); } }
+.chart-tip.castle-tip { white-space: normal; width: max-content; max-width: min(250px, 70vw); }
+.castle-tip .tip-title { text-transform: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .city-scene *, .city-scene { animation: none !important; }

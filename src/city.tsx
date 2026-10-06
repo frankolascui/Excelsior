@@ -7,7 +7,7 @@ import { useWidth } from './charts';
 import { BUILDINGS } from './kingdoms';
 import './city.css';
 
-type Hover = { q: Quest; x: number; y: number } | null;
+type Hover = ({ q: Quest } | { castle: true }) & { x: number; y: number } | null;
 type SetHover = (h: Hover) => void;
 
 /** Generador pseudoaleatorio con semilla fija: la decoración no cambia entre renders. */
@@ -63,11 +63,295 @@ function EmptyText({ x, y, W }: { x: number; y: number; W: number }) {
 }
 
 // =====================================================================
+// El castillo del reino: mejora con cada construcción levantada
+// =====================================================================
+
+const CASTLE_MAX = 12;
+/** Nombre de cada nivel del castillo: lo que añade la mejora (el 0 es el solar con el campamento). */
+const CASTLE_LEVELS = [
+  'Solar del castillo', 'Fortín de madera', 'Zócalo de piedra', 'Torre del homenaje', 'Torre de vigía', 'Almenas',
+  'Estandartes', 'Torres gemelas', 'Puerta y puente levadizo', 'Ventanas encendidas', 'Tejados dorados y corona',
+  'Agujas reales', 'Castillo glorioso',
+];
+
+/**
+ * Nivel del castillo (0–12). Con hasta 12 construcciones planeadas cada una sube al menos un nivel
+ * (3 de 3 ya es el castillo glorioso); con más, sube en proporción a lo construido.
+ * Terminar el reino siempre lo deja en el nivel máximo.
+ */
+function castleTier(built: number, total: number): number {
+  if (total <= 0 || built <= 0) return 0;
+  if (built >= total) return CASTLE_MAX;
+  return Math.min(CASTLE_MAX - 1, Math.max(1, Math.ceil((built * CASTLE_MAX) / total)));
+}
+
+/** Descripción para el pie y la ayuda: nivel actual y cuánto falta para la próxima mejora. */
+function castleInfo(built: number, total: number) {
+  const tier = castleTier(built, total);
+  const label = `Castillo: nivel ${tier} de ${CASTLE_MAX}`;
+  let next = '¡Castillo en todo su esplendor!';
+  if (tier < CASTLE_MAX) {
+    let d = 1;
+    while (built + d < total && castleTier(built + d, total) === tier) d++;
+    const name = CASTLE_LEVELS[castleTier(built + d, total)].toLowerCase();
+    next = tier === 0
+      ? `Levanta tu primera construcción para fundar el castillo (${name}).`
+      : `Próxima mejora (${name}) ${d === 1 ? 'con la siguiente construcción' : `dentro de ${d} construcciones`}.`;
+  }
+  return { tier, label, name: CASTLE_LEVELS[tier], next };
+}
+
+type PartFn = (from: number, node: ReactNode, to?: number) => ReactNode;
+
+/**
+ * Cada pieza del castillo aparece en un nivel (y puede desaparecer al ser sustituida).
+ * Las piezas recién ganadas saltan con un «pop»; las del nivel siguiente se esbozan en discontinua.
+ */
+function makePart(tier: number, prev: number): PartFn {
+  return (from, node, to = CASTLE_MAX) => {
+    if (tier >= from && tier <= to) return <g className={from > prev ? 'cp cp-new' : 'cp'}>{node}</g>;
+    if (from === tier + 1) return <g className="cp c-ghost">{node}</g>;
+    return null;
+  };
+}
+
+/** Corona dorada (la base en 0,0). */
+function Crown({ x, y, s = 1 }: { x: number; y: number; s?: number }) {
+  return (
+    <g transform={`translate(${x.toFixed(1)},${y.toFixed(1)}) scale(${s.toFixed(2)})`} className="c-crown">
+      <path d="M-7,0 L-8,-9 L-3.6,-4.5 L0,-11 L3.6,-4.5 L8,-9 L7,0 Z" />
+      <rect x={-7} y={-2.2} width={14} height={2.6} className="c-crown-band" />
+      <circle cx={0} cy={-11.6} r={1.5} className="c-gem" />
+      <circle cx={-8} cy={-9.4} r={1.1} className="c-gem" />
+      <circle cx={8} cy={-9.4} r={1.1} className="c-gem" />
+    </g>
+  );
+}
+
+/** Destello de cuatro puntas (castillo glorioso). */
+function Sparkle({ x, y, r, d }: { x: number; y: number; r: number; d: number }) {
+  return (
+    <path
+      className="c-spark" style={{ animationDelay: `${d}s` }}
+      d={`M${x},${y - r} Q${x + r * 0.18},${y - r * 0.18} ${x + r},${y} Q${x + r * 0.18},${y + r * 0.18} ${x},${y + r} Q${x - r * 0.18},${y + r * 0.18} ${x - r},${y} Q${x - r * 0.18},${y - r * 0.18} ${x},${y - r} Z`}
+    />
+  );
+}
+
+/** Celebración de la mejora: anillo, rayos dorados y «¡Nivel N!» flotando. */
+function CastleBurst({ x, y, tier, s }: { x: number; y: number; tier: number; s: number }) {
+  return (
+    <g transform={`translate(${x.toFixed(1)},${y.toFixed(1)}) scale(${s.toFixed(2)})`} className="castle-burst" aria-hidden="true">
+      <circle r={40} className="burst-ring" />
+      <g className="burst-rays">
+        {Array.from({ length: 14 }, (_, k) => {
+          const a = (k * Math.PI * 2) / 14;
+          return <line key={k} x1={Math.cos(a) * 18} y1={Math.sin(a) * 18} x2={Math.cos(a) * (k % 2 ? 40 : 52)} y2={Math.sin(a) * (k % 2 ? 40 : 52)} />;
+        })}
+      </g>
+      <text y={-58} textAnchor="middle" className="burst-text">¡Nivel {tier}!</text>
+    </g>
+  );
+}
+
+/** Ladrillos de un muro rectangular (para dar textura a la piedra). */
+function bricks(x0: number, x1: number, y0: number, y1: number, step = 12) {
+  let d = '';
+  let row = 0;
+  for (let y = y1 - step; y > y0 + 2; y -= step, row++) {
+    d += `M${x0},${y} H${x1} `;
+    const off = row % 2 ? step * 0.9 : step * 0.35;
+    for (let x = x0 + off; x < x1 - 2; x += step * 1.4) d += `M${x.toFixed(1)},${y} V${y + step} `;
+  }
+  return d;
+}
+
+/** Castillo visto de frente: la base sobre el suelo en (0,0). */
+function FrontCastle({ tier, prev, glow }: { tier: number; prev: number; glow: string }) {
+  const part = makePart(tier, prev);
+  const B = -8; // cima de la mota
+  const win = tier >= 9 ? 'c-win lit' : 'c-win';
+  const roof = tier >= 10 ? 'c-roof gold' : 'c-roof';
+  const ledge = tier >= 10 ? 'c-ledge gold' : 'c-ledge';
+  const sp = tier >= 11;
+  const keepPeak = sp ? B - 130 : B - 104;
+  const towerPeak = sp ? B - 126 : B - 118;
+  const crowned = tier >= 10;
+  const flagBase = crowned ? keepPeak - 11 : keepPeak;
+
+  const pennant = (x: number, y: number, len = 16) => (
+    <>
+      <line x1={x} y1={y} x2={x} y2={y - len} className="pole" />
+      <path d={`M${x},${y - len} L${x + 13},${y - len + 4} L${x},${y - len + 8} Z`} className="banner" />
+    </>
+  );
+  const tower = (cx: number) => (
+    <>
+      <rect x={cx - 10} y={B - 90} width={20} height={90} className="c-stone" />
+      <rect x={cx + 4} y={B - 90} width={6} height={90} className="c-shade" />
+      <path d={bricks(cx - 10, cx + 10, B - 90, B, 11)} className="c-brick" />
+      <rect x={cx - 2} y={B - 74} width={4} height={9} rx={2} className={win} />
+      <rect x={cx - 2} y={B - 48} width={4} height={9} rx={2} className={win} />
+      {sp
+        ? <path d={`M${cx - 11},${B - 90} L${cx},${towerPeak} L${cx + 11},${B - 90} Z`} className={roof} />
+        : <path d={`M${cx - 13},${B - 90} L${cx},${towerPeak} L${cx + 13},${B - 90} Z`} className={roof} />}
+      <path d={`M${cx},${towerPeak} L${cx + (sp ? 11 : 13)},${B - 90} L${cx},${B - 90} Z`} className="c-roof-shade" />
+      {part(5, (
+        <>
+          <rect x={cx - 12} y={B - 94} width={24} height={5} className={ledge} />
+          <path d={`M${cx - 10},${B - 89} v3 M${cx - 4},${B - 89} v3 M${cx + 2},${B - 89} v3 M${cx + 8},${B - 89} v3`} className="c-corbel" />
+        </>
+      ))}
+      {part(6, pennant(cx, towerPeak), 11)}
+      {part(12, pennant(cx, towerPeak, 20))}
+    </>
+  );
+
+  return (
+    <g className="castle">
+      {part(9, <ellipse cx={0} cy={2} rx={78} ry={10} fill={`url(#${glow})`} className="light-pool" />)}
+      {part(8, (
+        <>
+          <path d="M-84,2 Q0,10 84,2 L84,7 Q0,16 -84,7 Z" className="c-moat" />
+          <path d="M-60,6 Q-30,9 -10,8 M14,9 Q40,9 62,6" className="c-glint" />
+        </>
+      ))}
+      {part(1, <path d={`M-78,1 C-64,0 -58,${B} -44,${B} L44,${B} C58,${B} 64,0 78,1 Z`} className="c-mound" />)}
+      {part(1, (
+        <path
+          className="c-fence"
+          d={[-46, -41, -36, -31, -26, 26, 31, 36, 41, 46].map((x) => `M${x - 2},${B} V${B - 10} L${x},${B - 13} L${x + 2},${B - 10} V${B} Z`).join(' ')}
+        />
+      ), 7)}
+
+      {/* Torre del homenaje: madera → zócalo de piedra → piedra con dos pisos */}
+      {part(1, (
+        <>
+          <rect x={-15} y={B - 40} width={30} height={40} className="c-wood" />
+          <rect x={5} y={B - 40} width={10} height={40} className="c-shade" />
+          <path d={`M-15,${B - 30} H15 M-15,${B - 20} H15 M-15,${B - 10} H15`} className="c-plank" />
+          <path d={`M-20,${B - 40} L0,${B - 62} L20,${B - 40} Z`} className="c-roof" />
+          <path d={`M0,${B - 62} L20,${B - 40} L0,${B - 40} Z`} className="c-roof-shade" />
+          <rect x={-4} y={B - 34} width={8} height={7} className={win} />
+          <path d={`M-5,${B} V${B - 9} A5,5 0 0 1 5,${B - 9} V${B} Z`} className="c-door" />
+        </>
+      ), 1)}
+      {part(2, (
+        <>
+          <rect x={-20} y={B - 24} width={40} height={24} className="c-stone" />
+          <rect x={8} y={B - 24} width={12} height={24} className="c-shade" />
+          <path d={bricks(-20, 20, B - 24, B, 8)} className="c-brick" />
+          <rect x={-16} y={B - 52} width={32} height={28} className="c-wood" />
+          <rect x={5} y={B - 52} width={11} height={28} className="c-shade" />
+          <path d={`M-16,${B - 43} H16 M-16,${B - 34} H16`} className="c-plank" />
+          <path d={`M-21,${B - 52} L0,${B - 76} L21,${B - 52} Z`} className="c-roof" />
+          <path d={`M0,${B - 76} L21,${B - 52} L0,${B - 52} Z`} className="c-roof-shade" />
+          <rect x={-4} y={B - 46} width={8} height={7} className={win} />
+          <path d={`M-6,${B} V${B - 10} A6,6 0 0 1 6,${B - 10} V${B} Z`} className="c-door" />
+        </>
+      ), 2)}
+      {part(3, (
+        <>
+          <rect x={-22} y={B - 76} width={44} height={76} className="c-stone" />
+          <rect x={10} y={B - 76} width={12} height={76} className="c-shade" />
+          <path d={bricks(-22, 22, B - 76, B, 12)} className="c-brick" />
+          <path d={`M-22,${B - 40} H22`} className="c-course" />
+          <rect x={-11} y={B - 66} width={6} height={11} rx={3} className={win} />
+          <rect x={5} y={B - 66} width={6} height={11} rx={3} className={win} />
+          <rect x={-11} y={B - 33} width={6} height={10} rx={3} className={win} />
+          <rect x={5} y={B - 33} width={6} height={10} rx={3} className={win} />
+          <path d={`M-7,${B} V${B - 13} A7,7 0 0 1 7,${B - 13} V${B} Z`} className="c-door" />
+        </>
+      ))}
+      {part(3, (
+        <>
+          <path d={`M-27,${B - 76} L0,${B - 104} L27,${B - 76} Z`} className={roof} />
+          <path d={`M0,${B - 104} L27,${B - 76} L0,${B - 76} Z`} className="c-roof-shade" />
+        </>
+      ), 4)}
+      {part(5, (
+        <>
+          <path d={`M-17,${B - 80} L0,${B - 104} L17,${B - 80} Z`} className={roof} />
+          <path d={`M0,${B - 104} L17,${B - 80} L0,${B - 80} Z`} className="c-roof-shade" />
+        </>
+      ), 10)}
+      {part(11, (
+        <>
+          <path d={`M-15,${B - 80} L0,${keepPeak} L15,${B - 80} Z`} className={roof} />
+          <path d={`M0,${keepPeak} L15,${B - 80} L0,${B - 80} Z`} className="c-roof-shade" />
+        </>
+      ))}
+      {part(5, (
+        <>
+          <rect x={-25} y={B - 80} width={50} height={5} className={ledge} />
+          {[-25, -14.5, -3, 8.5, 19].map((x) => <rect key={x} x={x} y={B - 87} width={6} height={7} className="c-stone" />)}
+          <rect x={19} y={B - 87} width={6} height={7} className="c-shade" />
+        </>
+      ))}
+      {part(11, (
+        <path d={`M-25,${B - 87} L-22,${B - 102} L-19,${B - 87} Z M19,${B - 87} L22,${B - 102} L25,${B - 87} Z`} className={roof} />
+      ))}
+      {part(9, <circle cx={0} cy={B - 51} r={3.6} className={win} />)}
+      {part(10, <Crown x={0} y={keepPeak + 2} />)}
+      {part(6, pennant(0, flagBase, 18), 11)}
+      {part(12, (
+        <>
+          <line x1={0} y1={flagBase} x2={0} y2={flagBase - 26} className="pole" />
+          <path d={`M0,${flagBase - 26} L24,${flagBase - 22} L19,${flagBase - 17} L24,${flagBase - 12} L0,${flagBase - 12} Z`} className="banner c-royal" />
+        </>
+      ))}
+      {part(6, (
+        <>
+          {[-19, 13].map((x) => (
+            <path key={x} d={`M${x},${B - 74} h6 v22 l-3,-4 l-3,4 Z`} className="c-drape" />
+          ))}
+          <path d={`M-19,${B - 70} h6 M13,${B - 70} h6`} className="c-drape-band" />
+        </>
+      ))}
+
+      {/* Muralla con puerta y puente levadizo */}
+      {part(8, (
+        <>
+          <rect x={-40} y={B - 28} width={80} height={28} className="c-stone" />
+          <path d={bricks(-40, 40, B - 28, B, 9)} className="c-brick" />
+          {[-38, -28, 18, 28].map((x) => <rect key={x} x={x} y={B - 34} width={6} height={6} className="c-stone" />)}
+          <rect x={-16} y={B - 46} width={32} height={46} className="c-stone" />
+          <rect x={8} y={B - 46} width={8} height={46} className="c-shade" />
+          {[-16, -8.5, -1, 6.5].map((x) => <rect key={x} x={x} y={B - 52} width={5} height={6} className="c-stone" />)}
+          <rect x={13.5} y={B - 52} width={2.5} height={6} className="c-stone" />
+          <rect x={-2} y={B - 40} width={4} height={8} rx={2} className={win} />
+          <path d={`M-9,${B} V${B - 17} A9,9 0 0 1 9,${B - 17} V${B} Z`} className="c-gate" />
+          <path d={`M-6,${B - 22} v5 M-2,${B - 25} v6 M2,${B - 25} v6 M6,${B - 22} v5 M-8,${B - 19} H8`} className="c-portcullis" />
+          <path d={`M-9,${B} L9,${B} L12,8 L-12,8 Z`} className="c-bridge" />
+          <path d={`M-10,${B + 4} H10 M-11,${B + 9} H11 M-11.5,${B + 13} H11.5`} className="c-plank" />
+          <path d={`M-12,${B - 26} L-11.5,6 M12,${B - 26} L11.5,6`} className="c-chain" />
+        </>
+      ))}
+      {part(4, tower(37))}
+      {part(7, tower(-37))}
+      {part(9, (
+        <>
+          <Torch x={-14} y={B - 20} glow={glow} s={0.7} />
+          <Torch x={14} y={B - 20} glow={glow} s={0.7} />
+        </>
+      ))}
+      {part(12, (
+        <g className="c-sparkles">
+          {[[-66, -96, 0], [62, -112, 0.7], [-38, -150, 1.4], [40, -152, 2.1], [-76, -40, 1.1], [80, -58, 1.8], [0, -184, 0.4]].map(([x, y, d]) => (
+            <Sparkle key={`${x},${y}`} x={x} y={y} r={4} d={d} />
+          ))}
+        </g>
+      ))}
+    </g>
+  );
+}
+
+// =====================================================================
 // Vista frontal
 // =====================================================================
 
-const H = 240;
-const GROUND = H - 34;
+/** Alto de la escena frontal: más alta en pantallas anchas, donde el castillo crece. */
+const frontHeight = (W: number) => (W >= 560 ? 322 : 300);
 
 // Estrellas fijas (misma semilla siempre).
 const STARS = (() => {
@@ -231,9 +515,9 @@ function Villager({ i, W }: { i: number; W: number }) {
 }
 
 /** Campamento: tienda y hoguera mientras no hay nada construido. */
-function Camp({ x, glow }: { x: number; glow: string }) {
+function Camp({ x, y, glow, s = 1 }: { x: number; y: number; glow: string; s?: number }) {
   return (
-    <g className="camp" transform={`translate(${x},${GROUND})`}>
+    <g className="camp" transform={`translate(${x},${y}) scale(${s})`}>
       <ellipse cx={8} cy={0} rx={22} ry={6} fill={`url(#${glow})`} className="fire-light" />
       <path d="M-22,0 L-12,-20 L-2,0 Z" className="tent" />
       <path d="M-12,-20 L-2,0 L-8,0 Z" className="tent-shade" />
@@ -262,11 +546,13 @@ function Firework({ x, y, delay, hue }: { x: number; y: number; delay: number; h
 const SHAPE = { side: Cabana, daily: Herreria, main: Torreon };
 const SLOT = { side: 54, daily: 62, main: 44 };
 
-function FrontCity({ quests, progress, complete, stage, icon, W, fresh, setHover }: SceneProps) {
+function FrontCity({ quests, progress, complete, stage, icon, W, fresh, setHover, castle }: SceneProps) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
   const id = (s: string) => `${uid}${s}`;
   const glow = id('glow');
   const built = quests.filter((q) => q.completedAt).length;
+  const H = frontHeight(W);
+  const GROUND = H - 34;
 
   // Siluetas en un solo trazo: pinos, hierba y cordillera.
   const deco = useMemo(() => {
@@ -290,27 +576,47 @@ function FrontCity({ quests, progress, complete, stage, icon, W, fresh, setHover
     const rim = `M${ridge.join(' L')}`;
     const flies = Array.from({ length: 7 }, (_, i) => ({ x: 20 + rnd() * (W - 40), y: GROUND - 14 - rnd() * 40, d: 5 + rnd() * 6, i }));
     return { pines, grass, mountains, rim, flies };
-  }, [W]);
+  }, [W, GROUND]);
 
-  // Primera fila hasta llenar el ancho; el resto, más pequeño y detrás. En pantallas anchas, algo más grandes.
+  // El castillo ocupa el centro; los edificios se reparten a sus dos lados (primera fila hasta llenar
+  // el ancho; el resto, más pequeño y detrás). En pantallas anchas, algo más grandes.
   const k = Math.min(1.3, Math.max(1, W / 640));
-  const usable = W - 40;
-  const front: Quest[] = [];
+  const ck = Math.max(1.12, Math.min(1.42, W / 640));
+  const gap = quests.length > 0 ? 114 * ck : 0;
+  const sideCap = (W - 36 - gap) / 2;
+  const left: Quest[] = [];
+  const right: Quest[] = [];
   const back: Quest[] = [];
-  let used = 0;
+  let lw = 0;
+  let rw = 0;
   for (const q of quests) {
-    if (used + SLOT[q.type] * k <= usable) {
-      front.push(q);
-      used += SLOT[q.type] * k;
-    } else back.push(q);
+    const w = SLOT[q.type] * k;
+    if (lw <= rw && lw + w <= sideCap) { left.push(q); lw += w; }
+    else if (rw + w <= sideCap) { right.push(q); rw += w; }
+    else if (lw + w <= sideCap) { left.push(q); lw += w; }
+    else back.push(q);
   }
-  const frontLeft = (W - used) / 2;
-  function row(list: Quest[], baseline: number, scale: number) {
-    const total = list.reduce((n, q) => n + SLOT[q.type] * scale, 0);
-    let x = (W - total) / 2;
-    return list.map((q) => {
-      const cx = x + (SLOT[q.type] * scale) / 2;
-      x += SLOT[q.type] * scale;
+  // Fila de atrás (más pequeña); si no cabe sin encogerse demasiado, se reparte en dos filas escalonadas.
+  const backSum = back.reduce((n, q) => n + SLOT[q.type], 0);
+  const avail = W - 24 - gap * 0.85;
+  const twoRows = backSum > 0 && avail / backSum < 0.5;
+  const bk = backSum ? Math.min(0.7 * k, (twoRows ? 1.9 : 1) * avail / backSum) : 0.7 * k;
+  const backRows: [Quest[], Quest[]][] = twoRows ? [[[], []], [[], []]] : [[[], []]];
+  const widths = backRows.map(() => [0, 0]);
+  back.forEach((q, i) => {
+    const r = twoRows ? i % 2 : 0;
+    const side = widths[r][0] <= widths[r][1] ? 0 : 1;
+    backRows[r][side].push(q);
+    widths[r][side] += SLOT[q.type];
+  });
+  /** Coloca una fila a ambos lados del castillo: la izquierda crece hacia fuera desde el centro, igual que la derecha. */
+  function row(l: Quest[], r: Quest[], baseline: number, scale: number, g: number) {
+    const placed: { q: Quest; cx: number }[] = [];
+    let x = W / 2 - g / 2;
+    for (const q of l) { const w = SLOT[q.type] * scale; placed.push({ q, cx: x - w / 2 }); x -= w; }
+    x = W / 2 + g / 2;
+    for (const q of r) { const w = SLOT[q.type] * scale; placed.push({ q, cx: x + w / 2 }); x += w; }
+    return placed.map(({ q, cx }) => {
       const Shape = SHAPE[q.type];
       return (
         <g
@@ -335,7 +641,7 @@ function FrontCity({ quests, progress, complete, stage, icon, W, fresh, setHover
   const showLabel = W >= 560;
   const gateX = W / 2;
   return (
-    <svg width={W} height={H} role="img" aria-label={`Ciudad vista de frente: ${stage}, ${built} de ${quests.length} construcciones levantadas`}>
+    <svg width={W} height={H} role="img" aria-label={`Ciudad vista de frente: ${stage}, ${built} de ${quests.length} construcciones levantadas.${quests.length ? ` ${castle.label} (${castle.name}).` : ''}`}>
       <defs>
         <linearGradient id={id('sky')} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" style={{ stopColor: 'color-mix(in srgb, var(--c3) 30%, #000)' }} />
@@ -363,6 +669,11 @@ function FrontCity({ quests, progress, complete, stage, icon, W, fresh, setHover
           <stop offset="0%" style={{ stopColor: 'color-mix(in srgb, var(--c1) 30%, #fff)' }} stopOpacity="0.35" />
           <stop offset="100%" stopColor="#fff" stopOpacity="0" />
         </radialGradient>
+        <radialGradient id={id('aura')}>
+          <stop offset="0%" stopColor="#ffd77a" stopOpacity="0.42" />
+          <stop offset="55%" stopColor="#ffb347" stopOpacity="0.12" />
+          <stop offset="100%" stopColor="#ffb347" stopOpacity="0" />
+        </radialGradient>
       </defs>
       <rect width={W} height={H} fill={`url(#${id('sky')})`} />
       {STARS.map((s, i) => <circle key={i} cx={s.x * W} cy={s.y * H} r={s.r} className={i % 5 === 0 ? 'star tw' : 'star'} style={i % 5 === 0 ? { animationDelay: `${-(i % 7) * 0.6}s` } : undefined} />)}
@@ -374,9 +685,9 @@ function FrontCity({ quests, progress, complete, stage, icon, W, fresh, setHover
       <circle cx={W - 66} cy={63} r={1.4} className="crater" />
       {complete && (
         <>
-          <Firework x={W * 0.22} y={52} delay={0} hue="var(--c1)" />
-          <Firework x={W * 0.48} y={34} delay={1.3} hue="#ffd27a" />
-          <Firework x={W * 0.72} y={58} delay={2.4} hue="var(--c2)" />
+          <Firework x={W * 0.16} y={56} delay={0} hue="var(--c1)" />
+          <Firework x={W * 0.3} y={34} delay={1.3} hue="#ffd27a" />
+          <Firework x={W * 0.7} y={44} delay={2.4} hue="var(--c2)" />
         </>
       )}
       <g className="clouds">
@@ -393,33 +704,25 @@ function FrontCity({ quests, progress, complete, stage, icon, W, fresh, setHover
       <path d={`M0,${GROUND - 34} Q${W * 0.2},${GROUND - 70} ${W * 0.42},${GROUND - 40} T${W * 0.8},${GROUND - 52} T${W},${GROUND - 36} L${W},${GROUND} L0,${GROUND} Z`} className="hills" />
       <path d={deco.pines} className="pines" />
       <rect x={0} y={GROUND - 44} width={W} height={50} fill={`url(#${id('fog')})`} className="fog" />
-      {complete && (
-        <g transform={`translate(${W / 2},${GROUND - 26}) scale(${k})`} className="keep">
-          <rect x={-46} y={-70} width={92} height={70} />
-          <rect x={-62} y={-96} width={26} height={96} />
-          <rect x={36} y={-96} width={26} height={96} />
-          <rect x={-16} y={-92} width={32} height={22} />
-          {[-62, -50, 36, 48].map((x) => <rect key={x} x={x} y={-104} width={7} height={8} />)}
-          {[-46, -34, -22, 15, 27, 39].map((x) => <rect key={x} x={x} y={-76} width={7} height={6} />)}
-          {[-52, 46].map((x) => <rect key={x} x={x - 3} y={-76} width={6} height={10} rx={3} className="keep-win" />)}
-          {[-30, -12, 6, 24].map((x) => <rect key={x} x={x} y={-52} width={6} height={9} rx={3} className="keep-win" />)}
-          <line x1={0} y1={-92} x2={0} y2={-124} className="pole" />
-          <path d="M0,-124 L28,-117 L0,-110 Z" className="banner" fill={`url(#${id('banner')})`} />
-          {[-49, 49].map((x) => (
-            <g key={x}>
-              <line x1={x} y1={-104} x2={x} y2={-120} className="pole" />
-              <path d={`M${x},-120 L${x + 16},-115 L${x},-110 Z`} className="banner" />
-            </g>
-          ))}
-        </g>
-      )}
-      {row(back, GROUND - 26, 0.7 * k)}
+      {castle.tier >= 12 && <ellipse cx={W / 2} cy={GROUND - 70 * ck} rx={150 * ck} ry={120 * ck} fill={`url(#${id('aura')})`} className="castle-aura" />}
+      {twoRows && row(backRows[1][0], backRows[1][1], GROUND - 44, bk * 0.82, gap * 0.8)}
+      {row(backRows[0][0], backRows[0][1], GROUND - 24, bk, gap * 0.85)}
       <rect x={0} y={GROUND} width={W} height={H - GROUND} fill={`url(#${id('earth')})`} />
       <path d={`M0,${GROUND} H${W}`} className="ground-rim" />
       <path d={`M0,${GROUND + 6} Q${W * 0.25},${GROUND + 3} ${W * 0.5},${GROUND + 6} T${W},${GROUND + 5} L${W},${GROUND + 15} Q${W * 0.75},${GROUND + 18} ${W * 0.5},${GROUND + 15} T0,${GROUND + 16} Z`} className="city-road" />
       <path d={deco.grass} className="grass" />
-      {quests.length > 0 && built === 0 && frontLeft - 30 > 26 && <Camp x={frontLeft - 30} glow={glow} />}
-      {row(front, GROUND, k)}
+      {quests.length > 0 && (
+        <g
+          transform={`translate(${W / 2},${GROUND}) scale(${ck})`}
+          onPointerEnter={() => setHover({ castle: true, x: W / 2 + 40 * ck, y: GROUND - 90 * ck })} onPointerLeave={() => setHover(null)}
+        >
+          <rect x={-56} y={-150} width={112} height={156} fill="transparent" />
+          <FrontCastle tier={castle.tier} prev={castle.prev} glow={glow} />
+          {castle.upgraded && <CastleBurst key={built} x={0} y={-96} tier={castle.tier} s={1} />}
+        </g>
+      )}
+      {quests.length > 0 && built === 0 && <Camp x={W / 2 + 36 * ck} y={GROUND} glow={glow} s={ck} />}
+      {row(left, right, GROUND, k, gap)}
       <g transform={`translate(0,${GROUND + 13})`}>
         {Array.from({ length: Math.min(5, built) }, (_, i) => <Villager key={i} i={i} W={W} />)}
       </g>
@@ -624,6 +927,197 @@ function IsoTorreon({ P, live }: { P: Proj; live: boolean }) {
   );
 }
 
+/** Tejado piramidal de base cuadrada (medio ancho a) entre las alturas z0 y z1. */
+function Pyr({ P, a, z0, z1, m }: { P: Proj; a: number; z0: number; z1: number; m: string }) {
+  return (
+    <>
+      <polygon className={`${m} l`} points={pts(P, [[-a, a, z0], [a, a, z0], [0, 0, z1]])} />
+      <polygon className={`${m} r`} points={pts(P, [[a, -a, z0], [a, a, z0], [0, 0, z1]])} />
+    </>
+  );
+}
+
+function IsoTorch({ P, i, j, z, s, glow }: { P: Proj; i: number; j: number; z: number; s: number; glow: string }) {
+  const [x, y] = P(i, j, z);
+  return (
+    <g className="torch" transform={`translate(${x.toFixed(1)},${y.toFixed(1)}) scale(${(s * 0.85).toFixed(2)})`}>
+      <circle cy={-4} r={12} fill={`url(#${glow})`} className="torch-glow" />
+      <line x1={0} y1={0} x2={0} y2={7} className="torch-stick" />
+      <path d="M0,-7 C3.2,-3.5 2.4,0 0,0 C-2.4,0 -3.2,-3.5 0,-7 Z" className="torch-flame" />
+    </g>
+  );
+}
+
+/** Castillo isométrico en la plaza central (P centrado en la plaza; la puerta mira a la avenida, +j). */
+function IsoCastle({ P, tier, prev, s, glow }: { P: Proj; tier: number; prev: number; s: number; glow: string }) {
+  const part = makePart(tier, prev);
+  const win = tier >= 9 ? 'iso-win' : 'iso-win dim';
+  const roofM = tier >= 10 ? 'm-gold' : 'm-roof';
+  const ledgeM = tier >= 10 ? 'm-goldtrim' : 'm-stone2';
+  const sp = tier >= 11;
+  const at = (ci: number, cj: number): Proj => (i, j, z = 0) => P(ci + i, cj + j, z);
+  const R = 0.9; // línea de la muralla
+  const keepTop = sp ? 5.3 : 4.25;
+  const [kx, ky] = P(0, 0, keepTop);
+
+  const tower = (ci: number, cj: number) => {
+    const Pt = at(ci, cj);
+    const top = 3.1;
+    const base = tier >= 5 ? top + 0.08 : top;
+    const peak = sp ? 5 : 4.15;
+    return (
+      <>
+        <Box P={Pt} i0={-0.26} j0={-0.26} i1={0.26} j1={0.26} z1={top} m="m-stone" top={false} />
+        <polyline className="course" points={pts(Pt, [[-0.26, 0.26, 1.55], [0.26, 0.26, 1.55], [0.26, -0.26, 1.55]])} />
+        <FaceL P={Pt} j={0.26} a={-0.06} b={0.06} z0={2.1} z1={2.5} cls={win} />
+        <FaceR P={Pt} i={0.26} a={-0.06} b={0.06} z0={0.9} z1={1.3} cls={win} />
+        {part(5, <Box P={Pt} i0={-0.32} j0={-0.32} i1={0.32} j1={0.32} z0={top - 0.12} z1={top + 0.08} m={ledgeM} />)}
+        <Pyr P={Pt} a={sp ? 0.3 : 0.34} z0={base} z1={peak} m={roofM} />
+        {part(6, <Flag P={Pt} z={peak} len={1} />, 11)}
+        {part(12, <Flag P={Pt} z={peak} len={1.3} />)}
+      </>
+    );
+  };
+  const turret = (ci: number, cj: number) => {
+    const Pt = at(ci, cj);
+    return (
+      <>
+        <Box P={Pt} i0={-0.19} j0={-0.19} i1={0.19} j1={0.19} z1={1.3} m="m-wall" />
+        <Merlons P={Pt} s={0.19} z={1.3} n={2} size={0.12} hgt={0.18} back />
+        <Merlons P={Pt} s={0.19} z={1.3} n={2} size={0.12} hgt={0.18} back={false} />
+        {part(11, <Pyr P={Pt} a={0.16} z0={1.3} z1={2.6} m={roofM} />)}
+      </>
+    );
+  };
+  const wallMerl = (axis: 'i' | 'j', fixed: number, from: number, to: number) => {
+    const out: ReactNode[] = [];
+    for (let t = from + 0.06; t + 0.12 <= to; t += 0.24) {
+      out.push(axis === 'i'
+        ? <Box key={t} P={P} i0={t} j0={fixed + 0.02} i1={t + 0.12} j1={fixed + 0.1} z0={0.85} z1={1.03} m="m-wall" />
+        : <Box key={t} P={P} i0={fixed + 0.02} j0={t} i1={fixed + 0.1} j1={t + 0.12} z0={0.85} z1={1.03} m="m-wall" />);
+    }
+    return out;
+  };
+  const wt = 0.08;
+
+  return (
+    <g className="castle iso-castle">
+      {part(12, <Pool P={P} i={0} j={0.4} r={2.4} gid={`${glow}aura`} cls="castle-aura" />)}
+      {part(9, <Pool P={P} i={0} j={1.2} r={1.3} gid={glow} />)}
+      {part(1, <ellipse cx={P(0, 0)[0]} cy={P(0, 0)[1]} rx={1.3 * Math.abs(P(1, -1)[0] - P(0, 0)[0])} ry={0.65 * Math.abs(P(1, -1)[0] - P(0, 0)[0])} className="c-mound-iso" />, 7)}
+      {/* Muralla trasera y torrecilla del fondo */}
+      {part(8, (
+        <>
+          <Box P={P} i0={-R} j0={-R - wt} i1={R - 0.26} j1={-R + wt} z1={0.85} m="m-wall" />
+          {wallMerl('i', -R - wt, -R, R - 0.26)}
+          <Box P={P} i0={-R - wt} j0={-R} i1={-R + wt} j1={R - 0.26} z1={0.85} m="m-wall" />
+          {wallMerl('j', -R - wt, -R, R - 0.26)}
+          {turret(-R, -R)}
+        </>
+      ))}
+      {part(1, (
+        <path
+          className="c-fence-iso"
+          d={[[-0.95, -0.4], [-0.95, 0], [-0.95, 0.4], [-0.4, -0.95], [0, -0.95], [0.4, -0.95]].map(([i, j]) => {
+            const [x, y] = P(i, j);
+            const w = 1.6 * s;
+            const h = 9 * s;
+            return `M${(x - w).toFixed(1)},${y.toFixed(1)} V${(y - h).toFixed(1)} L${x.toFixed(1)},${(y - h - w * 1.3).toFixed(1)} L${(x + w).toFixed(1)},${(y - h).toFixed(1)} V${y.toFixed(1)} Z`;
+          }).join(' ')}
+        />
+      ), 7)}
+
+      {/* Torre del homenaje */}
+      {part(1, (
+        <>
+          <Box P={P} i0={-0.42} j0={-0.42} i1={0.42} j1={0.42} z1={1.5} m="m-wood" top={false} />
+          <FaceL P={P} j={0.42} a={-0.12} b={0.12} z0={0} z1={0.6} cls="m-door" />
+          <FaceR P={P} i={0.42} a={-0.1} b={0.1} z0={0.8} z1={1.15} cls={win} />
+          <Pyr P={P} a={0.54} z0={1.5} z1={2.6} m="m-roof" />
+        </>
+      ), 1)}
+      {part(2, (
+        <>
+          <Box P={P} i0={-0.5} j0={-0.5} i1={0.5} j1={0.5} z1={0.8} m="m-stone" />
+          <Box P={P} i0={-0.42} j0={-0.42} i1={0.42} j1={0.42} z0={0.8} z1={2.05} m="m-wood" top={false} />
+          <FaceL P={P} j={0.5} a={-0.12} b={0.12} z0={0} z1={0.62} cls="m-door" />
+          <FaceR P={P} i={0.42} a={-0.1} b={0.1} z0={1.2} z1={1.55} cls={win} />
+          <FaceL P={P} j={0.42} a={-0.1} b={0.1} z0={1.2} z1={1.55} cls={win} />
+          <Pyr P={P} a={0.54} z0={2.05} z1={3.15} m="m-roof" />
+        </>
+      ), 2)}
+      {part(3, (
+        <>
+          <Box P={P} i0={-0.52} j0={-0.52} i1={0.52} j1={0.52} z1={2.8} m="m-stone" top={false} />
+          <polyline className="course" points={pts(P, [[-0.52, 0.52, 1.4], [0.52, 0.52, 1.4], [0.52, -0.52, 1.4]])} />
+          <FaceL P={P} j={0.52} a={-0.36} b={-0.22} z0={1.75} z1={2.2} cls={win} />
+          <FaceL P={P} j={0.52} a={0.22} b={0.36} z0={1.75} z1={2.2} cls={win} />
+          <FaceR P={P} i={0.52} a={-0.3} b={-0.16} z0={1.75} z1={2.2} cls={win} />
+          <FaceR P={P} i={0.52} a={0.16} b={0.3} z0={0.75} z1={1.2} cls={win} />
+          <FaceL P={P} j={0.52} a={-0.13} b={0.13} z0={0} z1={0.72} cls="m-door" />
+        </>
+      ))}
+      {part(3, <Pyr P={P} a={0.64} z0={2.8} z1={4.05} m={roofM} />, 4)}
+      {part(5, (
+        <>
+          <Box P={P} i0={-0.6} j0={-0.6} i1={0.6} j1={0.6} z0={2.8} z1={3.02} m={ledgeM} />
+          <Merlons P={P} s={0.6} z={3.02} n={4} size={0.16} hgt={0.24} back />
+        </>
+      ))}
+      {part(5, <Pyr P={P} a={0.38} z0={3.02} z1={4.25} m={roofM} />, 10)}
+      {part(11, <Pyr P={P} a={0.36} z0={3.02} z1={keepTop} m={roofM} />)}
+      {part(9, <FaceL P={P} j={0.52} a={-0.06} b={0.06} z0={2.35} z1={2.55} cls={win} />)}
+      {part(10, <Crown x={kx} y={ky + 2 * s} s={s * 0.8} />)}
+      {part(6, <Flag P={P} z={keepTop + (tier >= 10 ? 0.55 : 0)} len={1.1} />, 11)}
+      {part(12, <Flag P={P} z={keepTop + 0.55} len={1.6} banner="iso-banner c-royal" />)}
+      {part(5, <Merlons P={P} s={0.6} z={3.02} n={4} size={0.16} hgt={0.24} back={false} />)}
+      {part(6, (
+        <>
+          <FaceL P={P} j={0.525} a={-0.5} b={-0.38} z0={1.55} z1={2.6} cls="c-drape" />
+          <FaceR P={P} i={0.525} a={0.38} b={0.5} z0={1.55} z1={2.6} cls="c-drape" />
+        </>
+      ))}
+
+      {part(4, tower(R, -R))}
+      {part(7, tower(-R, R))}
+
+      {/* Muralla delantera con la puerta, el puente levadizo y la torrecilla frontal */}
+      {part(8, (
+        <>
+          <polygon className="c-bridge" points={pts(P, [[-0.18, R + 0.16, 0.02], [0.18, R + 0.16, 0.02], [0.2, R + 0.66, 0], [-0.2, R + 0.66, 0]])} />
+          <Box P={P} i0={-R + 0.26} j0={R - wt} i1={-0.3} j1={R + wt} z1={0.85} m="m-wall" />
+          {wallMerl('i', R + wt - 0.12, -R + 0.26, -0.3)}
+          <Box P={P} i0={-0.3} j0={R - 0.16} i1={0.3} j1={R + 0.16} z1={1.45} m="m-wall" />
+          <Merlons P={(i, j, z = 0) => P(i, R + j, z)} s={0.3} z={1.45} n={3} size={0.12} hgt={0.2} back={false} />
+          <FaceL P={P} j={R + 0.16} a={-0.15} b={0.15} z0={0} z1={0.78} cls="iso-gate" />
+          <FaceL P={P} j={R + 0.16} a={-0.04} b={0.04} z0={1.0} z1={1.25} cls={win} />
+          <polyline className="c-chain" points={pts(P, [[-0.22, R + 0.16, 0.95], [-0.2, R + 0.62, 0.02]])} />
+          <polyline className="c-chain" points={pts(P, [[0.22, R + 0.16, 0.95], [0.2, R + 0.62, 0.02]])} />
+          <Box P={P} i0={0.3} j0={R - wt} i1={R - 0.19} j1={R + wt} z1={0.85} m="m-wall" />
+          {wallMerl('i', R + wt - 0.12, 0.3, R - 0.19)}
+          <Box P={P} i0={R - wt} j0={-R + 0.26} i1={R + wt} j1={R - 0.19} z1={0.85} m="m-wall" />
+          {wallMerl('j', R + wt - 0.12, -R + 0.26, R - 0.19)}
+          {turret(R, R)}
+        </>
+      ))}
+      {part(9, (
+        <>
+          <IsoTorch P={P} i={-0.36} j={R + 0.18} z={0.7} s={s} glow={glow} />
+          <IsoTorch P={P} i={0.36} j={R + 0.18} z={0.7} s={s} glow={glow} />
+        </>
+      ))}
+      {part(12, (
+        <g className="c-sparkles">
+          {([[-1.5, -1.2, 3.6, 0], [1.3, -1.6, 4.4, 0.7], [-1.2, 1.4, 2.6, 1.4], [1.6, 1.1, 2.2, 2.1], [0, -0.4, 6.3, 1.0]] as const).map(([i, j, z, d]) => {
+            const [x, y] = P(i, j, z);
+            return <Sparkle key={`${i},${j}`} x={x} y={y} r={4 * s} d={d} />;
+          })}
+        </g>
+      ))}
+    </g>
+  );
+}
+
 /** Andamio isométrico sobre los cimientos de un edificio pendiente. */
 function IsoScaffold({ P, type, s }: { P: Proj; type: QuestType; s: number }) {
   const { a, b, h } = ISO_DIM[type];
@@ -719,7 +1213,7 @@ function EmptyLot({ P, kind, s }: { P: Proj; kind: number; s: number }) {
   );
 }
 
-function IsoCity({ quests, progress, complete, stage, icon, W, fresh, setHover }: SceneProps) {
+function IsoCity({ quests, progress, complete, stage, icon, W, fresh, setHover, castle }: SceneProps) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
   const id = (s: string) => `${uid}${s}`;
   const glow = id('glow');
@@ -728,9 +1222,11 @@ function IsoCity({ quests, progress, complete, stage, icon, W, fresh, setHover }
   const walls = progress >= 0.34;
   const stoneWalls = progress >= 0.67;
 
-  // Cuadrícula de solares (impar, con la plaza en el centro y una avenida hasta la puerta).
+  // Cuadrícula de solares (impar, con el castillo en el centro y una avenida hasta la puerta). En cuanto la
+  // ciudad crece, el castillo se reserva los 3×3 solares centrales para seguir siendo el protagonista.
+  const free = (l: number) => (l < 5 ? l * l - 1 - (l - 1) / 2 : l * l - 9 - ((l - 1) / 2 - 1));
   let L = 3;
-  while (L * L - 1 - (L - 1) / 2 < n) L += 2;
+  while (free(L) < n) L += 2;
   const S = 3;
   const m = 1;
   const G = L * S + 2 * m;
@@ -743,15 +1239,20 @@ function IsoCity({ quests, progress, complete, stage, icon, W, fresh, setHover }
   const P: Proj = (i, j, z = 0) => [ox + ((i - j) * tw) / 2, oy + ((i + j) * th) / 2 - z * th];
   const s = th / 20; // escala de figuras (obreros, aldeanos, árboles)
   const mid = G / 2;
+  const sc = L >= 5 ? 1.9 : 1.25; // escala del castillo
 
   const lots = useMemo(() => {
     const list: { li: number; lj: number }[] = [];
     for (let li = 0; li < L; li++) for (let lj = 0; lj < L; lj++) {
       if (li === c && lj >= c) continue; // plaza y avenida
+      if (L >= 5 && Math.abs(li - c) <= 1 && Math.abs(lj - c) <= 1) continue; // terrenos del castillo
       list.push({ li, lj });
     }
+    // Primero los solares más cercanos; a igual distancia, los de los lados (para no tapar el castillo ni quedar
+    // tapados por él), luego los de delante y por último los de detrás.
     const d = (l: { li: number; lj: number }) => (l.li - c) ** 2 + (l.lj - c) ** 2;
-    return list.sort((x, y) => d(x) - d(y) || x.li + x.lj - (y.li + y.lj) || x.li - y.li);
+    const side = (l: { li: number; lj: number }) => Math.abs(l.li - l.lj);
+    return list.sort((x, y) => d(x) - d(y) || side(y) - side(x) || y.li + y.lj - (x.li + x.lj) || x.li - y.li);
   }, [L, c]);
 
   // Bosque alrededor de la parcela (fuera del rombo), en coordenadas de pantalla.
@@ -830,49 +1331,17 @@ function IsoCity({ quests, progress, complete, stage, icon, W, fresh, setHover }
     });
   });
 
-  // Plaza central: hoguera de campamento, pozo o la fortaleza del reino glorioso.
+  // Plaza central: el castillo del reino (con el campamento mientras no hay nada construido).
   if (n > 0) {
     const Pc: Proj = (i, j, z = 0) => P(mid + i, mid + j, z);
+    const Ps: Proj = (i, j, z = 0) => P(mid + i * sc, mid + j * sc, z * sc);
     const [px, py] = Pc(0, 0);
-    const prx = 1.15 * tw * 0.7071;
+    const prx = 1.6 * sc * tw * 0.7071;
     const walker = built >= 3 && !complete;
-    const [wx0, wy0] = Pc(-0.9, 0.75);
-    const [wx1, wy1] = Pc(0.75, 0.9);
-    let center: ReactNode;
-    if (complete) {
-      const t = (i: number, j: number, key: string) => {
-        const Pt: Proj = (a, b, z = 0) => Pc(i + a, j + b, z);
-        const [cx, cy] = Pt(0, 0, 3.1);
-        const [lx2, ly2] = Pt(-0.42, 0.42, 3.1);
-        const [rx2] = Pt(0.42, -0.42, 3.1);
-        return (
-          <g key={key}>
-            <Box P={Pt} i0={-0.38} j0={-0.38} i1={0.38} j1={0.38} z1={3.1} m="m-stone" />
-            <FaceL P={Pt} j={0.38} a={-0.1} b={0.05} z0={1.9} z1={2.3} cls="iso-win" />
-            <path d={`M${lx2},${ly2} L${cx},${cy - th * 1.6} L${rx2},${ly2} Q${cx},${ly2 + th * 0.45} ${lx2},${ly2} Z`} className="cone" />
-            <path d={`M${cx},${cy - th * 1.6} L${rx2},${ly2} Q${(cx + rx2) / 2},${ly2 + th * 0.3} ${cx},${ly2 + th * 0.42} Z`} className="cone-shade" />
-          </g>
-        );
-      };
-      center = (
-        <g className="iso-keep">
-          <Pool P={Pc} i={0} j={1.2} r={1.4} gid={glow} />
-          {t(-0.85, -0.85, 'tb')}
-          <Box P={Pc} i0={-0.9} j0={-0.9} i1={0.9} j1={0.9} z1={2} m="m-stone" />
-          {t(0.85, -0.85, 'tr')}
-          {t(-0.85, 0.85, 'tl')}
-          <Box P={Pc} i0={-0.45} j0={-0.45} i1={0.45} j1={0.45} z0={2} z1={3.5} m="m-stone2" />
-          <Merlons P={Pc} s={0.45} z={3.5} n={3} size={0.16} hgt={0.22} back />
-          <Flag P={Pc} z={3.5} len={1.8} />
-          <Merlons P={Pc} s={0.45} z={3.5} n={3} size={0.16} hgt={0.22} back={false} />
-          <FaceL P={Pc} j={0.9} a={-0.25} b={0.25} z0={0} z1={0.9} cls="m-door" />
-          <FaceL P={Pc} j={0.9} a={-0.7} b={-0.5} z0={1} z1={1.4} cls="iso-win" />
-          <FaceL P={Pc} j={0.9} a={0.5} b={0.7} z0={1} z1={1.4} cls="iso-win" />
-          <FaceR P={Pc} i={0.9} a={-0.5} b={-0.3} z0={1} z1={1.4} cls="iso-win" />
-          {t(0.85, 0.85, 'tf')}
-        </g>
-      );
-    } else if (built === 0) {
+    const [wx0, wy0] = Pc(0.22, 1.6 * sc);
+    const [wx1, wy1] = Pc(0.22, mid - 1.2);
+    let center: ReactNode = null;
+    if (built === 0) {
       const [fx, fy] = Pc(0, 0);
       const tent = (i: number, j: number, key: string) => {
         const [ax, ay] = Pc(i, j, 1.3);
@@ -900,19 +1369,6 @@ function IsoCity({ quests, progress, complete, stage, icon, W, fresh, setHover }
           {tent(-0.75, 0.6, 'c')}
         </g>
       );
-    } else {
-      const [wx, wy] = Pc(0, 0);
-      const r = 0.42 * tw * 0.7071;
-      center = (
-        <g className="iso-well">
-          <ellipse cx={wx} cy={wy} rx={r} ry={r / 2} className="well-stone" />
-          <rect x={wx - r} y={wy - th * 0.45} width={r * 2} height={th * 0.45} className="well-stone" />
-          <ellipse cx={wx} cy={wy - th * 0.45} rx={r} ry={r / 2} className="well-top" />
-          <ellipse cx={wx} cy={wy - th * 0.45} rx={r * 0.72} ry={r * 0.36} className="well-water" />
-          <path d={`M${wx - r * 0.9},${wy - th * 0.4} V${wy - th * 1.5} M${wx + r * 0.9},${wy - th * 0.4} V${wy - th * 1.5}`} className="well-post" />
-          <path d={`M${wx - r * 1.2},${wy - th * 1.4} L${wx},${wy - th * 1.95} L${wx + r * 1.2},${wy - th * 1.4} Z`} className="well-roof" />
-        </g>
-      );
     }
     items.push({
       depth: mid * 2,
@@ -922,6 +1378,11 @@ function IsoCity({ quests, progress, complete, stage, icon, W, fresh, setHover }
           <ellipse cx={px} cy={py} rx={prx} ry={prx / 2} className={stoneWalls ? 'iso-plaza paved' : 'iso-plaza'} />
           <ellipse cx={px} cy={py} rx={prx * 0.8} ry={prx * 0.4} className="iso-plaza-ring" />
           {center}
+          <g onPointerEnter={() => setHover({ castle: true, x: px + tw * 0.6 * sc, y: py - th * 3 * sc })} onPointerLeave={() => setHover(null)}>
+            <IsoCastle P={Ps} tier={castle.tier} prev={castle.prev} s={s * sc} glow={glow} />
+            <rect x={Ps(-1.2, 1.2)[0]} y={Ps(0, 0, 5.6)[1]} width={Ps(1.2, -1.2)[0] - Ps(-1.2, 1.2)[0]} height={Ps(1.2, 1.2)[1] - Ps(0, 0, 5.6)[1]} fill="transparent" />
+          </g>
+          {castle.upgraded && <CastleBurst key={built} x={Ps(0, 0, 3.6)[0]} y={Ps(0, 0, 3.6)[1]} tier={castle.tier} s={s * sc} />}
           {walker && (
             <g transform={`translate(${wx0},${wy0})`}>
               <g className="iso-walk" style={{ ['--dx' as string]: `${wx1 - wx0}px`, ['--dy' as string]: `${wy1 - wy0}px`, animationDuration: '9s' }}>
@@ -1071,7 +1532,7 @@ function IsoCity({ quests, progress, complete, stage, icon, W, fresh, setHover }
 
   const [pX, pY] = P(0, 0);
   return (
-    <svg width={W} height={H} role="img" aria-label={`Ciudad vista desde arriba: ${stage}, ${built} de ${n} construcciones levantadas`}>
+    <svg width={W} height={H} role="img" aria-label={`Ciudad vista desde arriba: ${stage}, ${built} de ${n} construcciones levantadas.${n ? ` ${castle.label} (${castle.name}).` : ''}`}>
       <defs>
         <radialGradient id={id('field')} cx="50%" cy="58%" r="75%">
           <stop offset="0%" style={{ stopColor: 'color-mix(in srgb, var(--c3) 14%, #12241a)' }} />
@@ -1088,6 +1549,11 @@ function IsoCity({ quests, progress, complete, stage, icon, W, fresh, setHover }
         <radialGradient id={glow}>
           <stop offset="0%" stopColor="#ffbe5c" stopOpacity="0.55" />
           <stop offset="100%" stopColor="#ffbe5c" stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id={`${glow}aura`}>
+          <stop offset="0%" stopColor="#ffd77a" stopOpacity="0.5" />
+          <stop offset="60%" stopColor="#ffb347" stopOpacity="0.14" />
+          <stop offset="100%" stopColor="#ffb347" stopOpacity="0" />
         </radialGradient>
         <radialGradient id={id('vig')} cx="50%" cy="55%" r="72%">
           <stop offset="60%" stopColor="#000" stopOpacity="0" />
@@ -1107,6 +1573,12 @@ function IsoCity({ quests, progress, complete, stage, icon, W, fresh, setHover }
       <polygon points={diamond} fill={`url(#${id('chk')})`} className="plot-checker" />
       <polygon points={diamond} className="plot-edge" />
       <g className={stoneWalls ? 'iso-roads paved' : 'iso-roads'}>{roads}</g>
+      {n > 0 && L >= 5 && (
+        <g className="iso-court">
+          <polygon points={pts(P, [[mid - 4.2, mid - 4.2, 0], [mid + 4.2, mid - 4.2, 0], [mid + 4.2, mid + 4.2, 0], [mid - 4.2, mid + 4.2, 0]])} />
+          <polygon className={stoneWalls ? 'court-path paved' : 'court-path'} points={pts(P, [[mid - 0.45, mid + 1.2 * sc, 0], [mid + 0.45, mid + 1.2 * sc, 0], [mid + 0.45, mid + 4.5, 0], [mid - 0.45, mid + 4.5, 0]])} />
+        </g>
+      )}
       {backWalls}
       {items.map((it) => <g key={it.key}>{it.node}</g>)}
       {walkers}
@@ -1140,7 +1612,10 @@ type SceneProps = {
   W: number;
   fresh: Set<string>;
   setHover: SetHover;
+  castle: CastleState;
 };
+
+type CastleState = ReturnType<typeof castleInfo> & { prev: number; upgraded: boolean };
 
 const BUILT_KEY = 'excelsior:built-seen';
 function loadBuilt(): string[] {
@@ -1160,11 +1635,10 @@ export function CityScene({ quests, progress, complete, stage, icon }: { quests:
   const [ref, W] = useWidth<HTMLDivElement>(700);
   const [view, setView] = useCityView();
   const [hover, setHover] = useState<Hover>(null);
-  // Edificios terminados desde la última visita: aparecen con un «pop» al estilo de los juegos de estrategia.
-  const [fresh] = useState(() => {
-    const seen = new Set(loadBuilt());
-    return new Set(quests.filter((q) => q.completedAt && !seen.has(q.id)).map((q) => q.id));
-  });
+  // Edificios terminados desde la última visita (o mientras miras): aparecen con un «pop» al estilo de los
+  // juegos de estrategia, y el castillo celebra la mejora que traen.
+  const [seen] = useState(() => new Set(loadBuilt()));
+  const fresh = useMemo(() => new Set(quests.filter((q) => q.completedAt && !seen.has(q.id)).map((q) => q.id)), [quests, seen]);
   useEffect(() => {
     const ids = quests.filter((q) => q.completedAt).map((q) => q.id);
     try {
@@ -1174,7 +1648,12 @@ export function CityScene({ quests, progress, complete, stage, icon }: { quests:
     }
   }, [quests]);
 
-  const props: SceneProps = { quests, progress, complete, stage, icon, W, fresh, setHover };
+  const built = quests.filter((q) => q.completedAt).length;
+  const info = castleInfo(built, quests.length);
+  const prev = fresh.size ? castleTier(built - fresh.size, quests.length) : info.tier;
+  const castle: CastleState = { ...info, prev, upgraded: info.tier > prev };
+
+  const props: SceneProps = { quests, progress, complete, stage, icon, W, fresh, setHover, castle };
   return (
     <div className={`city-scene ${view === 'top' ? 'view-top' : 'view-front'}${complete ? ' glorious' : ''}`} ref={ref}>
       <div className="segmented city-view" role="radiogroup" aria-label="Perspectiva de la ciudad">
@@ -1188,10 +1667,30 @@ export function CityScene({ quests, progress, complete, stage, icon }: { quests:
         ))}
       </div>
       {view === 'top' ? <IsoCity {...props} /> : <FrontCity {...props} />}
+      {quests.length > 0 && (
+        <p
+          className={`castle-cap${castle.upgraded ? ' up' : ''}${castle.tier >= CASTLE_MAX ? ' max' : ''}`}
+          style={{ top: W >= 560 ? 36 : 48 }} title={`${castle.label} · ${castle.name}. ${castle.next}`} aria-live="polite"
+        >
+          <span aria-hidden="true">🏰 </span>{castle.label}
+          {W >= 640 && <span className="cap-name"> · {castle.name}</span>}
+          <span className="sr-only">. {castle.next}</span>
+        </p>
+      )}
       {hover && (
-        <div className="chart-tip" style={{ left: hover.x, top: hover.y, transform: `translate(${hover.x > W - 170 ? 'calc(-100% - 12px)' : '12px'}, -50%)` }}>
-          <span className="tip-title">{hover.q.completedAt ? BUILDINGS[hover.q.type].name : `Cimientos de ${BUILDINGS[hover.q.type].name.toLowerCase()}`}</span>
-          <span className="tip-value">{hover.q.title}</span>
+        <div className={'q' in hover ? 'chart-tip' : 'chart-tip castle-tip'} style={{ left: hover.x, top: hover.y, transform: `translate(${hover.x > W - 190 ? 'calc(-100% - 12px)' : '12px'}, -50%)` }}>
+          {'q' in hover ? (
+            <>
+              <span className="tip-title">{hover.q.completedAt ? BUILDINGS[hover.q.type].name : `Cimientos de ${BUILDINGS[hover.q.type].name.toLowerCase()}`}</span>
+              <span className="tip-value">{hover.q.title}</span>
+            </>
+          ) : (
+            <>
+              <span className="tip-title">{castle.label}</span>
+              <span className="tip-value">{castle.name}</span>
+              <span className="tip-sub">{castle.next}</span>
+            </>
+          )}
         </div>
       )}
     </div>
