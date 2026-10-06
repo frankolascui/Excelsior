@@ -1,6 +1,6 @@
 // Escena de la ciudad medieval de un reino, dibujada en SVG: cada misión es un edificio
 // (cimientos con andamios si está pendiente) y las murallas aparecen según la etapa.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Quest, QuestType } from './types';
 import { useWidth } from './charts';
 import { BUILDINGS } from './kingdoms';
@@ -72,8 +72,51 @@ function Scaffold({ type }: { type: QuestType }) {
         <line key={i} x1={-w / 2} y1={-10 - i * 14} x2={w / 2} y2={-10 - i * 14} />
       ))}
       <line x1={-w / 2} y1={-4} x2={w / 2} y2={-h + 6} />
+      <Builder x={w / 2 + 6} />
     </g>
   );
+}
+
+/** Obrero martilleando junto a una obra pendiente. */
+function Builder({ x }: { x: number }) {
+  return (
+    <g className="builder" transform={`translate(${x},0)`}>
+      <circle cx={0} cy={-15} r={3} className="skin" />
+      <path d="M-3,-17 L3,-17 L2,-20 L-2,-20 Z" className="helmet" />
+      <rect x={-2.5} y={-12} width={5} height={7} rx={1} className="tunic" />
+      <line x1={-1.5} y1={-5} x2={-2} y2={0} className="legs" />
+      <line x1={1.5} y1={-5} x2={2} y2={0} className="legs" />
+      <g className="hammer">
+        <line x1={0} y1={-10} x2={-7} y2={-13} />
+        <rect x={-10} y={-16} width={4} height={5} />
+      </g>
+      <circle cx={-10} cy={-6} r={1.2} className="spark" />
+    </g>
+  );
+}
+
+/** Aldeano que pasea por el suelo de la ciudad. */
+function Villager({ i, W }: { i: number; W: number }) {
+  const dur = 18 + i * 5;
+  return (
+    <g className="villager" style={{ animationDuration: `${dur}s`, animationDelay: `${-i * 4}s`, ['--w' as string]: `${W}px` }}>
+      <g className="bob">
+        <circle cx={0} cy={-11} r={2.4} className="skin" />
+        <rect x={-2.2} y={-9} width={4.4} height={6} rx={1} className={`tunic t${i % 3}`} />
+        <line x1={-1.2} y1={-3} x2={-1.6} y2={0} className="legs" />
+        <line x1={1.2} y1={-3} x2={1.6} y2={0} className="legs" />
+      </g>
+    </g>
+  );
+}
+
+const BUILT_KEY = 'excelsior:built-seen';
+function loadBuilt(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(BUILT_KEY) ?? '[]') ?? [];
+  } catch {
+    return [];
+  }
 }
 
 const SHAPE = { side: Cabana, daily: Herreria, main: Torreon };
@@ -82,6 +125,19 @@ const SLOT = { side: 54, daily: 62, main: 44 };
 export function CityScene({ quests, progress, complete, stage, icon }: { quests: Quest[]; progress: number; complete: boolean; stage: string; icon: string }) {
   const [ref, W] = useWidth<HTMLDivElement>(700);
   const [hover, setHover] = useState<{ q: Quest; x: number; y: number } | null>(null);
+  // Edificios terminados desde la última visita: aparecen con un «pop» al estilo de los juegos de estrategia.
+  const [fresh] = useState(() => {
+    const seen = new Set(loadBuilt());
+    return new Set(quests.filter((q) => q.completedAt && !seen.has(q.id)).map((q) => q.id));
+  });
+  useEffect(() => {
+    const ids = quests.filter((q) => q.completedAt).map((q) => q.id);
+    try {
+      localStorage.setItem(BUILT_KEY, JSON.stringify([...new Set([...loadBuilt(), ...ids])].slice(-500)));
+    } catch {
+      /* ignorado */
+    }
+  }, [quests]);
 
   // Primera fila hasta llenar el ancho; el resto, más pequeño y detrás.
   const usable = W - 40;
@@ -107,7 +163,12 @@ export function CityScene({ quests, progress, complete, stage, icon }: { quests:
           onPointerEnter={() => setHover({ q, x: cx, y: baseline - 60 * scale })} onPointerLeave={() => setHover(null)}
         >
           <rect x={-SLOT[q.type] / 2} y={-110} width={SLOT[q.type]} height={110} fill="transparent" />
-          {q.completedAt ? <Shape built /> : <><Shape built={false} /><Scaffold type={q.type} /></>}
+          {q.completedAt ? (
+            <g className={fresh.has(q.id) ? 'just-built' : undefined}>
+              <Shape built />
+              {fresh.has(q.id) && <g className="dust">{[-18, -6, 6, 18].map((dx) => <circle key={dx} cx={dx} cy={-3} r={5} />)}</g>}
+            </g>
+          ) : <><Shape built={false} /><Scaffold type={q.type} /></>}
         </g>
       );
     });
@@ -127,6 +188,14 @@ export function CityScene({ quests, progress, complete, stage, icon }: { quests:
         <rect width={W} height={H} fill="url(#city-sky)" />
         {STARS.map((s, i) => <circle key={i} cx={s.x * W} cy={s.y * H} r={s.r} className="star" />)}
         <circle cx={W - 60} cy={42} r={18} className="moon" />
+        <g className="clouds">
+          {[0, 1, 2].map((i) => (
+            <g key={i} className="cloud" style={{ animationDuration: `${60 + i * 25}s`, animationDelay: `${-i * 22}s`, ['--w' as string]: `${W}px` }}>
+              <ellipse cx={0} cy={30 + i * 22} rx={26 - i * 4} ry={7} />
+              <ellipse cx={14} cy={26 + i * 22} rx={14} ry={7} />
+            </g>
+          ))}
+        </g>
         <path d={`M0,${GROUND - 34} Q${W * 0.2},${GROUND - 70} ${W * 0.42},${GROUND - 40} T${W * 0.8},${GROUND - 52} T${W},${GROUND - 36} L${W},${GROUND} L0,${GROUND} Z`} className="hills" />
         {complete && (
           <g transform={`translate(${W / 2},${GROUND - 26})`} className="keep">
@@ -141,6 +210,9 @@ export function CityScene({ quests, progress, complete, stage, icon }: { quests:
         {row(back, GROUND - 26, 0.7)}
         <rect x={0} y={GROUND} width={W} height={H - GROUND} className="earth" />
         {row(front, GROUND, 1)}
+        <g transform={`translate(0,${GROUND + 14})`}>
+          {Array.from({ length: Math.min(5, quests.filter((q) => q.completedAt).length) }, (_, i) => <Villager key={i} i={i} W={W} />)}
+        </g>
         {walls && !stoneWalls && (
           <g className="palisade">
             {Array.from({ length: Math.ceil(W / 9) }, (_, i) => (

@@ -1,7 +1,7 @@
 // Arena: bosses (retos con vida y plazo) y tienda de recompensas pagadas con monedas.
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import type { Game } from './screens';
-import type { BossSource } from './types';
+import type { Boss, BossSource } from './types';
 import {
   addBoss, BOSS_TEMPLATES, bossReward, bossStatus, deleteBoss, MAX_ACTIVE_BOSSES, activeBosses, SOURCE_LABEL, summonTemplate,
 } from './bosses';
@@ -23,6 +23,65 @@ function timeLeft(ms: number): string {
 
 export function CoinBadge({ amount }: { amount: number }) {
   return <span className={amount < 0 ? 'coins debt mono' : 'coins mono'}>🪙 {amount}</span>;
+}
+
+// Daño ya visto por boss: al volver a la Arena se anima lo que le hiciste mientras tanto.
+const SEEN_KEY = 'excelsior:boss-seen';
+function loadSeen(): Record<string, number> {
+  try {
+    return JSON.parse(localStorage.getItem(SEEN_KEY) ?? '{}') ?? {};
+  } catch {
+    return {};
+  }
+}
+function saveSeen(id: string, damage: number) {
+  try {
+    localStorage.setItem(SEEN_KEY, JSON.stringify({ ...loadSeen(), [id]: damage }));
+  } catch {
+    /* ignorado */
+  }
+}
+
+function BossCard({ boss: b, st, onFlee }: { boss: Boss; st: ReturnType<typeof bossStatus>; onFlee: () => void }) {
+  const [shown, setShown] = useState(() => Math.min(loadSeen()[b.id] ?? st.damage, st.damage));
+  const [hit, setHit] = useState(0);
+  useEffect(() => {
+    if (st.damage <= shown) return;
+    const dealt = st.damage - shown;
+    const t = setTimeout(() => {
+      setHit(dealt);
+      setShown(st.damage);
+      saveSeen(b.id, st.damage);
+      sfx.hit();
+    }, 450);
+    return () => clearTimeout(t);
+  }, [st.damage, shown, b.id]);
+  useEffect(() => {
+    if (!hit) return;
+    const t = setTimeout(() => setHit(0), 1100);
+    return () => clearTimeout(t);
+  }, [hit]);
+  const pct = (dmg: number) => Math.max(0, 1 - dmg / b.hp) * 100;
+  return (
+    <article className={hit ? 'boss hit' : 'boss'} aria-label={`${b.name}: ${Math.round(st.hpLeft)} de ${b.hp} de vida`}>
+      <span className="boss-stage" aria-hidden="true">
+        <span className="boss-icon">{b.icon}</span>
+        <span className="boss-shadow" />
+        {hit > 0 && <span className="dmg-float mono">−{Math.round(hit * 10) / 10}</span>}
+        {hit > 0 && <span className="slash" />}
+      </span>
+      <div className="boss-body">
+        <h4 className="boss-name">{b.name}</h4>
+        <p className="muted small-text">{SOURCE_LABEL[b.source].hint} · quedan {timeLeft(st.msLeft)} · botín {b.reward} 🪙</p>
+        <div className="hp-bar" role="progressbar" aria-label="Vida restante" aria-valuemin={0} aria-valuemax={b.hp} aria-valuenow={Math.round(st.hpLeft)}>
+          <div className="hp-ghost" style={{ width: `${pct(hit ? shown - hit : shown)}%` }} />
+          <div className="hp-fill" style={{ width: `${pct(shown)}%` }} />
+        </div>
+        <p className="mono small-text">{Math.round(st.hpLeft * 10) / 10} / {b.hp} HP · {SOURCE_LABEL[b.source].unit}</p>
+      </div>
+      <ConfirmButton label="Huir" confirmLabel="Sí, huir" onConfirm={onFlee} />
+    </article>
+  );
 }
 
 export function Arena({ game }: { game: Game }) {
@@ -78,18 +137,7 @@ export function Arena({ game }: { game: Game }) {
             {active.map((b) => {
               const st = bossStatus(state, b, now);
               return (
-                <article key={b.id} className="boss" aria-label={`${b.name}: ${Math.round(st.hpLeft)} de ${b.hp} de vida`}>
-                  <span className="boss-icon" aria-hidden="true">{b.icon}</span>
-                  <div className="boss-body">
-                    <h4 className="boss-name">{b.name}</h4>
-                    <p className="muted small-text">{SOURCE_LABEL[b.source].hint} · quedan {timeLeft(st.msLeft)} · botín {b.reward} 🪙</p>
-                    <div className="hp-bar" role="progressbar" aria-label="Vida restante" aria-valuemin={0} aria-valuemax={b.hp} aria-valuenow={Math.round(st.hpLeft)}>
-                      <div style={{ width: `${(1 - st.progress) * 100}%` }} />
-                    </div>
-                    <p className="mono small-text">{Math.round(st.hpLeft * 10) / 10} / {b.hp} HP · {SOURCE_LABEL[b.source].unit}</p>
-                  </div>
-                  <ConfirmButton label="Huir" confirmLabel="Sí, huir" onConfirm={() => act((s) => deleteBoss(s, b.id))} />
-                </article>
+                <BossCard key={b.id} boss={b} st={st} onFlee={() => act((s) => deleteBoss(s, b.id))} />
               );
             })}
           </div>

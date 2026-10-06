@@ -23,7 +23,7 @@ await page.click('text=Crear personaje');
 await page.waitForSelector('text=¿Qué hago ahora?');
 
 // 1b. Tutorial con guía: aparece solo, señala cada pantalla y no vuelve tras saltarlo
-check(await seen('.tour .eyebrow:has-text("Hiperión · 1/13")'), 'el tutorial arranca con el guía');
+check(await seen('.tour .eyebrow:has-text("Hiperión · 1/7")'), 'el tutorial arranca con el guía');
 await page.click('.tour button:has-text("Siguiente")');
 check(await seen('[data-tour="now"].tour-target'), 'paso 2 señala «¿Qué hago ahora?»');
 await page.click('.tour button:has-text("Siguiente")');

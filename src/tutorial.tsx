@@ -42,92 +42,46 @@ interface Step {
 export const STEPS: Step[] = [
   {
     tab: 'hoy',
-    title: 'El despertar',
+    title: 'Bienvenido',
     text: ({ name, guide }) =>
-      `Mortal ${name}: soy ${guide}, Titán de la luz, el que camina en lo alto. Excelsior significa «siempre más alto», y desde hoy ese es tu juramento. Aquí tu vida real es la epopeya: cada acción forja tu leyenda. Escucha bien.`,
+      `Hola, ${name}. Soy ${guide}, tu guía. Aquí tu vida es el juego: haces cosas reales y ganas XP para subir de nivel. Te enseño lo básico en 5 pasos.`,
   },
   {
     tab: 'hoy',
     target: 'now',
-    title: 'El oráculo',
-    text: () =>
-      'Este es tu oráculo. Cuando dudes, te señalará UNA acción: una forja de Deep Work, tu gesta principal o un rito. Los héroes no deliberan eternamente. Obedece al oráculo y avanza.',
+    title: '¿Qué hago ahora?',
+    text: () => '¿No sabes por dónde empezar? Mira aquí. Siempre te propongo una sola cosa.',
   },
   {
     tab: 'misiones',
     target: 'quest-add',
-    title: 'Las gestas',
+    title: 'Misiones',
     text: () =>
-      `Tus tareas son gestas. La Principal (+${XP_RULES.quest.main} XP) mueve tu destino; la Diaria (+${XP_RULES.quest.daily}) es disciplina; la Secundaria (+${XP_RULES.quest.side}), el resto. Con ⚙ decides tú cuánta XP y qué atributos otorga cada una. Los dioses limitan la gloria diaria a ${XP_RULES.dailyCap.quest} XP: no se gana engañándose a uno mismo.`,
-  },
-  {
-    tab: 'deepwork',
-    target: 'modes',
-    title: 'La forja',
-    text: () =>
-      'En la forja se templa la Maestría. Elige sesión libre o con minutos. Si te levantas, Descanso; si sucumbes al móvil, Me distraje. Solo el foco real da XP. Invoca lluvia, océano u hoguera de fondo, o pega el enlace de tu música.',
+      `Apunta tus tareas y márcalas al terminar. La Principal es la más importante del día (+${XP_RULES.quest.main} XP).`,
   },
   {
     tab: 'habitos',
     target: 'habits',
-    title: 'Los ritos',
-    text: () =>
-      `Los hábitos son tus ritos diarios (+${XP_RULES.habit} XP). Cada uno alimenta atributos, y con ✎ puedes repartirlos a tu gusto. La racha es tu escudo: puedes caer un día, nunca dos seguidos.`,
+    title: 'Hábitos',
+    text: () => `Lo que quieres hacer cada día. Márcalo y gana +${XP_RULES.habit} XP. Regla: nunca falles dos días seguidos.`,
   },
   {
-    tab: 'reinos',
-    target: 'realm',
-    title: 'Los reinos',
-    text: () =>
-      'Tus grandes proyectos son reinos. Cada tarea levanta una cabaña, una herrería o un torreón. Al completarlas, el campamento se vuelve aldea, villa, ciudad amurallada y, al fin, reino glorioso, que te paga tributo en monedas.',
-  },
-  {
-    tab: 'arena',
-    target: 'bosses',
-    title: 'La Arena',
-    text: () =>
-      'Aquí se invocan las bestias del mito: la Hidra de la Procrastinación, la Medusa de la Distracción, el Minotauro de la Rutina. Todo lo que haces las hiere. Derríbalas antes de que expire su plazo y su botín será tuyo.',
+    tab: 'deepwork',
+    target: 'modes',
+    title: 'Deep Work',
+    text: () => 'Pulsa empezar y concéntrate. Cada minuto de foco da 1 XP.',
   },
   {
     tab: 'arena',
     target: 'shop',
-    title: 'El tesoro',
-    text: () =>
-      'Cada 5 XP te da una moneda. Gástalas en recompensas que eliges tú: un episodio, una salida con amigos, un día libre. El placer ganado sabe distinto al placer robado.',
-  },
-  {
-    tab: 'personaje',
-    target: 'ladder',
-    title: 'El camino del héroe',
-    text: () =>
-      'Diez avatares, de Aprendiz a Excelsior. Sus pruebas son las mismas para todo mortal: nivel, atributos y hazañas. Tus metas reales (dinero, peso, personas) las añades tú, y hacen el camino tuyo.',
-  },
-  {
-    tab: 'personaje',
-    target: 'attrs',
-    title: 'Los cinco atributos',
-    text: () =>
-      'Voluntad, Sabiduría, Maestría, Conexión y Creación. El más bajo suele ser tu cuello de botella. Cada lunes te escribiré una crónica señalándolo y te propondré una bestia a la que enfrentarte.',
-  },
-  {
-    tab: 'personaje',
-    target: 'heat',
-    title: 'La huella',
-    text: () =>
-      'Cada cuadrado es un día; cuanto más brilla, más XP. La grandeza no es un día perfecto: es no dejar huecos.',
-  },
-  {
-    tab: 'personaje',
-    target: 'settings',
-    title: 'Tu estandarte',
-    text: () =>
-      'Elige los colores de tu estandarte y guarda copias de tu partida: vive solo en este navegador, y ni los dioses recuperan lo que no se guarda.',
+    title: 'Premios',
+    text: () => 'Cada 5 XP ganas una moneda. Cámbialas por premios reales: un episodio, salir con amigos…',
   },
   {
     tab: 'hoy',
-    title: 'Primera orden',
+    title: 'Tu primera misión',
     text: ({ guide }) =>
-      `Ya lo sabes todo. Tu primera orden: crea la gesta principal de hoy y complétala antes de que caiga el sol. Si me necesitas, Personaje → Ajustes → Repetir tutorial. ${guide} vela por ti. Siempre más alto.`,
+      `Eso es todo. Reinos, avatares y bestias los irás descubriendo. Ahora crea tu misión principal de hoy. Si me necesitas: Personaje → Ajustes → Repetir tutorial. — ${guide}`,
   },
 ];
 
