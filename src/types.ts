@@ -30,7 +30,8 @@ export interface Quest {
 export interface Habit {
   id: string;
   name: string;
-  frequency: 'daily';
+  frequency: 'daily' | 'weekly';
+  perWeek?: number; // solo semanales: veces por semana (1–6)
   createdAt: number;
   rewards: AttributeRewards;
   xp?: number; // XP a medida; sin él, XP_RULES.habit
@@ -104,6 +105,7 @@ export interface Goal {
   avatarId: string;
   createdAt: number;
   deadline?: number; // objetivos con fecha (p. ej. los de 3 meses del Ritual del Iniciado)
+  metricId?: string; // si sigue una medida (peso, dinero…), su valor actual sale de ella
 }
 
 /** Recompensa de la tienda: algo que te das a ti mismo pagando monedas. */
@@ -161,6 +163,50 @@ export interface GameState {
   rituals?: Ritual[];
   /** Revisiones de Hiperión de los objetivos con fecha (días 30, 60, 90…). */
   reviews?: GoalReview[];
+  /** Versión del equilibrio de atributos con que se calcularon (ver rebalance). */
+  balance?: number;
+  /** Medidas de tu vida real (dinero, peso…) y sus valores por día. */
+  metrics?: Metric[];
+  metricEntries?: MetricEntry[];
+  /** Cierre del día: energía, ánimo, sueño y nota. */
+  dayLogs?: DayLog[];
+  /** Eventos del calendario: exámenes, lanzamientos, llamadas… */
+  events?: CalendarEvent[];
+}
+
+export interface Metric {
+  id: string;
+  name: string;
+  unit: string;
+  createdAt: number;
+}
+
+export interface MetricEntry {
+  id: string;
+  metricId: string;
+  day: string; // YYYY-MM-DD; uno por día (el último manda)
+  value: number;
+  at: number;
+}
+
+export interface DayLog {
+  day: string;
+  at: number;
+  energy?: number; // 1–5
+  mood?: number; // 1–5
+  sleep?: number; // horas
+  note?: string;
+}
+
+export type EventKind = 'examen' | 'lanzamiento' | 'llamada' | 'reunion' | 'otro';
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  day: string; // YYYY-MM-DD
+  time?: string; // HH:MM
+  kind: EventKind;
+  createdAt: number;
 }
 
 export interface GoalReview {

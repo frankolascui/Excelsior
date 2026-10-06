@@ -14,7 +14,7 @@ export const SOURCE_LABEL: Record<BossSource, { name: string; unit: string; hint
   sabiduria: { name: 'Sabiduría', unit: 'XP de Sabiduría', hint: 'solo le hiere la Sabiduría' },
   maestria: { name: 'Maestría', unit: 'XP de Maestría', hint: 'solo le hiere la Maestría' },
   conexion: { name: 'Conexión', unit: 'XP de Conexión', hint: 'solo le hiere la Conexión' },
-  creacion: { name: 'Creación', unit: 'XP de Creación', hint: 'solo le hiere la Creación' },
+  creacion: { name: 'Impacto', unit: 'XP de Impacto', hint: 'solo le hiere el Impacto' },
 };
 
 // Cuánto «XP equivalente» vale un punto de daño de cada fuente (para calcular el botín).

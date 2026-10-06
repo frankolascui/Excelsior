@@ -5,6 +5,7 @@ import { avatarInfo, ATTRIBUTES, formatAttrXp } from './attributes';
 import { applyTheme, CUSTOM_ID, loadTheme, saveTheme, THEMES, type Theme } from './theme';
 import { exportBackup, parseBackup, restorePrefs, type ImportResult } from './backup';
 import { save } from './store';
+import { saveFile } from './download';
 import { adminToLevel, grantAdminXp, levelInfo, simulatePastDays, totalXp } from './game';
 import { ADMIN, checkAdminPassword, setAdmin } from './admin';
 import { ChronicleOath, openRitual } from './ritual';
@@ -143,28 +144,9 @@ function SettingsPanel({
 
   async function download() {
     const name = `excelsior-${new Date().toISOString().slice(0, 10)}.json`;
-    const data = exportBackup(game.state, Date.now());
-    // Dentro de Claude (Artifact) las descargas pasan por la capacidad «downloads»; en la web, enlace normal.
-    const claudeRt = (window as unknown as { claude?: { use?: (n: string) => Promise<{ save: (r: { filename: string; data: string }) => Promise<unknown> } | null> } }).claude;
-    const downloads = claudeRt?.use ? await claudeRt.use('downloads').catch(() => null) : null;
-    if (downloads) {
-      try {
-        await downloads.save({ filename: name, data });
-        game.toast('Copia descargada', 'info');
-      } catch (e) {
-        if ((e as { code?: string }).code !== 'declined') game.toast('No se pudo descargar aquí', 'info');
-      }
-      return;
-    }
-    const blob = new Blob([data], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = name;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    game.toast('Copia descargada', 'info');
+    const r = await saveFile(name, exportBackup(game.state, Date.now()), 'application/json');
+    if (r === 'ok') game.toast('Copia descargada', 'info');
+    if (r === 'error') game.toast('No se pudo descargar aquí', 'info');
   }
 
   async function onFile(e: ChangeEvent<HTMLInputElement>) {

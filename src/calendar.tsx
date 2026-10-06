@@ -1,9 +1,11 @@
-// Calendario de misiones: fechas límite de lo pendiente y lo completado cada día, para organizarse.
+// Calendario: eventos (exámenes, lanzamientos, llamadas…), fechas límite de misiones y lo completado cada día.
 import { useState } from 'react';
 import type { Game } from './screens';
 import type { Quest } from './types';
 import { addQuest, completeQuest, dayKey, deleteQuest, pendingQuests, setQuestDeadline, undoQuest, updateQuest, xpOnDay } from './game';
 import { QuestItem, QuickAddQuest, shortDate } from './ui';
+import { eventIcon, eventsOn } from './life';
+import { DayEvents } from './life-ui';
 
 const WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 const MAX_IN_CELL = 3;
@@ -60,6 +62,7 @@ export function QuestCalendar({
           {WEEKDAYS.map((w) => <span key={w} className="cal-wd" aria-hidden="true">{w}</span>)}
           {days.map((day) => {
             const items = due(day);
+            const evs = eventsOn(state, day);
             const finished = doneOn(day);
             const xp = xpOnDay(state, day);
             const outside = Number(day.slice(5, 7)) - 1 !== cursor.m;
@@ -68,15 +71,17 @@ export function QuestCalendar({
             return (
               <button
                 key={day} role="gridcell" className={cls} onClick={() => setSelected(day)} aria-selected={day === selected}
-                aria-label={`${shortDate(day)}: ${items.length} pendientes, ${finished.length} completadas${xp ? `, ${xp} XP` : ''}`}
+                aria-label={`${shortDate(day)}: ${evs.length ? `${evs.length} eventos, ` : ''}${items.length} pendientes, ${finished.length} completadas${xp ? `, ${xp} XP` : ''}`}
               >
                 <span className="cal-num mono">{Number(day.slice(8))}</span>
                 <span className="cal-items" aria-hidden="true">
+                  {evs.slice(0, 2).map((e) => <span key={e.id} className={`cal-ev ev-${e.kind}`}>{eventIcon(e.kind)} {e.time ? `${e.time} ` : ''}{e.title}</span>)}
                   {items.slice(0, MAX_IN_CELL).map((q) => <span key={q.id} className={`cal-q q-${q.type}`}>{q.title}</span>)}
                   {items.length > MAX_IN_CELL && <span className="cal-more">+{items.length - MAX_IN_CELL}</span>}
                   {finished.length > 0 && <span className="cal-done">✓ {finished.length}</span>}
                 </span>
                 <span className="cal-dots" aria-hidden="true">
+                  {evs.length > 0 && <b className="ev-dot">{eventIcon(evs[0].kind)}</b>}
                   {items.slice(0, 4).map((q) => <i key={q.id} className={`q-${q.type}`} />)}
                 </span>
               </button>
@@ -85,6 +90,7 @@ export function QuestCalendar({
         </div>
         <p className="hint cal-legend">
           <span><i className="q-main" /> Principal</span><span><i className="q-daily" /> Diaria</span><span><i className="q-side" /> Secundaria</span>
+          <span>📝🚀📞 Eventos</span>
           <span className="late-key">En rojo: fecha pasada sin terminar</span>
         </p>
       </section>
@@ -94,7 +100,8 @@ export function QuestCalendar({
           <h3 id="cal-day-h">{selected === today ? 'Hoy' : shortDate(selected)}</h3>
           <span className="count mono">{selDue.length}</span>
         </header>
-        {selDue.length === 0 && selDone.length === 0 && <p className="empty">Nada para este día.</p>}
+        <DayEvents game={game} day={selected} />
+        {selDue.length === 0 && selDone.length === 0 && <p className="empty">Sin misiones para este día.</p>}
         {selDue.length > 0 && (
           <ul className="list">
             {selDue.map((q) => (

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { GameState } from './types';
 import { emptyState, levelInfo, migrate, totalXp } from './game';
-import { avatarInfo, ensureAscended } from './attributes';
+import { avatarInfo, ensureAscended, rebalance } from './attributes';
 import { sfx } from './sfx';
 import { confetti } from './confetti';
 import { bossStatus } from './bosses';
@@ -20,7 +20,7 @@ function load(): GameState {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed?.version >= 1 && parsed?.version <= emptyState().version) return ensureAscended(migrate(parsed), Date.now());
+      if (parsed?.version >= 1 && parsed?.version <= emptyState().version) return rebalance(ensureAscended(migrate(parsed), Date.now())); // primero se congela el avatar, luego se reequilibra
     }
   } catch {
     /* almacenamiento no disponible: se juega sin guardar */
@@ -99,7 +99,7 @@ export function useGame() {
   }, [state, userId, conflict]);
 
   function adopt(remote: GameState) {
-    const next = ensureAscended(migrate(remote as unknown as Parameters<typeof migrate>[0]), Date.now());
+    const next = rebalance(ensureAscended(migrate(remote as unknown as Parameters<typeof migrate>[0]), Date.now()));
     prevLevel.current = levelInfo(totalXp(next)).level;
     prevReady.current = readyFor(next);
     prevDefeated.current = defeatedIds(next);

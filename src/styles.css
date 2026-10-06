@@ -1000,3 +1000,58 @@ i.q-side { background: var(--side); }
 .renegotiate { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .chron-oath { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 8px; }
 .chron-oath p { margin: 0; }
+
+/* Deep Work: tipo de trabajo */
+.area-pick { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.attr-desc { grid-column: 2 / -1; font-size: 13.5px; line-height: 1.45; margin-top: -4px; }
+.attr.asleep .attr-asleep-text { grid-column: 4 / -1; font-size: 12.5px; color: var(--muted); }
+@media (max-width: 640px) { .attr.asleep .attr-asleep-text { grid-column: 2 / -1; } }
+
+/* Hábitos semanales */
+.freq-select { width: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; color: inherit; font: inherit; color-scheme: dark; }
+.freq-tag { font-size: 12.5px; color: var(--c3); border: 1px solid color-mix(in srgb, var(--c3) 50%, transparent); border-radius: 99px; padding: 1px 8px; }
+.freq-tag.done { color: var(--c1); border-color: var(--c1); }
+
+/* Tu estado actual (medidas) */
+.item.metric { align-items: center; }
+.metric-value { font-size: 20px; font-weight: 600; }
+.metric .item-body { gap: 2px; }
+.spark { flex: none; opacity: 0.9; }
+.metric-log { display: flex; align-items: center; gap: 6px; }
+.metric-presets { margin: 10px 0; }
+.metric-form { display: grid; grid-template-columns: 2fr 1fr auto; gap: 8px; }
+.goal-metric { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+@media (max-width: 640px) {
+  .item.metric { flex-wrap: wrap; }
+  .metric .spark { display: none; }
+  .metric-form { grid-template-columns: 1fr 1fr; }
+}
+
+/* Estado del día */
+.day-close { display: grid; gap: 12px; }
+.scales, .day-metrics { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: flex-end; }
+.scale { display: grid; gap: 4px; }
+.scale-label { font-size: 13px; color: var(--muted); }
+.scale .seg { font-size: 18px; padding: 4px 8px; }
+.day-close textarea { width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; color: inherit; font: inherit; resize: vertical; }
+
+/* Eventos */
+.ev-strip { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.ev-chip { border: 1px solid var(--line); border-left: 3px solid var(--ev, var(--c1)); border-radius: 10px; padding: 6px 10px; font-size: 14px; background: rgba(255, 255, 255, 0.03); }
+.ev-chip.today { background: color-mix(in srgb, var(--ev, var(--c1)) 14%, transparent); }
+.ev-examen { --ev: #ff8a5c; }
+.ev-lanzamiento { --ev: #b78cff; }
+.ev-llamada { --ev: #5cc8ff; }
+.ev-reunion { --ev: #7ee08a; }
+.ev-otro { --ev: #c8c8d4; }
+.cal-ev { font-size: 11.5px; line-height: 1.3; padding: 1px 6px; border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: color-mix(in srgb, var(--ev) 22%, transparent); color: #fff; }
+.ev-dot { font-size: 10px; font-weight: 400; line-height: 1; }
+.day-events { display: grid; gap: 10px; margin-bottom: 12px; }
+.ev-item { border-left: 3px solid var(--ev); }
+.ev-icon { font-size: 20px; }
+.ev-form { display: grid; grid-template-columns: auto 1fr auto auto; gap: 8px; }
+.ev-form input[type='time'] { color-scheme: dark; }
+@media (max-width: 640px) {
+  .ev-form { grid-template-columns: 1fr 1fr; }
+  .ev-form #ev-title { grid-column: 1 / -1; order: -1; }
+}

@@ -133,11 +133,11 @@ await page.waitForTimeout(500);
 await page.screenshot({ path: `${out}/04-dashboard.png`, fullPage: true });
 await page.emulateMedia({ colorScheme: 'light' });
 
-// 5b. Atributos y avatar: Diaria ⚔️3 + 45 min (🔨45 ⚔️22) + Principal (⚔️5 🔨5) + Leer (🧠3)
+// 5b. Atributos y avatar: Diaria ⚔️3 + 45 min generales (⚔️11,3 🔨11,3 🧠11,3) + Principal (⚔️5 🔨5) + Leer (🧠3)
 const attr = async (name) => (await page.textContent(`.attr:has-text("${name}") .attr-xp`)).trim();
-check(await attr('Voluntad') === '30,5 XP', 'Voluntad 30,5 XP (con decimales)');
-check(await attr('Maestría') === '50 XP', 'Maestría 50 XP');
-check(await attr('Sabiduría') === '3 XP', 'Sabiduría 3 XP');
+check(await attr('Voluntad') === '19,3 XP', 'Voluntad 19,3 XP (con decimales)');
+check(await attr('Maestría') === '16,3 XP', 'Maestría 16,3 XP (Deep Work general: mitad práctica)');
+check(await attr('Sabiduría') === '14,3 XP', 'Sabiduría 14,3 XP (Deep Work general: mitad teoría)');
 check((await page.textContent('.avatar-card')).includes('hacia Iniciado · 0 de 2 requisitos'), 'avatar: siguiente es Iniciado (nivel 3 + 3 días)');
 const order = await page.$$eval('.screen > *', (els) => els.map((e) => e.className.split(' ')[0] + (e.className.includes('avatar') ? ':avatar' : '')));
 console.log('orden Home:', order.join(' > '));
@@ -223,12 +223,12 @@ await page.click('[data-tour="habits"] .customize');
 await page.fill('#new-habit-xp', '15');
 await page.fill('#new-habit-creacion', '5');
 await page.click('[data-tour="habits"] button:has-text("Añadir")');
-check(await seen('.item:has-text("Tocar la guitarra") .rewards[aria-label="+2 Voluntad, +5 Creación"]'), 'hábito a medida con varios atributos: +2 Voluntad, +5 Creación');
+check(await seen('.item:has-text("Tocar la guitarra") .rewards[aria-label="+2 Voluntad, +5 Impacto"]'), 'hábito a medida con varios atributos: +2 Voluntad, +5 Impacto');
 check(await seen('.item:has-text("Tocar la guitarra") .xp-tag:has-text("+15 XP")'), 'hábito a medida da +15 XP');
 await page.click('button[aria-label="Editar Tocar la guitarra"]');
 await page.fill('[id$="-conexion"]', '3');
 await page.click('.inline-edit button:has-text("Guardar")');
-check(await seen('.item:has-text("Tocar la guitarra") .rewards[aria-label="+2 Voluntad, +3 Conexión, +5 Creación"]'), 'editar un hábito añade otro atributo');
+check(await seen('.item:has-text("Tocar la guitarra") .rewards[aria-label="+2 Voluntad, +3 Conexión, +5 Impacto"]'), 'editar un hábito añade otro atributo');
 
 // 7a4. Arena: boss y tienda
 await page.click('.nav-item:has-text("Arena")');
@@ -370,6 +370,42 @@ await page.click('button[aria-label="Ajustes"]');
 await page.click('.admin-panel button:has-text("Salir del modo admin")');
 await page.waitForSelector('.nav');
 check(!(await page.$('.admin-bar')) && (await page.textContent('.nav-level')).includes(realLevel), `al salir vuelve la partida real intacta (${realLevel})`);
+
+// 7f. Tu vida real: medidas, hábitos semanales, Deep Work por tipo, estado del día y eventos
+await page.click('.nav-item:has-text("Personaje")');
+await page.click('.metric-presets button:has-text("Dinero")');
+await page.fill('[aria-label="Valor de hoy de Dinero"]', '500');
+await page.click('.metric:has-text("Dinero") button:has-text("Apuntar")');
+check(await seen('.metric:has-text("Dinero") .metric-value:has-text("500 €")'), 'medida: Dinero 500 €');
+check(await seen('.attr:has-text("Impacto")'), 'el quinto atributo se llama Impacto');
+check(await seen('.attr-desc:has-text("disciplina")'), 'los atributos tienen descripción');
+await page.click('.nav-item:has-text("Hábitos")');
+await page.fill('#new-habit', 'Gimnasio');
+await page.selectOption('#new-habit-freq', '3');
+await page.click('[data-tour="habits"] button:has-text("Añadir")');
+check(await seen('.item:has-text("Gimnasio") .freq-tag:has-text("0/3 esta semana")'), 'hábito 3 veces por semana');
+await page.click('button[aria-label="Completar Gimnasio"]');
+check(await seen('.item:has-text("Gimnasio") .freq-tag:has-text("1/3 esta semana")'), 'marcarlo suma a la semana');
+await page.click('.nav-item:has-text("Deep Work")');
+check(await seen('[role=radiogroup][aria-label="Tipo de trabajo"]'), 'Deep Work pregunta el tipo de trabajo');
+await page.click('.nav-item:has-text("Hoy")');
+await page.click('[aria-label="Energía 4 de 5"]');
+await page.click('[aria-label="Ánimo 5 de 5"]');
+await page.fill('#day-sleep', '7,5');
+await page.fill('#day-note', 'Mañana empiezo antes.');
+await page.click('.day-close button:has-text("Guardar el día")');
+check(await seen('.day-close >> text=Guardado a las'), 'estado del día guardado');
+await page.click('.nav-item:has-text("Misiones")');
+if (!(await page.isVisible('.calendar'))) await page.click('[role=radio]:has-text("Calendario")');
+await page.selectOption('.ev-form select', 'examen');
+await page.fill('#ev-title', 'Examen de cálculo');
+await page.fill('#ev-time', '10:00');
+await page.click('.ev-form button:has-text("Evento")');
+check(await seen('.cal-day.sel .cal-ev:has-text("Examen de cálculo")'), 'el evento aparece en el calendario');
+await page.screenshot({ path: `${out}/15-calendar-events.png`, fullPage: true });
+await page.click('.nav-item:has-text("Hoy")');
+check(await seen('.upcoming:has-text("Examen de cálculo")'), 'Hoy muestra los próximos eventos');
+await page.screenshot({ path: `${out}/16-today-life.png`, fullPage: true });
 
 // 8. Móvil
 await page.setViewportSize({ width: 390, height: 844 });

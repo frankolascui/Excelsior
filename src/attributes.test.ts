@@ -40,11 +40,11 @@ describe('recompensas de atributo', () => {
     expect(attributeHistory(r, 'sabiduria')).toEqual([{ at: NOW, label: 'Meditar', amount: 2 }]);
   });
 
-  it('Deep Work: +1 Maestría y +0,5 Voluntad por minuto, y guarda el área', () => {
+  it('Deep Work de práctica: +0,5 Maestría y +0,25 Voluntad por minuto, y guarda el área', () => {
     const s = startTimer(base(), null, 0, NOW, 'programacion');
     const r = stopTimer(s, NOW + 45 * MIN);
     expect(r.session?.area).toBe('programacion');
-    expect(attributeXp(r.state)).toMatchObject({ maestria: 45, voluntad: 22.5 });
+    expect(attributeXp(r.state)).toMatchObject({ maestria: 22.5, voluntad: 11.3 });
     expect(formatAttrXp(22.5)).toBe('22,5');
     expect(totalXp(r.state)).toBe(45); // el XP global no cambia
   });
@@ -172,6 +172,6 @@ describe('migración de datos guardados', () => {
     }));
     const m = migrate(v2);
     expect(m.habits[0].rewards).toEqual({ conexion: 4 });
-    expect(attributeXp(m)).toMatchObject({ conexion: 4, voluntad: 22.5, maestria: 45 });
+    expect(attributeXp(m)).toMatchObject({ conexion: 4, voluntad: 11.3, maestria: 11.3, sabiduria: 11.3 });
   });
 });

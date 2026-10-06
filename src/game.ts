@@ -81,7 +81,7 @@ function migrateToV4(raw: { version: number } & Record<string, unknown>): GameSt
       return h ? { ...t, attributes: h.rewards } : t;
     }
     const session = sessions.find((x) => x.id === t.sourceId);
-    return session ? { ...t, attributes: deepWorkRewards(session.minutes) } : t;
+    return session ? { ...t, attributes: deepWorkRewards(session.minutes, session.area) } : t;
   });
   return { ...base, habits, sessions, xp };
 }
@@ -148,8 +148,51 @@ export function isHabitDone(s: GameState, habitId: string, day: string): boolean
   return s.habitCompletions.some((c) => c.habitId === habitId && c.day === day);
 }
 
-/** Días consecutivos completados terminando hoy (o ayer si hoy aún no está hecho). */
+/** Lunes (YYYY-MM-DD) de la semana de `ts`. */
+export function weekStart(ts: number): string {
+  const d = new Date(ts);
+  return dayKey(new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() + 6) % 7), 12).getTime());
+}
+
+/** Veces que se hizo el hábito en la semana (lunes a domingo) de `ts`. */
+export function habitWeekCount(s: GameState, habitId: string, ts: number): number {
+  const start = weekStart(ts);
+  const end = dayKey(shiftDay(new Date(`${start}T12:00:00`).getTime(), 6));
+  return s.habitCompletions.filter((c) => c.habitId === habitId && c.day >= start && c.day <= end).length;
+}
+
+/** ¿Ya cumplió su objetivo de la semana? (los diarios: ¿está hecho hoy?) */
+export function habitSatisfied(s: GameState, h: Habit, now: number): boolean {
+  return h.frequency === 'weekly' ? habitWeekCount(s, h.id, now) >= (h.perWeek ?? 1) : isHabitDone(s, h.id, dayKey(now));
+}
+
+/**
+ * Racha: días seguidos para los diarios; semanas seguidas cumpliendo el objetivo para los semanales
+ * (la semana en curso cuenta solo si ya está cumplida).
+ */
 export function habitStreak(s: GameState, habitId: string, now: number): number {
+  const habit = s.habits.find((h) => h.id === habitId);
+  if (habit?.frequency === 'weekly') {
+    const need = habit.perWeek ?? 1;
+    let cursor = habitWeekCount(s, habitId, now) >= need ? now : shiftDay(now, -7);
+    let weeks = 0;
+    while (habitWeekCount(s, habitId, cursor) >= need) {
+      weeks++;
+      cursor = shiftDay(cursor, -7);
+    }
+    return weeks;
+  }
+  return dailyStreak(s, habitId, now);
+}
+
+/** Racha en días equivalentes (una semana cumplida = 7 días), para los requisitos de avatar. */
+export function habitStreakDays(s: GameState, habitId: string, now: number): number {
+  const habit = s.habits.find((h) => h.id === habitId);
+  const n = habitStreak(s, habitId, now);
+  return habit?.frequency === 'weekly' ? n * 7 : n;
+}
+
+function dailyStreak(s: GameState, habitId: string, now: number): number {
   const days = new Set(s.habitCompletions.filter((c) => c.habitId === habitId).map((c) => c.day));
   let cursor = days.has(dayKey(now)) ? now : shiftDay(now, -1);
   let streak = 0;
@@ -191,6 +234,7 @@ export function createProfile(s: GameState, name: string, habitNames: string[], 
     profile: { name: name.trim(), createdAt: now },
     habits: habitNames.map((n) => ({ id: uid(), name: n, frequency: 'daily' as const, createdAt: now, rewards: habitRewards(n) })),
     rewards: s.rewards.length ? s.rewards : defaultRewards(now),
+    balance: 2, // equilibrio de atributos actual
     ascended: [], // se asciende de avatar con los rituales de Hiperión
   };
 }
@@ -309,12 +353,16 @@ export function habitXp(h: Habit): number {
 }
 
 export function addHabit(
-  s: GameState, name: string, now: number, opts: { focus?: AttributeId; xp?: number; rewards?: AttributeRewards } = {},
+  s: GameState, name: string, now: number, opts: { focus?: AttributeId; xp?: number; rewards?: AttributeRewards; perWeek?: number } = {},
 ): GameState {
   const habit: Habit = {
     id: uid(), name: name.trim(), frequency: 'daily', createdAt: now,
     rewards: opts.rewards ? cleanRewards(opts.rewards) : habitRewards(name, opts.focus),
   };
+  if (opts.perWeek && opts.perWeek < 7) {
+    habit.frequency = 'weekly';
+    habit.perWeek = Math.max(1, Math.min(6, Math.round(opts.perWeek)));
+  }
   if (opts.xp !== undefined) habit.xp = Math.round(clamp(opts.xp, CUSTOM_LIMITS.habitXp));
   return { ...s, habits: [...s.habits, habit] };
 }
@@ -466,7 +514,7 @@ export function stopTimer(s: GameState, now: number): StopResult {
   const amount = minutes * XP_RULES.deepWorkPerMinute;
   let state: GameState = { ...s, activeTimer: null, sessions: [...s.sessions, session] };
   state = withXp(state, {
-    at: now, amount, source: 'deepwork', sourceId: session.id, label: session.label, attributes: deepWorkRewards(minutes),
+    at: now, amount, source: 'deepwork', sourceId: session.id, label: session.label, attributes: deepWorkRewards(minutes, session.area),
   });
   return { state, xp: amount, session, capped: elapsed > XP_RULES.maxSessionMinutes };
 }
@@ -510,7 +558,7 @@ export function suggest(s: GameState, now: number): Suggestion {
   const quest = pendingQuests(s, now)[0];
   if (quest) return { kind: 'quest', quest };
   const day = dayKey(now);
-  const habit = s.habits.find((h) => !isHabitDone(s, h.id, day));
+  const habit = s.habits.find((h) => !isHabitDone(s, h.id, day) && !habitSatisfied(s, h, now));
   if (habit) return { kind: 'habit', habitId: habit.id, name: habit.name };
   return { kind: 'done' };
 }
@@ -562,7 +610,7 @@ export function simulatePastDays(s: GameState, days: number, now: number): GameS
         id: uid(), questId: null, label: 'Sesión simulada', area: 'general', startedAt: at - 3600000, endedAt: at, minutes: 60, focusPct: 100,
       };
       next = withXp({ ...next, sessions: [...next.sessions, session] }, {
-        at, amount: 60 * XP_RULES.deepWorkPerMinute, source: 'deepwork', sourceId: session.id, label: session.label, attributes: deepWorkRewards(60),
+        at, amount: 60 * XP_RULES.deepWorkPerMinute, source: 'deepwork', sourceId: session.id, label: session.label, attributes: deepWorkRewards(60, 'general'),
       });
     }
   }

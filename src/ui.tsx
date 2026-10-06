@@ -3,7 +3,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import type { AttributeRewards, GameState, Habit, Quest, QuestType } from './types';
 import { ATTRIBUTES, attributeHistory, attributeLevel, attributeXp, avatarInfo, formatAttrXp, habitRewards, questRewards } from './attributes';
 import {
-  daysUntil, CUSTOM_LIMITS, dayKey, habitStreak, habitXp, isHabitDone, levelInfo, QUEST_LABEL, questAttributeRewards, questXp, shiftDay, totalXp, XP_RULES,
+  daysUntil, CUSTOM_LIMITS, dayKey, habitStreak, habitWeekCount, habitXp, isHabitDone, levelInfo, QUEST_LABEL, questAttributeRewards, questXp, shiftDay, totalXp, XP_RULES,
 } from './game';
 import { CustomizeToggle, InlineEdit, RewardEditor, sameRewards, type CustomValue } from './customize';
 import { RitualCTA } from './ritual';
@@ -241,6 +241,9 @@ export function HabitItem({
   const today = dayKey(now);
   const done = isHabitDone(state, habit.id, today);
   const streak = habitStreak(state, habit.id, now);
+  const weekly = habit.frequency === 'weekly';
+  const weekCount = weekly ? habitWeekCount(state, habit.id, now) : 0;
+  const weekDone = weekly && weekCount >= (habit.perWeek ?? 1);
   const week = Array.from({ length: 7 }, (_, i) => dayKey(shiftDay(now, i - 6)));
   return (
     <li className={done ? 'item done' : 'item'}>
@@ -256,12 +259,13 @@ export function HabitItem({
       <div className="item-body">
         <span className="item-title">{habit.name}</span>
         <span className="item-meta">
+          {weekly && <span className={weekDone ? 'freq-tag done' : 'freq-tag'}>{weekCount}/{habit.perWeek} esta semana{weekDone ? ' ✓' : ''}</span>}
           <span className="week" aria-label="Últimos 7 días">
             {week.map((d) => (
               <span key={d} className={isHabitDone(state, habit.id, d) ? 'dot on' : 'dot'} title={d} />
             ))}
           </span>
-          <span className="mono streak">{streak > 0 ? `racha ${streak}` : 'sin racha'}</span>
+          <span className="mono streak">{streak > 0 ? `racha ${streak}${weekly ? ' sem' : ''}` : 'sin racha'}</span>
           <span className="mono xp-tag">+{habitXp(habit)} XP</span>
           <RewardTags rewards={habit.rewards} />
         </span>
@@ -336,13 +340,26 @@ export function AvatarCard({ state, now, showRequirements = false }: { state: Ga
 
 export function AttributeList({ state, detailed = false }: { state: GameState; detailed?: boolean }) {
   const xp = attributeXp(state);
+  const level = levelInfo(totalXp(state)).level;
   return (
     <ul className="attrs">
       {ATTRIBUTES.map((a) => {
         const lvl = attributeLevel(xp[a.id]);
         const last = detailed ? attributeHistory(state, a.id).slice(-1)[0] : undefined;
+        const asleep = a.unlockLevel !== undefined && level < a.unlockLevel;
+        if (asleep) {
+          return (
+            <li key={a.id} className="attr idle asleep" title={a.desc}>
+              <span className="attr-icon" aria-hidden="true">🔒</span>
+              <span className="attr-name">{a.name}</span>
+              <span className="attr-level mono">Nv {a.unlockLevel}</span>
+              <span className="attr-asleep-text">Atributo avanzado: se despierta en el nivel global {a.unlockLevel}. Lo que hagas antes ya cuenta.</span>
+              {detailed && <span className="attr-desc">{a.desc} <span className="muted">Ej.: {a.examples}</span></span>}
+            </li>
+          );
+        }
         return (
-          <li key={a.id} className={xp[a.id] === 0 ? 'attr idle' : 'attr'}>
+          <li key={a.id} className={xp[a.id] === 0 ? 'attr idle' : 'attr'} title={a.desc}>
             <span className="attr-icon" aria-hidden="true">{a.icon}</span>
             <span className="attr-name">{a.name}</span>
             <span className="attr-level mono">Nv {lvl.level}</span>
@@ -350,6 +367,7 @@ export function AttributeList({ state, detailed = false }: { state: GameState; d
               <div style={{ width: `${Math.min(100, lvl.progress * 100)}%` }} />
             </div>
             <span className="attr-xp mono">{formatAttrXp(xp[a.id])} XP</span>
+            {detailed && <span className="attr-desc">{a.desc} <span className="muted">Ej.: {a.examples}</span></span>}
             {detailed && (
               <span className="attr-last">
                 {last ? `Último: +${formatAttrXp(last.amount)} · ${last.label}` : 'Aún sin progreso'}

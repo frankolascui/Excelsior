@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { useGame } from './store';
-import type { FocusPhase, Quest, QuestType } from './types';
-import { addGoal, avatarInfo, deepWorkRewards, deleteGoal, formatAttrXp, goalProgress, habitRewards, questRewards, updateGoal } from './attributes';
+import type { DeepWorkArea, FocusPhase, Quest, QuestType } from './types';
+import { addGoal, avatarInfo, DEEP_WORK_AREAS, deepWorkRewards, deleteGoal, formatAttrXp, goalProgress, habitRewards, questRewards, updateGoal } from './attributes';
 import { CustomizeToggle, RewardEditor, sameRewards, type CustomValue } from './customize';
 import { addKingdom, BUILDINGS, buildings, deleteKingdom, kingdomName, kingdomProgress } from './kingdoms';
 import { CityScene } from './city';
@@ -15,7 +15,7 @@ import { sfx } from './sfx';
 import { ActivityHeatmap, XpChart } from './charts';
 import {
   addHabit, addQuest, cancelTimer, CUSTOM_LIMITS, updateHabit, updateQuest, completeQuest, createProfile, dayKey, deepWorkMinutesOnDay,
-  deleteHabit, deleteQuest, focusPercent, habitStreak, isHabitDone, levelInfo, pendingQuests, setQuestDeadline, setPhase, timerTotals,
+  deleteHabit, deleteQuest, focusPercent, habitStreakDays, isHabitDone, levelInfo, pendingQuests, setQuestDeadline, setPhase, timerTotals,
   startTimer, stopTimer, suggest, toggleHabit, totalXp, undoQuest, xpOnDay, XP_RULES,
 } from './game';
 import {
@@ -25,6 +25,8 @@ import {
 import { HeroJournal, ReviewBanner, TimedGoals } from './ritual';
 import { QuestCalendar } from './calendar';
 import { AvatarPortrait, initialOf } from './portrait';
+import { DayClose, MetricsPanel, UpcomingEvents } from './life-ui';
+import { latestMetric, logMetric } from './life';
 
 export type Game = ReturnType<typeof useGame>;
 export type Tab = 'hoy' | 'misiones' | 'reinos' | 'arena' | 'gremios' | 'deepwork' | 'habitos' | 'personaje' | 'ajustes';
@@ -91,6 +93,7 @@ export function Dashboard({
     <div className="screen">
       <WeeklyChronicle game={game} guide={guide} now={now} go={go} />
       <ReviewBanner state={state} now={now} guide={guide} />
+      <UpcomingEvents state={state} now={now} />
       <section className="now" aria-labelledby="now-h" data-tour="now">
         <p className="eyebrow" id="now-h">¿Qué hago ahora?</p>
         {s.kind === 'timer' && (
@@ -172,6 +175,8 @@ export function Dashboard({
           )}
         </section>
       </div>
+
+      <DayClose game={game} now={now} />
 
       <AvatarCard state={state} now={now} />
 
@@ -295,7 +300,13 @@ interface SessionResult {
   distractionMinutes: number;
   distractions: number;
   focusPct: number;
+  area: DeepWorkArea;
 }
+
+const AREA_KEY = 'excelsior:dw-area';
+const AREA_HINT: Record<DeepWorkArea, string> = {
+  estudio: '🧠 Sabiduría', programacion: '🔨 Maestría', edicion: '🔨 Maestría', general: '🧠 + 🔨',
+};
 
 const PHASE_LABEL = { focus: 'Foco', break: 'Descanso', distraction: 'Distracción' } as const;
 
@@ -305,6 +316,22 @@ export function DeepWork({ game, preselect, clearPreselect }: { game: Game; pres
   const [questId, setQuestId] = useState<string | null>(preselect);
   const [target, setTarget] = useState(25);
   const [result, setResult] = useState<SessionResult | null>(null);
+  const [area, setArea] = useState<DeepWorkArea>(() => {
+    try {
+      const v = localStorage.getItem(AREA_KEY);
+      return DEEP_WORK_AREAS.some((a) => a.id === v) ? (v as DeepWorkArea) : 'general';
+    } catch {
+      return 'general';
+    }
+  });
+  function pickArea(a: DeepWorkArea) {
+    setArea(a);
+    try {
+      localStorage.setItem(AREA_KEY, a);
+    } catch {
+      /* ignorado */
+    }
+  }
   const today = dayKey(now);
   const sessionsToday = state.sessions.filter((x) => dayKey(x.endedAt) === today).reverse();
   const timer = state.activeTimer;
@@ -312,7 +339,7 @@ export function DeepWork({ game, preselect, clearPreselect }: { game: Game; pres
   const finishing = useRef(false);
 
   function start(minutes: number) {
-    act((s) => startTimer(s, linkedQuest?.id ?? null, minutes, Date.now()));
+    act((s) => startTimer(s, linkedQuest?.id ?? null, minutes, Date.now(), area));
     sfx.start();
     setResult(null);
     clearPreselect();
@@ -326,9 +353,9 @@ export function DeepWork({ game, preselect, clearPreselect }: { game: Game; pres
       setResult(x
         ? {
           minutes: x.minutes, xp: r.xp, questId: x.questId, label: x.label, breakMinutes: x.breakMinutes ?? 0,
-          distractionMinutes: x.distractionMinutes ?? 0, distractions: x.distractions ?? 0, focusPct: x.focusPct ?? 100,
+          distractionMinutes: x.distractionMinutes ?? 0, distractions: x.distractions ?? 0, focusPct: x.focusPct ?? 100, area: x.area,
         }
-        : { minutes: 0, xp: 0, questId: null, label: '', breakMinutes: 0, distractionMinutes: 0, distractions: 0, focusPct: 100 });
+        : { minutes: 0, xp: 0, questId: null, label: '', breakMinutes: 0, distractionMinutes: 0, distractions: 0, focusPct: 100, area: 'general' });
       return r;
     }, `Sesión limitada a ${XP_RULES.maxSessionMinutes} min.`);
   }
@@ -423,7 +450,7 @@ export function DeepWork({ game, preselect, clearPreselect }: { game: Game; pres
                 <div><span className="mono">{formatMinutes(result.breakMinutes)}</span><span>Descanso</span></div>
                 <div><span className="mono">{formatMinutes(result.distractionMinutes)}</span><span>Distracción{result.distractions ? ` ×${result.distractions}` : ''}</span></div>
               </div>
-              <p className="now-sub">{result.label} <RewardTags rewards={deepWorkRewards(result.minutes)} /></p>
+              <p className="now-sub">{result.label} <RewardTags rewards={deepWorkRewards(result.minutes, result.area)} /></p>
               {linked && (
                 <div className="row">
                   <button className="primary" onClick={() => { act((s) => completeQuest(s, linked.id, Date.now()), CAP_QUEST, questOpts(linked)); setResult({ ...result, questId: null }); }}>
@@ -441,6 +468,18 @@ export function DeepWork({ game, preselect, clearPreselect }: { game: Game; pres
       {linkedQuest && (
         <p className="linked">Para la misión <strong>{linkedQuest.title}</strong> <button className="link" onClick={() => setQuestId(null)}>Quitar</button></p>
       )}
+
+      <div className="area-pick">
+        <span className="muted small-text">¿Qué vas a hacer?</span>
+        <div className="segmented" role="radiogroup" aria-label="Tipo de trabajo">
+          {DEEP_WORK_AREAS.map((a) => (
+            <button key={a.id} role="radio" aria-checked={area === a.id} className={area === a.id ? 'seg on' : 'seg'} onClick={() => pickArea(a.id)}>
+              {a.name}
+            </button>
+          ))}
+        </div>
+        <span className="mono muted small-text">sube {AREA_HINT[area]}</span>
+      </div>
 
       <div className="modes" data-tour="modes">
         <button className="mode-card" onClick={() => start(0)}>
@@ -462,7 +501,7 @@ export function DeepWork({ game, preselect, clearPreselect }: { game: Game; pres
         </div>
       </div>
       <AmbientPanel />
-      <p className="hint">Durante la sesión puedes marcar Descanso o Me distraje. Solo el foco da XP (1 XP, +1 Maestría y +0,5 Voluntad por minuto). Foco real = foco ÷ (foco + distracción) × 100.</p>
+      <p className="hint">Durante la sesión puedes marcar Descanso o Me distraje. Solo el foco da 1 XP por minuto. Estudio sube Sabiduría (teoría); Programación y Edición, Maestría (práctica); General, un poco de las dos. Todas suben algo de Voluntad. Foco real = foco ÷ (foco + distracción) × 100.</p>
 
       <section className="panel">
         <header className="panel-head"><h3>Sesiones de hoy</h3><span className="count mono">{formatMinutes(deepWorkMinutesOnDay(state, today))}</span></header>
@@ -492,11 +531,12 @@ export function Habits({ game }: { game: Game }) {
   const [name, setName] = useState('');
   const [custom, setCustom] = useState<CustomValue>({});
   const [open, setOpen] = useState(false);
+  const [perWeek, setPerWeek] = useState(7); // 7 = cada día
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
     const rewards = custom.rewards && !sameRewards(custom.rewards, habitRewards(name)) ? custom.rewards : undefined;
-    act((s) => addHabit(s, name, Date.now(), { xp: custom.xp, rewards }));
+    act((s) => addHabit(s, name, Date.now(), { xp: custom.xp, rewards, perWeek }));
     setName('');
     setCustom({});
     setOpen(false);
@@ -507,12 +547,16 @@ export function Habits({ game }: { game: Game }) {
       <div className="stack-gap" data-tour="habits">
       <section className="panel">
         <form className="quick-add inline" onSubmit={submit}>
-          <input id="new-habit" value={name} onChange={(e) => setName(e.target.value)} placeholder="+ Nuevo hábito diario (ej. Leer 10 páginas)" maxLength={60} aria-label="Nombre del nuevo hábito" />
+          <input id="new-habit" value={name} onChange={(e) => setName(e.target.value)} placeholder="+ Nuevo hábito (ej. Leer 10 páginas)" maxLength={60} aria-label="Nombre del nuevo hábito" />
+          <select id="new-habit-freq" className="freq-select" value={perWeek} onChange={(e) => setPerWeek(Number(e.target.value))} aria-label="Frecuencia">
+            <option value={7}>Cada día</option>
+            {[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n} {n === 1 ? 'vez' : 'veces'} por semana</option>)}
+          </select>
           <CustomizeToggle open={open} onToggle={() => setOpen(!open)} custom={custom.xp !== undefined || custom.rewards !== undefined} />
           <button type="submit" className="primary" disabled={!name.trim()}>Añadir</button>
         </form>
         {open && <RewardEditor autoXp={XP_RULES.habit} autoRewards={habitRewards(name)} value={custom} onChange={setCustom} maxXp={CUSTOM_LIMITS.habitXp} idPrefix="new-habit" />}
-        <p className="hint">+{XP_RULES.habit} XP cada día que lo completes. Los puntos de la derecha son los últimos 7 días.</p>
+        <p className="hint">+{XP_RULES.habit} XP cada vez que lo completes. Los diarios hacen racha de días; los de «N veces por semana», racha de semanas cumplidas (de lunes a domingo). Los puntos son los últimos 7 días.</p>
       </section>
       <section className="panel">
         {state.habits.length === 0 ? (
@@ -545,7 +589,7 @@ export function Character({ game }: { game: Game }) {
   const avatar = avatarInfo(state, now);
   const dwTotal = state.sessions.reduce((n, x) => n + x.minutes, 0);
   const questsDone = state.quests.filter((q) => q.completedAt).length;
-  const bestStreak = state.habits.reduce((m, h) => Math.max(m, habitStreak(state, h.id, now)), 0);
+  const bestStreak = state.habits.reduce((m, h) => Math.max(m, habitStreakDays(state, h.id, now)), 0);
   const activeDays = new Set(state.xp.map((t) => dayKey(t.at))).size;
   const history = [...state.xp].reverse().slice(0, 15);
   const SOURCE = { quest: 'Misión', habit: 'Hábito', deepwork: 'Deep Work', admin: 'Admin' } as const;
@@ -565,6 +609,8 @@ export function Character({ game }: { game: Game }) {
         </div>
         <LevelBar state={state} compact />
       </section>
+
+      <MetricsPanel game={game} />
 
       <AvatarCard state={state} now={now} showRequirements />
 
@@ -732,15 +778,22 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
 function GoalsPanel({ game, now }: { game: Game; now: number }) {
   const { state, act } = game;
   const next = avatarInfo(state, now).next;
-  const [form, setForm] = useState({ name: '', unit: '', start: '', target: '' });
+  const [form, setForm] = useState({ name: '', unit: '', start: '', target: '', metricId: '' });
+  const metrics = state.metrics ?? [];
+  const pickMetric = (id: string) => {
+    const m = metrics.find((x) => x.id === id);
+    if (!m) return setForm({ ...form, metricId: '' });
+    const last = latestMetric(state, id);
+    setForm({ ...form, metricId: id, name: form.name || m.name, unit: m.unit, start: last !== null ? String(last) : form.start });
+  };
   if (!next) return null;
   const goals = state.goals.filter((g) => g.avatarId === next.id && !g.deadline); // los de 3 meses tienen su panel
   const valid = form.name.trim() && form.start !== '' && form.target !== '' && !Number.isNaN(Number(form.start)) && !Number.isNaN(Number(form.target));
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!valid || !next) return;
-    act((s) => addGoal(s, { name: form.name, unit: form.unit, start: Number(form.start), target: Number(form.target), avatarId: next.id }, Date.now()));
-    setForm({ name: '', unit: '', start: '', target: '' });
+    act((s) => addGoal(s, { name: form.name, unit: form.unit, start: Number(form.start), target: Number(form.target), avatarId: next.id, metricId: form.metricId || undefined }, Date.now()));
+    setForm({ name: '', unit: '', start: '', target: '', metricId: '' });
   }
   return (
     <section className="panel" aria-labelledby="goals-h">
@@ -755,15 +808,15 @@ function GoalsPanel({ game, now }: { game: Game; now: number }) {
                 <div className="item-body">
                   <span className="item-title">{g.name}</span>
                   <div className="attr-bar"><div style={{ width: `${p * 100}%` }} /></div>
-                  <span className="mono muted small-text">{formatAttrXp(g.current)} / {formatAttrXp(g.target)} {g.unit} · {Math.floor(p * 100)} %</span>
+                  <span className="mono muted small-text">{formatAttrXp(g.current)} / {formatAttrXp(g.target)} {g.unit} · {Math.floor(p * 100)} %{g.metricId ? ' · sigue tu medida' : ''}</span>
                 </div>
                 <div className="item-actions goal-actions">
                   <input
                     type="number" step="any" className="goal-input" aria-label={`Valor actual de ${g.name}`}
                     value={g.current}
-                    onChange={(e) => e.target.value !== '' && act((s) => updateGoal(s, g.id, Number(e.target.value)))}
+                    onChange={(e) => e.target.value !== '' && act((s) => (g.metricId ? logMetric(s, g.metricId, Number(e.target.value), Date.now()) : updateGoal(s, g.id, Number(e.target.value))))}
                   />
-                  <button className="ghost small" onClick={() => act((s) => updateGoal(s, g.id, g.current + (g.target >= g.start ? 1 : -1)))}>
+                  <button className="ghost small" onClick={() => act((s) => (g.metricId ? logMetric(s, g.metricId, g.current + (g.target >= g.start ? 1 : -1), Date.now()) : updateGoal(s, g.id, g.current + (g.target >= g.start ? 1 : -1))))}>
                     {g.target >= g.start ? '+1' : '−1'}
                   </button>
                   <button className="icon-btn" onClick={() => act((s) => deleteGoal(s, g.id))} aria-label={`Borrar ${g.name}`}>×</button>
@@ -772,6 +825,15 @@ function GoalsPanel({ game, now }: { game: Game; now: number }) {
             );
           })}
         </ul>
+      )}
+      {metrics.length > 0 && (
+        <label className="goal-metric small-text muted">
+          Seguir una medida de «Tu estado actual»:
+          <select id="goal-metric" className="freq-select" value={form.metricId} onChange={(e) => pickMetric(e.target.value)}>
+            <option value="">Ninguna (la actualizo a mano)</option>
+            {metrics.map((m) => <option key={m.id} value={m.id}>📈 {m.name}</option>)}
+          </select>
+        </label>
       )}
       <form className="goal-form" onSubmit={submit}>
         <input id="goal-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Meta (ej. Hablar con desconocidos)" maxLength={60} aria-label="Nombre de la meta" />

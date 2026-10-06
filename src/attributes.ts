@@ -1,17 +1,52 @@
 // Atributos y avatar. Recompensas hardcodeadas (sin editor todavía); el XP, el nivel
 // y el historial de cada atributo se derivan de las transacciones de XP.
-import type { AttributeId, AttributeRewards, GameState, Goal, QuestType, RitualAnswer } from './types';
-import { dayKey, habitStreak, totalXp, uid, xpForLevel } from './game';
+import type { AttributeId, AttributeRewards, DeepWorkArea, GameState, Goal, QuestType, RitualAnswer } from './types';
+import { dayKey, habitStreakDays, totalXp, uid, xpForLevel } from './game';
 import { defeatedBosses } from './bosses';
 import { kingdomProgress } from './kingdoms';
 
-export const ATTRIBUTES: { id: AttributeId; name: string; icon: string }[] = [
-  { id: 'voluntad', name: 'Voluntad', icon: '⚔️' },
-  { id: 'sabiduria', name: 'Sabiduría', icon: '🧠' },
-  { id: 'maestria', name: 'Maestría', icon: '🔨' },
-  { id: 'conexion', name: 'Conexión', icon: '❤️' },
-  { id: 'creacion', name: 'Creación', icon: '🌍' },
+export interface AttributeDef {
+  id: AttributeId;
+  name: string;
+  icon: string;
+  desc: string;
+  examples: string;
+  /** Nivel global en el que se despierta (antes cuenta igual, pero no se muestra). */
+  unlockLevel?: number;
+}
+
+// Definiciones de Nicolas (2026-10-06). El id 'creacion' se conserva para no romper partidas: hoy se llama Impacto.
+export const ATTRIBUTES: AttributeDef[] = [
+  {
+    id: 'voluntad', name: 'Voluntad', icon: '⚔️',
+    desc: 'Disciplina: hacer lo que no te apetece y salir de tu zona de confort.',
+    examples: 'Entrenar sin ganas, madrugar, cumplir la misión del día, aguantar la racha.',
+  },
+  {
+    id: 'sabiduria', name: 'Sabiduría', icon: '🧠',
+    desc: 'Lo teórico: entender y saber. En mates, conocer las fórmulas y cuándo se usan.',
+    examples: 'Leer, estudiar, hacer apuntes, ver un curso, Deep Work de Estudio.',
+  },
+  {
+    id: 'maestria', name: 'Maestría', icon: '🔨',
+    desc: 'Lo práctico: aplicar lo que sabes para sacar un resultado. Usar las fórmulas para resolver un problema concreto.',
+    examples: 'Resolver ejercicios, programar, editar, terminar un proyecto, Deep Work práctico.',
+  },
+  {
+    id: 'conexion', name: 'Conexión', icon: '❤️',
+    desc: 'Tus relaciones: familia, amigos, pareja y atreverte a hablar con desconocidos.',
+    examples: 'Llamar a tu familia, quedar con amigos, hablar con alguien nuevo.',
+  },
+  {
+    id: 'creacion', name: 'Impacto', icon: '🌍', unlockLevel: 10,
+    desc: 'El atributo avanzado: impactar y ayudar a la gente con lo que creas.',
+    examples: 'Lanzar una app que usan otros, publicar, enseñar, ayudar, voluntariado.',
+  },
 ];
+
+export function attributeDef(id: AttributeId): AttributeDef {
+  return ATTRIBUTES.find((a) => a.id === id)!;
+}
 
 export const DEEP_WORK_AREAS = [
   { id: 'programacion', name: 'Programación' },
@@ -28,9 +63,9 @@ const QUEST_REWARDS: Record<QuestType, AttributeRewards> = {
   daily: { voluntad: 3 }, // sin regla en el brief: igual que Secundaria
 };
 
-// Palabras clave (sin tildes) que llevan XP a Conexión y Creación.
-const CONEXION_RE = /llamar|llamada|famili|amig|pareja|quedar|reunion|ayudar|mentor|agradec|visitar|cena con/;
-const CREACION_RE = /crear|escribir|dibuj|pint|disen|grabar|video|publicar|componer|musica|lanzar|construir/;
+// Palabras clave (sin tildes) que llevan XP a Conexión e Impacto.
+const CONEXION_RE = /llamar|llamada|famili|amig|pareja|novi[ao]|padre|madre|herman|abuel|quedar|reunion|agradec|visitar|cena con|desconocid|hablar con|conocer gente|cita/;
+const CREACION_RE = /ayudar|voluntari|ensenar|mentor|publicar|lanzar|app\b|aplicacion|usuarios|clientes|donar|crear|escribir|dibuj|pint|disen|grabar|video|componer|musica|construir/;
 const QUEST_KEYWORD_BONUS = 3;
 
 function normalize(text: string): string {
@@ -76,9 +111,31 @@ export function habitRewards(name: string, focus?: AttributeId): AttributeReward
   return HABIT_RULES.find(([re]) => re.test(n))?.[1] ?? HABIT_DEFAULT;
 }
 
-/** Deep Work (cualquier área): +1 Maestría y +0,5 Voluntad por minuto (con decimales). */
-export function deepWorkRewards(minutes: number): AttributeRewards {
-  return { maestria: minutes, voluntad: minutes * 0.5 };
+/**
+ * Deep Work por minuto (equilibrado el 2026-10-06; antes +1 Maestría y +0,5 Voluntad en cualquier área):
+ * Estudio → +0,5 Sabiduría (teoría); Programación y Edición → +0,5 Maestría (práctica);
+ * General → +0,25 de cada una. Siempre +0,25 Voluntad.
+ */
+export function deepWorkRewards(minutes: number, area: DeepWorkArea = 'general'): AttributeRewards {
+  const r = (n: number) => Math.round(n * minutes * 10) / 10;
+  const base: AttributeRewards = { voluntad: r(0.25) };
+  if (area === 'estudio') return { ...base, sabiduria: r(0.5) };
+  if (area === 'programacion' || area === 'edicion') return { ...base, maestria: r(0.5) };
+  return { ...base, maestria: r(0.25), sabiduria: r(0.25) };
+}
+
+/** Versión del equilibrio de atributos guardada en la partida. */
+export const BALANCE_VERSION = 2;
+
+/** Recalcula el XP de atributo de las sesiones de Deep Work pasadas con el equilibrio actual (una sola vez). */
+export function rebalance(s: GameState): GameState {
+  if ((s.balance ?? 1) >= BALANCE_VERSION) return s;
+  const xp = s.xp.map((t) => {
+    if (t.source !== 'deepwork') return t;
+    const session = s.sessions.find((x) => x.id === t.sourceId);
+    return session ? { ...t, attributes: deepWorkRewards(session.minutes, session.area) } : t;
+  });
+  return { ...s, xp, balance: BALANCE_VERSION };
 }
 
 /** XP de atributo con hasta un decimal: 22,5. */
@@ -208,7 +265,7 @@ export function requirementStatus(s: GameState, req: AvatarRequirement, now: num
       return check(done, req.min, `${req.min} misiones completadas`);
     }
     case 'habitStreak': {
-      const best = s.habits.reduce((m, h) => Math.max(m, habitStreak(s, h.id, now)), 0);
+      const best = s.habits.reduce((m, h) => Math.max(m, habitStreakDays(s, h.id, now)), 0); // semanales: semanas × 7
       return check(best, req.days, `Racha de ${req.days} días en un hábito`);
     }
     case 'bossesDefeated':
@@ -283,9 +340,11 @@ export function completeRitual(
 // ---------- Metas ----------
 
 export function addGoal(
-  s: GameState, g: { name: string; unit: string; start: number; target: number; avatarId: string; deadline?: number }, now: number,
+  s: GameState, g: { name: string; unit: string; start: number; target: number; avatarId: string; deadline?: number; metricId?: string }, now: number,
 ): GameState {
-  return { ...s, goals: [...s.goals, { ...g, name: g.name.trim(), unit: g.unit.trim(), current: g.start, id: uid(), createdAt: now }] };
+  const goal: Goal = { ...g, name: g.name.trim(), unit: g.unit.trim(), current: g.start, id: uid(), createdAt: now };
+  if (!goal.metricId) delete goal.metricId;
+  return { ...s, goals: [...s.goals, goal] };
 }
 
 export function updateGoal(s: GameState, id: string, current: number): GameState {
