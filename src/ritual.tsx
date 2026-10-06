@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import type { Game } from './screens';
 import type { GameState, RitualAnswer } from './types';
-import { AVATARS, avatarInfo, completeRitual, formatAttrXp, goalProgress, updateGoal } from './attributes';
+import { AVATARS, avatarInfo, completeRitual, deleteGoal, formatAttrXp, goalProgress, updateGoal } from './attributes';
 import { GuidePortrait } from './tutorial';
 import { confetti } from './confetti';
 import { sfx } from './sfx';
@@ -239,6 +239,7 @@ export function TimedGoals({ game }: { game: Game }) {
               <div className="item-actions goal-actions">
                 <input type="number" step="any" className="goal-input" aria-label={`Valor actual de ${g.name}`} value={g.current}
                   onChange={(e) => e.target.value !== '' && act((s) => updateGoal(s, g.id, Number(e.target.value)))} />
+                <button className="icon-btn" onClick={() => act((s) => deleteGoal(s, g.id))} aria-label={`Borrar ${g.name}`}>×</button>
               </div>
             </li>
           );
