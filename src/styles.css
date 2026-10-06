@@ -825,3 +825,10 @@ button.mode-card:hover { transform: translateY(-2px); box-shadow: 0 0 0 1px colo
 @media (prefers-reduced-motion: reduce) {
   .banner, .smoke circle, .boss-icon, .guide-eye, .cloud, .villager, .villager .bob, .builder .hammer, .builder .spark, .bld.built .window, .just-built, .dust circle, .boss.hit, .boss-shadow, .dmg-float, .slash { animation: none; }
 }
+
+/* Cuenta */
+.login-form { display: flex; flex-direction: column; gap: 8px; max-width: 420px; }
+.code-input { font-size: 26px; letter-spacing: 0.4em; text-align: center; }
+.overlay-card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow); padding: 24px; width: min(440px, 100%); display: flex; flex-direction: column; gap: 10px; }
+.conflict-options { display: grid; gap: 10px; }
+.conflict-options button { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; padding: 12px 14px; }

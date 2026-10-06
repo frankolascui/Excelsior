@@ -50,3 +50,12 @@ Regla de seguridad: `user_id = auth.uid()` para leer y escribir.
 2. Guardado en la nube + subida de la partida local.
 3. Indicador de "guardado" y cerrar sesión.
 4. Probar con 2 dispositivos.
+
+## Puesta en marcha (estado: código listo, falta tu proyecto)
+El código ya está hecho y probado contra un Supabase simulado: login con código, subida automática, recuperar la partida en otro dispositivo y elegir partida si hay dos. Mientras `src/cloud-config.ts` esté vacío, la app funciona solo en local como siempre.
+
+Pasos (tú, una vez):
+1. Crea un proyecto en supabase.com.
+2. **SQL Editor** → pega y ejecuta [`docs/supabase.sql`](supabase.sql) (crea la tabla `saves` con sus reglas).
+3. **Authentication → Emails → Templates**: en «Magic Link» y en «Confirm signup» pon el código en el correo, p. ej. `Tu código de Excelsior: {{ .Token }}`. Sin esto llega un enlace en vez de un código.
+4. **Project Settings → API**: pásame la **Project URL** y la clave **anon public**. Yo las pongo en `src/cloud-config.ts`, publico y lo probamos juntos.

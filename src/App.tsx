@@ -5,6 +5,7 @@ import { avatarInfo } from './attributes';
 import { isMuted, setMuted, sfx } from './sfx';
 import { Arena, CoinBadge } from './arena';
 import { AmbientDock } from './ambient-ui';
+import { ConflictDialog } from './account';
 import { coinBalance } from './economy';
 import { Character, Dashboard, DeepWork, Habits, Kingdoms, Onboarding, Quests, type Tab } from './screens';
 import type { Quest } from './types';
@@ -123,6 +124,8 @@ export default function App() {
           <div key={t.id} className={`toast toast-${t.tone}`}>{t.text}</div>
         ))}
       </div>
+
+      {game.conflict && <ConflictDialog local={state} remote={game.conflict} onChoose={game.resolveConflict} />}
 
       {game.levelUp && (
         <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="lvl-h" onClick={game.dismissLevelUp}>

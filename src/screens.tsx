@@ -9,6 +9,8 @@ import { kingdomBonus } from './economy';
 import { RealmMap } from './realm';
 import { AmbientPanel } from './ambient-ui';
 import { AvatarLadder, SettingsPanel, WeeklyChronicle } from './settings';
+import { AccountPanel, LoginForm } from './account';
+import { cloudEnabled, useCloud } from './cloud';
 import { sfx } from './sfx';
 import { ActivityHeatmap, XpChart } from './charts';
 import {
@@ -36,6 +38,8 @@ const STARTER_HABITS = ['Leer', 'Entrenar', 'Meditar', 'Journaling', 'Llamar a a
 export function Onboarding({ game }: { game: Game }) {
   const [name, setName] = useState('');
   const [picked, setPicked] = useState<string[]>(['Leer', 'Entrenar']);
+  const [login, setLogin] = useState(false);
+  const cloud = useCloud();
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
@@ -65,7 +69,11 @@ export function Onboarding({ game }: { game: Game }) {
           </fieldset>
           <button type="submit" className="primary big" disabled={!name.trim()}>Crear personaje</button>
         </form>
-        <p className="fineprint">Tus datos se guardan en este navegador.</p>
+        {cloudEnabled && !cloud.email && (login ? <LoginForm /> : (
+          <button type="button" className="link" onClick={() => setLogin(true)}>¿Ya juegas en otro dispositivo? Entra con tu email</button>
+        ))}
+        {cloud.email && <p className="muted small-text">Conectado como {cloud.email}. Si tenías partida en la nube, se cargará ahora.</p>}
+        <p className="fineprint">Tus datos se guardan en este navegador{cloudEnabled ? ' y, si entras con tu email, también en la nube' : ''}.</p>
       </div>
     </main>
   );
@@ -551,6 +559,7 @@ export function Character({
         )}
       </section>
 
+      <AccountPanel />
       <SettingsPanel game={game} guide={guide} setGuide={setGuide} replayTutorial={replayTutorial} />
 
       <section className="panel quiet">

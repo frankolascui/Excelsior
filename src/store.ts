@@ -8,6 +8,7 @@ import { sfx } from './sfx';
 import { confetti } from './confetti';
 import { bossStatus } from './bosses';
 import { kingdomBonus } from './economy';
+import { markSynced, reconcile, scheduleSave, useCloud, type RemoteSave } from './cloud';
 
 const KEY = 'excelsior:v1';
 
@@ -64,6 +65,42 @@ export function useGame() {
   }, []);
 
   useEffect(() => save(state), [state]);
+
+  // Nube: al entrar (o al abrir con sesión) se decide qué partida manda; después, cada cambio se sube.
+  const { userId } = useCloud();
+  const [conflict, setConflict] = useState<RemoteSave | null>(null);
+  const reconciled = useRef<string | null>(null);
+  useEffect(() => {
+    if (!userId || reconciled.current === userId) return;
+    reconciled.current = userId;
+    reconcile(state)
+      .then((r) => {
+        if (r.kind === 'adopt') adopt(r.remote.state);
+        if (r.kind === 'conflict') setConflict(r.remote);
+      })
+      .catch(() => toast('No se pudo leer tu partida de la nube', 'info'));
+  }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (userId && reconciled.current === userId && !conflict) scheduleSave(state);
+  }, [state, userId, conflict]);
+
+  function adopt(remote: GameState) {
+    const next = migrate(remote as unknown as Parameters<typeof migrate>[0]);
+    prevLevel.current = levelInfo(totalXp(next)).level;
+    prevAvatar.current = avatarInfo(next, Date.now()).index;
+    prevDefeated.current = defeatedIds(next);
+    prevKingdoms.current = completedKingdoms(next);
+    setState(next);
+    markSynced();
+  }
+
+  /** Resuelve el primer login en un dispositivo que ya tenía partida. */
+  function resolveConflict(useRemote: boolean) {
+    if (!conflict) return;
+    if (useRemote) adopt(conflict.state);
+    else markSynced();
+    setConflict(null);
+  }
 
   useEffect(() => {
     const lvl = levelInfo(totalXp(state)).level;
@@ -158,5 +195,5 @@ export function useGame() {
     setState(latest.current);
   }, []);
 
-  return { state, act, toast, toasts, levelUp, dismissLevelUp: () => setLevelUp(null), reset };
+  return { state, act, toast, toasts, levelUp, dismissLevelUp: () => setLevelUp(null), reset, conflict, resolveConflict };
 }
