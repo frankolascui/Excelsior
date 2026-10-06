@@ -7,7 +7,8 @@ export type AttributeId = 'voluntad' | 'sabiduria' | 'maestria' | 'conexion' | '
 /** XP que una acción da a cada atributo (los que no aparecen reciben 0). */
 export type AttributeRewards = Partial<Record<AttributeId, number>>;
 
-export type DeepWorkArea = 'programacion' | 'edicion' | 'estudio' | 'general';
+/** Tipo de sesión: se deduce de lo que vas a hacer. 'programacion' y 'edicion' vienen de versiones anteriores (= práctica). */
+export type DeepWorkArea = 'estudio' | 'practica' | 'general' | 'programacion' | 'edicion';
 
 export interface Profile {
   name: string;
@@ -56,6 +57,7 @@ export interface DeepWorkSession {
   distractionMinutes?: number;
   distractions?: number; // veces que se marcó «Me distraje»
   focusPct?: number; // foco / (foco + distracción) × 100
+  pomodoros?: number; // pomodoros completados en la sesión
 }
 
 export type XPSource = 'quest' | 'habit' | 'deepwork' | 'admin';
@@ -85,6 +87,13 @@ export interface ActiveTimer {
   breakMs?: number;
   distractionMs?: number;
   distractions?: number;
+  /** Lo que dijiste que ibas a hacer (opcional); da nombre a la sesión si no hay misión. */
+  intent?: string;
+  /** Pomodoro: minutos de foco y de descanso corto (el largo, cada 4, es el triple). */
+  pomodoro?: { focus: number; rest: number };
+  pomoDone?: number;
+  /** Duración del descanso automático en curso (ms); sin él, el descanso es manual. */
+  restMs?: number;
 }
 
 /** Reino: un proyecto que se construye como una ciudad. Cada misión con su kingdomId es una construcción. */

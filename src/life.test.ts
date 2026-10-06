@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { addHabit, createProfile, emptyState, habitSatisfied, habitStreak, habitStreakDays, habitWeekCount, startTimer, stopTimer, toggleHabit, weekStart } from './game';
-import { addGoal, attributeDef, attributeXp, rebalance } from './attributes';
+import { addHabit, createProfile, emptyState, habitSatisfied, habitStreak, habitStreakDays, habitWeekCount, pomodoroStatus, pomodoroStep, setPhase, startTimer, stopTimer, toggleHabit, weekStart } from './game';
+import { addGoal, attributeDef, attributeXp, inferDeepWorkArea, rebalance } from './attributes';
 import { addEvent, addMetric, dailyReport, deleteEvent, deleteMetric, eventsOn, latestMetric, logMetric, metricHistory, saveDayLog, upcomingEvents } from './life';
 
 const NOW = new Date(2026, 9, 6, 10, 0).getTime(); // martes
@@ -10,14 +10,14 @@ const base = () => createProfile(emptyState(), 'Nico', [], NOW);
 
 describe('equilibrio de Maestría', () => {
   it('Deep Work según el tipo: estudio → Sabiduría, práctica → Maestría, general → mitad y mitad', () => {
-    const run = (area: 'estudio' | 'programacion' | 'general') => attributeXp(stopTimer(startTimer(base(), null, 0, NOW, area), NOW + 60 * MIN).state);
+    const run = (area: 'estudio' | 'programacion' | 'general') => attributeXp(stopTimer(startTimer(base(), null, 0, NOW, { area }), NOW + 60 * MIN).state);
     expect(run('estudio')).toMatchObject({ sabiduria: 30, maestria: 0, voluntad: 15 });
     expect(run('programacion')).toMatchObject({ maestria: 30, sabiduria: 0, voluntad: 15 });
     expect(run('general')).toMatchObject({ maestria: 15, sabiduria: 15, voluntad: 15 });
   });
 
   it('recalcula una sola vez las sesiones de partidas antiguas', () => {
-    const s = stopTimer(startTimer(base(), null, 0, NOW, 'programacion'), NOW + 40 * MIN).state;
+    const s = stopTimer(startTimer(base(), null, 0, NOW, { area: 'programacion' }), NOW + 40 * MIN).state;
     const old = { ...s, balance: undefined, xp: s.xp.map((t) => ({ ...t, attributes: { maestria: 40, voluntad: 20 } })) };
     const r = rebalance(old);
     expect(attributeXp(r)).toMatchObject({ maestria: 20, voluntad: 10 });
@@ -28,6 +28,43 @@ describe('equilibrio de Maestría', () => {
   it('Impacto es el atributo avanzado: despierta en el nivel 10', () => {
     expect(attributeDef('creacion').name).toBe('Impacto');
     expect(attributeDef('creacion').unlockLevel).toBe(10);
+  });
+});
+
+describe('Deep Work: qué vas a hacer y Pomodoro', () => {
+  it('deduce teoría o práctica de lo que vas a hacer', () => {
+    expect(inferDeepWorkArea('Ejercicios de derivadas')).toBe('practica');
+    expect(inferDeepWorkArea('Programar Excelsior')).toBe('practica');
+    expect(inferDeepWorkArea('Estudiar el tema 4 de Historia')).toBe('estudio');
+    expect(inferDeepWorkArea('Leer')).toBe('estudio');
+    expect(inferDeepWorkArea('')).toBe('general');
+    expect(inferDeepWorkArea(undefined)).toBe('general');
+  });
+
+  it('la intención da nombre a la sesión y decide el atributo', () => {
+    const r = stopTimer(startTimer(base(), null, 0, NOW, { intent: '  Ejercicios de física ' }), NOW + 20 * MIN);
+    expect(r.session?.label).toBe('Ejercicios de física');
+    expect(attributeXp(r.state)).toMatchObject({ maestria: 10, sabiduria: 0, voluntad: 5 });
+  });
+
+  it('Pomodoro 25/5: al acabar el foco empieza el descanso; cada 4, descanso largo', () => {
+    let s = startTimer(base(), null, 0, NOW, { pomodoro: { focus: 25, rest: 5 } });
+    expect(pomodoroStatus(s.activeTimer!, NOW + 10 * MIN)?.focusLeft).toBe(15 * MIN);
+    expect(pomodoroStep(s, NOW + 10 * MIN)).toBe(s);
+    let t = NOW + 25 * MIN;
+    s = pomodoroStep(s, t);
+    expect(s.activeTimer?.phase).toBe('break');
+    expect(pomodoroStatus(s.activeTimer!, t + 2 * MIN)).toMatchObject({ done: 1, restLeft: 3 * MIN });
+    expect(pomodoroStatus(s.activeTimer!, t + 9 * MIN)?.restLeft).toBe(0);
+    for (let i = 2; i <= 4; i++) {
+      t += 5 * MIN;
+      s = setPhase(s, 'focus', t);
+      t += 25 * MIN;
+      s = pomodoroStep(s, t);
+    }
+    expect(s.activeTimer).toMatchObject({ pomoDone: 4, restMs: 15 * MIN });
+    const r = stopTimer(s, t + MIN);
+    expect(r.session).toMatchObject({ minutes: 100, pomodoros: 4, breakMinutes: 16 });
   });
 });
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { useGame } from './store';
 import type { DeepWorkArea, FocusPhase, Quest, QuestType } from './types';
-import { addGoal, avatarInfo, DEEP_WORK_AREAS, deepWorkRewards, deleteGoal, formatAttrXp, goalProgress, habitRewards, questRewards, updateGoal } from './attributes';
+import { addGoal, avatarInfo, DEEP_WORK_AREA_HINT, deepWorkRewards, inferDeepWorkArea, deleteGoal, formatAttrXp, goalProgress, habitRewards, questRewards, updateGoal } from './attributes';
 import { CustomizeToggle, RewardEditor, sameRewards, type CustomValue } from './customize';
 import { addKingdom, BUILDINGS, buildings, deleteKingdom, kingdomName, kingdomProgress } from './kingdoms';
 import { CityScene } from './city';
@@ -16,7 +16,7 @@ import { ActivityHeatmap, XpChart } from './charts';
 import {
   addHabit, addQuest, cancelTimer, CUSTOM_LIMITS, updateHabit, updateQuest, completeQuest, createProfile, dayKey, deepWorkMinutesOnDay,
   deleteHabit, deleteQuest, focusPercent, habitStreakDays, isHabitDone, levelInfo, pendingQuests, setQuestDeadline, setPhase, timerTotals,
-  startTimer, stopTimer, suggest, toggleHabit, totalXp, undoQuest, xpOnDay, XP_RULES,
+  pomodoroStatus, pomodoroStep, startTimer, stopTimer, suggest, toggleHabit, totalXp, undoQuest, xpOnDay, XP_RULES,
 } from './game';
 import {
   AttributeList, AvatarCard, ConfirmButton, formatClock, formatMinutes, HabitItem, LevelBar, QuestItem,
@@ -289,7 +289,6 @@ export function Quests({ game, focusQuest }: { game: Game; focusQuest: (q: Quest
 
 // ---------- Deep Work ----------
 
-const TARGETS = [25, 45, 60, 90];
 
 interface SessionResult {
   minutes: number;
@@ -303,10 +302,8 @@ interface SessionResult {
   area: DeepWorkArea;
 }
 
-const AREA_KEY = 'excelsior:dw-area';
-const AREA_HINT: Record<DeepWorkArea, string> = {
-  estudio: '🧠 Sabiduría', programacion: '🔨 Maestría', edicion: '🔨 Maestría', general: '🧠 + 🔨',
-};
+const POMO_KEY = 'excelsior:pomodoro';
+const POMODOROS = [{ focus: 25, rest: 5 }, { focus: 50, rest: 10 }];
 
 const PHASE_LABEL = { focus: 'Foco', break: 'Descanso', distraction: 'Distracción' } as const;
 
@@ -314,20 +311,19 @@ export function DeepWork({ game, preselect, clearPreselect }: { game: Game; pres
   const { state, act } = game;
   const now = useNow(250);
   const [questId, setQuestId] = useState<string | null>(preselect);
-  const [target, setTarget] = useState(25);
   const [result, setResult] = useState<SessionResult | null>(null);
-  const [area, setArea] = useState<DeepWorkArea>(() => {
+  const [intent, setIntent] = useState('');
+  const [pomo, setPomo] = useState(() => {
     try {
-      const v = localStorage.getItem(AREA_KEY);
-      return DEEP_WORK_AREAS.some((a) => a.id === v) ? (v as DeepWorkArea) : 'general';
+      return localStorage.getItem(POMO_KEY) === '50' ? 1 : 0;
     } catch {
-      return 'general';
+      return 0;
     }
   });
-  function pickArea(a: DeepWorkArea) {
-    setArea(a);
+  function pickPomo(i: number) {
+    setPomo(i);
     try {
-      localStorage.setItem(AREA_KEY, a);
+      localStorage.setItem(POMO_KEY, String(POMODOROS[i].focus));
     } catch {
       /* ignorado */
     }
@@ -338,10 +334,11 @@ export function DeepWork({ game, preselect, clearPreselect }: { game: Game; pres
   const linkedQuest = questId ? state.quests.find((q) => q.id === questId && !q.completedAt) : null;
   const finishing = useRef(false);
 
-  function start(minutes: number) {
-    act((s) => startTimer(s, linkedQuest?.id ?? null, minutes, Date.now(), area));
+  function start(pomodoro?: { focus: number; rest: number }) {
+    act((s) => startTimer(s, linkedQuest?.id ?? null, 0, Date.now(), { intent, pomodoro }));
     sfx.start();
     setResult(null);
+    setIntent('');
     clearPreselect();
     finishing.current = false;
   }
@@ -369,8 +366,10 @@ export function DeepWork({ game, preselect, clearPreselect }: { game: Game; pres
 
   const totals = timer ? timerTotals(timer, now) : null;
   const targetMs = timer ? timer.targetMinutes * 60000 : 0;
+  const pomoSt = timer ? pomodoroStatus(timer, now) : null;
+  const restOver = pomoSt?.restLeft === 0;
 
-  // Cuenta atrás: al llegar a 0 de foco, suena y se registra sola.
+  // Cuenta atrás (sesiones antiguas con minutos): al llegar a 0 de foco, suena y se registra sola.
   useEffect(() => {
     if (timer && totals && targetMs > 0 && totals.focusMs >= targetMs && !finishing.current) {
       finishing.current = true;
@@ -378,19 +377,45 @@ export function DeepWork({ game, preselect, clearPreselect }: { game: Game; pres
       stop();
     }
   });
+  // Pomodoro: al acabar el foco, suena y empieza el descanso; al acabar el descanso, avisa.
+  useEffect(() => {
+    if (pomoSt && totals?.phase === 'focus' && pomoSt.focusLeft === 0) {
+      act((s) => pomodoroStep(s, Date.now()));
+      sfx.done();
+    }
+  });
+  const restAlarm = useRef(false);
+  useEffect(() => {
+    if (restOver && !restAlarm.current) sfx.focus();
+    restAlarm.current = restOver;
+  }, [restOver]);
 
   if (timer && totals) {
     const countdown = targetMs > 0;
-    const shown = countdown ? Math.max(0, targetMs - totals.focusMs) : totals.focusMs;
-    const progress = countdown ? Math.min(1, totals.focusMs / targetMs) : (totals.focusMs % 60000) / 60000;
-    const quest = timer.questId ? state.quests.find((q) => q.id === timer.questId) : null;
+    const pomoMs = timer.pomodoro ? timer.pomodoro.focus * 60_000 : 0;
+    const resting = pomoSt?.restLeft != null;
+    let shown = countdown ? Math.max(0, targetMs - totals.focusMs) : totals.focusMs;
+    let progress = countdown ? Math.min(1, totals.focusMs / targetMs) : (totals.focusMs % 60000) / 60000;
+    if (pomoSt) {
+      shown = resting ? pomoSt.restLeft! : pomoSt.focusLeft;
+      progress = resting ? 1 - pomoSt.restLeft! / timer.restMs! : 1 - pomoSt.focusLeft / pomoMs;
+    }
+    const eyebrow = timer.pomodoro
+      ? `Pomodoro ${pomoSt!.done + (resting ? 0 : 1)} · ${timer.pomodoro.focus}/${timer.pomodoro.rest}`
+      : countdown ? `Cuenta atrás · ${timer.targetMinutes} min` : 'Sesión libre';
+    const title = timer.questId ? state.quests.find((q) => q.id === timer.questId)?.title : timer.intent;
     const pct = focusPercent(totals.focusMs, totals.distractionMs);
     const R = 120;
     const C = 2 * Math.PI * R;
     return (
       <div className={`screen focus-screen phase-${totals.phase}`}>
-        <p className="eyebrow">{countdown ? `Cuenta atrás · ${timer.targetMinutes} min` : 'Sesión libre'}</p>
-        {quest && <h1 className="focus-label">{quest.title}</h1>}
+        <p className="eyebrow">{eyebrow}</p>
+        {title && <h1 className="focus-label">{title}</h1>}
+        {timer.pomodoro && (
+          <div className="pomo-dots" aria-label={`${pomoSt!.done} pomodoros completados`}>
+            {Array.from({ length: Math.max(4, Math.ceil((pomoSt!.done + 1) / 4) * 4) }, (_, i) => <i key={i} className={i < pomoSt!.done ? 'on' : ''} />)}
+          </div>
+        )}
         <div className="ring" role="timer" aria-live="off">
           <svg viewBox="0 0 280 280" aria-hidden="true">
             <defs>
@@ -404,9 +429,9 @@ export function DeepWork({ game, preselect, clearPreselect }: { game: Game; pres
             <circle cx="140" cy="140" r={R} className="ring-fill" strokeDasharray={C} strokeDashoffset={C * (1 - progress)} transform="rotate(-90 140 140)" />
           </svg>
           <div className="ring-center">
-            <span className="phase-pill">{PHASE_LABEL[totals.phase]}</span>
+            <span className="phase-pill">{resting ? (pomoSt!.restLeft === 0 ? 'Descanso terminado' : 'Descanso') : PHASE_LABEL[totals.phase]}</span>
             <span className="ring-time mono">{formatClock(shown)}</span>
-            <span className="ring-sub">{countdown ? 'quedan de foco' : 'de foco'} · +{Math.floor(totals.focusMs / 60000)} XP</span>
+            <span className="ring-sub">{resting ? 'de descanso' : countdown || pomoSt ? 'quedan de foco' : 'de foco'} · +{Math.floor(totals.focusMs / 60000)} XP</span>
           </div>
         </div>
 
@@ -423,7 +448,7 @@ export function DeepWork({ game, preselect, clearPreselect }: { game: Game; pres
               <button className="phase-btn distract" onClick={() => phase('distraction')}>⚠ Me distraje</button>
             </>
           ) : (
-            <button className="primary big" onClick={() => phase('focus')}>▶ Volver al foco</button>
+            <button className="primary big" onClick={() => phase('focus')}>{resting ? '▶ Siguiente pomodoro' : '▶ Volver al foco'}</button>
           )}
         </div>
         <button className="ghost" onClick={stop}>■ Terminar sesión</button>
@@ -469,39 +494,36 @@ export function DeepWork({ game, preselect, clearPreselect }: { game: Game; pres
         <p className="linked">Para la misión <strong>{linkedQuest.title}</strong> <button className="link" onClick={() => setQuestId(null)}>Quitar</button></p>
       )}
 
-      <div className="area-pick">
-        <span className="muted small-text">¿Qué vas a hacer?</span>
-        <div className="segmented" role="radiogroup" aria-label="Tipo de trabajo">
-          {DEEP_WORK_AREAS.map((a) => (
-            <button key={a.id} role="radio" aria-checked={area === a.id} className={area === a.id ? 'seg on' : 'seg'} onClick={() => pickArea(a.id)}>
-              {a.name}
-            </button>
-          ))}
-        </div>
-        <span className="mono muted small-text">sube {AREA_HINT[area]}</span>
-      </div>
+      {!linkedQuest && (
+        <label className="dw-intent">
+          <span>¿Qué vas a hacer en esta sesión? <span className="muted">(opcional)</span></span>
+          <input id="dw-intent" value={intent} onChange={(e) => setIntent(e.target.value)} maxLength={80} placeholder="Ej. Ejercicios de derivadas, leer el tema 4…" />
+        </label>
+      )}
+      <p className="mono muted small-text dw-area">Sube {DEEP_WORK_AREA_HINT[inferDeepWorkArea(linkedQuest?.title ?? intent)]} y ⚔️ Voluntad</p>
 
       <div className="modes" data-tour="modes">
-        <button className="mode-card" onClick={() => start(0)}>
+        <button className="mode-card" onClick={() => start()}>
           <span className="mode-icon" aria-hidden="true">⏱</span>
           <span className="mode-title">Sesión libre</span>
           <span className="mode-sub">Cronómetro. Paras cuando quieras.</span>
         </button>
         <div className="mode-card as-div">
-          <span className="mode-icon" aria-hidden="true">⏳</span>
-          <span className="mode-title">Con minutos</span>
-          <div className="segmented" role="radiogroup" aria-label="Minutos de foco">
-            {TARGETS.map((t) => (
-              <button key={t} role="radio" aria-checked={target === t} className={target === t ? 'seg on' : 'seg'} onClick={() => setTarget(t)}>
-                {t}
+          <span className="mode-icon" aria-hidden="true">🍅</span>
+          <span className="mode-title">Pomodoro</span>
+          <div className="segmented" role="radiogroup" aria-label="Pomodoro: foco y descanso">
+            {POMODOROS.map((p, i) => (
+              <button key={p.focus} role="radio" aria-checked={pomo === i} className={pomo === i ? 'seg on' : 'seg'} onClick={() => pickPomo(i)}>
+                {p.focus} / {p.rest}
               </button>
             ))}
           </div>
-          <button className="primary wide" onClick={() => start(target)}>▶ Empezar {target} min</button>
+          <span className="mode-sub">{POMODOROS[pomo].focus} min de foco y {POMODOROS[pomo].rest} de descanso; cada 4, descanso largo de {POMODOROS[pomo].rest * 3}.</span>
+          <button className="primary wide" onClick={() => start(POMODOROS[pomo])}>▶ Empezar Pomodoro</button>
         </div>
       </div>
       <AmbientPanel />
-      <p className="hint">Durante la sesión puedes marcar Descanso o Me distraje. Solo el foco da 1 XP por minuto. Estudio sube Sabiduría (teoría); Programación y Edición, Maestría (práctica); General, un poco de las dos. Todas suben algo de Voluntad. Foco real = foco ÷ (foco + distracción) × 100.</p>
+      <p className="hint">Durante la sesión puedes marcar Descanso o Me distraje. Solo el foco da 1 XP por minuto. Si dices qué vas a hacer, lo práctico (ejercicios, programar, crear) sube Maestría y lo teórico (estudiar, leer, repasar) sube Sabiduría; si no, un poco de las dos. Siempre sube algo de Voluntad. Foco real = foco ÷ (foco + distracción) × 100.</p>
 
       <section className="panel">
         <header className="panel-head"><h3>Sesiones de hoy</h3><span className="count mono">{formatMinutes(deepWorkMinutesOnDay(state, today))}</span></header>

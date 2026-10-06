@@ -41,7 +41,7 @@ describe('recompensas de atributo', () => {
   });
 
   it('Deep Work de práctica: +0,5 Maestría y +0,25 Voluntad por minuto, y guarda el área', () => {
-    const s = startTimer(base(), null, 0, NOW, 'programacion');
+    const s = startTimer(base(), null, 0, NOW, { area: 'programacion' });
     const r = stopTimer(s, NOW + 45 * MIN);
     expect(r.session?.area).toBe('programacion');
     expect(attributeXp(r.state)).toMatchObject({ maestria: 22.5, voluntad: 11.3 });

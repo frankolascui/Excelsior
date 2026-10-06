@@ -133,11 +133,11 @@ await page.waitForTimeout(500);
 await page.screenshot({ path: `${out}/04-dashboard.png`, fullPage: true });
 await page.emulateMedia({ colorScheme: 'light' });
 
-// 5b. Atributos y avatar: Diaria ⚔️3 + 45 min generales (⚔️11,3 🔨11,3 🧠11,3) + Principal (⚔️5 🔨5) + Leer (🧠3)
+// 5b. Atributos y avatar: Diaria ⚔️3 + 45 min de «Terminar el tema 3» (teoría: ⚔️11,3 🧠22,5) + Principal (⚔️5 🔨5) + Leer (🧠3)
 const attr = async (name) => (await page.textContent(`.attr:has-text("${name}") .attr-xp`)).trim();
 check(await attr('Voluntad') === '19,3 XP', 'Voluntad 19,3 XP (con decimales)');
-check(await attr('Maestría') === '16,3 XP', 'Maestría 16,3 XP (Deep Work general: mitad práctica)');
-check(await attr('Sabiduría') === '14,3 XP', 'Sabiduría 14,3 XP (Deep Work general: mitad teoría)');
+check(await attr('Maestría') === '5 XP', 'Maestría 5 XP (el Deep Work de un tema es teoría)');
+check(await attr('Sabiduría') === '25,5 XP', 'Sabiduría 25,5 XP (Deep Work de estudio)');
 check((await page.textContent('.avatar-card')).includes('hacia Iniciado · 0 de 2 requisitos'), 'avatar: siguiente es Iniciado (nivel 3 + 3 días)');
 const order = await page.$$eval('.screen > *', (els) => els.map((e) => e.className.split(' ')[0] + (e.className.includes('avatar') ? ':avatar' : '')));
 console.log('orden Home:', order.join(' > '));
@@ -273,18 +273,30 @@ check((await page.evaluate(() => getComputedStyle(document.documentElement).getP
 await page.click('.nav-item:has-text("Arena")');
 check(await seen('.boss:has-text("Hidra")'), 'tras importar se conserva la partida (Hidra activa)');
 
-// 7b. Cuenta atrás: se termina sola al llegar a 0
+// 7b. Pomodoro con «¿Qué vas a hacer?»
 await page.click('.nav-item:has-text("Deep Work")');
 await page.click('.chip-btn:has-text("Lluvia")');
 check(await seen('.chip-btn[aria-pressed=true]:has-text("Lluvia")') && await seen('.ambient-dock:has-text("Lluvia")'), 'sonido de lluvia de fondo');
 await page.click('.ambient-dock button[aria-label="Parar sonido de fondo"]');
 await page.fill('#ambient-link', 'https://www.youtube.com/watch?v=jfKfPfyJRdk');
 check(await page.isEnabled('.ambient-link button:has-text("Reproducir")'), 'acepta un enlace de YouTube');
-await page.click('[role=radio]:has-text("25")');
-await page.click('button:has-text("Empezar 25 min")');
+await page.fill('#dw-intent', 'Ejercicios de derivadas');
+check(await seen('.dw-area:has-text("Maestría")'), '«¿Qué vas a hacer?» deduce que es práctica (Maestría)');
+await page.click('[role=radio]:has-text("25 / 5")');
+await page.click('button:has-text("Empezar Pomodoro")');
+check(await seen('.focus-label:has-text("Ejercicios de derivadas")') && await seen('.eyebrow:has-text("Pomodoro 1")'), 'Pomodoro en marcha con lo que vas a hacer');
 await page.clock.fastForward('25:02');
 await page.waitForTimeout(500);
-check(await seen('text=25 min de foco · +25 XP'), 'cuenta atrás de 25 min se registra sola');
+check(await seen('.phase-pill:has-text("Descanso")') && (await page.$$('.pomo-dots i.on')).length === 1, 'al acabar los 25 min empieza el descanso y cuenta 1 pomodoro');
+await page.clock.fastForward('05:01');
+await page.waitForTimeout(500);
+check(await seen('.phase-pill:has-text("Descanso terminado")'), 'avisa cuando acaba el descanso');
+await page.screenshot({ path: `${out}/09-pomodoro.png` });
+await page.click('button:has-text("Siguiente pomodoro")');
+check(await seen('.eyebrow:has-text("Pomodoro 2")'), 'empieza el segundo pomodoro');
+await page.click('text=Terminar sesión');
+check(await seen('text=25 min de foco · +25 XP'), 'Pomodoro: el descanso no da XP (25 min, +25 XP)');
+check(await seen('.result:has-text("Ejercicios de derivadas")'), 'la sesión se llama como lo que ibas a hacer');
 
 // 7c. Modo admin: con contraseña, partida de pruebas con todo desbloqueado, sin tocar la real
 const realLevel = (await page.textContent('.nav-level')).match(/Nv \d+/)[0];
@@ -387,7 +399,7 @@ check(await seen('.item:has-text("Gimnasio") .freq-tag:has-text("0/3 esta semana
 await page.click('button[aria-label="Completar Gimnasio"]');
 check(await seen('.item:has-text("Gimnasio") .freq-tag:has-text("1/3 esta semana")'), 'marcarlo suma a la semana');
 await page.click('.nav-item:has-text("Deep Work")');
-check(await seen('[role=radiogroup][aria-label="Tipo de trabajo"]'), 'Deep Work pregunta el tipo de trabajo');
+check(await seen('#dw-intent') && !(await page.$('[aria-label="Tipo de trabajo"]')), 'Deep Work pregunta qué vas a hacer (sin tipos fijos)');
 await page.click('.nav-item:has-text("Hoy")');
 await page.click('[aria-label="Energía 4 de 5"]');
 await page.click('[aria-label="Ánimo 5 de 5"]');

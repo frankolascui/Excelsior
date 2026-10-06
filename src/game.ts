@@ -3,7 +3,7 @@
 import type {
   ActiveTimer, AttributeId, AttributeRewards, GameState, Habit, Quest, QuestType, XPSource, XPTransaction, DeepWorkSession, DeepWorkArea, FocusPhase,
 } from './types';
-import { deepWorkRewards, habitRewards, questRewards } from './attributes';
+import { deepWorkRewards, habitRewards, inferDeepWorkArea, questRewards } from './attributes';
 import { defaultRewards } from './economy';
 import { ADMIN } from './admin';
 
@@ -414,16 +414,42 @@ export function toggleHabit(s: GameState, habitId: string, now: number): ActionR
 
 /** `targetMinutes = 0` es una sesión libre (cronómetro); > 0 es una cuenta atrás de minutos de foco. */
 export function startTimer(
-  s: GameState, questId: string | null, targetMinutes: number, now: number, area: DeepWorkArea = 'general',
+  s: GameState, questId: string | null, targetMinutes: number, now: number,
+  opts: { area?: DeepWorkArea; intent?: string; pomodoro?: { focus: number; rest: number } } = {},
 ): GameState {
   if (s.activeTimer) return s;
-  return {
-    ...s,
-    activeTimer: {
-      startedAt: now, questId, targetMinutes, area,
-      phase: 'focus', phaseStartedAt: now, focusMs: 0, breakMs: 0, distractionMs: 0, distractions: 0,
-    },
+  const intent = opts.intent?.trim().slice(0, 80) || undefined;
+  const quest = questId ? s.quests.find((q) => q.id === questId) : undefined;
+  const timer: ActiveTimer = {
+    startedAt: now, questId, targetMinutes, area: opts.area ?? inferDeepWorkArea(intent ?? quest?.title),
+    phase: 'focus', phaseStartedAt: now, focusMs: 0, breakMs: 0, distractionMs: 0, distractions: 0,
   };
+  if (intent) timer.intent = intent;
+  if (opts.pomodoro) {
+    timer.pomodoro = opts.pomodoro;
+    timer.pomoDone = 0;
+  }
+  return { ...s, activeTimer: timer };
+}
+
+/** Estado del Pomodoro en curso: lo que queda de foco o de descanso. */
+export function pomodoroStatus(t: ActiveTimer, now: number) {
+  if (!t.pomodoro) return null;
+  const totals = timerTotals(t, now);
+  const done = t.pomoDone ?? 0;
+  const focusLeft = Math.max(0, (done + 1) * t.pomodoro.focus * 60_000 - totals.focusMs);
+  const restLeft = totals.phase === 'break' && t.restMs ? Math.max(0, t.restMs - (now - (t.phaseStartedAt ?? now))) : null;
+  return { done, focusLeft, restLeft, longNext: (done + 1) % 4 === 0 };
+}
+
+/** Al acabar un pomodoro: lo cuenta y empieza el descanso (largo cada 4). */
+export function pomodoroStep(s: GameState, now: number): GameState {
+  const t = s.activeTimer;
+  const st = t && pomodoroStatus(t, now);
+  if (!t?.pomodoro || !st || (t.phase ?? 'focus') !== 'focus' || st.focusLeft > 0) return s;
+  const done = st.done + 1;
+  const next = setPhase(s, 'break', now);
+  return { ...next, activeTimer: { ...next.activeTimer!, pomoDone: done, restMs: t.pomodoro.rest * 60_000 * (done % 4 === 0 ? 3 : 1) } };
 }
 
 export interface TimerTotals {
@@ -471,6 +497,7 @@ export function setPhase(s: GameState, phase: FocusPhase, now: number): GameStat
       breakMs: totals.breakMs,
       distractionMs: totals.distractionMs,
       distractions: totals.distractions + (phase === 'distraction' ? 1 : 0),
+      restMs: undefined,
     },
   };
 }
@@ -501,7 +528,7 @@ export function stopTimer(s: GameState, now: number): StopResult {
   const session: DeepWorkSession = {
     id: uid(),
     questId: quest?.id ?? null,
-    label: quest?.title ?? 'Deep Work libre',
+    label: quest?.title ?? t.intent ?? 'Deep Work libre',
     area: t.area ?? 'general',
     startedAt: t.startedAt,
     endedAt: now,
@@ -511,6 +538,7 @@ export function stopTimer(s: GameState, now: number): StopResult {
     distractions: totals.distractions,
     focusPct: focusPercent(totals.focusMs, totals.distractionMs),
   };
+  if (t.pomodoro) session.pomodoros = t.pomoDone ?? 0;
   const amount = minutes * XP_RULES.deepWorkPerMinute;
   let state: GameState = { ...s, activeTimer: null, sessions: [...s.sessions, session] };
   state = withXp(state, {

@@ -48,12 +48,22 @@ export function attributeDef(id: AttributeId): AttributeDef {
   return ATTRIBUTES.find((a) => a.id === id)!;
 }
 
-export const DEEP_WORK_AREAS = [
-  { id: 'programacion', name: 'Programación' },
-  { id: 'edicion', name: 'Edición' },
-  { id: 'estudio', name: 'Estudio' },
-  { id: 'general', name: 'General' },
-] as const;
+// Qué sube una sesión de Deep Work según lo que vas a hacer: la práctica (resolver, crear) sube Maestría
+// y la teoría (estudiar, leer, repasar) sube Sabiduría. Si no se sabe, un poco de las dos.
+const PRACTICA_RE = /(program|codig|\bapp\b|proyecto|ejercicio|problema|practic|edit|disen|escrib|constru|grab|video|dibuj|compon|montaj|desarroll|implement|debug|arregl|examen de prueba|simulacro)/;
+const ESTUDIO_RE = /(estudi|leer|lectura|repas|teori|apunte|memori|aprend|curso|clase|tema|libro|resum|flashcard|formula|investig|document|ver la leccion)/;
+
+export function inferDeepWorkArea(text: string | undefined): DeepWorkArea {
+  if (!text) return 'general';
+  const n = normalize(text);
+  if (PRACTICA_RE.test(n)) return 'practica';
+  if (ESTUDIO_RE.test(n)) return 'estudio';
+  return 'general';
+}
+
+export const DEEP_WORK_AREA_HINT: Record<DeepWorkArea, string> = {
+  estudio: '🧠 Sabiduría (teoría)', practica: '🔨 Maestría (práctica)', programacion: '🔨 Maestría (práctica)', edicion: '🔨 Maestría (práctica)', general: '🧠 Sabiduría y 🔨 Maestría',
+};
 
 // ---------- Recompensas ----------
 
@@ -113,14 +123,14 @@ export function habitRewards(name: string, focus?: AttributeId): AttributeReward
 
 /**
  * Deep Work por minuto (equilibrado el 2026-10-06; antes +1 Maestría y +0,5 Voluntad en cualquier área):
- * Estudio → +0,5 Sabiduría (teoría); Programación y Edición → +0,5 Maestría (práctica);
- * General → +0,25 de cada una. Siempre +0,25 Voluntad.
+ * teoría (estudio) → +0,5 Sabiduría; práctica → +0,5 Maestría; sin saberlo → +0,25 de cada una.
+ * Siempre +0,25 Voluntad.
  */
 export function deepWorkRewards(minutes: number, area: DeepWorkArea = 'general'): AttributeRewards {
   const r = (n: number) => Math.round(n * minutes * 10) / 10;
   const base: AttributeRewards = { voluntad: r(0.25) };
   if (area === 'estudio') return { ...base, sabiduria: r(0.5) };
-  if (area === 'programacion' || area === 'edicion') return { ...base, maestria: r(0.5) };
+  if (area === 'practica' || area === 'programacion' || area === 'edicion') return { ...base, maestria: r(0.5) };
   return { ...base, maestria: r(0.25), sabiduria: r(0.25) };
 }
 

@@ -1002,7 +1002,6 @@ i.q-side { background: var(--side); }
 .chron-oath p { margin: 0; }
 
 /* Deep Work: tipo de trabajo */
-.area-pick { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
 .attr-desc { grid-column: 2 / -1; font-size: 13.5px; line-height: 1.45; margin-top: -4px; }
 .attr.asleep .attr-asleep-text { grid-column: 4 / -1; font-size: 12.5px; color: var(--muted); }
 @media (max-width: 640px) { .attr.asleep .attr-asleep-text { grid-column: 2 / -1; } }
@@ -1055,3 +1054,11 @@ i.q-side { background: var(--side); }
   .ev-form { grid-template-columns: 1fr 1fr; }
   .ev-form #ev-title { grid-column: 1 / -1; order: -1; }
 }
+
+/* Deep Work: qué vas a hacer y Pomodoro */
+.dw-intent { display: grid; gap: 6px; margin-bottom: 4px; font-size: 15px; }
+.dw-intent input { width: 100%; }
+.dw-area { margin: 0 0 12px; }
+.pomo-dots { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; max-width: 220px; margin: 0 auto; }
+.pomo-dots i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--c1) 60%, transparent); }
+.pomo-dots i.on { background: var(--c1); box-shadow: 0 0 10px color-mix(in srgb, var(--c1) 70%, transparent); border-color: var(--c1); }
