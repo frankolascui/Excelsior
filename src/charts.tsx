@@ -49,11 +49,16 @@ const WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 function DayCalendar({ data, hover, onHover }: { data: DayActivity[]; hover: number | null; onHover: (i: number | null) => void }) {
   const best = Math.max(1, ...data.map((d) => d.xp));
   const last = data.length - 1;
+  const scroller = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => { // en rangos largos, que se vea hoy (a la derecha)
+    const el = scroller.current;
+    if (el) el.scrollLeft = el.scrollWidth;
+  }, [data.length]);
   const offset = (new Date(data[0].ts).getDay() + 6) % 7; // lunes = 0
   const week = data.length <= 7; // una semana cabe en una fila; más días, una columna por semana
   const cols = Math.ceil((offset + data.length) / 7);
-  const cell = week ? 26 : cols > 8 ? 16 : 20;
-  const step = cell + 4;
+  const cell = week ? 26 : cols > 20 ? 11 : cols > 8 ? 16 : 20;
+  const step = cell + (cols > 20 ? 3 : 4);
   const left = 18;
   const top = 16;
   const pos = (i: number) => week ? { col: i, row: 0 } : { col: Math.floor((offset + i) / 7), row: (offset + i) % 7 };
@@ -61,6 +66,7 @@ function DayCalendar({ data, hover, onHover }: { data: DayActivity[]; hover: num
     .filter(({ i }, k, arr) => k === 0 || pos(i).col - pos(arr[k - 1].i).col >= 2);
   return (
     <div className="day-cal">
+      <div className="day-cal-scroll" ref={scroller}>
       <svg className="heat day-strip" width={week ? data.length * step : left + cols * step} height={week ? top + step : top + 7 * step} role="img" aria-label={`${data.filter((d) => d.xp > 0).length} días con actividad de ${data.length}`}>
         {week && data.map((d, i) => (
           <text key={d.day} className="axis" x={i * step + cell / 2} y={10} textAnchor="middle">{WEEKDAYS[(new Date(d.ts).getDay() + 6) % 7]}</text>
@@ -76,7 +82,7 @@ function DayCalendar({ data, hover, onHover }: { data: DayActivity[]; hover: num
           return (
             <rect
               key={d.day} className={`heat-${heatLevel(d.xp, best)}${i === last ? ' today' : ''}${hover === i ? ' on' : ''}`}
-              x={(week ? 0 : left) + col * step} y={top + row * step} width={cell} height={cell} rx={4}
+              x={(week ? 0 : left) + col * step} y={top + row * step} width={cell} height={cell} rx={cell > 12 ? 4 : 2}
               onPointerEnter={() => onHover(i)} onPointerLeave={() => onHover(null)}
             >
               <title>{`${shortDate(d.ts)}: ${d.xp} XP`}</title>
@@ -84,6 +90,7 @@ function DayCalendar({ data, hover, onHover }: { data: DayActivity[]; hover: num
           );
         })}
       </svg>
+      </div>
       <span className="day-legend muted small-text">menos {[0, 1, 2, 3, 4].map((l) => <i key={l} className={`heat-${l}`} />)} más</span>
     </div>
   );
@@ -95,13 +102,22 @@ const RANGES = [
   { days: 7, label: '7 días' },
   { days: 30, label: '30 días' },
   { days: 90, label: '90 días' },
+  { days: 0, label: 'Todo' }, // desde el primer día de la partida
 ];
+
+/** Días desde que empezó la partida (o desde el primer XP, si es anterior), contando hoy. */
+export function daysSinceStart(state: GameState, now: number): number {
+  const first = Math.min(state.profile?.createdAt ?? now, ...state.xp.map((x) => x.at));
+  const day = (t: number) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  return Math.max(7, Math.round((day(now) - day(first)) / 86_400_000) + 1);
+}
 
 /** Actividad: XP de cada día (línea) y, debajo, un calendario con un cuadrado por día que brilla según lo que hiciste. */
 export function XpChart({ state, now }: { state: GameState; now: number }) {
-  const [days, setDays] = useState(30);
+  const [range, setRange] = useState(30);
   const [hover, setHover] = useState<number | null>(null);
   const [ref, width] = useWidth<HTMLDivElement>(640);
+  const days = range || daysSinceStart(state, now);
   const data = activityByDay(state, now, days);
   const total = data.reduce((n, d) => n + d.xp, 0);
   const avg = total / days;
@@ -143,7 +159,7 @@ export function XpChart({ state, now }: { state: GameState; now: number }) {
         </div>
         <div className="segmented" role="radiogroup" aria-label="Periodo">
           {RANGES.map((r) => (
-            <button key={r.days} type="button" role="radio" aria-checked={days === r.days} className={days === r.days ? 'seg on' : 'seg'} onClick={() => { setDays(r.days); setHover(null); }}>
+            <button key={r.days} type="button" role="radio" aria-checked={range === r.days} className={range === r.days ? 'seg on' : 'seg'} onClick={() => { setRange(r.days); setHover(null); }}>
               {r.label}
             </button>
           ))}

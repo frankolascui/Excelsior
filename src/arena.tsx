@@ -172,7 +172,7 @@ function TemplateCard({ t, state, now, full, onSummon }: { t: BossTemplate; stat
   return (
     <article className={cls} style={{ ['--tier' as string]: TIER_COLOR[t.tier] }} aria-label={lock ? `${t.name}: bloqueado, ${lock.label}` : t.name}>
       <div className="tpl-art">
-        <BossArt templateId={t.id} icon={t.icon} tier={t.tier} size={64} silhouette={!!lock} full />
+        <PixelBoss templateId={t.id} icon={t.icon} scale={1.4} silhouette={!!lock} className="boss-art" />
         {lock && <span className="tpl-lock" aria-hidden="true">🔒</span>}
         {wins > 0 && <span className="tpl-wins mono" title={`Derrotado ${wins} ${wins === 1 ? 'vez' : 'veces'}`}>✓{wins > 1 ? ` ×${wins}` : ''}</span>}
       </div>

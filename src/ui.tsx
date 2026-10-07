@@ -349,17 +349,23 @@ export function AttributeList({ state, detailed = false }: { state: GameState; d
         const asleep = a.unlockLevel !== undefined && level < a.unlockLevel;
         if (asleep) {
           return (
-            <li key={a.id} className="attr idle asleep" title={a.desc}>
+            <li key={a.id} className="attr idle asleep" title={`${a.tagline} ${a.desc}`}>
               <span className="attr-icon" aria-hidden="true">🔒</span>
               <span className="attr-name">{a.name}</span>
               <span className="attr-level mono">Nv {a.unlockLevel}</span>
               <span className="attr-asleep-text">Atributo avanzado: se despierta en el nivel global {a.unlockLevel}. Lo que hagas antes ya cuenta.</span>
-              {detailed && <span className="attr-desc">{a.desc} <span className="muted">Ej.: {a.examples}</span></span>}
+              {detailed && (
+              <span className="attr-desc">
+                <strong className="attr-tagline">{a.tagline}</strong> {a.desc}
+                <span className="attr-gains"><span className="eyebrow-inline">Sube con</span> {a.gains}</span>
+                <span className="muted">Ej.: {a.examples}</span>
+              </span>
+            )}
             </li>
           );
         }
         return (
-          <li key={a.id} className={xp[a.id] === 0 ? 'attr idle' : 'attr'} title={a.desc}>
+          <li key={a.id} className={xp[a.id] === 0 ? 'attr idle' : 'attr'} title={`${a.tagline} ${a.desc}`}>
             <span className="attr-icon" aria-hidden="true">{a.icon}</span>
             <span className="attr-name">{a.name}</span>
             <span className="attr-level mono">Nv {lvl.level}</span>
@@ -367,7 +373,13 @@ export function AttributeList({ state, detailed = false }: { state: GameState; d
               <div style={{ width: `${Math.min(100, lvl.progress * 100)}%` }} />
             </div>
             <span className="attr-xp mono">{formatAttrXp(xp[a.id])} XP</span>
-            {detailed && <span className="attr-desc">{a.desc} <span className="muted">Ej.: {a.examples}</span></span>}
+            {detailed && (
+              <span className="attr-desc">
+                <strong className="attr-tagline">{a.tagline}</strong> {a.desc}
+                <span className="attr-gains"><span className="eyebrow-inline">Sube con</span> {a.gains}</span>
+                <span className="muted">Ej.: {a.examples}</span>
+              </span>
+            )}
             {detailed && (
               <span className="attr-last">
                 {last ? `Último: +${formatAttrXp(last.amount)} · ${last.label}` : 'Aún sin progreso'}

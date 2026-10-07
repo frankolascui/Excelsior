@@ -863,7 +863,7 @@ function ramp(r: number, g: number, b: number, k: number): [number, number, numb
 }
 
 /** Convierte la imagen en sprite. Exportada para poder probarla. */
-export function pixelize(px: Uint8ClampedArray, w: number, h: number): void {
+export function pixelize(px: Uint8ClampedArray, w: number, h: number, silhouette = false): void {
   const solid = new Uint8Array(w * h);
   for (let i = 0; i < w * h; i++) solid[i] = px[i * 4 + 3] >= 110 ? 1 : 0;
   const at = (x: number, y: number) => (x >= 0 && y >= 0 && x < w && y < h ? solid[y * w + x] : 0);
@@ -875,10 +875,10 @@ export function pixelize(px: Uint8ClampedArray, w: number, h: number): void {
         // Luz desde arriba a la izquierda; sombra en el borde de abajo a la derecha.
         const lit = !at(x, y - 1) || !at(x - 1, y);
         const shade = !at(x, y + 1) || !at(x + 1, y);
-        const [r, g, b] = ramp(px[i], px[i + 1], px[i + 2], lit ? 1.35 : shade ? 0.62 : 1);
+        const [r, g, b] = silhouette ? (lit ? [58, 58, 76] : [13, 13, 20]) : ramp(px[i], px[i + 1], px[i + 2], lit ? 1.35 : shade ? 0.62 : 1);
         out[i] = r; out[i + 1] = g; out[i + 2] = b; out[i + 3] = 255;
       } else if (at(x - 1, y) || at(x + 1, y) || at(x, y - 1) || at(x, y + 1)) {
-        out.set(OUTLINE, i);
+        out.set(silhouette ? [4, 4, 8] : OUTLINE, i);
         out[i + 3] = 255;
       }
     }
@@ -887,8 +887,8 @@ export function pixelize(px: Uint8ClampedArray, w: number, h: number): void {
 }
 
 /** Boss de cuerpo entero en pixel art. `scale` = píxeles de pantalla por píxel del sprite. */
-export function PixelBoss({ templateId, icon, phase = 'calma', scale = 3, className = '' }: {
-  templateId?: string; icon: string; phase?: BossPhase; scale?: number; className?: string;
+export function PixelBoss({ templateId, icon, phase = 'calma', scale = 3, className = '', silhouette = false }: {
+  templateId?: string; icon: string; phase?: BossPhase; scale?: number; className?: string; silhouette?: boolean;
 }) {
   const uidRaw = useId();
   const id = `px-${uidRaw.replace(/[^a-zA-Z0-9_-]/g, '')}`;
@@ -912,15 +912,15 @@ export function PixelBoss({ templateId, icon, phase = 'calma', scale = 3, classN
       ctx.drawImage(img, 0, 0, SPRITE_W, SPRITE_H);
       try {
         const data = ctx.getImageData(0, 0, SPRITE_W, SPRITE_H);
-        pixelize(data.data, SPRITE_W, SPRITE_H);
+        pixelize(data.data, SPRITE_W, SPRITE_H, silhouette);
         ctx.putImageData(data, 0, 0);
       } catch { /* si el navegador no deja leer el lienzo, se queda sin el filtro de sprite */ }
     };
     img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`;
     return () => { alive = false; };
-  }, [templateId, icon, phase]);
+  }, [templateId, icon, phase, silhouette]);
   return (
-    <span className={`pixel-boss phase-${phase} ${className}`} style={{ width: SPRITE_W * scale, height: SPRITE_H * scale }} aria-hidden="true">
+    <span className={`pixel-boss phase-${phase}${silhouette ? ' is-silhouette' : ''} ${className}`} style={{ width: SPRITE_W * scale, height: SPRITE_H * scale }} aria-hidden="true">
       <svg ref={src} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 170" width={SPRITE_W * 4} height={SPRITE_H * 4} className="pixel-src">
         <defs>
           <linearGradient id={`${id}-body`} x1="0" y1="0" x2="0" y2="1">
@@ -934,7 +934,7 @@ export function PixelBoss({ templateId, icon, phase = 'calma', scale = 3, classN
           </linearGradient>
         </defs>
         {draw ? draw(ink) : <text x="60" y="100" textAnchor="middle" dominantBaseline="middle" fontSize="70">{icon}</text>}
-        {phase !== 'calma' && (
+        {phase !== 'calma' && !silhouette && (
           <path d={CRACKS[phase]} transform="translate(0 34)" stroke={phase === 'furioso' ? '#ff2d4a' : '#fff'} strokeOpacity="0.9" strokeWidth="2.2" fill="none" />
         )}
       </svg>

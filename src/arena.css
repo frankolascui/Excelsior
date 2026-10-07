@@ -335,3 +335,15 @@
 @media (prefers-reduced-motion: reduce) {
   .fight-aura, .arena .boss-fight .boss-stage .boss-art { animation: none !important; }
 }
+
+/* Sagas: el boss en pixel art, sin marco, sobre un pedestal de luz del color de su rango */
+.arena .boss-template { border-top: 2px solid color-mix(in srgb, var(--tier) 55%, var(--line)); }
+.arena .boss-template.locked { border-top-color: #23232e; }
+.arena .tpl-art { width: 96px; height: 124px; display: grid; place-items: end center; }
+.arena .tpl-art::before { content: ''; position: absolute; left: 6px; right: 6px; bottom: -2px; height: 16px; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--tier) 45%, transparent), transparent); }
+.arena .boss-template.locked .tpl-art::before { background: radial-gradient(closest-side, rgba(255, 255, 255, 0.06), transparent); }
+.arena .boss-template.ready .tpl-art .boss-art { filter: drop-shadow(0 0 10px color-mix(in srgb, var(--tier) 40%, transparent)); transition: transform 0.25s ease; }
+.arena .boss-template.ready:hover .tpl-art .boss-art { transform: translateY(-4px) scale(1.04); }
+.arena .boss-template.fighting .tpl-art .boss-art { filter: drop-shadow(0 0 10px rgba(255, 45, 74, 0.6)); }
+.arena .tpl-lock { right: 2px; bottom: 6px; }
+@media (max-width: 760px) { .arena .tpl-art { width: 72px; height: 96px; } .arena .tpl-art .boss-art, .arena .tpl-art .boss-art canvas { width: 72px !important; height: 102px !important; } }

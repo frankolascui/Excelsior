@@ -978,8 +978,8 @@ i.q-side { background: var(--side); }
 .path-node .node-halo { fill: none; stroke: var(--c1); stroke-width: 2; opacity: 0.8; }
 .path-node.ready .node-halo { stroke: #ffcf6e; stroke-width: 3; animation: node-call 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
 @keyframes node-call { 50% { opacity: 0.25; transform: scale(1.12); } }
-.path-node:hover > svg, .path-node:focus-visible > svg { filter: drop-shadow(0 0 12px var(--c1)); }
-.path-node.current > svg { filter: drop-shadow(0 0 16px color-mix(in srgb, var(--c1) 70%, transparent)); }
+.path-node:hover .node-float > svg, .path-node:focus-visible .node-float > svg { filter: drop-shadow(0 0 12px var(--c1)) brightness(1.15); }
+.path-node.current .node-float > svg { filter: drop-shadow(0 0 16px color-mix(in srgb, var(--c1) 70%, transparent)); }
 .path-detail { border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; background: color-mix(in srgb, var(--surface-2) 70%, transparent); }
 .path-detail.current { border-color: var(--c1); }
 .path-detail-head { display: flex; align-items: center; gap: 12px; }
@@ -1219,3 +1219,50 @@ i.q-side { background: var(--side); }
 .fight-stage .pixel-boss { filter: drop-shadow(0 0 1px #ff2d4a) drop-shadow(0 0 14px rgba(255, 45, 74, 0.45)); animation: pixel-bob 1.6s steps(2, jump-none) infinite; }
 @media (max-width: 600px) { .guild-fight .fight-name { font-size: 21px; } }
 @media (prefers-reduced-motion: reduce) { .fight-stage .pixel-boss { animation: none; } }
+
+/* Descripción de atributos: frase, qué es, con qué sube y ejemplos */
+.attr-desc { display: flex; flex-direction: column; gap: 4px; }
+.attr-tagline { color: var(--fg); font-weight: 600; }
+.attr-gains { color: color-mix(in srgb, var(--fg) 82%, var(--muted)); }
+.eyebrow-inline { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--c1); margin-right: 4px; }
+.day-cal-scroll { max-width: 100%; overflow-x: auto; scrollbar-width: thin; }
+
+/* ---------- Brillo al pasar el ratón (posición en --mx/--my, ver shine.ts) ---------- */
+:is(.stat, .item, .attr, .achv, .reward, .boss-template, .pick-card, .rec-card, .mode-card, .guild-card, .challenge) {
+  position: relative; isolation: isolate;
+  transition: border-color 0.2s ease, box-shadow 0.25s ease, transform 0.2s ease;
+}
+:is(.stat, .item, .attr, .achv, .reward, .boss-template, .pick-card, .rec-card, .mode-card, .guild-card, .challenge)::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(240px circle at var(--mx, 50%) var(--my, 50%), color-mix(in srgb, var(--c1) 20%, transparent), color-mix(in srgb, var(--c2) 6%, transparent) 45%, transparent 70%);
+  opacity: 0; transition: opacity 0.25s ease;
+}
+@media (hover: hover) {
+  :is(.stat, .item, .attr, .achv, .reward, .boss-template, .pick-card, .rec-card, .mode-card, .guild-card, .challenge):hover::before { opacity: 1; }
+  :is(.stat, .item, .achv, .reward, .boss-template, .pick-card, .rec-card, .mode-card):hover {
+    border-color: color-mix(in srgb, var(--c1) 45%, var(--line));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--c1) 18%, transparent), 0 10px 32px color-mix(in srgb, var(--c2) 18%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.stat, .item, .attr, .achv, .reward, .boss-template, .pick-card, .rec-card, .mode-card, .guild-card, .challenge)::before { transition: none; }
+}
+
+/* Camino del héroe animado: el tramo recorrido se dibuja, la luz sube por él y los avatares flotan */
+.pm-walked { stroke-dasharray: 1; stroke-dashoffset: 1; animation: pm-draw 1.8s cubic-bezier(.3, .7, .3, 1) 0.2s forwards; }
+@keyframes pm-draw { to { stroke-dashoffset: 0; } }
+.pm-flow { fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 0.012 0.06; opacity: 0.75; filter: drop-shadow(0 0 4px #fff); animation: pm-flow 2.4s linear infinite; }
+@keyframes pm-flow { to { stroke-dashoffset: -0.072; } }
+.pm-spark { fill: #fff; filter: drop-shadow(0 0 6px var(--c1)) drop-shadow(0 0 14px var(--c1)); }
+.pm-next { fill: none; stroke: var(--c1); stroke-width: 4; stroke-linecap: round; stroke-dasharray: 2 10; animation: pm-next 1.2s linear infinite, pm-pulse 2s ease-in-out infinite; }
+@keyframes pm-next { to { stroke-dashoffset: -12; } }
+@keyframes pm-pulse { 50% { opacity: 0.35; } }
+.node-float { animation: node-float 4.2s ease-in-out infinite; }
+.path-node.current .node-float { animation-duration: 2.6s; }
+.path-node.locked .node-float { animation: none; }
+@keyframes node-float { 50% { transform: translateY(-6px); } }
+@media (prefers-reduced-motion: reduce) {
+  .pm-walked { animation: none; stroke-dashoffset: 0; }
+  .pm-flow, .pm-spark { display: none; }
+  .pm-next, .node-float { animation: none; }
+}

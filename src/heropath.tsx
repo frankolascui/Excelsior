@@ -97,7 +97,17 @@ export function HeroPath({ state, now }: { state: GameState; now: number }) {
           <path d="M0 420 L90 340 L200 380 L320 300 L430 340 L540 260 L660 300 L760 210 L880 170 L1000 140 L1000 470 L0 470 Z" fill="url(#pm-near)" />
 
           <path className="pm-trail" d={smooth(STOPS)} />
-          <path className="pm-walked" d={smooth(walked)} stroke="url(#pm-walk)" />
+          <path className="pm-walked" d={smooth(walked)} stroke="url(#pm-walk)" pathLength={1} />
+          {/* Luz que sube por el tramo recorrido y una chispa que lo recorre hasta donde estás */}
+          <path className="pm-flow" d={smooth(walked)} pathLength={1} />
+          {walked.length > 1 && (
+            <circle className="pm-spark" r={6}>
+              <animateMotion dur="3.6s" repeatCount="indefinite" path={smooth(walked)} keyPoints="0;1;1" keyTimes="0;0.8;1" calcMode="linear" />
+            </circle>
+          )}
+          {info.next && (
+            <path className="pm-next" d={smooth([walked[walked.length - 1], STOPS[info.index + 1]])} />
+          )}
 
           {AVATARS.map((av, i) => {
             const s = stateOf(i);
@@ -112,9 +122,11 @@ export function HeroPath({ state, now }: { state: GameState; now: number }) {
                 aria-pressed={selected === i} onClick={() => select(i)} onKeyDown={onKey(i)}
               >
                 {(selected === i || ready) && <circle className="node-halo" cx={x} cy={y} r={size / 2 + 8} />}
-                <svg x={x - size / 2} y={y - size / 2} width={size} height={size} viewBox="0 0 200 200" overflow="visible">
-                  <AvatarPortrait tier={i} photo={s === 'current' ? state.profile?.photo : undefined} label={s === 'current' ? initialOf(state.profile?.name) : av.icon} size={200} dim={s === 'locked'} title={av.name} />
-                </svg>
+                <g className="node-float" style={{ animationDelay: `${-i * 0.37}s` }}>
+                  <svg x={x - size / 2} y={y - size / 2} width={size} height={size} viewBox="0 0 200 200" overflow="visible">
+                    <AvatarPortrait tier={i} photo={s === 'current' ? state.profile?.photo : undefined} label={s === 'current' ? initialOf(state.profile?.name) : av.icon} size={200} dim={s === 'locked'} title={av.name} />
+                  </svg>
+                </g>
                 {s === 'locked' && <text x={x + size / 2 - 8} y={y + size / 2 - 4} className="node-lock" textAnchor="middle">🔒</text>}
                 {i === AVATARS.length - 1
                   ? <text x={x - size / 2 - 8} y={y + 6} className="node-name" textAnchor="end">{av.name}</text>

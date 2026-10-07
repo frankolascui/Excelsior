@@ -170,6 +170,8 @@ check(await seen('.chart-sub:has-text("125 XP en 30 días")'), 'gráfica de XP: 
 check((await page.$$('.day-strip rect')).length === 30, 'Actividad: un calendario con un cuadrado por día bajo la gráfica');
 check(await seen('.day-strip rect.heat-4') && await seen('.day-strip rect.today.heat-0'), 'ayer brilla al máximo y hoy (sin XP) está vacío');
 check(await seen('.chart-sub:has-text("racha")'), 'Actividad muestra días activos y rachas');
+await page.click('[role=radio]:has-text("Todo")');
+check(await seen('.chart-sub:has-text("125 XP en")') && (await page.$$('.day-strip rect')).length >= 7, 'Actividad «Todo»: todos los días desde el principio');
 await page.click('[role=radio]:has-text("7 días")');
 check(await seen('.chart-sub:has-text("en 7 días")'), 'la gráfica cambia a 7 días');
 await page.hover('.chart svg rect[fill="transparent"]', { position: { x: 5, y: 60 } });

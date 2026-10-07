@@ -9,7 +9,11 @@ export interface AttributeDef {
   id: AttributeId;
   name: string;
   icon: string;
+  /** Frase corta: qué representa. */
+  tagline: string;
   desc: string;
+  /** Con qué sube en la app (según las reglas de XP de este archivo). */
+  gains: string;
   examples: string;
   /** Nivel global en el que se despierta (antes cuenta igual, pero no se muestra). */
   unlockLevel?: number;
@@ -19,27 +23,37 @@ export interface AttributeDef {
 export const ATTRIBUTES: AttributeDef[] = [
   {
     id: 'voluntad', name: 'Voluntad', icon: '⚔️',
-    desc: 'Disciplina: hacer lo que no te apetece y salir de tu zona de confort.',
+    tagline: 'La fuerza de hacerlo aunque no te apetezca.',
+    desc: 'Disciplina pura: cumplir lo que te prometiste, hacer lo que no querías y salir de tu zona de confort. Es el atributo que sostiene a todos los demás.',
+    gains: 'Toda misión y todo hábito cumplido, y cada minuto de Deep Work.',
     examples: 'Entrenar sin ganas, madrugar, cumplir la misión del día, aguantar la racha.',
   },
   {
     id: 'sabiduria', name: 'Sabiduría', icon: '🧠',
-    desc: 'Lo teórico: entender y saber. En mates, conocer las fórmulas y cuándo se usan.',
+    tagline: 'Lo que sabes.',
+    desc: 'La teoría: entender cómo funcionan las cosas. En mates, saberte las fórmulas y saber cuándo se aplica cada una.',
+    gains: 'Deep Work de estudio, lectura o repaso, y hábitos como leer o meditar.',
     examples: 'Leer, estudiar, hacer apuntes, ver un curso, Deep Work de estudio o lectura.',
   },
   {
     id: 'maestria', name: 'Maestría', icon: '🔨',
-    desc: 'Lo práctico: aplicar lo que sabes para sacar un resultado. Usar las fórmulas para resolver un problema concreto.',
+    tagline: 'Lo que sabes hacer.',
+    desc: 'La práctica: convertir lo que sabes en resultados. Usar esas fórmulas para resolver un problema concreto, programar, crear y terminar.',
+    gains: 'Deep Work práctico (ejercicios, proyectos, programar) y las misiones principales.',
     examples: 'Resolver ejercicios, programar, editar, terminar un proyecto, Deep Work práctico.',
   },
   {
     id: 'conexion', name: 'Conexión', icon: '❤️',
-    desc: 'Tus relaciones: familia, amigos, pareja y atreverte a hablar con desconocidos.',
+    tagline: 'Las personas de tu vida.',
+    desc: 'Cuidar a tu familia, a tus amigos y a tu pareja, y atreverte a hablar con desconocidos. Nadie llega lejos solo.',
+    gains: 'Misiones y hábitos con otras personas (llamar, quedar, conocer gente) y los encargos de gremio.',
     examples: 'Llamar a tu familia, quedar con amigos, hablar con alguien nuevo.',
   },
   {
     id: 'creacion', name: 'Impacto', icon: '🌍', unlockLevel: 10,
-    desc: 'El atributo avanzado: impactar y ayudar a la gente con lo que creas.',
+    tagline: 'Lo que dejas en los demás.',
+    desc: 'El atributo avanzado: ayudar e impactar a la gente con lo que creas, como lanzar una app que otros usan.',
+    gains: 'Misiones y hábitos de crear, publicar, enseñar o ayudar.',
     examples: 'Lanzar una app que usan otros, publicar, enseñar, ayudar, voluntariado.',
   },
 ];
