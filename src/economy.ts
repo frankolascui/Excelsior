@@ -1,5 +1,5 @@
 // Monedas y tienda de recompensas. El saldo se deriva: lo ganado (XP, bosses, reinos) menos lo gastado.
-import type { GameState, Reward } from './types';
+import type { GameState, Purchase, Reward } from './types';
 import { totalXp, uid } from './game';
 import { defeatedBosses } from './bosses';
 import { kingdomProgress } from './kingdoms';
@@ -100,8 +100,18 @@ export function deleteReward(s: GameState, id: string): GameState {
 export function buyReward(s: GameState, rewardId: string, now: number): { state: GameState; ok: boolean } {
   const r = s.rewards.find((x) => x.id === rewardId);
   if (!r || coinBalance(s, now) < r.cost) return { state: s, ok: false };
-  const purchase = { id: uid(), rewardId, name: r.name, icon: r.icon, cost: r.cost, at: now };
+  const purchase = { id: uid(), rewardId, name: r.name, icon: r.icon, cost: r.cost, at: now, usedAt: null };
   return { state: { ...s, purchases: [...s.purchases, purchase] }, ok: true };
+}
+
+/** Premios canjeados que aún no has usado (el cofre), del más antiguo al más nuevo. */
+export function unusedPurchases(s: GameState): Purchase[] {
+  return s.purchases.filter((p) => p.usedAt === null);
+}
+
+/** Usa un premio del cofre. */
+export function consumePurchase(s: GameState, purchaseId: string, now: number): GameState {
+  return { ...s, purchases: s.purchases.map((p) => (p.id === purchaseId && p.usedAt === null ? { ...p, usedAt: now } : p)) };
 }
 
 /** Devuelve las monedas de un canje (por si fue sin querer). */

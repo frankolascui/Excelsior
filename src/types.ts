@@ -137,6 +137,8 @@ export interface Purchase {
   icon: string;
   cost: number;
   at: number;
+  /** Cuándo lo usaste. null = guardado en el cofre sin usar; sin el campo (canjes antiguos) cuenta como usado. */
+  usedAt?: number | null;
 }
 
 /** De qué se alimenta el daño a un boss: XP global, minutos de foco, hábitos completados o XP de un atributo. */

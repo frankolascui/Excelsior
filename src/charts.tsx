@@ -161,19 +161,19 @@ export function XpChart({ state, now }: { state: GameState; now: number }) {
 
 const ROW_LABELS = ['L', '', 'X', '', 'V', '', ''];
 
-export function ActivityHeatmap({ state, now }: { state: GameState; now: number }) {
+export function ActivityHeatmap({ state, now, compact = false }: { state: GameState; now: number; compact?: boolean }) {
   const [ref, width] = useWidth<HTMLDivElement>(460);
   const [hover, setHover] = useState<number | null>(null);
   const left = 22;
   const topPad = 18;
   // Tantas semanas como quepan con cuadrados de ~13 px (máximo un año).
-  const WEEKS = Math.max(12, Math.min(53, Math.floor((width - left) / 16)));
+  const WEEKS = Math.max(12, Math.min(compact ? 26 : 53, Math.floor((width - left) / (compact ? 13 : 16))));
   const weekday = (new Date(now).getDay() + 6) % 7; // 0 = lunes
   const data = activityByDay(state, now, (WEEKS - 1) * 7 + weekday + 1);
   const max = Math.max(...data.map((d) => d.xp));
   const activeDays = data.filter((d) => d.xp > 0).length;
 
-  const step = Math.max(9, Math.min(18, Math.floor((width - left) / WEEKS)));
+  const step = Math.max(9, Math.min(compact ? 13 : 18, Math.floor((width - left) / WEEKS)));
   const cell = step - 3;
   const pos = (i: number) => ({ col: Math.floor(i / 7), row: i % 7 });
   const months = data

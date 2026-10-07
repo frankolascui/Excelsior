@@ -633,24 +633,16 @@ export function Character({ game }: { game: Game }) {
         <LevelBar state={state} compact />
       </section>
 
-      <MetricsPanel game={game} />
-
-      <AvatarCard state={state} now={now} showRequirements />
-
       <HeroPath state={state} now={now} />
-
-      <TimedGoals game={game} />
-
-      <GoalsPanel game={game} now={now} />
-
-      <AchievementsPanel state={state} now={now} />
-
-      <HeroJournal state={state} />
 
       <section className="panel" aria-labelledby="attrs-detail-h" data-tour="attrs">
         <h3 id="attrs-detail-h">Atributos</h3>
         <AttributeList state={state} detailed />
       </section>
+
+      <ActivityHeatmap state={state} now={now} compact />
+
+      <AvatarCard state={state} now={now} showRequirements />
 
       <section className="stats" aria-label="Progreso acumulado">
         <Stat label="Deep Work total" value={formatMinutes(dwTotal)} />
@@ -659,9 +651,17 @@ export function Character({ game }: { game: Game }) {
         <Stat label="Días con progreso" value={`${activeDays}`} />
       </section>
 
+      <MetricsPanel game={game} />
+
+      <TimedGoals game={game} />
+
+      <GoalsPanel game={game} now={now} />
+
       <XpChart state={state} now={now} />
 
-      <ActivityHeatmap state={state} now={now} />
+      <HeroJournal state={state} />
+
+      <AchievementsPanel state={state} now={now} />
 
       <section className="panel">
         <header className="panel-head"><h3>Historial</h3></header>

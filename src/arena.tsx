@@ -7,7 +7,7 @@ import {
   SAGAS, sagaOf, SOURCE_LABEL, summonBoss, templateOf, TIERS, timesDefeated, isActiveTemplate, type BossTemplate, type BossTier,
 } from './bosses';
 import {
-  addReward, buyReward, coinBalance, coinsEarned, coinsSpent, COIN_RULES, deleteReward, nextReward, purchaseCounts, refundPurchase,
+  addReward, buyReward, coinBalance, coinsEarned, coinsSpent, COIN_RULES, deleteReward, nextReward, purchaseCounts, refundPurchase, consumePurchase, unusedPurchases,
   REWARD_CATEGORIES, REWARD_ICONS, rewardCategory, updateReward, type RewardCategory,
 } from './economy';
 import { dayKey, levelInfo, totalXp } from './game';
@@ -127,7 +127,7 @@ function BossCard({ boss: b, st, onFlee }: { boss: Boss; st: ReturnType<typeof b
       aria-label={`${b.name}: ${Math.round(st.hpLeft)} de ${b.hp} de vida`}
     >
       <span className="boss-stage" aria-hidden="true">
-        <BossArt templateId={t?.id} icon={b.icon} tier={t?.tier} size={112} phase={phase} />
+        <BossArt templateId={t?.id} icon={b.icon} tier={t?.tier} size={112} phase={phase} full />
         <span className="boss-shadow" />
         {hit > 0 && <span className="dmg-float mono">−{fmtNum(hit)}</span>}
         {hit > 0 && <span className="slash" />}
@@ -166,7 +166,7 @@ function TemplateCard({ t, state, now, full, onSummon }: { t: BossTemplate; stat
   return (
     <article className={cls} style={{ ['--tier' as string]: TIER_COLOR[t.tier] }} aria-label={lock ? `${t.name}: bloqueado, ${lock.label}` : t.name}>
       <div className="tpl-art">
-        <BossArt templateId={t.id} icon={t.icon} tier={t.tier} size={76} silhouette={!!lock} />
+        <BossArt templateId={t.id} icon={t.icon} tier={t.tier} size={64} silhouette={!!lock} full />
         {lock && <span className="tpl-lock" aria-hidden="true">🔒</span>}
         {wins > 0 && <span className="tpl-wins mono" title={`Derrotado ${wins} ${wins === 1 ? 'vez' : 'veces'}`}>✓{wins > 1 ? ` ×${wins}` : ''}</span>}
       </div>
@@ -223,7 +223,7 @@ function SummonIntro({ boss, onClose }: { boss: Boss; onClose: () => void }) {
       <div className="intro-rays" aria-hidden="true" style={t ? { ['--tier' as string]: TIER_COLOR[t.tier] } : undefined} />
       <p className="eyebrow intro-eyebrow">{t ? `${sagaOf(t).name} · Rango ${TIERS[t.tier].roman}` : 'Boss propio'}</p>
       <div className="intro-art">
-        <BossArt templateId={t?.id} icon={boss.icon} tier={t?.tier} size={200} />
+        <BossArt templateId={t?.id} icon={boss.icon} tier={t?.tier} size={170} full />
       </div>
       <p className="intro-cry">¡Ha aparecido!</p>
       <h2 className="intro-name">{boss.name}</h2>
@@ -247,7 +247,7 @@ function VictoryOverlay({ boss, state, now, onClose }: { boss: Boss; state: Game
       <div className="intro-rays gold" aria-hidden="true" />
       <p className="eyebrow intro-eyebrow">{t ? sagaOf(t).name : 'Boss propio'}</p>
       <div className="intro-art fallen">
-        <BossArt templateId={t?.id} icon={boss.icon} tier={t?.tier} size={170} phase="furioso" defeated />
+        <BossArt templateId={t?.id} icon={boss.icon} tier={t?.tier} size={140} phase="furioso" defeated full />
       </div>
       <p className="victory-title">¡Victoria!</p>
       <h2 className="intro-name">Has derrotado a {t ? t.short : boss.name}</h2>
@@ -432,7 +432,7 @@ function Shop({ game, balance, now }: { game: Game; balance: number; now: number
     const reward = state.rewards.find((x) => x.id === rewardId)!;
     sfx.purchase();
     confetti({ count: 90 });
-    toast(`${reward.icon} ¡Disfrútalo! −${reward.cost} 🪙`, 'level');
+    toast(`${reward.icon} ${reward.name} guardado en tu cofre. −${reward.cost} 🪙`, 'level');
   }
 
   const [cat, setCat] = useState<RewardCategory | 'todo'>('todo');
@@ -446,6 +446,8 @@ function Shop({ game, balance, now }: { game: Game; balance: number; now: number
     <section className="panel shop-panel" aria-labelledby="shop-h" data-tour="shop">
       <header className="panel-head"><h3 id="shop-h">Tienda de recompensas</h3><CoinBadge amount={balance} /></header>
       <p className="hint">Date caprichos con lo que te has ganado. Pon tú los precios: si algo te cuesta poco, no lo valoras.</p>
+
+      <Chest game={game} />
 
       {state.rewards.length > 0 && (next ? (
         <div className="shop-next">
@@ -496,11 +498,14 @@ function Shop({ game, balance, now }: { game: Game; balance: number; now: number
                 <span className="purchase-icon" aria-hidden="true">{p.icon}</span>
                 <span className="purchase-body">
                   <span className="purchase-name">{p.name}</span>
-                  <span className="muted small-text">Canjeado el {new Date(p.at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}, {new Date(p.at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span className="muted small-text">
+                    Canjeado el {fmtWhen(p.at)}
+                    {p.usedAt === null ? ' · 🎁 en el cofre' : p.usedAt ? ` · usado el ${fmtWhen(p.usedAt)}` : ''}
+                  </span>
                 </span>
                 <span className="mono purchase-cost">
                   −{p.cost} 🪙
-                  {dayKey(p.at) === dayKey(now) && (
+                  {dayKey(p.at) === dayKey(now) && !p.usedAt && (
                     <button className="link" onClick={() => { act((s) => refundPurchase(s, p.id)); sfx.coin(); }}>Devolver</button>
                   )}
                 </span>
@@ -513,6 +518,40 @@ function Shop({ game, balance, now }: { game: Game; balance: number; now: number
         </>
       )}
     </section>
+  );
+}
+
+const fmtWhen = (t: number) =>
+  `${new Date(t).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}, ${new Date(t).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`;
+
+/** El cofre: premios canjeados que aún no has usado. Usarlo es el momento de disfrutarlo. */
+function Chest({ game }: { game: Game }) {
+  const { state, act, toast } = game;
+  const items = unusedPurchases(state);
+  if (items.length === 0) return null;
+  const groups = new Map<string, typeof items>();
+  for (const p of items) groups.set(p.rewardId + p.name, [...(groups.get(p.rewardId + p.name) ?? []), p]);
+  function use(id: string) {
+    const p = items.find((x) => x.id === id)!;
+    act((s) => consumePurchase(s, id, Date.now()));
+    sfx.purchase();
+    confetti({ count: 120 });
+    toast(`${p.icon} ¡A disfrutar de ${p.name}! Te lo has ganado.`, 'level');
+  }
+  return (
+    <div className="chest" aria-labelledby="chest-h">
+      <h4 id="chest-h" className="sub-h">🎁 Tu cofre <span className="count mono">{items.length}</span></h4>
+      <p className="muted small-text">Lo que has canjeado y aún no has usado. Úsalo cuando vayas a disfrutarlo.</p>
+      <ul className="chest-items">
+        {[...groups.values()].map((g) => (
+          <li key={g[0].id} className="chest-item">
+            <span className="chest-icon" aria-hidden="true">{g[0].icon}</span>
+            <span className="chest-name">{g[0].name}{g.length > 1 && <b className="mono"> ×{g.length}</b>}</span>
+            <button className="primary small" onClick={() => use(g[0].id)}>Usar</button>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

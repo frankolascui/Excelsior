@@ -3,7 +3,7 @@ import {
   addHabit, addQuest, completeQuest, createProfile, emptyState, startTimer, stopTimer, toggleHabit, totalXp, undoQuest, updateHabit, updateQuest,
 } from './game';
 import {
-  addReward, buyReward, coinBalance, defaultRewards, nextReward, purchaseCounts, refundPurchase, rewardCategory, updateReward,
+  addReward, buyReward, coinBalance, consumePurchase, defaultRewards, unusedPurchases, nextReward, purchaseCounts, refundPurchase, rewardCategory, updateReward,
 } from './economy';
 import { addBoss, bossReward, bossStatus, summonTemplate } from './bosses';
 import { attributeXp } from './attributes';
@@ -152,5 +152,21 @@ describe('copia de seguridad', () => {
     expect(r.ok && r.state.quests[0].title).toBe('A');
     expect(parseBackup('{"app":"otra"}')).toMatchObject({ ok: false });
     expect(parseBackup('no json')).toMatchObject({ ok: false });
+  });
+});
+
+describe('cofre de premios', () => {
+  it('lo canjeado queda sin usar hasta que lo usas; los canjes antiguos cuentan como usados', () => {
+    const NOW2 = new Date(2026, 9, 7, 10).getTime();
+    let s = createProfile(emptyState(), 'Nico', [], NOW2);
+    s = { ...s, rewards: [{ id: 'r', name: 'Peli', icon: '🍿', cost: 0, createdAt: NOW2 }] };
+    s = buyReward(s, 'r', NOW2).state;
+    s = buyReward(s, 'r', NOW2).state;
+    s = { ...s, purchases: [...s.purchases, { id: 'old', rewardId: 'r', name: 'Peli', icon: '🍿', cost: 0, at: NOW2 - 1 }] };
+    expect(unusedPurchases(s)).toHaveLength(2);
+    s = consumePurchase(s, s.purchases[0].id, NOW2 + 5);
+    expect(unusedPurchases(s)).toHaveLength(1);
+    expect(s.purchases[0].usedAt).toBe(NOW2 + 5);
+    expect(consumePurchase(s, s.purchases[0].id, NOW2 + 9).purchases[0].usedAt).toBe(NOW2 + 5);
   });
 });

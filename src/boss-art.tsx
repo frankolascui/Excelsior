@@ -91,6 +91,18 @@ const SnakeHead = ({ k, x, y, rot = 0, s = 1 }: { k: Ink; x: number; y: number; 
   </g>
 );
 
+const DogHead = ({ k, x, y, rot = 0, s = 1 }: { k: Ink; x: number; y: number; rot?: number; s?: number }) => (
+  <g transform={`translate(${x} ${y}) rotate(${rot}) scale(${s})`}>
+    <path d="M-15 -20 L-7 -9 L7 -9 L15 -20 L16 2 Q14 14 6 20 L0 22 L-6 20 Q-14 14 -16 2 Z" fill={k.body} stroke={k.line} strokeWidth="1.1" />
+    <path d="M-12 -15 L-8 -9 M12 -15 L8 -9" stroke={k.dark} strokeWidth="2" />
+    <path d="M-9 -2 L-2 1 M9 -2 L2 1" stroke={k.dark} strokeWidth="2.4" strokeLinecap="round" />
+    <Eyes k={k} pts={[[-6, 3], [6, 3]]} r={2.1} />
+    <path d="M-6 12 Q0 18 6 12 L4 18 L0 22 L-4 18 Z" fill={k.dark} />
+    <path d="M-4 13 L-3 17 L-2 13 M2 13 L3 17 L4 13" fill="#fff" />
+    <ellipse cx="0" cy="10" rx="3" ry="2" fill={k.dark} />
+  </g>
+);
+
 const DRAW: Record<string, (k: Ink) => ReactNode> = {
   hidra: (k) => (
     <>
@@ -150,17 +162,7 @@ const DRAW: Record<string, (k: Ink) => ReactNode> = {
     </>
   ),
   cerbero: (k) => {
-    const head = (x: number, y: number, rot: number, s: number) => (
-      <g transform={`translate(${x} ${y}) rotate(${rot}) scale(${s})`}>
-        <path d="M-15 -20 L-7 -9 L7 -9 L15 -20 L16 2 Q14 14 6 20 L0 22 L-6 20 Q-14 14 -16 2 Z" fill={k.body} stroke={k.line} strokeWidth="1.1" />
-        <path d="M-12 -15 L-8 -9 M12 -15 L8 -9" stroke={k.dark} strokeWidth="2" />
-        <path d="M-9 -2 L-2 1 M9 -2 L2 1" stroke={k.dark} strokeWidth="2.4" strokeLinecap="round" />
-        <Eyes k={k} pts={[[-6, 3], [6, 3]]} r={2.1} />
-        <path d="M-6 12 Q0 18 6 12 L4 18 L0 22 L-4 18 Z" fill={k.dark} />
-        <path d="M-4 13 L-3 17 L-2 13 M2 13 L3 17 L4 13" fill="#fff" />
-        <ellipse cx="0" cy="10" rx="3" ry="2" fill={k.dark} />
-      </g>
-    );
+    const head = (x: number, y: number, rot: number, sc: number) => <DogHead k={k} x={x} y={y} rot={rot} s={sc} />;
     return (
       <>
         <path d="M14 112 Q22 78 60 74 Q98 78 106 112 Z" fill={k.dark} />
@@ -357,6 +359,354 @@ const DRAW: Record<string, (k: Ink) => ReactNode> = {
   ),
 };
 
+// ---------- Cuerpo entero (lienzo 120 × 170, suelo en y = 158) ----------
+
+const WOOD = '#6b4a2b';
+const STEEL = '#cbd5e1';
+const GOLD = '#fbbf24';
+
+/** Trazo grueso con contorno: cuellos, colas, brazos. */
+const Tube = ({ d, k, w, color }: { d: string; k: Ink; w: number; color?: string }) => (
+  <>
+    <path d={d} fill="none" stroke={k.dark} strokeWidth={w + 3} strokeLinecap="round" strokeLinejoin="round" />
+    <path d={d} fill="none" stroke={color ?? k.body} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" />
+  </>
+);
+
+/** Pierna con pie: de la cadera (x, top) al suelo. */
+const Leg = ({ k, x, top, w = 12, dir = 1, fill }: { k: Ink; x: number; top: number; w?: number; dir?: number; fill?: string }) => (
+  <path
+    d={`M${x - w / 2} ${top} L${x - w / 2 + dir * 1} 150 L${x - w / 2 - (dir > 0 ? 4 : -2)} 158 L${x + w / 2 + (dir > 0 ? 2 : 4)} 158 L${x + w / 2} ${top} Z`}
+    fill={fill ?? k.body} stroke={k.line} strokeWidth="1.1" strokeLinejoin="round"
+  />
+);
+
+const Waves = ({ k, y }: { k: Ink; y: number }) => (
+  <path d={`M0 ${y} Q10 ${y - 5} 20 ${y} T40 ${y} T60 ${y} T80 ${y} T100 ${y} T120 ${y} L120 170 L0 170 Z`} fill={k.dark} opacity="0.85" />
+);
+
+const FIGURES: Record<string, (k: Ink) => ReactNode> = {
+  hidra: (k) => (
+    <>
+      <Tube d={wave(92, 146, 116, 118, 5, 1, 12)} k={k} w={8} />
+      {[34, 50, 70, 86].map((x) => <Leg key={x} k={k} x={x} top={138} w={10} dir={x < 60 ? -1 : 1} fill={k.dark} />)}
+      <path d="M18 150 Q16 116 60 110 Q104 116 102 150 Q60 162 18 150 Z" fill={k.body} stroke={k.line} strokeWidth="1.2" />
+      <path d="M34 148 Q60 126 86 148" stroke={k.light} strokeOpacity="0.45" strokeWidth="2" strokeDasharray="3 3" fill="none" />
+      {[[38, 122, 14, 70, -30, 0.95], [48, 116, 30, 46, -16, 1], [60, 114, 60, 30, 0, 1.3], [72, 116, 90, 46, 16, 1], [82, 122, 106, 70, 30, 0.95]].map(([x0, y0, x1, y1, rot, sc], i) => (
+        <g key={i}>
+          <Tube d={wave(x0, y0, x1, y1 + 10, 4, 1, 12)} k={k} w={i === 2 ? 10 : 8} />
+          <SnakeHead k={k} x={x1} y={y1} rot={rot} s={sc} />
+        </g>
+      ))}
+    </>
+  ),
+  medusa: (k) => {
+    const snakes = Array.from({ length: 9 }, (_, i) => {
+      const a = (-180 + 22.5 * i) * (Math.PI / 180);
+      return { x0: 60 + Math.cos(a) * 10, y0: 40 + Math.sin(a) * 10, x1: 60 + Math.cos(a) * 28, y1: 40 + Math.sin(a) * 26, a };
+    });
+    return (
+      <>
+        <Tube d="M60 98 Q38 116 46 138 Q56 158 86 152 Q106 146 100 130 Q96 120 108 116" k={k} w={15} />
+        <path d="M50 132 L54 130 M62 146 L66 143 M80 150 L83 146 M96 136 L100 134" stroke={k.light} strokeOpacity="0.6" strokeWidth="1.4" />
+        <Tube d="M48 68 Q36 82 32 98" k={k} w={6} />
+        <Tube d="M72 68 Q86 70 92 56" k={k} w={6} />
+        <path d="M86 44 Q100 56 92 74" stroke={WOOD} strokeWidth="2.4" fill="none" />
+        <path d="M89 46 L91 72" stroke="#e5e7eb" strokeWidth="0.8" />
+        <path d="M48 62 Q60 56 72 62 L74 96 Q60 104 46 96 Z" fill={k.body} stroke={k.line} strokeWidth="1.1" />
+        <path d="M47 76 Q60 82 73 76 L74 86 Q60 92 46 86 Z" fill={k.dark} />
+        {snakes.map((n, i) => (
+          <g key={i}>
+            <Tube d={wave(n.x0, n.y0, n.x1, n.y1, 3, 1.25, 10)} k={k} w={3.4} />
+            <circle cx={n.x1} cy={n.y1} r="3" fill={k.body} stroke={k.dark} strokeWidth="1" />
+            <circle cx={n.x1 + Math.cos(n.a)} cy={n.y1 + Math.sin(n.a)} r="0.8" fill={k.eye} className="ba-eyes" />
+          </g>
+        ))}
+        <path d="M50 42 Q50 30 60 30 Q70 30 70 42 Q70 54 60 58 Q50 54 50 42 Z" fill={k.body} stroke={k.line} strokeWidth="1.1" />
+        <path d="M52 39 Q55.5 36 59 39 M61 39 Q64.5 36 68 39" stroke={k.dark} strokeWidth="1.6" fill="none" />
+        <Eyes k={k} pts={[[55.5, 43], [64.5, 43]]} r={2.2} />
+        <path d="M56 52 Q60 54 64 52" stroke={k.dark} strokeWidth="1.5" fill="none" strokeLinecap="round" />
+      </>
+    );
+  },
+  minotauro: (k) => (
+    <>
+      <path d="M101 14 L94 130" stroke={WOOD} strokeWidth="3.2" strokeLinecap="round" />
+      <path d="M100 26 Q118 12 117 36 Q113 46 99 40 Z M100 26 Q84 12 84 34 Q88 44 99 40 Z" fill={STEEL} stroke={k.line} strokeWidth="1" />
+      <Leg k={k} x={48} top={112} w={14} dir={-1} />
+      <Leg k={k} x={72} top={112} w={14} />
+      <path d="M34 152 L54 152 L56 158 L34 158 Z M66 152 L86 152 L86 158 L64 158 Z" fill={k.dark} />
+      <Tube d="M38 62 Q24 78 26 104" k={k} w={10} />
+      <Tube d="M82 62 Q96 64 98 44" k={k} w={10} />
+      <path d="M38 58 Q60 50 82 58 L86 80 Q80 104 60 108 Q40 104 34 80 Z" fill={k.body} stroke={k.line} strokeWidth="1.2" />
+      <path d="M46 70 Q53 76 60 70 Q67 76 74 70 M52 86 L68 86 M53 94 L67 94" stroke={k.dark} strokeOpacity="0.55" strokeWidth="1.6" fill="none" />
+      <path d="M42 102 L78 102 L74 124 L60 118 L46 124 Z" fill={k.dark} stroke={k.line} strokeWidth="1" />
+      <path d="M48 32 Q34 32 26 16 Q36 20 46 26 Z M72 32 Q86 32 94 16 Q84 20 74 26 Z" fill={k.light} stroke={k.line} strokeWidth="1" />
+      <path d="M48 28 Q60 20 72 28 L74 46 Q70 60 60 62 Q50 60 46 46 Z" fill={k.body} stroke={k.line} strokeWidth="1.2" />
+      <path d="M50 38 L57 41 M70 38 L63 41" stroke={k.dark} strokeWidth="2.4" strokeLinecap="round" />
+      <Eyes k={k} pts={[[54, 43], [66, 43]]} r={2.1} />
+      <ellipse cx="60" cy="54" rx="9" ry="6" fill={k.light} />
+      <ellipse cx="56.5" cy="54" rx="1.6" ry="2.2" fill={k.dark} />
+      <ellipse cx="63.5" cy="54" rx="1.6" ry="2.2" fill={k.dark} />
+      <circle cx="60" cy="60" r="3.6" fill="none" stroke={GOLD} strokeWidth="1.6" />
+    </>
+  ),
+  cerbero: (k) => (
+    <>
+      <Tube d={wave(90, 112, 112, 70, 4, 1, 10)} k={k} w={4} color="#84cc16" />
+      <SnakeHead k={{ ...k, body: '#84cc16' }} x={112} y={64} rot={14} s={0.6} />
+      <Leg k={k} x={36} top={114} w={11} dir={-1} fill={k.dark} />
+      <Leg k={k} x={84} top={114} w={11} fill={k.dark} />
+      <ellipse cx="60" cy="112" rx="36" ry="22" fill={k.body} stroke={k.line} strokeWidth="1.2" />
+      <path d="M36 104 Q60 96 84 104" stroke={k.light} strokeOpacity="0.35" strokeWidth="2" fill="none" />
+      <Leg k={k} x={47} top={118} w={13} dir={-1} />
+      <Leg k={k} x={73} top={118} w={13} />
+      <path d="M38 156 L40 152 M44 156 L45 152 M76 156 L75 152 M82 156 L80 152" stroke={k.dark} strokeWidth="1.4" />
+      <path d="M30 94 L36 88 L42 94 L48 88 L54 94 L60 88 L66 94 L72 88 L78 94 L84 88 L90 94" fill="none" stroke={k.fire} strokeWidth="2.4" />
+      <DogHead k={k} x={28} y={76} rot={-24} s={0.85} />
+      <DogHead k={k} x={92} y={76} rot={24} s={0.85} />
+      <DogHead k={k} x={60} y={62} s={1.05} />
+    </>
+  ),
+  caronte: (k) => (
+    <>
+      <path d="M94 12 L70 166" stroke={WOOD} strokeWidth="3" strokeLinecap="round" />
+      <path d="M60 26 Q86 30 86 68 L94 140 L26 140 L34 68 Q34 30 60 26 Z" fill={k.body} stroke={k.line} strokeWidth="1.2" />
+      <path d="M46 80 Q42 110 40 138 M74 80 Q78 110 80 138 M60 78 L60 138" stroke={k.dark} strokeWidth="1.6" fill="none" opacity="0.7" />
+      <path d="M60 32 Q76 36 76 56 Q70 70 60 70 Q50 70 44 56 Q44 36 60 32 Z" fill="#020205" />
+      <Eyes k={k} pts={[[54, 52], [66, 52]]} r={2.2} />
+      <Tube d="M80 72 Q90 80 84 94" k={k} w={8} />
+      <Tube d="M40 72 Q30 80 32 90" k={k} w={8} />
+      <path d="M32 90 L32 98" stroke={WOOD} strokeWidth="1.4" />
+      <rect x="27" y="98" width="10" height="12" rx="2" fill={k.eye} opacity="0.9" className="ba-eyes" />
+      <rect x="27" y="98" width="10" height="12" rx="2" fill="none" stroke={k.dark} strokeWidth="1.2" />
+      <path d="M8 138 Q60 160 112 138 L104 152 Q60 168 16 152 Z" fill={k.dark} stroke={k.line} strokeWidth="1" />
+      <path d="M2 162 Q12 158 22 162 T42 162 M78 164 Q88 160 98 164 T118 164" stroke={k.eye} strokeOpacity="0.45" strokeWidth="1.4" fill="none" />
+    </>
+  ),
+  hades: (k) => (
+    <>
+      <path d="M30 58 Q12 110 18 156 L102 156 Q108 110 90 58 Z" fill={k.dark} />
+      <path d="M100 16 L96 160 M94 16 L94 28 Q100 34 106 28 L106 16" stroke="#94a3b8" strokeWidth="2.4" fill="none" strokeLinecap="round" />
+      <path d="M42 60 Q60 54 78 60 L88 156 L32 156 Z" fill={k.body} stroke={k.line} strokeWidth="1.2" />
+      <path d="M38 100 L82 100" stroke={GOLD} strokeWidth="2.4" />
+      <path d="M48 104 L44 154 M60 104 L60 154 M72 104 L76 154" stroke={k.dark} strokeWidth="1.4" opacity="0.6" />
+      <Tube d="M78 64 Q92 72 95 86" k={k} w={8} />
+      <Tube d="M42 64 Q30 80 32 98" k={k} w={8} />
+      <circle cx="32" cy="104" r="6" fill={k.fire} className="ba-fire" />
+      <g transform="translate(23 2) scale(0.6)">
+        <path d="M34 50 Q30 32 40 22 Q42 34 48 36 Q46 18 58 8 Q60 24 66 30 Q70 18 80 16 Q78 28 84 34 Q90 30 90 22 Q94 38 86 50 Z" fill={k.fire} opacity="0.95" />
+        <path d="M38 52 Q38 34 60 34 Q82 34 82 52 L82 68 Q82 76 74 78 L72 90 L48 90 L46 78 Q38 76 38 68 Z" fill={k.body} stroke={k.line} strokeWidth="1.2" />
+        <path d="M38 50 L44 44 L50 50 L56 42 L60 48 L64 42 L70 50 L76 44 L82 50" fill="none" stroke={GOLD} strokeWidth="2.4" strokeLinejoin="round" />
+        <ellipse cx="50" cy="62" rx="7" ry="8" fill="#05050a" />
+        <ellipse cx="70" cy="62" rx="7" ry="8" fill="#05050a" />
+        <Eyes k={k} pts={[[50, 63], [70, 63]]} r={2.6} />
+        <path d="M60 68 L56 76 L64 76 Z" fill="#05050a" />
+        <path d="M50 82 L70 82 M54 79 L54 88 M60 79 L60 89 M66 79 L66 88" stroke="#05050a" strokeWidth="1.6" />
+      </g>
+    </>
+  ),
+  esfinge: (k) => (
+    <>
+      <Tube d="M104 132 Q120 120 112 100" k={k} w={3} />
+      <circle cx="112" cy="98" r="3.4" fill={k.dark} />
+      <path d="M62 110 Q70 62 112 52 Q102 70 106 76 Q96 78 98 90 Q88 92 86 106 Z" fill={k.dark} stroke={k.line} strokeWidth="1" />
+      <path d="M74 98 L104 62 M80 100 L100 80 M86 104 L96 92" stroke={k.light} strokeOpacity="0.45" strokeWidth="1.2" />
+      <path d="M30 128 Q34 104 64 104 Q100 102 106 126 Q108 148 96 152 L40 152 Q28 146 30 128 Z" fill={k.body} stroke={k.line} strokeWidth="1.2" />
+      <ellipse cx="92" cy="134" rx="13" ry="14" fill={k.light} opacity="0.25" />
+      <path d="M40 144 L8 146 Q4 152 10 156 L44 156 Z M52 148 L22 150 Q18 156 24 158 L56 158 Z" fill={k.body} stroke={k.line} strokeWidth="1" />
+      <path d="M12 150 L12 154 M16 150 L16 154 M26 154 L26 157" stroke={k.dark} strokeWidth="1" />
+      <path d="M18 70 Q34 54 50 70 L54 108 L44 102 L24 102 L14 108 Z" fill={GOLD} stroke={k.line} strokeWidth="1" />
+      {[78, 86, 94].map((y) => <path key={y} d={`M${17 - (y - 78) * 0.1} ${y} L24 ${y} M44 ${y} L${51 + (y - 78) * 0.1} ${y}`} stroke="#1e3a8a" strokeWidth="2.4" />)}
+      <path d="M24 74 Q34 66 44 74 L44 90 Q34 100 24 90 Z" fill="#c98a3c" stroke={k.line} strokeWidth="1" />
+      <path d="M26 80 L32 80 M42 80 L36 80" stroke="#0b0b10" strokeWidth="1.6" strokeLinecap="round" />
+      <Eyes k={k} pts={[[29.5, 82], [38.5, 82]]} r={1.6} />
+      <path d="M31 92 Q34 94 37 92" stroke="#7a3a0c" strokeWidth="1.3" fill="none" />
+      <path d="M31 98 L37 98 L36 108 L32 108 Z" fill="#3b82f6" />
+    </>
+  ),
+  quimera: (k) => (
+    <>
+      <Tube d={wave(102, 110, 114, 70, 5, 1, 12)} k={{ ...k, dark: '#3f6212' }} w={4.5} color="#84cc16" />
+      <SnakeHead k={{ ...k, body: '#84cc16', line: '#1a2e05' }} x={114} y={64} rot={10} s={0.7} />
+      <Leg k={k} x={84} top={118} w={10} fill={k.dark} />
+      <Leg k={k} x={40} top={118} w={10} dir={-1} fill={k.dark} />
+      <path d="M26 104 Q40 92 70 94 Q100 92 106 108 Q106 128 92 130 L36 130 Q22 124 26 104 Z" fill={k.body} stroke={k.line} strokeWidth="1.2" />
+      <Leg k={k} x={94} top={120} w={11} />
+      <Leg k={k} x={50} top={120} w={11} dir={-1} />
+      <path d="M62 112 Q72 64 104 56 Q96 74 100 80 Q90 82 90 94 Z" fill={k.dark} opacity="0.9" />
+      <Tube d="M76 98 L80 82" k={k} w={6} color="#a8a29e" />
+      <g transform="translate(80 72) rotate(10)">
+        <path d="M-2 -8 Q-14 -22 -4 -28 Q0 -22 3 -16" fill="none" stroke="#e7e5e4" strokeWidth="3.4" strokeLinecap="round" />
+        <path d="M-7 -8 Q-8 3 0 11 Q8 3 7 -8 Q0 -13 -7 -8 Z" fill="#a8a29e" stroke="#292524" strokeWidth="1" />
+        <Eyes k={k} pts={[[-3, -2], [3, -2]]} r={1.3} />
+      </g>
+      <path d={star(28, 88, 14, 24, 16)} fill={k.dark} stroke={k.line} strokeWidth="1" />
+      <path d={star(28, 88, 14, 19, 13, -Math.PI / 2 + 0.2)} fill={k.fire} opacity="0.85" />
+      <circle cx="28" cy="88" r="12" fill={k.body} stroke={k.line} strokeWidth="1.1" />
+      <path d="M21 83 L26 85 M35 83 L30 85" stroke={k.dark} strokeWidth="1.8" strokeLinecap="round" />
+      <Eyes k={k} pts={[[24, 87], [32, 87]]} r={1.7} />
+      <path d="M23 94 Q28 91 33 94 L31 98 Q28 100 25 98 Z" fill="#1c0a04" />
+      <path d="M22 96 Q8 92 0 100 Q8 102 2 112 Q14 106 24 100 Z" fill="#fde047" opacity="0.9" className="ba-fire" />
+    </>
+  ),
+  talos: (k) => (
+    <>
+      <Leg k={k} x={46} top={110} w={15} dir={-1} />
+      <Leg k={k} x={74} top={110} w={15} />
+      <rect x="38" y="126" width="16" height="7" rx="2" fill={k.dark} />
+      <rect x="66" y="126" width="16" height="7" rx="2" fill={k.dark} />
+      <path d="M36 100 L84 100 L86 116 L34 116 Z" fill={k.dark} stroke={k.line} strokeWidth="1" />
+      <path d="M44 100 L44 116 M52 100 L52 116 M60 100 L60 116 M68 100 L68 116 M76 100 L76 116" stroke={k.light} strokeOpacity="0.35" strokeWidth="1" />
+      <path d="M20 62 L32 62 L30 98 L18 96 Z M100 62 L88 62 L90 98 L102 96 Z" fill={k.body} stroke={k.line} strokeWidth="1.1" />
+      <circle cx="24" cy="102" r="7" fill={k.dark} stroke={k.line} strokeWidth="1" />
+      <circle cx="96" cy="102" r="7" fill={k.dark} stroke={k.line} strokeWidth="1" />
+      <path d="M32 52 L88 52 L82 100 L38 100 Z" fill={k.body} stroke={k.line} strokeWidth="1.3" />
+      <circle cx="26" cy="58" r="11" fill={k.body} stroke={k.line} strokeWidth="1.1" />
+      <circle cx="94" cy="58" r="11" fill={k.body} stroke={k.line} strokeWidth="1.1" />
+      <circle cx="60" cy="72" r="9" fill="#0b0503" />
+      <circle cx="60" cy="72" r="6" fill={k.eye} className="ba-eyes" />
+      <path d="M44 88 L76 88 M46 94 L74 94" stroke={k.dark} strokeWidth="2" />
+      {[[40, 58], [80, 58], [42, 96], [78, 96], [26, 50], [94, 50]].map(([x, y]) => <circle key={`${x}-${y}`} cx={x} cy={y} r="1.4" fill={k.light} />)}
+      <rect x="54" y="44" width="12" height="9" fill={k.dark} />
+      <path d="M46 26 Q46 14 60 14 Q74 14 74 26 L74 44 Q60 50 46 44 Z" fill={k.body} stroke={k.line} strokeWidth="1.2" />
+      <path d="M56 4 Q60 0 64 4 L66 16 L54 16 Z" fill="#dc2626" />
+      <rect x="49" y="28" width="22" height="6" rx="2" fill="#0b0503" />
+      <rect x="50.5" y="29.5" width="19" height="3" rx="1.5" fill={k.eye} className="ba-eyes" />
+    </>
+  ),
+  polifemo: (k) => (
+    <>
+      <path d="M100 96 L112 18" stroke={WOOD} strokeWidth="7" strokeLinecap="round" />
+      <ellipse cx="111" cy="26" rx="7" ry="12" transform="rotate(9 111 26)" fill="#3b2412" />
+      <path d="M106 18 L104 14 M114 22 L118 20 M108 34 L104 36" stroke="#3b2412" strokeWidth="2" />
+      <Leg k={k} x={46} top={112} w={16} dir={-1} />
+      <Leg k={k} x={74} top={112} w={16} />
+      <Tube d="M36 62 Q20 78 22 104" k={k} w={12} />
+      <Tube d="M84 62 Q100 70 102 92" k={k} w={12} />
+      <path d="M34 56 Q60 44 86 56 Q96 84 84 108 L36 108 Q24 84 34 56 Z" fill={k.body} stroke={k.line} strokeWidth="1.3" />
+      <ellipse cx="60" cy="90" rx="18" ry="14" fill={k.light} opacity="0.3" />
+      <path d="M36 102 L84 102 L82 116 L76 124 L70 116 L64 126 L58 116 L52 124 L46 116 L40 122 Z" fill={k.dark} stroke={k.line} strokeWidth="1" />
+      <path d="M42 34 Q42 14 60 14 Q78 14 78 34 Q78 54 60 58 Q42 54 42 34 Z" fill={k.body} stroke={k.line} strokeWidth="1.3" />
+      <path d="M44 26 Q52 14 60 14 Q68 14 76 26 Q68 20 60 21 Q52 20 44 26 Z" fill={k.dark} />
+      <path d="M46 28 Q60 22 74 28" stroke={k.dark} strokeWidth="3.4" fill="none" strokeLinecap="round" />
+      <ellipse cx="60" cy="35" rx="10" ry="7.5" fill="#f8fafc" stroke={k.dark} strokeWidth="1.3" />
+      <circle cx="60" cy="35.5" r="4.6" fill={k.eye} className="ba-eyes" />
+      <circle cx="60" cy="35.5" r="2" fill="#0b0b10" />
+      <path d="M50 48 Q60 44 70 48 Q66 53 60 53 Q54 53 50 48 Z" fill="#1c0f08" />
+      <path d="M53 48 L54 51 L55 48 M65 48 L66 51 L67 48" fill="#f5f5f4" />
+    </>
+  ),
+  sirenas: (k) => (
+    <>
+      <path d="M18 158 Q22 126 46 120 Q80 114 98 132 Q110 146 106 158 Z" fill="#334155" stroke="#0f172a" strokeWidth="1" />
+      <path d="M30 140 Q40 132 50 136 M76 128 Q88 130 94 140" stroke="#64748b" strokeWidth="1.4" fill="none" />
+      <Tube d="M56 96 Q42 118 60 128 Q82 136 96 116" k={k} w={13} />
+      <path d="M96 116 L114 100 L108 118 L116 130 Z" fill={k.light} stroke={k.line} strokeWidth="1" />
+      <path d="M50 110 L54 108 M60 124 L63 121 M74 128 L77 124 M86 124 L88 120" stroke={k.light} strokeOpacity="0.6" strokeWidth="1.4" />
+      <path d="M60 22 Q34 24 34 52 Q32 76 22 94 Q42 88 46 66 L74 66 Q78 88 98 94 Q88 76 86 52 Q86 24 60 22 Z" fill="#a21caf" opacity="0.85" />
+      <path d="M50 64 Q60 58 70 64 L72 98 L48 98 Z" fill="#fde2e4" stroke={k.line} strokeWidth="1" />
+      <circle cx="55" cy="72" r="4" fill={k.dark} /><circle cx="65" cy="72" r="4" fill={k.dark} />
+      <Tube d="M70 66 Q80 72 80 82" k={{ ...k, dark: 'rgba(0,0,0,0.4)' }} w={4.5} color="#fde2e4" />
+      <path d="M76 84 Q72 66 80 64 M90 84 Q94 66 86 64 M76 84 L90 84 M80 68 L80 84 M83 66 L83 84 M86 68 L86 84" stroke={GOLD} strokeWidth="1.4" fill="none" />
+      <path d="M50 40 Q50 28 60 28 Q70 28 70 40 Q70 54 60 58 Q50 54 50 40 Z" fill="#fde2e4" stroke={k.line} strokeWidth="1" />
+      <path d="M48 36 Q56 24 72 34 Q66 26 58 26 Q50 26 48 36 Z" fill="#86198f" />
+      <Eyes k={k} pts={[[55.5, 42], [64.5, 42]]} r={1.8} />
+      <path d="M57 50 Q60 52 63 50" stroke="#be123c" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+      <g className="ba-notes" fill={k.eye} stroke={k.eye} strokeWidth="1.4">
+        <circle cx="20" cy="40" r="3" /><path d="M23 40 L23 28 L28 30" fill="none" />
+        <circle cx="100" cy="30" r="3" /><path d="M103 30 L103 18 L108 20" fill="none" />
+        <circle cx="104" cy="56" r="2.4" /><path d="M106.4 56 L106.4 47" fill="none" />
+      </g>
+    </>
+  ),
+  escila: (k) => {
+    const sea = { ...k, body: '#4ade80', line: '#14532d', dark: '#14532d' };
+    return (
+      <>
+        {[[44, 150, 6, 118], [76, 150, 114, 120], [52, 152, 24, 140], [68, 152, 98, 142]].map(([x0, y0, x1, y1], i) => (
+          <Tube key={i} d={wave(x0, y0, x1, y1, 5, 1.2, 12)} k={k} w={6} />
+        ))}
+        <path d="M30 152 Q32 104 60 98 Q88 104 90 152 Z" fill={k.body} stroke={k.line} strokeWidth="1.2" />
+        <path d={spiral(60, 128, 2, 14, 1.6, 0.5)} fill="none" stroke={k.dark} strokeWidth="2.4" />
+        {[[46, 106, 14, 56, -30], [52, 102, 32, 30, -14], [58, 100, 52, 16, -4], [64, 100, 72, 18, 6], [70, 102, 92, 32, 16], [76, 106, 106, 58, 30]].map(([x0, y0, x1, y1, rot], i) => (
+          <g key={i}>
+            <Tube d={wave(x0, y0, x1, y1 + 8, 3, 1, 10)} k={sea} w={4.5} color="#4ade80" />
+            <DogHead k={sea} x={x1} y={y1} rot={rot} s={0.5} />
+          </g>
+        ))}
+        <Waves k={k} y={154} />
+      </>
+    );
+  },
+  caos: (k) => (
+    <>
+      {[0, 1, 2, 3].map((i) => (
+        <path key={i} d={spiral(60, 70, 6, 58, 0.8, (i * Math.PI) / 2, 30)} fill="none" stroke={i % 2 ? k.fire : k.light} strokeWidth={i % 2 ? 2.4 : 3} strokeLinecap="round" opacity="0.45" />
+      ))}
+      {[[24, 156, 4, 134], [44, 158, 30, 166], [76, 158, 90, 166], [96, 156, 116, 134]].map(([x0, y0, x1, y1], i) => (
+        <Tube key={i} d={wave(x0, y0 - 6, x1, y1, 3, 1, 10)} k={k} w={4} />
+      ))}
+      <path d="M60 16 Q88 24 90 64 Q94 110 106 156 L14 156 Q26 110 30 64 Q32 24 60 16 Z" fill={k.body} stroke={k.line} strokeWidth="1.2" />
+      <path d="M60 30 Q78 38 78 70 Q80 112 86 146 L34 146 Q40 112 42 70 Q42 38 60 30 Z" fill="#05010f" />
+      <ellipse cx="60" cy="58" rx="8" ry="3.6" fill={k.eye} className="ba-eyes" />
+      <ellipse cx="60" cy="58" rx="1.8" ry="3.6" fill="#010003" />
+      <Eyes k={k} pts={[[50, 82], [70, 90], [56, 110], [68, 124], [48, 132], [64, 72]]} r={1.6} />
+      {[[16, 30], [104, 40], [20, 92], [102, 96], [36, 12], [86, 10]].map(([x, y]) => <path key={`${x}${y}`} d={star(x, y, 4, 3, 1)} fill="#fff" opacity="0.85" />)}
+    </>
+  ),
+  cronos: (k) => (
+    <>
+      <path d="M98 18 L86 158" stroke={WOOD} strokeWidth="3.2" strokeLinecap="round" />
+      <path d="M98 20 Q72 6 50 20 Q74 16 96 30 Z" fill="#e2e8f0" stroke="#334155" strokeWidth="1" />
+      <circle cx="60" cy="32" r="22" fill="none" stroke={k.eye} strokeOpacity="0.5" strokeWidth="1.4" strokeDasharray="1.5 4.2" />
+      <path d="M40 58 Q60 52 80 58 L92 156 L28 156 Z" fill={k.body} stroke={k.line} strokeWidth="1.2" />
+      <path d="M46 70 L40 154 M60 92 L60 154 M74 70 L80 154" stroke={k.dark} strokeWidth="1.4" opacity="0.55" />
+      <Tube d="M42 62 Q28 80 30 96" k={k} w={8} />
+      <Tube d="M78 62 Q90 72 90 86" k={k} w={8} />
+      <g transform="translate(30 104)">
+        <rect x="-8" y="-12" width="16" height="3" rx="1" fill={k.dark} />
+        <rect x="-8" y="10" width="16" height="3" rx="1" fill={k.dark} />
+        <path d="M-6 -9 L6 -9 Q6 -2 0 1 Q6 4 6 10 L-6 10 Q-6 4 0 1 Q-6 -2 -6 -9 Z" fill="rgba(186,230,253,0.2)" stroke="#e0f2fe" strokeWidth="1" />
+        <path d="M-4 -6 L4 -6 Q2 -2 0 0 Q-2 -2 -4 -6 Z M-5 10 Q0 4 5 10 Z" fill={k.eye} />
+      </g>
+      <path d="M48 44 Q60 50 72 44 Q74 70 60 86 Q46 70 48 44 Z" fill="#f1f5f9" stroke={k.line} strokeWidth="1" />
+      <path d="M54 56 L56 74 M60 58 L60 80 M66 56 L64 74" stroke="#94a3b8" strokeWidth="0.9" />
+      <path d="M48 32 Q48 18 60 18 Q72 18 72 32 L72 44 Q60 50 48 44 Z" fill={k.light} stroke={k.line} strokeWidth="1.1" />
+      <path d="M48 26 Q60 16 72 26" stroke="#f1f5f9" strokeWidth="3" fill="none" strokeLinecap="round" />
+      <path d="M51 32 L57 34 M69 32 L63 34" stroke={k.dark} strokeWidth="2" strokeLinecap="round" />
+      <Eyes k={k} pts={[[54.5, 37], [65.5, 37]]} r={1.8} />
+    </>
+  ),
+  tifon: (k) => (
+    <>
+      <path d="M8 22 Q30 6 60 14 Q90 6 112 22 Q100 30 60 26 Q20 30 8 22 Z" fill="#334155" opacity="0.8" />
+      <path d="M40 68 Q4 40 2 96 Q14 84 20 92 Q22 80 34 84 Z M80 68 Q116 40 118 96 Q106 84 100 92 Q98 80 86 84 Z" fill={k.dark} stroke={k.line} strokeWidth="1" />
+      <Tube d="M48 112 Q18 124 24 146 Q32 162 58 156" k={k} w={14} />
+      <Tube d="M72 112 Q102 124 96 146 Q88 162 62 156" k={k} w={14} />
+      <path d="M30 130 L34 128 M28 142 L32 142 M90 130 L86 128 M92 142 L88 142" stroke={k.light} strokeOpacity="0.5" strokeWidth="1.4" />
+      <Tube d="M38 68 Q22 80 16 98" k={k} w={9} />
+      <Tube d="M82 68 Q98 80 104 98" k={k} w={9} />
+      <SnakeHead k={k} x={14} y={104} rot={200} s={0.75} />
+      <SnakeHead k={k} x={106} y={104} rot={160} s={0.75} />
+      <path d="M36 62 Q60 50 84 62 L80 116 L40 116 Z" fill={k.body} stroke={k.line} strokeWidth="1.2" />
+      <path d="M44 78 Q60 86 76 78 M46 92 Q60 98 74 92 M48 104 Q60 110 72 104" stroke={k.dark} strokeWidth="2" fill="none" opacity="0.7" />
+      {[[50, 30, -20], [60, 26, 0], [70, 30, 20]].map(([x, y, rot], i) => (
+        <g key={i}>
+          <path d={wave(56 + i * 4, 40, x, y + 4, 2, 1, 8)} stroke={k.dark} strokeWidth="4" fill="none" strokeLinecap="round" />
+          <SnakeHead k={{ ...k, body: '#64748b' }} x={x} y={y} rot={rot} s={0.45} />
+        </g>
+      ))}
+      <path d="M48 44 Q48 32 60 32 Q72 32 72 44 Q72 58 60 62 Q48 58 48 44 Z" fill={k.body} stroke={k.line} strokeWidth="1.2" />
+      <path d="M51 42 L57 45 M69 42 L63 45" stroke="#05070c" strokeWidth="2.4" strokeLinecap="round" />
+      <Eyes k={k} pts={[[54.5, 47], [65.5, 47]]} r={2.2} />
+      <path d="M54 54 Q60 51 66 54 Q63 58 60 58 Q57 58 54 54 Z" fill="#05070c" />
+      <path d="M14 28 L24 42 L18 44 L28 60" stroke="#fde047" strokeWidth="2.4" fill="none" strokeLinejoin="round" className="ba-bolt" />
+      <path d="M106 28 L98 42 L104 44 L94 60" stroke="#fde047" strokeWidth="2.4" fill="none" strokeLinejoin="round" className="ba-bolt" />
+    </>
+  ),
+};
+
 /** Grietas que aparecen cuando el boss está herido (y más cuando está furioso). */
 const CRACKS = {
   herido: 'M44 30 L50 42 L46 50 L54 60 M84 70 L76 76 L80 86',
@@ -364,8 +714,10 @@ const CRACKS = {
 };
 
 export function BossArt({
-  templateId, icon, tier, size = 96, silhouette = false, phase = 'calma', defeated = false, className = '',
+  templateId, icon, tier, size = 96, silhouette = false, phase = 'calma', defeated = false, className = '', full = false,
 }: {
+  /** Cuerpo entero (lienzo vertical) en vez del medallón. `size` es el ancho. */
+  full?: boolean;
   templateId?: string;
   icon: string;
   tier?: BossTier;
@@ -377,11 +729,67 @@ export function BossArt({
 }) {
   const uidRaw = useId();
   const id = `ba-${templateId ?? 'custom'}-${silhouette ? 's' : phase}-${uidRaw.replace(/[^a-zA-Z0-9_-]/g, '')}`;
-  const draw = templateId ? DRAW[templateId] : undefined;
+  const draw = templateId ? (full ? FIGURES : DRAW)[templateId] : undefined;
   const p = PALETTE[draw ? templateId! : 'custom'];
   const ring = silhouette ? '#2a2a36' : tier ? TIER_COLOR[tier] : '#ff8ab0';
   const ink: Ink = { body: `url(#${id}-body)`, dark: p.b, light: p.a, eye: phase === 'furioso' ? '#ff2d4a' : p.eye, line: 'rgba(0,0,0,0.55)', fire: `url(#${id}-fire)` };
-  const classes = ['boss-art', silhouette ? 'is-silhouette' : '', `phase-${phase}`, defeated ? 'is-defeated' : '', className].filter(Boolean).join(' ');
+  const classes = ['boss-art', full ? 'is-full' : '', silhouette ? 'is-silhouette' : '', `phase-${phase}`, defeated ? 'is-defeated' : '', className].filter(Boolean).join(' ');
+  const creature = (
+    <g className="ba-creature" filter={silhouette ? `url(#${id}-sil)` : undefined}>
+      {draw ? draw(ink) : <text x="60" y={full ? 100 : 64} textAnchor="middle" dominantBaseline="middle" fontSize={full ? 70 : 58}>{icon}</text>}
+    </g>
+  );
+  const cracks = !silhouette && phase !== 'calma' && (
+    <path d={CRACKS[phase]} transform={full ? 'translate(0 34)' : undefined} stroke={phase === 'furioso' ? '#ff2d4a' : '#fff'} strokeOpacity={phase === 'furioso' ? 0.9 : 0.6} strokeWidth="1.6" fill="none" className="ba-cracks" />
+  );
+  const gems = (cy: number) => tier && !silhouette && (
+    <g className="ba-tier">
+      {Array.from({ length: tier }, (_, i) => {
+        const x = 60 + (i - (tier - 1) / 2) * 9;
+        return <path key={i} d={`M${x} ${cy - 4} L${x + 3.5} ${cy} L${x} ${cy + 4} L${x - 3.5} ${cy} Z`} fill={ring} stroke="#05050a" strokeWidth="0.8" />;
+      })}
+    </g>
+  );
+  if (full) {
+    return (
+      <svg className={classes} viewBox="0 0 120 170" width={size} height={Math.round((size * 170) / 120)} aria-hidden="true" focusable="false">
+      <defs>
+        <radialGradient id={`${id}-bg`} cx="50%" cy="38%" r="70%">
+          <stop offset="0%" stopColor={silhouette ? '#15151d' : p.b} stopOpacity={silhouette ? 1 : 0.95} />
+          <stop offset="70%" stopColor="#07070c" />
+          <stop offset="100%" stopColor="#020204" />
+        </radialGradient>
+        <linearGradient id={`${id}-body`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={p.a} />
+          <stop offset="100%" stopColor={p.b} />
+        </linearGradient>
+        <linearGradient id={`${id}-fire`} x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0%" stopColor={templateId === 'hades' ? '#1d4ed8' : '#dc2626'} />
+          <stop offset="55%" stopColor={templateId === 'hades' ? '#38bdf8' : '#f97316'} />
+          <stop offset="100%" stopColor={templateId === 'hades' ? '#e0f2fe' : '#fde047'} />
+        </linearGradient>
+        {full ? <clipPath id={`${id}-clip`}><rect x="3" y="3" width="114" height="164" rx="14" /></clipPath> : <clipPath id={`${id}-clip`}><circle cx="60" cy="60" r="55" /></clipPath>}
+        {silhouette && (
+          <filter id={`${id}-sil`} x="-5%" y="-5%" width="110%" height="110%">
+            <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0.2  0 0 0 0 0.2  0 0 0 0 0.28  0 0 0 1 0" result="rim" />
+            <feMorphology in="SourceAlpha" operator="erode" radius="1.1" result="inner" />
+            <feColorMatrix in="inner" type="matrix" values="0 0 0 0 0.015  0 0 0 0 0.015  0 0 0 0 0.025  0 0 0 1 0" result="dark" />
+            <feMerge><feMergeNode in="rim" /><feMergeNode in="dark" /></feMerge>
+          </filter>
+        )}
+      </defs>
+        <rect x="2" y="2" width="116" height="166" rx="15" fill={`url(#${id}-bg)`} />
+        <g clipPath={`url(#${id}-clip)`}>
+          <ellipse cx="60" cy="159" rx="46" ry="6" fill="#000" opacity="0.55" />
+          {creature}
+          {cracks}
+        </g>
+        <rect x="2" y="2" width="116" height="166" rx="15" fill="none" stroke={ring} strokeWidth="2.5" />
+        <rect x="6" y="6" width="108" height="158" rx="12" fill="none" stroke={ring} strokeOpacity="0.3" strokeWidth="0.8" />
+        {gems(164)}
+      </svg>
+    );
+  }
   return (
     <svg className={classes} viewBox="0 0 120 120" width={size} height={size} aria-hidden="true" focusable="false">
       <defs>
@@ -412,23 +820,12 @@ export function BossArt({
       <circle cx="60" cy="60" r="57" fill={`url(#${id}-bg)`} />
       {!silhouette && <circle cx="60" cy="60" r="57" fill="none" stroke={ring} strokeOpacity="0.18" strokeWidth="10" className="ba-halo" />}
       <g clipPath={`url(#${id}-clip)`}>
-        <g className="ba-creature" filter={silhouette ? `url(#${id}-sil)` : undefined}>
-          {draw ? draw(ink) : <text x="60" y="64" textAnchor="middle" dominantBaseline="middle" fontSize="58">{icon}</text>}
-        </g>
-        {!silhouette && phase !== 'calma' && (
-          <path d={CRACKS[phase]} stroke={phase === 'furioso' ? '#ff2d4a' : '#fff'} strokeOpacity={phase === 'furioso' ? 0.9 : 0.6} strokeWidth="1.6" fill="none" className="ba-cracks" />
-        )}
+        {creature}
+        {cracks}
       </g>
       <circle cx="60" cy="60" r="57" fill="none" stroke={ring} strokeWidth="2.5" />
       <circle cx="60" cy="60" r="53" fill="none" stroke={ring} strokeOpacity="0.35" strokeWidth="0.8" />
-      {tier && !silhouette && (
-        <g className="ba-tier">
-          {Array.from({ length: tier }, (_, i) => {
-            const x = 60 + (i - (tier - 1) / 2) * 9;
-            return <path key={i} d={`M${x} 110 L${x + 3.5} 114 L${x} 118 L${x - 3.5} 114 Z`} fill={ring} stroke="#05050a" strokeWidth="0.8" />;
-          })}
-        </g>
-      )}
+      {gems(114)}
     </svg>
   );
 }
