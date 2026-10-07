@@ -41,6 +41,54 @@ function Tip({ x, y, width, children }: { x: number; y: number; width: number; c
   );
 }
 
+// ---------- Calendario de días ----------
+
+const WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+
+/** Un cuadrado por día: filas de lunes a domingo y una columna por semana, como un calendario. */
+function DayCalendar({ data, hover, onHover }: { data: DayActivity[]; hover: number | null; onHover: (i: number | null) => void }) {
+  const best = Math.max(1, ...data.map((d) => d.xp));
+  const last = data.length - 1;
+  const offset = (new Date(data[0].ts).getDay() + 6) % 7; // lunes = 0
+  const week = data.length <= 7; // una semana cabe en una fila; más días, una columna por semana
+  const cols = Math.ceil((offset + data.length) / 7);
+  const cell = week ? 26 : cols > 8 ? 16 : 20;
+  const step = cell + 4;
+  const left = 18;
+  const top = 16;
+  const pos = (i: number) => week ? { col: i, row: 0 } : { col: Math.floor((offset + i) / 7), row: (offset + i) % 7 };
+  const months = data.map((d, i) => ({ i, d: new Date(d.ts) })).filter(({ i, d }) => pos(i).row === 0 && d.getDate() <= 7 || i === 0)
+    .filter(({ i }, k, arr) => k === 0 || pos(i).col - pos(arr[k - 1].i).col >= 2);
+  return (
+    <div className="day-cal">
+      <svg className="heat day-strip" width={week ? data.length * step : left + cols * step} height={week ? top + step : top + 7 * step} role="img" aria-label={`${data.filter((d) => d.xp > 0).length} días con actividad de ${data.length}`}>
+        {week && data.map((d, i) => (
+          <text key={d.day} className="axis" x={i * step + cell / 2} y={10} textAnchor="middle">{WEEKDAYS[(new Date(d.ts).getDay() + 6) % 7]}</text>
+        ))}
+        {!week && WEEKDAYS.map((w, r) => (
+          <text key={w} className="axis" x={0} y={top + r * step + cell / 2} dy="0.35em">{w}</text>
+        ))}
+        {data.length > 7 && months.map(({ i, d }) => (
+          <text key={i} className="axis" x={left + pos(i).col * step} y={10}>{d.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '')}</text>
+        ))}
+        {data.map((d, i) => {
+          const { col, row } = pos(i);
+          return (
+            <rect
+              key={d.day} className={`heat-${heatLevel(d.xp, best)}${i === last ? ' today' : ''}${hover === i ? ' on' : ''}`}
+              x={(week ? 0 : left) + col * step} y={top + row * step} width={cell} height={cell} rx={4}
+              onPointerEnter={() => onHover(i)} onPointerLeave={() => onHover(null)}
+            >
+              <title>{`${shortDate(d.ts)}: ${d.xp} XP`}</title>
+            </rect>
+          );
+        })}
+      </svg>
+      <span className="day-legend muted small-text">menos {[0, 1, 2, 3, 4].map((l) => <i key={l} className={`heat-${l}`} />)} más</span>
+    </div>
+  );
+}
+
 // ---------- XP diario ----------
 
 const RANGES = [
@@ -49,7 +97,7 @@ const RANGES = [
   { days: 90, label: '90 días' },
 ];
 
-/** Actividad: XP de cada día (línea) y, debajo, una tira con un cuadrado por día que brilla según lo que hiciste. */
+/** Actividad: XP de cada día (línea) y, debajo, un calendario con un cuadrado por día que brilla según lo que hiciste. */
 export function XpChart({ state, now }: { state: GameState; now: number }) {
   const [days, setDays] = useState(30);
   const [hover, setHover] = useState<number | null>(null);
@@ -61,7 +109,7 @@ export function XpChart({ state, now }: { state: GameState; now: number }) {
   const year = activityByDay(state, now, 365);
   const activeDays = data.filter((d) => d.xp > 0).length;
 
-  const STRIP = 22;
+  const STRIP = 0;
   const H = 210 + STRIP;
   const m = { top: 22, right: 18, bottom: 26 + STRIP, left: 40 };
   const iw = Math.max(10, width - m.left - m.right);
@@ -138,17 +186,6 @@ export function XpChart({ state, now }: { state: GameState; now: number }) {
           {hover === null && (
             <text className="end-label mono" x={x(last) - 8} y={y(data[last].xp) - 10} textAnchor="end">{data[last].xp} XP</text>
           )}
-          <g className="heat day-strip">
-            {data.map((d, i) => {
-              const w = Math.max(2, Math.min(18, iw / data.length - (data.length > 60 ? 1 : 3)));
-              return (
-                <rect
-                  key={d.day} className={`heat-${heatLevel(d.xp, best.xp)}${i === last ? ' today' : ''}${hover === i ? ' on' : ''}`}
-                  x={x(i) - w / 2} y={H - STRIP + 4} width={w} height={12} rx={Math.min(3, w / 2)}
-                />
-              );
-            })}
-          </g>
           <rect x={m.left} y={0} width={iw} height={H} fill="transparent" onPointerMove={onMove} onPointerLeave={() => setHover(null)} />
         </svg>
         {h && hover !== null && (
@@ -159,6 +196,7 @@ export function XpChart({ state, now }: { state: GameState; now: number }) {
           </Tip>
         )}
       </div>
+      <DayCalendar data={data} hover={hover} onHover={setHover} />
       <details className="chart-table">
         <summary>Ver como tabla</summary>
         <table>

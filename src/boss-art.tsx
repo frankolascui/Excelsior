@@ -1,6 +1,6 @@
 // Retratos de los bosses: un medallón SVG por bestia, en el estilo oscuro con degradados de la app.
 // En silueta (bloqueados) todo se vuelve negro y los ojos se apagan. Las fases (herido / furioso) añaden grietas y brillo rojo.
-import { useId, type ReactNode } from 'react';
+import { useId, useLayoutEffect, useRef, type ReactNode } from 'react';
 import type { BossPhase, BossTier } from './bosses';
 
 export const TIER_COLOR: Record<BossTier, string> = {
@@ -827,5 +827,118 @@ export function BossArt({
       <circle cx="60" cy="60" r="53" fill="none" stroke={ring} strokeOpacity="0.35" strokeWidth="0.8" />
       {gems(114)}
     </svg>
+  );
+}
+
+// ---------- Pixel art ----------
+// El mismo boss de cuerpo entero, rasterizado a una rejilla pequeña y pasado por un filtro de sprite:
+// bordes duros, colores en escalones, contorno oscuro de 1 píxel, luz arriba-izquierda y sombra abajo-derecha.
+
+const SPRITE_W = 60;
+const SPRITE_H = 85;
+const OUTLINE = [22, 8, 14];
+
+/** Lleva un color a una rampa de pixel art: mismo tono, saturación algo más alta y luz en 6 escalones. */
+function ramp(r: number, g: number, b: number, k: number): [number, number, number] {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0;
+  let l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h /= 6;
+  }
+  l = Math.min(0.92, Math.max(0.06, Math.round(Math.min(1, l * k) * 6) / 6));
+  s = Math.min(1, s * 1.15);
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const pp = 2 * l - q;
+  const hue = (tt: number) => {
+    if (tt < 0) tt += 1;
+    if (tt > 1) tt -= 1;
+    return tt < 1 / 6 ? pp + (q - pp) * 6 * tt : tt < 1 / 2 ? q : tt < 2 / 3 ? pp + (q - pp) * (2 / 3 - tt) * 6 : pp;
+  };
+  return s === 0 ? [l * 255, l * 255, l * 255] : [hue(h + 1 / 3) * 255, hue(h) * 255, hue(h - 1 / 3) * 255];
+}
+
+/** Convierte la imagen en sprite. Exportada para poder probarla. */
+export function pixelize(px: Uint8ClampedArray, w: number, h: number): void {
+  const solid = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) solid[i] = px[i * 4 + 3] >= 110 ? 1 : 0;
+  const at = (x: number, y: number) => (x >= 0 && y >= 0 && x < w && y < h ? solid[y * w + x] : 0);
+  const out = new Uint8ClampedArray(px.length);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      if (solid[y * w + x]) {
+        // Luz desde arriba a la izquierda; sombra en el borde de abajo a la derecha.
+        const lit = !at(x, y - 1) || !at(x - 1, y);
+        const shade = !at(x, y + 1) || !at(x + 1, y);
+        const [r, g, b] = ramp(px[i], px[i + 1], px[i + 2], lit ? 1.35 : shade ? 0.62 : 1);
+        out[i] = r; out[i + 1] = g; out[i + 2] = b; out[i + 3] = 255;
+      } else if (at(x - 1, y) || at(x + 1, y) || at(x, y - 1) || at(x, y + 1)) {
+        out.set(OUTLINE, i);
+        out[i + 3] = 255;
+      }
+    }
+  }
+  px.set(out);
+}
+
+/** Boss de cuerpo entero en pixel art. `scale` = píxeles de pantalla por píxel del sprite. */
+export function PixelBoss({ templateId, icon, phase = 'calma', scale = 3, className = '' }: {
+  templateId?: string; icon: string; phase?: BossPhase; scale?: number; className?: string;
+}) {
+  const uidRaw = useId();
+  const id = `px-${uidRaw.replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  const src = useRef<SVGSVGElement>(null);
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const draw = templateId ? FIGURES[templateId] : undefined;
+  const p = PALETTE[draw ? templateId! : 'custom'];
+  const ink: Ink = { body: `url(#${id}-body)`, dark: p.b, light: p.a, eye: phase === 'furioso' ? '#ff2d4a' : p.eye, line: 'rgba(0,0,0,0.55)', fire: `url(#${id}-fire)` };
+  useLayoutEffect(() => {
+    const svg = src.current;
+    const cv = canvas.current;
+    if (!svg || !cv) return;
+    const markup = new XMLSerializer().serializeToString(svg);
+    const img = new Image();
+    let alive = true;
+    img.onload = () => {
+      const ctx = alive ? cv.getContext('2d', { willReadFrequently: true }) : null;
+      if (!ctx) return;
+      ctx.clearRect(0, 0, SPRITE_W, SPRITE_H);
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(img, 0, 0, SPRITE_W, SPRITE_H);
+      try {
+        const data = ctx.getImageData(0, 0, SPRITE_W, SPRITE_H);
+        pixelize(data.data, SPRITE_W, SPRITE_H);
+        ctx.putImageData(data, 0, 0);
+      } catch { /* si el navegador no deja leer el lienzo, se queda sin el filtro de sprite */ }
+    };
+    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`;
+    return () => { alive = false; };
+  }, [templateId, icon, phase]);
+  return (
+    <span className={`pixel-boss phase-${phase} ${className}`} style={{ width: SPRITE_W * scale, height: SPRITE_H * scale }} aria-hidden="true">
+      <svg ref={src} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 170" width={SPRITE_W * 4} height={SPRITE_H * 4} className="pixel-src">
+        <defs>
+          <linearGradient id={`${id}-body`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={p.a} />
+            <stop offset="100%" stopColor={p.b} />
+          </linearGradient>
+          <linearGradient id={`${id}-fire`} x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stopColor={templateId === 'hades' ? '#1d4ed8' : '#dc2626'} />
+            <stop offset="55%" stopColor={templateId === 'hades' ? '#38bdf8' : '#f97316'} />
+            <stop offset="100%" stopColor={templateId === 'hades' ? '#e0f2fe' : '#fde047'} />
+          </linearGradient>
+        </defs>
+        {draw ? draw(ink) : <text x="60" y="100" textAnchor="middle" dominantBaseline="middle" fontSize="70">{icon}</text>}
+        {phase !== 'calma' && (
+          <path d={CRACKS[phase]} transform="translate(0 34)" stroke={phase === 'furioso' ? '#ff2d4a' : '#fff'} strokeOpacity="0.9" strokeWidth="2.2" fill="none" />
+        )}
+      </svg>
+      <canvas ref={canvas} width={SPRITE_W} height={SPRITE_H} style={{ width: SPRITE_W * scale, height: SPRITE_H * scale }} />
+    </span>
   );
 }

@@ -205,7 +205,7 @@ const meC = db.guild_contributions.find((c) => c.user_id === ME && c.challenge_i
 check(meC?.deep === 50, `su aportación sube 50 min (${meC?.deep})`);
 check(!!db.guild_challenges[0].completed_at, 'al cumplir la meta el reto se marca como ganado');
 await openGuilds(page);
-check(await page.isVisible('.challenge.st-won :text("¡Reto superado!")'), 've la victoria');
+check(await page.isVisible('.challenge.st-won :text("¡Encargo cumplido!")'), 've la victoria');
 await page.click('.challenge.st-won button:has-text("Cobrar +40 XP")');
 await page.waitForTimeout(400);
 check(await page.isVisible('.challenge.st-won :text("Recompensa cobrada")'), 'cobra la recompensa una vez');
@@ -215,12 +215,30 @@ check(await page.isVisible('.guild-card :text("50 XP de gremio")'), 'el gremio g
 check(await page.isVisible('#pick-h'), 'y puede elegir el siguiente reto');
 await page.screenshot({ path: 'e2e/17-guild.png', fullPage: true });
 
-// Sale del gremio: el liderazgo pasa a Ana.
+// Rangos: el líder nombra colíder a Ana.
+await page.click('section:has(#gm-h) li:has-text("Ana") button:has-text("Hacer colíder")');
+await page.waitForTimeout(400);
+check(db.guild_members.find((m) => m.user_id === ANA)?.role === 'officer', 'Ana pasa a colíder en el servidor');
+check(await page.isVisible('section:has(#gm-h) li:has-text("Ana") .rank-tag.officer'), 'y se ve su rango ⚔️ Colíder');
+check(await page.isVisible('section:has(#gm-h) li:has-text("Nicolas") .rank-tag.leader'), 'él aparece como 👑 Líder');
+
+// Sale del gremio: el liderazgo pasa a Ana (colíder más antigua).
 await page.click('text=Salir del gremio');
+check(await page.isVisible('text=Ana será el nuevo líder'), 'avisa de quién hereda el gremio');
 await page.click('button:has-text("Sí, salir")');
 await page.waitForSelector('#gnew-h', { timeout: 5000 });
 check(db.guilds.find((g) => g.id === mine.id)?.owner === ANA, 'al salir, Ana pasa a ser la líder');
 check(!db.guild_members.some((m) => m.user_id === ME), 'y él ya no es miembro');
+check(db.guild_members.find((m) => m.user_id === ANA)?.role === 'member', 'Ana deja de contar como colíder al ser líder');
+
+// Vuelve como miembro raso: no acepta encargos, no invita, no expulsa.
+db.guild_members.push({ user_id: ME, guild_id: mine.id, joined_at: iso(Date.now()), role: 'member' });
+await openGuilds(page);
+check(await page.isVisible('.rank-note:has-text("Solo el líder y los colíderes aceptan encargos")'), 'miembro: ve el tablón pero no puede aceptar encargos');
+check(await page.locator('.pick-card button').count() === 0, 'miembro: sin botones de aceptar');
+check(await page.isVisible('text=Solo el líder y los colíderes pueden invitar'), 'miembro: no puede invitar');
+check(await page.locator('section:has(#gm-h) button:has-text("Expulsar")').count() === 0, 'miembro: no puede expulsar');
+db.guild_members = db.guild_members.filter((m) => m.user_id !== ME);
 
 // Móvil: sin scroll horizontal con un reto activo.
 db.guild_members.push({ user_id: ME, guild_id: mine.id, joined_at: iso(Date.now()) });
@@ -233,6 +251,9 @@ mp.on('pageerror', (e) => errors.push(e.message));
 await login(mp);
 await openGuilds(mp);
 await mp.waitForSelector('.challenge.st-active', { timeout: 5000 });
+check(await mp.isVisible('.guild-fight :text("Jefe de gremio")') && await mp.isVisible('.guild-fight canvas'), 'el jefe de gremio sale como combate con su sprite');
+const hp = Number((await mp.locator('.guild-fight .fight-hp .mono').last().innerText()).split('/')[0]);
+check(hp > 0 && hp <= 69, `su vida baja con lo que aporta el gremio (${hp} / 100)`);
 check(await mp.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'móvil: Gremios sin scroll horizontal');
 await mp.screenshot({ path: 'e2e/17-guild-mobile.png', fullPage: true });
 

@@ -14,7 +14,7 @@ import { dayKey, levelInfo, totalXp } from './game';
 import { sfx } from './sfx';
 import { confetti } from './confetti';
 import { ConfirmButton, useNow } from './ui';
-import { BossArt, TIER_COLOR } from './boss-art';
+import { BossArt, PixelBoss, TIER_COLOR } from './boss-art';
 import './arena.css';
 
 const BOSS_ICONS = ['🐉', '🐍', '🐂', '🐺', '🦁', '👁️', '🌀', '🌪️', '🦂', '🦅', '🕷️', '💀', '👹', '🧟', '🦈', '🐙'];
@@ -120,14 +120,29 @@ function BossCard({ boss: b, st, onFlee }: { boss: Boss; st: ReturnType<typeof b
   const phase = bossPhase(b.hp - shown, b.hp);
   const phaseLabel = PHASE_LABEL[phase];
   const urgent = st.msLeft < 86_400_000;
+  const since = new Date(b.createdAt).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/\./g, '');
   return (
     <article
-      className={`boss phase-${phase}${hit ? ' hit' : ''}`}
+      className={`boss boss-fight phase-${phase}${hit ? ' hit' : ''}`}
       style={t ? { ['--tier' as string]: TIER_COLOR[t.tier] } : undefined}
       aria-label={`${b.name}: ${Math.round(st.hpLeft)} de ${b.hp} de vida`}
     >
+      <div className="boss-actions">
+        <ConfirmButton label="Huir" confirmLabel="Sí, huir" onConfirm={onFlee} />
+      </div>
+      <header className="fight-head">
+        <span className="fight-eyebrow mono">— Boss</span>
+        <h4 className="boss-name">{b.name}</h4>
+        <span className="fight-since mono">desde {since}</span>
+      </header>
+      <div className="fight-hp">
+        <span className="fight-hp-label mono">HP</span>
+        <HpBar hp={b.hp} shown={shown} ghost={hit ? shown - hit : shown} />
+        <span className="mono boss-hp">{fmtNum(st.hpLeft)} / {b.hp}</span>
+      </div>
       <span className="boss-stage" aria-hidden="true">
-        <BossArt templateId={t?.id} icon={b.icon} tier={t?.tier} size={112} phase={phase} full />
+        <span className="fight-aura" />
+        <PixelBoss templateId={t?.id} icon={b.icon} phase={phase} scale={3} className="boss-art" />
         <span className="boss-shadow" />
         {hit > 0 && <span className="dmg-float mono">−{fmtNum(hit)}</span>}
         {hit > 0 && <span className="slash" />}
@@ -138,21 +153,12 @@ function BossCard({ boss: b, st, onFlee }: { boss: Boss; st: ReturnType<typeof b
           {t && <span className="saga-tag">{sagaOf(t).name}</span>}
           {phaseLabel && <span className={`phase-tag ${phase}`}>{phaseLabel}</span>}
         </div>
-        <h4 className="boss-name">{b.name}</h4>
         {t && <p className="boss-lore">«{t.lore}»</p>}
-        <HpBar hp={b.hp} shown={shown} ghost={hit ? shown - hit : shown} />
-        <div className="boss-hp-row">
-          <span className="mono boss-hp">{fmtNum(st.hpLeft)} / {b.hp} HP</span>
-          <span className="muted small-text">{SOURCE_LABEL[b.source].unit}</span>
-        </div>
         <p className="boss-meta">
           <span>⚔️ {SOURCE_LABEL[b.source].hint}</span>
           <span className={urgent ? 'urgent' : ''}>⏳ quedan {timeLeft(st.msLeft)}</span>
           <span className="loot">🪙 botín {b.reward}</span>
         </p>
-      </div>
-      <div className="boss-actions">
-        <ConfirmButton label="Huir" confirmLabel="Sí, huir" onConfirm={onFlee} />
       </div>
     </article>
   );
@@ -223,7 +229,7 @@ function SummonIntro({ boss, onClose }: { boss: Boss; onClose: () => void }) {
       <div className="intro-rays" aria-hidden="true" style={t ? { ['--tier' as string]: TIER_COLOR[t.tier] } : undefined} />
       <p className="eyebrow intro-eyebrow">{t ? `${sagaOf(t).name} · Rango ${TIERS[t.tier].roman}` : 'Boss propio'}</p>
       <div className="intro-art">
-        <BossArt templateId={t?.id} icon={boss.icon} tier={t?.tier} size={170} full />
+        <PixelBoss templateId={t?.id} icon={boss.icon} scale={3} className="boss-art" />
       </div>
       <p className="intro-cry">¡Ha aparecido!</p>
       <h2 className="intro-name">{boss.name}</h2>
@@ -247,7 +253,7 @@ function VictoryOverlay({ boss, state, now, onClose }: { boss: Boss; state: Game
       <div className="intro-rays gold" aria-hidden="true" />
       <p className="eyebrow intro-eyebrow">{t ? sagaOf(t).name : 'Boss propio'}</p>
       <div className="intro-art fallen">
-        <BossArt templateId={t?.id} icon={boss.icon} tier={t?.tier} size={140} phase="furioso" defeated full />
+        <PixelBoss templateId={t?.id} icon={boss.icon} phase="furioso" scale={2.4} className="boss-art is-defeated" />
       </div>
       <p className="victory-title">¡Victoria!</p>
       <h2 className="intro-name">Has derrotado a {t ? t.short : boss.name}</h2>

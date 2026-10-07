@@ -167,7 +167,7 @@ await page.click('.path-node:has-text("Titán")', { force: true }); // el aro gi
 check(await seen('.path-detail:has-text("Titán") >> text=Más adelante'), 'pulsar un avatar del camino muestra sus requisitos');
 check(await seen('text=125 XP global en total'), 'personaje muestra 125 XP totales');
 check(await seen('.chart-sub:has-text("125 XP en 30 días")'), 'gráfica de XP: 125 XP en 30 días');
-check((await page.$$('.day-strip rect')).length === 30, 'Actividad: una tira con un cuadrado por día bajo la gráfica');
+check((await page.$$('.day-strip rect')).length === 30, 'Actividad: un calendario con un cuadrado por día bajo la gráfica');
 check(await seen('.day-strip rect.heat-4') && await seen('.day-strip rect.today.heat-0'), 'ayer brilla al máximo y hoy (sin XP) está vacío');
 check(await seen('.chart-sub:has-text("racha")'), 'Actividad muestra días activos y rachas');
 await page.click('[role=radio]:has-text("7 días")');
@@ -276,7 +276,7 @@ await page.click('.nav-item:has-text("Hábitos")');
 await page.click('button[aria-label="Completar Tocar la guitarra"]');
 check(await seen('.toast:has-text("HP a Hidra")'), 'completar un hábito golpea a la Hidra');
 await page.click('.nav-item:has-text("Arena")');
-check(await seen('.boss .mono:has-text("685 / 700 HP")'), 'la Hidra baja a 685/700 HP');
+check(await seen('.boss .boss-hp:has-text("685 / 700")'), 'la Hidra baja a 685/700 HP');
 await page.waitForTimeout(1500);
 await page.screenshot({ path: `${out}/09-arena.png`, fullPage: true });
 await (await page.$('[data-tour="shop"]')).screenshot({ path: `${out}/09b-shop.png` });

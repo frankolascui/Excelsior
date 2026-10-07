@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { addHabit, createProfile, emptyState, startTimer, stopTimer, toggleHabit, totalXp } from './game';
 import { attributeXp } from './attributes';
 import {
-  buildGoal, challengeProgress, challengeState, challengeTemplate, claimReward, contributionFor, guildLevel, guildXpFrom, memberShare,
+  buildGoal, byRank, canCommand, canKick, rankOf, successor, challengeProgress, challengeState, challengeTemplate, claimReward, contributionFor, guildLevel, guildXpFrom, memberShare,
   type ChallengeRow,
 } from './guilds';
 
@@ -78,5 +78,29 @@ describe('aportación y recompensa', () => {
     expect(guildXpFrom([won, lost, live])).toBe(150);
     expect(guildLevel(150).level).toBe(2);
     expect(guildLevel(0).level).toBe(1);
+  });
+});
+
+describe('rangos', () => {
+  const m = (user_id: string, joined: number, role: 'officer' | 'member' = 'member') => ({ user_id, guild_id: 'g', joined_at: new Date(NOW + joined * DAY).toISOString(), role });
+  const team = [m('lider', 0), m('ana', 1), m('leo', 2, 'officer'), m('eva', 3, 'officer')];
+
+  it('líder, colíderes y miembros; solo los dos primeros aceptan encargos', () => {
+    expect(team.map((x) => rankOf('lider', x))).toEqual(['leader', 'member', 'officer', 'officer']);
+    expect(canCommand('leader') && canCommand('officer')).toBe(true);
+    expect(canCommand('member') || canCommand(null)).toBe(false);
+    expect(byRank('lider', team).map((x) => x.user_id)).toEqual(['lider', 'leo', 'eva', 'ana']);
+  });
+
+  it('el líder expulsa a cualquiera; un colíder, solo a miembros', () => {
+    expect(canKick('leader', 'officer')).toBe(true);
+    expect(canKick('officer', 'member')).toBe(true);
+    expect(canKick('officer', 'officer') || canKick('officer', 'leader') || canKick('member', 'member')).toBe(false);
+  });
+
+  it('si se va el líder hereda el colíder más antiguo; si no hay, el miembro más antiguo', () => {
+    expect(successor('lider', team)?.user_id).toBe('leo');
+    expect(successor('lider', team.slice(0, 2))?.user_id).toBe('ana');
+    expect(successor('lider', team.slice(0, 1))).toBeUndefined();
   });
 });

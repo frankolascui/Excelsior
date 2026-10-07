@@ -1,9 +1,10 @@
-// Pantalla de Gremios (V2): fundar o aceptar invitación, miembros, retos con la regla del 30 % y recompensas.
+// Pantalla de Gremios (V2): fundar o aceptar invitación, miembros con rangos, encargos con la regla del 30 % y recompensas.
 import { useEffect, useState, type FormEvent } from 'react';
 import type { Game } from './screens';
 import { RequireAccount } from './account';
 import { useCloud } from './cloud';
 import { Face } from './friends';
+import { PixelBoss } from './boss-art';
 import { refreshSocial, useSocial, type PublicProfile } from './social';
 import { formatMinutes } from './ui';
 import { confetti } from './confetti';
@@ -11,6 +12,7 @@ import { sfx } from './sfx';
 import {
   acceptInvite, buildGoal, cancelInvite, CHALLENGES, challengeProgress, challengeState, challengeTemplate, claimReward, createGuild,
   declineInvite, EMBLEMS, GUILD_MAX, guildLevel, guildXpFrom, invite, kick, leaveGuild, memberShare, METRIC_LABEL, refreshGuild,
+  byRank, canCommand, canKick, demote, makeLeader, OFFICER_MAX, promote, RANK_LABEL, rankOf, successor, type Rank,
   startChallenge, useGuild, type ChallengeRow, type ChallengeTemplate, type Contribution, type Goal, type Metric,
 } from './guilds';
 
@@ -96,7 +98,7 @@ function RuleCard() {
   return (
     <section className="panel quiet rule-card">
       <h3>⚖️ La regla del 30 %</h3>
-      <p className="hint">En cada reto, a nadie le cuenta más del 30 % de la meta. Si haces más, se ve, pero no suma: el gremio gana cuando todos empujan, no cuando uno carga con todo. En gremios de menos de 4, el tope sube a partes iguales (la mitad con 2, un tercio con 3).</p>
+      <p className="hint">En cada encargo, a nadie le cuenta más del 30 % de la meta. Si haces más, se ve, pero no suma: el gremio gana cuando todos empujan, no cuando uno carga con todo. En gremios de menos de 4, el tope sube a partes iguales (la mitad con 2, un tercio con 3).</p>
     </section>
   );
 }
@@ -121,6 +123,8 @@ function ChallengeCard({ game, c, now }: { game: Game; c: ChallengeRow; now: num
   const contribs: Contribution[] = g.contributions.filter((x) => x.challenge_id === c.id);
   const p = challengeProgress(c.goal, contribs);
   const st = challengeState(c, now);
+  const fight = st === 'active' && t?.kind === 'jefe' && !!t.art;
+  const hpLeft = Math.max(0, Math.round((1 - p.fraction) * 100));
   const mine = contribs.find((x) => x.user_id === me);
   const claimed = (game.state.guildClaims ?? []).includes(c.id);
   const canClaim = st === 'won' && !claimed && !!mine && (mine.deep + mine.habits + mine.xp > 0);
@@ -134,6 +138,25 @@ function ChallengeCard({ game, c, now }: { game: Game; c: ChallengeRow; now: num
   }
   return (
     <section className={`panel challenge ${t?.kind ?? ''} st-${st}`} aria-labelledby={`ch-${c.id}`}>
+      {fight ? (
+        <div className="guild-fight">
+          <header className="fight-head">
+            <span className="fight-eyebrow mono">— Jefe de gremio</span>
+            <h3 id={`ch-${c.id}`} className="fight-name">{t!.name}</h3>
+            <span className="fight-since mono">{timeLeft(c.ends_at, now)}</span>
+          </header>
+          <div className="fight-hp">
+            <span className="fight-hp-label mono">HP</span>
+            <Bar value={hpLeft} goal={100} />
+            <span className="mono">{hpLeft} / 100</span>
+          </div>
+          <span className="fight-stage" aria-hidden="true">
+            <span className="fight-aura" />
+            <PixelBoss templateId={t!.art} icon={t!.icon} phase={hpLeft <= 25 ? 'furioso' : hpLeft <= 60 ? 'herido' : 'calma'} scale={2.4} />
+          </span>
+          <p className="muted small-text">{t!.lore}</p>
+        </div>
+      ) : (
       <div className="ch-head">
         <span className="ch-icon" aria-hidden="true">{t?.icon ?? '⚔️'}</span>
         <div className="ch-title">
@@ -143,6 +166,7 @@ function ChallengeCard({ game, c, now }: { game: Game; c: ChallengeRow; now: num
         </div>
         <span className="ch-pct mono">{Math.round(p.fraction * 100)} %</span>
       </div>
+      )}
       {p.per.map((x) => (
         <div key={x.metric} className="ch-metric">
           <span className="ch-label">{METRIC_LABEL[x.metric]} <span className="mono">{fmt(x.metric, x.counted)} / {fmt(x.metric, x.goal)}</span>
@@ -156,7 +180,7 @@ function ChallengeCard({ game, c, now }: { game: Game; c: ChallengeRow; now: num
       </p>
       {st === 'won' && (
         <div className="ch-win">
-          <strong>🏆 ¡Reto superado!</strong>
+          <strong>🏆 ¡Encargo cumplido!</strong>
           {canClaim ? <button className="primary small" onClick={claim}>Cobrar +{t?.reward} XP</button>
             : claimed ? <span className="muted small-text">Recompensa cobrada</span>
             : <span className="muted small-text">Solo cobra quien aportó algo</span>}
@@ -188,7 +212,7 @@ function ChallengeCard({ game, c, now }: { game: Game; c: ChallengeRow; now: num
   );
 }
 
-function PickChallenge({ game, members }: { game: Game; members: number }) {
+function PickChallenge({ game, members, command, leader }: { game: Game; members: number; command: boolean; leader: string }) {
   const [busy, act] = useAct(game);
   const card = (t: ChallengeTemplate) => (
     <li key={t.id} className={`pick-card ${t.kind}`}>
@@ -197,15 +221,18 @@ function PickChallenge({ game, members }: { game: Game; members: number }) {
       <span className="muted small-text">{t.lore}</span>
       <span className="mono small-text">{goalLine(buildGoal(t, members))} · {t.days} días</span>
       <span className="small-text">+{t.reward} XP cada uno · +{t.guildXp} XP de gremio</span>
-      <button className="primary small" disabled={busy} onClick={() => act(() => startChallenge(t, game.state), `¡${t.name} en marcha!`)}>
-        {t.kind === 'jefe' ? 'Invocar jefe' : 'Aceptar misión'}
-      </button>
+      {command && (
+        <button className="primary small" disabled={busy} onClick={() => act(() => startChallenge(t, game.state), `¡${t.name} en marcha!`)}>
+          {t.kind === 'jefe' ? 'Invocar jefe' : 'Aceptar encargo'}
+        </button>
+      )}
     </li>
   );
   return (
     <section className="panel" aria-labelledby="pick-h">
-      <header className="panel-head"><h3 id="pick-h">Elige el próximo reto</h3></header>
-      <p className="hint">Las metas se calculan para {members} {members === 1 ? 'miembro' : 'miembros'}. Cuenta lo que hagáis desde que empieza el reto.</p>
+      <header className="panel-head"><h3 id="pick-h">Tablón de encargos</h3></header>
+      <p className="hint">Las metas se calculan para {members} {members === 1 ? 'miembro' : 'miembros'}. Cuenta lo que hagáis desde que empieza el encargo.</p>
+      {!command && <p className="hint rank-note">👑 Solo el líder y los colíderes aceptan encargos. Dile a {leader} cuál os apetece.</p>}
       <p className="eyebrow">Misiones</p>
       <ul className="pick-grid">{CHALLENGES.filter((t) => t.kind === 'mision').map(card)}</ul>
       <p className="eyebrow">Jefes</p>
@@ -222,41 +249,69 @@ function Members({ game }: { game: Game }) {
   const me = useCloud().userId!;
   const [busy, act] = useAct(game);
   const [confirm, setConfirm] = useState<string | null>(null);
-  const isOwner = g.guild?.owner === me;
+  const owner = g.guild?.owner;
+  const mine = g.members.find((m) => m.user_id === me);
+  const myRankNow: Rank | null = mine ? rankOf(owner, mine) : null;
+  const officers = g.members.filter((m) => rankOf(owner, m) === 'officer').length;
   const memberIds = new Set(g.members.map((m) => m.user_id));
   const invited = new Set(g.sent.map((i) => i.user_id));
   const friends: PublicProfile[] = social.rows.filter((r) => r.status === 'accepted')
     .map((r) => social.people[r.requester === me ? r.addressee : r.requester]).filter(Boolean)
     .filter((p) => !memberIds.has(p.user_id));
   const full = g.members.length >= GUILD_MAX;
+  const ask = (key: string, label: string, run: () => Promise<string | null>, ok?: string, danger = false) =>
+    confirm === key
+      ? <button className={`ghost small${danger ? ' danger-text' : ''}`} disabled={busy} onClick={() => { setConfirm(null); void act(run, ok); }}>{label}</button>
+      : null;
   return (
     <section className="panel" aria-labelledby="gm-h">
       <header className="panel-head"><h3 id="gm-h">Miembros</h3><span className="count mono">{g.members.length}/{GUILD_MAX}</span></header>
       <ul className="list">
-        {g.members.map((m) => {
+        {byRank(owner, g.members).map((m) => {
           const p = g.people[m.user_id];
+          const rank = rankOf(owner, m);
+          const name = p?.name ?? 'Miembro';
+          const isLeader = myRankNow === 'leader' && m.user_id !== me;
+          const pending = confirm?.endsWith(m.user_id) ? confirm : null;
           return (
-            <li key={m.user_id} className="item person">
+            <li key={m.user_id} className={`item person rank-${rank}`}>
               <span className="person-main">
                 {p && <Face p={p} size={44} />}
                 <span className="item-body">
-                  <span className="item-title">{p?.name ?? 'Miembro'} {g.guild?.owner === m.user_id && <span className="leader-tag">👑 Líder</span>}</span>
+                  <span className="item-title">{name}{m.user_id === me && ' (tú)'} <span className={`rank-tag ${rank}`}>{RANK_LABEL[rank].icon} {RANK_LABEL[rank].name}</span></span>
                   <span className="muted small-text">{p ? `Nv ${p.level} · ${p.avatar_name}` : ''}</span>
                 </span>
               </span>
-              {isOwner && m.user_id !== me && (
+              {m.user_id !== me && (isLeader || canKick(myRankNow, rank)) && (
                 <span className="item-actions">
-                  {confirm === m.user_id
-                    ? <button className="ghost small danger-text" disabled={busy} onClick={() => { setConfirm(null); void act(() => kick(m.user_id, game.state)); }}>Sí, expulsar</button>
-                    : <button className="link" onClick={() => setConfirm(m.user_id)}>Expulsar</button>}
+                  {pending ? (
+                    <>
+                      {ask(`kick:${m.user_id}`, `Sí, expulsar a ${name}`, () => kick(m.user_id, game.state), undefined, true)}
+                      {ask(`lead:${m.user_id}`, `Sí, ${name} será líder`, () => makeLeader(m.user_id, game.state), `${name} es el nuevo líder`)}
+                      <button className="link" onClick={() => setConfirm(null)}>Cancelar</button>
+                    </>
+                  ) : (
+                    <>
+                      {isLeader && rank === 'member' && officers < OFFICER_MAX && (
+                        <button className="ghost small" disabled={busy} onClick={() => act(() => promote(m.user_id, game.state), `${name} es colíder`)}>Hacer colíder</button>
+                      )}
+                      {isLeader && rank === 'officer' && (
+                        <button className="ghost small" disabled={busy} onClick={() => act(() => demote(m.user_id, game.state))}>Quitar colíder</button>
+                      )}
+                      {isLeader && <button className="link" onClick={() => setConfirm(`lead:${m.user_id}`)}>Ceder liderazgo</button>}
+                      {canKick(myRankNow, rank) && <button className="link danger-text" onClick={() => setConfirm(`kick:${m.user_id}`)}>Expulsar</button>}
+                    </>
+                  )}
                 </span>
               )}
             </li>
           );
         })}
       </ul>
+      <p className="hint">👑 El líder nombra hasta {OFFICER_MAX} colíderes. Líder y colíderes aceptan encargos e invitan; todos aportan.</p>
       <p className="eyebrow">Invitar amigos</p>
-      {full ? <p className="hint">El gremio está completo.</p> : friends.length === 0
+      {!canCommand(myRankNow) ? <p className="hint">Solo el líder y los colíderes pueden invitar. Si quieres traer a un amigo, díselo a ellos.</p>
+        : full ? <p className="hint">El gremio está completo.</p> : friends.length === 0
         ? <p className="hint">Añade amigos en la pestaña Amigos para poder invitarlos.</p>
         : (
           <ul className="list">
@@ -287,6 +342,8 @@ function InGuild({ game, now }: { game: Game; now: number }) {
   const past = g.challenges.filter((c) => c !== active);
   const wins = g.challenges.filter((c) => c.completed_at).length;
   const guild = g.guild!;
+  const mine = g.members.find((m) => m.user_id === me);
+  const rank: Rank | null = mine ? rankOf(guild.owner, mine) : null;
   return (
     <>
       <section className="panel guild-card">
@@ -294,12 +351,12 @@ function InGuild({ game, now }: { game: Game; now: number }) {
         <div className="guild-info">
           <h2>{guild.name}</h2>
           {guild.motto && <p className="guild-motto">«{guild.motto}»</p>}
-          <p className="muted small-text">Nivel de gremio <strong className="mono">{lvl.level}</strong> · {gxp} XP de gremio · {wins} {wins === 1 ? 'reto ganado' : 'retos ganados'} · {g.members.length}/{GUILD_MAX} miembros</p>
+          <p className="muted small-text">Nivel de gremio <strong className="mono">{lvl.level}</strong> · {gxp} XP de gremio · {wins} {wins === 1 ? 'encargo cumplido' : 'encargos cumplidos'} · {g.members.length}/{GUILD_MAX} miembros</p>
           <span className="g-bar level" aria-hidden="true"><span className="g-fill" style={{ width: `${Math.round(lvl.progress * 100)}%` }} /></span>
         </div>
       </section>
 
-      {active ? <ChallengeCard game={game} c={active} now={now} /> : <PickChallenge game={game} members={g.members.length} />}
+      {active ? <ChallengeCard game={game} c={active} now={now} /> : <PickChallenge game={game} members={g.members.length} command={canCommand(rank)} leader={g.people[guild.owner]?.name ?? 'tu líder'} />}
 
       {past.length > 0 && (
         <section className="panel" aria-labelledby="gpast-h">
@@ -314,7 +371,8 @@ function InGuild({ game, now }: { game: Game; now: number }) {
       <section className="panel quiet">
         {leaving ? (
           <div className="row">
-            <span>{guild.owner === me && g.members.length > 1 ? 'El liderazgo pasará al miembro más antiguo. ¿Seguro?' : g.members.length === 1 ? 'Eres el último: el gremio se disolverá. ¿Seguro?' : '¿Seguro que quieres salir?'}</span>
+            <span>{g.members.length === 1 ? 'Eres el último: el gremio se disolverá. ¿Seguro?'
+              : guild.owner === me ? `${g.people[successor(me, g.members)?.user_id ?? '']?.name ?? 'Otro miembro'} será el nuevo líder. ¿Seguro?` : '¿Seguro que quieres salir?'}</span>
             <button className="ghost small danger-text" disabled={busy} onClick={() => act(() => leaveGuild(game.state), 'Has salido del gremio')}>Sí, salir</button>
             <button className="link" onClick={() => setLeaving(false)}>Cancelar</button>
           </div>
