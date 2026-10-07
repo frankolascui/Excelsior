@@ -146,7 +146,7 @@ export function RitualDialog({ game, guide, onClose }: { game: Game; guide: stri
       <div className="overlay ritual-overlay" role="dialog" aria-modal="true" aria-labelledby="ascend-h">
         <div className="levelup ascension">
           <p className="eyebrow">Ascensión</p>
-          <div className="ascend-icon"><AvatarPortrait tier={AVATARS.indexOf(target)} label={initialOf(state.profile?.name)} size={150} title={`Tu nuevo aro de ${target.name}`} /></div>
+          <div className="ascend-icon"><AvatarPortrait tier={AVATARS.indexOf(target)} photo={state.profile?.photo} label={initialOf(state.profile?.name)} size={150} title={`Tu nuevo aro de ${target.name}`} /></div>
           <h2 id="ascend-h">Ahora eres {target.name}</h2>
           <p className="rung-motto">«{target.motto}»</p>
           <p className="muted small-text">Tus respuestas quedan en Personaje → Tu camino.</p>

@@ -75,28 +75,23 @@ const CASTLE_LEVELS = [
 ];
 
 /**
- * Nivel del castillo (0–12). Con hasta 12 construcciones planeadas cada una sube al menos un nivel
- * (3 de 3 ya es el castillo glorioso); con más, sube en proporción a lo construido.
- * Terminar el reino siempre lo deja en el nivel máximo.
+ * Nivel del castillo (0–12): sube un nivel por cada construcción levantada (cabaña, herrería o torreón).
+ * No depende del porcentaje: un reino grande con muchas construcciones tiene mejor castillo que uno pequeño.
  */
-function castleTier(built: number, total: number): number {
-  if (total <= 0 || built <= 0) return 0;
-  if (built >= total) return CASTLE_MAX;
-  return Math.min(CASTLE_MAX - 1, Math.max(1, Math.ceil((built * CASTLE_MAX) / total)));
+function castleTier(built: number): number {
+  return Math.max(0, Math.min(CASTLE_MAX, built));
 }
 
 /** Descripción para el pie y la ayuda: nivel actual y cuánto falta para la próxima mejora. */
-function castleInfo(built: number, total: number) {
-  const tier = castleTier(built, total);
+function castleInfo(built: number) {
+  const tier = castleTier(built);
   const label = `Castillo: nivel ${tier} de ${CASTLE_MAX}`;
   let next = '¡Castillo en todo su esplendor!';
   if (tier < CASTLE_MAX) {
-    let d = 1;
-    while (built + d < total && castleTier(built + d, total) === tier) d++;
-    const name = CASTLE_LEVELS[castleTier(built + d, total)].toLowerCase();
+    const name = CASTLE_LEVELS[tier + 1].toLowerCase();
     next = tier === 0
       ? `Levanta tu primera construcción para fundar el castillo (${name}).`
-      : `Próxima mejora (${name}) ${d === 1 ? 'con la siguiente construcción' : `dentro de ${d} construcciones`}.`;
+      : `Próxima mejora (${name}) con la siguiente construcción. Cada cabaña, herrería o torreón sube un nivel.`;
   }
   return { tier, label, name: CASTLE_LEVELS[tier], next };
 }
@@ -1649,8 +1644,8 @@ export function CityScene({ quests, progress, complete, stage, icon }: { quests:
   }, [quests]);
 
   const built = quests.filter((q) => q.completedAt).length;
-  const info = castleInfo(built, quests.length);
-  const prev = fresh.size ? castleTier(built - fresh.size, quests.length) : info.tier;
+  const info = castleInfo(built);
+  const prev = fresh.size ? castleTier(built - fresh.size) : info.tier;
   const castle: CastleState = { ...info, prev, upgraded: info.tier > prev };
 
   const props: SceneProps = { quests, progress, complete, stage, icon, W, fresh, setHover, castle };

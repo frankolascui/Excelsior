@@ -12,6 +12,8 @@ function sb(): SupabaseClient {
   client ??= createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   return client;
 }
+export const cloudClient = sb;
+export const getUserId = () => cloud.userId;
 
 // ---------- Estado de la cuenta (compartido entre pantallas) ----------
 

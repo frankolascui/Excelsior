@@ -30,7 +30,7 @@ import { AchievementsPanel } from './achievements-ui';
 import { latestMetric, logMetric } from './life';
 
 export type Game = ReturnType<typeof useGame>;
-export type Tab = 'hoy' | 'misiones' | 'reinos' | 'arena' | 'gremios' | 'deepwork' | 'habitos' | 'personaje' | 'ajustes';
+export type Tab = 'hoy' | 'misiones' | 'reinos' | 'arena' | 'gremios' | 'amigos' | 'deepwork' | 'habitos' | 'personaje' | 'ajustes';
 
 const CAP_QUEST = 'Tope diario de XP por misiones alcanzado: la misión cuenta igual. Sube de nivel para ampliarlo.';
 const CAP_HABIT = 'Tope diario de XP por hábitos alcanzado. Sube de nivel para ampliarlo.';
@@ -622,7 +622,7 @@ export function Character({ game }: { game: Game }) {
       <h1 className="screen-title">Personaje</h1>
       <section className="panel hero-card">
         <div className="hero-portrait">
-          <AvatarPortrait tier={avatar.index} label={initialOf(state.profile?.name)} size={132} title={`Aro de ${avatar.current.name}`} />
+          <AvatarPortrait tier={avatar.index} photo={state.profile?.photo} label={initialOf(state.profile?.name)} size={132} title={`Aro de ${avatar.current.name}`} />
           <span className="hero-level mono" aria-label={`Nivel ${info.level}`}>{info.level}</span>
         </div>
         <div className="stack tight">

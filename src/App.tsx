@@ -12,6 +12,7 @@ import { cloudEnabled, useCloud } from './cloud';
 import { coinBalance } from './economy';
 import { Character, Dashboard, DeepWork, Habits, Kingdoms, Onboarding, Quests, type Tab } from './screens';
 import { SettingsScreen } from './settings';
+import { Friends } from './friends';
 import type { Quest } from './types';
 import { loadTutorial, saveTutorial, Tutorial, TOURS, type TutorialPrefs } from './tutorial';
 import { isUnlocked, unlockedBetween, unlockLevel, UNLOCKS } from './unlocks';
@@ -25,6 +26,7 @@ const TABS: { id: Tab; label: string; glyph: string }[] = [
   { id: 'deepwork', label: 'Deep Work', glyph: '◷' },
   { id: 'reinos', label: 'Reinos', glyph: '♖' },
   { id: 'arena', label: 'Arena', glyph: '⚔' },
+  { id: 'amigos', label: 'Amigos', glyph: '☻' },
   { id: 'gremios', label: 'Gremios', glyph: '⛨' },
   { id: 'personaje', label: 'Personaje', glyph: '♜' },
 ];
@@ -179,6 +181,7 @@ export default function App() {
             {tab === 'misiones' && <Quests game={game} focusQuest={focusQuest} />}
             {tab === 'reinos' && <Kingdoms game={game} focusQuest={focusQuest} />}
             {tab === 'arena' && <Arena game={game} />}
+            {tab === 'amigos' && <Friends game={game} />}
             {tab === 'gremios' && <Guilds />}
             {tab === 'deepwork' && <DeepWork key={preselect ?? 'free'} game={game} preselect={preselect} clearPreselect={() => setPreselect(null)} />}
             {tab === 'habitos' && <Habits game={game} />}

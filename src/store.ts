@@ -8,6 +8,7 @@ import { sfx } from './sfx';
 import { confetti } from './confetti';
 import { bossStatus } from './bosses';
 import { kingdomBonus } from './economy';
+import { schedulePublish } from './social';
 import { markLocalChange, markSynced, reconcile, scheduleSave, useCloud, type RemoteSave } from './cloud';
 
 import { ADMIN } from './admin';
@@ -98,7 +99,10 @@ export function useGame() {
       .finally(() => setCloudChecked(true));
   }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (userId && reconciled.current === userId && !conflict) scheduleSave(state);
+    if (userId && reconciled.current === userId && !conflict) {
+      scheduleSave(state);
+      schedulePublish(state);
+    }
   }, [state, userId, conflict]);
 
   function adopt(remote: GameState) {

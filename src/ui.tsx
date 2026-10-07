@@ -309,7 +309,7 @@ export function AvatarCard({ state, now, showRequirements = false }: { state: Ga
   const a = avatarInfo(state, now);
   return (
     <section className={a.ready ? 'panel avatar-card ritual-ready' : 'panel avatar-card'} aria-labelledby="avatar-h" data-tour="avatar">
-      <AvatarPortrait tier={a.index} label={initialOf(state.profile?.name)} size={92} title={`Aro de ${a.current.name}`} />
+      <AvatarPortrait tier={a.index} photo={state.profile?.photo} label={initialOf(state.profile?.name)} size={92} title={`Aro de ${a.current.name}`} />
       <div className="avatar-body">
         <p className="eyebrow">Avatar actual</p>
         <h3 id="avatar-h" className="avatar-name">{a.current.name}</h3>

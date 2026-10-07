@@ -113,7 +113,7 @@ export function HeroPath({ state, now }: { state: GameState; now: number }) {
               >
                 {(selected === i || ready) && <circle className="node-halo" cx={x} cy={y} r={size / 2 + 8} />}
                 <svg x={x - size / 2} y={y - size / 2} width={size} height={size} viewBox="0 0 200 200" overflow="visible">
-                  <AvatarPortrait tier={i} label={s === 'current' ? initialOf(state.profile?.name) : av.icon} size={200} dim={s === 'locked'} title={av.name} />
+                  <AvatarPortrait tier={i} photo={s === 'current' ? state.profile?.photo : undefined} label={s === 'current' ? initialOf(state.profile?.name) : av.icon} size={200} dim={s === 'locked'} title={av.name} />
                 </svg>
                 {s === 'locked' && <text x={x + size / 2 - 8} y={y + size / 2 - 4} className="node-lock" textAnchor="middle">🔒</text>}
                 {i === AVATARS.length - 1

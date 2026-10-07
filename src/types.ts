@@ -13,6 +13,8 @@ export type DeepWorkArea = 'estudio' | 'practica' | 'general' | 'programacion' |
 export interface Profile {
   name: string;
   createdAt: number;
+  bio?: string; // (V2) biografía pública, máx. 280
+  photo?: string; // (V2) foto de perfil pequeña (data URL JPEG)
 }
 
 export interface Quest {
