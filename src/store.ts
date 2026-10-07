@@ -9,6 +9,7 @@ import { confetti } from './confetti';
 import { bossStatus } from './bosses';
 import { kingdomBonus } from './economy';
 import { schedulePublish } from './social';
+import { scheduleGuildReport } from './guilds';
 import { markLocalChange, markSynced, reconcile, scheduleSave, useCloud, type RemoteSave } from './cloud';
 
 import { ADMIN } from './admin';
@@ -102,6 +103,7 @@ export function useGame() {
     if (userId && reconciled.current === userId && !conflict) {
       scheduleSave(state);
       schedulePublish(state);
+      scheduleGuildReport(state);
     }
   }, [state, userId, conflict]);
 

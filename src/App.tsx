@@ -7,7 +7,8 @@ import { avatarInfo } from './attributes';
 import { isMuted, setMuted, sfx } from './sfx';
 import { Arena, CoinBadge } from './arena';
 import { AmbientDock } from './ambient-ui';
-import { ConflictDialog, Guilds, loadGuest, saveGuest, Welcome } from './account';
+import { ConflictDialog, loadGuest, saveGuest, Welcome } from './account';
+import { Guilds } from './guilds-ui';
 import { cloudEnabled, useCloud } from './cloud';
 import { coinBalance } from './economy';
 import { Character, Dashboard, DeepWork, Habits, Kingdoms, Onboarding, Quests, type Tab } from './screens';
@@ -182,7 +183,7 @@ export default function App() {
             {tab === 'reinos' && <Kingdoms game={game} focusQuest={focusQuest} />}
             {tab === 'arena' && <Arena game={game} />}
             {tab === 'amigos' && <Friends game={game} />}
-            {tab === 'gremios' && <Guilds />}
+            {tab === 'gremios' && <Guilds game={game} />}
             {tab === 'deepwork' && <DeepWork key={preselect ?? 'free'} game={game} preselect={preselect} clearPreselect={() => setPreselect(null)} />}
             {tab === 'habitos' && <Habits game={game} />}
             {tab === 'personaje' && <Character game={game} />}

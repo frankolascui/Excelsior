@@ -615,7 +615,7 @@ export function Character({ game }: { game: Game }) {
   const bestStreak = state.habits.reduce((m, h) => Math.max(m, habitStreakDays(state, h.id, now)), 0);
   const activeDays = new Set(state.xp.map((t) => dayKey(t.at))).size;
   const history = [...state.xp].reverse().slice(0, 15);
-  const SOURCE = { quest: 'Misión', habit: 'Hábito', deepwork: 'Deep Work', admin: 'Admin' } as const;
+  const SOURCE = { quest: 'Misión', habit: 'Hábito', deepwork: 'Deep Work', admin: 'Admin', guild: 'Gremio' } as const;
 
   return (
     <div className="screen">

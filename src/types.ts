@@ -62,7 +62,7 @@ export interface DeepWorkSession {
   pomodoros?: number; // pomodoros completados en la sesión
 }
 
-export type XPSource = 'quest' | 'habit' | 'deepwork' | 'admin';
+export type XPSource = 'quest' | 'habit' | 'deepwork' | 'admin' | 'guild';
 
 export interface XPTransaction {
   id: string;
@@ -191,6 +191,8 @@ export interface GameState {
   events?: CalendarEvent[];
   /** Logros conseguidos y cuándo (una vez conseguido, no se pierde). */
   achievements?: { id: string; at: number }[];
+  /** (V2) Retos de gremio cuya recompensa ya cobraste. */
+  guildClaims?: string[];
 }
 
 export interface Metric {

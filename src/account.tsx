@@ -146,18 +146,3 @@ export function RequireAccount({ feature, children }: { feature: string; childre
     </section>
   );
 }
-
-/** Pantalla de gremios: de momento solo el aviso de lo que viene. */
-export function Guilds() {
-  return (
-    <div className="screen">
-      <h1 className="screen-title">Gremios</h1>
-      <RequireAccount feature="unirte a un gremio">
-        <section className="panel">
-          <h3>Próximamente</h3>
-          <p className="muted">Forma un gremio con tus amigos, enfrentaos juntos a bosses y progresad en equipo. Nadie podrá cargar con más del 30 % del trabajo.</p>
-        </section>
-      </RequireAccount>
-    </div>
-  );
-}
