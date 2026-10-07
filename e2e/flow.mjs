@@ -167,14 +167,15 @@ await page.click('.path-node:has-text("Titán")', { force: true }); // el aro gi
 check(await seen('.path-detail:has-text("Titán") >> text=Más adelante'), 'pulsar un avatar del camino muestra sus requisitos');
 check(await seen('text=125 XP global en total'), 'personaje muestra 125 XP totales');
 check(await seen('.chart-sub:has-text("125 XP en 30 días")'), 'gráfica de XP: 125 XP en 30 días');
-check((await page.$$('.heat rect')).length >= 175, 'mapa de actividad con al menos 26 semanas de cuadraditos en escritorio');
-check(await seen('.heat rect.heat-4') && await seen('.heat rect.today.heat-0'), 'ayer brilla al máximo y hoy (sin XP) está vacío');
-await page.hover('.heat rect.heat-4');
-check(await seen('.chart-tip:has-text("125 XP")'), 'tooltip del cuadradito: 125 XP ese día');
+check((await page.$$('.day-strip rect')).length === 30, 'Actividad: una tira con un cuadrado por día bajo la gráfica');
+check(await seen('.day-strip rect.heat-4') && await seen('.day-strip rect.today.heat-0'), 'ayer brilla al máximo y hoy (sin XP) está vacío');
+check(await seen('.chart-sub:has-text("racha")'), 'Actividad muestra días activos y rachas');
 await page.click('[role=radio]:has-text("7 días")');
 check(await seen('.chart-sub:has-text("en 7 días")'), 'la gráfica cambia a 7 días');
 await page.hover('.chart svg rect[fill="transparent"]', { position: { x: 5, y: 60 } });
 check(await seen('.chart-tip'), 'crosshair con tooltip al pasar por la gráfica');
+await page.mouse.move(0, 0);
+await (await page.$('section:has(#xp-chart-h)')).screenshot({ path: `${out}/05c-activity.png` });
 check(await seen('.req:has-text("Nivel global 3")'), 'Personaje muestra los requisitos del siguiente avatar');
 await page.screenshot({ path: `${out}/05-character.png`, fullPage: true });
 

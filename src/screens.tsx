@@ -12,7 +12,7 @@ import { WeeklyChronicle } from './settings';
 import { HeroPath } from './heropath';
 import { useCloud } from './cloud';
 import { sfx } from './sfx';
-import { ActivityHeatmap, XpChart } from './charts';
+import { XpChart } from './charts';
 import {
   addHabit, addQuest, cancelTimer, CUSTOM_LIMITS, updateHabit, updateQuest, completeQuest, createProfile, dayKey, deepWorkMinutesOnDay,
   deleteHabit, deleteQuest, focusPercent, habitStreakDays, isHabitDone, levelInfo, pendingQuests, setQuestDeadline, setPhase, timerTotals,
@@ -640,7 +640,7 @@ export function Character({ game }: { game: Game }) {
         <AttributeList state={state} detailed />
       </section>
 
-      <ActivityHeatmap state={state} now={now} compact />
+      <XpChart state={state} now={now} />
 
       <AvatarCard state={state} now={now} showRequirements />
 
@@ -656,8 +656,6 @@ export function Character({ game }: { game: Game }) {
       <TimedGoals game={game} />
 
       <GoalsPanel game={game} now={now} />
-
-      <XpChart state={state} now={now} />
 
       <HeroJournal state={state} />
 

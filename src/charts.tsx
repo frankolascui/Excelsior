@@ -49,6 +49,7 @@ const RANGES = [
   { days: 90, label: '90 días' },
 ];
 
+/** Actividad: XP de cada día (línea) y, debajo, una tira con un cuadrado por día que brilla según lo que hiciste. */
 export function XpChart({ state, now }: { state: GameState; now: number }) {
   const [days, setDays] = useState(30);
   const [hover, setHover] = useState<number | null>(null);
@@ -57,9 +58,12 @@ export function XpChart({ state, now }: { state: GameState; now: number }) {
   const total = data.reduce((n, d) => n + d.xp, 0);
   const avg = total / days;
   const best = data.reduce((m, d) => (d.xp > m.xp ? d : m), data[0]);
+  const year = activityByDay(state, now, 365);
+  const activeDays = data.filter((d) => d.xp > 0).length;
 
-  const H = 220;
-  const m = { top: 22, right: 18, bottom: 26, left: 40 };
+  const STRIP = 22;
+  const H = 210 + STRIP;
+  const m = { top: 22, right: 18, bottom: 26 + STRIP, left: 40 };
   const iw = Math.max(10, width - m.left - m.right);
   const ih = H - m.top - m.bottom;
   const ticks = niceTicks(Math.max(50, best.xp));
@@ -80,11 +84,14 @@ export function XpChart({ state, now }: { state: GameState; now: number }) {
   }
 
   return (
-    <section className="panel" aria-labelledby="xp-chart-h">
+    <section className="panel" aria-labelledby="xp-chart-h" data-tour="heat">
       <header className="panel-head chart-head">
         <div>
-          <h3 id="xp-chart-h">XP diario</h3>
+          <h3 id="xp-chart-h">Actividad</h3>
           <p className="muted chart-sub"><span className="mono">{total}</span> XP en {days} días · media <span className="mono">{Math.round(avg)}</span>/día</p>
+          <p className="muted chart-sub">
+            <span className="mono">{activeDays}</span> {activeDays === 1 ? 'día activo' : 'días activos'} · racha <span className="mono">{activeDayStreak(year)}</span> · mejor <span className="mono">{bestDayStreak(year)}</span>
+          </p>
         </div>
         <div className="segmented" role="radiogroup" aria-label="Periodo">
           {RANGES.map((r) => (
@@ -114,7 +121,7 @@ export function XpChart({ state, now }: { state: GameState; now: number }) {
             </g>
           ))}
           {xLabels.map((i) => (
-            <text key={i} className={i === last ? 'axis strong' : 'axis'} x={x(i)} y={H - 6} textAnchor={i === last ? 'end' : i === 0 ? 'start' : 'middle'}>
+            <text key={i} className={i === last ? 'axis strong' : 'axis'} x={x(i)} y={H - STRIP - 6} textAnchor={i === last ? 'end' : i === 0 ? 'start' : 'middle'}>
               {i === last ? 'hoy' : new Date(data[i].ts).toLocaleDateString('es-ES', days === 7 ? { weekday: 'short' } : { day: 'numeric', month: 'short' }).replace('.', '')}
             </text>
           ))}
@@ -131,7 +138,18 @@ export function XpChart({ state, now }: { state: GameState; now: number }) {
           {hover === null && (
             <text className="end-label mono" x={x(last) - 8} y={y(data[last].xp) - 10} textAnchor="end">{data[last].xp} XP</text>
           )}
-          <rect x={m.left} y={0} width={iw} height={H - m.bottom} fill="transparent" onPointerMove={onMove} onPointerLeave={() => setHover(null)} />
+          <g className="heat day-strip">
+            {data.map((d, i) => {
+              const w = Math.max(2, Math.min(18, iw / data.length - (data.length > 60 ? 1 : 3)));
+              return (
+                <rect
+                  key={d.day} className={`heat-${heatLevel(d.xp, best.xp)}${i === last ? ' today' : ''}${hover === i ? ' on' : ''}`}
+                  x={x(i) - w / 2} y={H - STRIP + 4} width={w} height={12} rx={Math.min(3, w / 2)}
+                />
+              );
+            })}
+          </g>
+          <rect x={m.left} y={0} width={iw} height={H} fill="transparent" onPointerMove={onMove} onPointerLeave={() => setHover(null)} />
         </svg>
         {h && hover !== null && (
           <Tip x={x(hover)} y={y(h.xp)} width={width}>
@@ -153,80 +171,6 @@ export function XpChart({ state, now }: { state: GameState; now: number }) {
         </table>
         <p className="muted small-text">Los días sin XP no aparecen.</p>
       </details>
-    </section>
-  );
-}
-
-// ---------- Actividad en cuadraditos ----------
-
-const ROW_LABELS = ['L', '', 'X', '', 'V', '', ''];
-
-export function ActivityHeatmap({ state, now, compact = false }: { state: GameState; now: number; compact?: boolean }) {
-  const [ref, width] = useWidth<HTMLDivElement>(460);
-  const [hover, setHover] = useState<number | null>(null);
-  const left = 22;
-  const topPad = 18;
-  // Tantas semanas como quepan con cuadrados de ~13 px (máximo un año).
-  const WEEKS = Math.max(12, Math.min(compact ? 26 : 53, Math.floor((width - left) / (compact ? 13 : 16))));
-  const weekday = (new Date(now).getDay() + 6) % 7; // 0 = lunes
-  const data = activityByDay(state, now, (WEEKS - 1) * 7 + weekday + 1);
-  const max = Math.max(...data.map((d) => d.xp));
-  const activeDays = data.filter((d) => d.xp > 0).length;
-
-  const step = Math.max(9, Math.min(compact ? 13 : 18, Math.floor((width - left) / WEEKS)));
-  const cell = step - 3;
-  const pos = (i: number) => ({ col: Math.floor(i / 7), row: i % 7 });
-  const months = data
-    .map((d, i) => ({ d, i }))
-    .filter(({ d, i }) => i % 7 === 0 && new Date(d.ts).getDate() <= 7)
-    .map(({ d, i }) => ({ col: i / 7, label: new Date(d.ts).toLocaleDateString('es-ES', { month: 'short' }).replace('.', '') }));
-  const h = hover === null ? null : data[hover];
-  const svgW = left + WEEKS * step;
-
-  return (
-    <section className="panel" aria-labelledby="heat-h" data-tour="heat">
-      <header className="panel-head chart-head">
-        <div>
-          <h3 id="heat-h">Actividad</h3>
-          <p className="muted chart-sub">
-            <span className="mono">{activeDays}</span> {activeDays === 1 ? 'día' : 'días'} con progreso en {WEEKS} semanas · racha actual <span className="mono">{activeDayStreak(data)}</span> · mejor <span className="mono">{bestDayStreak(data)}</span>
-          </p>
-        </div>
-      </header>
-      <div className="chart heat" ref={ref}>
-        <svg width={svgW} height={topPad + 7 * step} role="img" aria-label={`Actividad desde el ${shortDate(data[0].ts)}: ${activeDays} días con XP.`}>
-          {months.map((mo) => (
-            <text key={mo.col} className="axis" x={left + mo.col * step} y={11}>{mo.label}</text>
-          ))}
-          {ROW_LABELS.map((l, r) => l && (
-            <text key={r} className="axis" x={0} y={topPad + r * step + cell / 2} dy="0.32em">{l}</text>
-          ))}
-          {data.map((d, i) => {
-            const { col, row } = pos(i);
-            return (
-              <rect
-                key={d.day}
-                className={`heat-${heatLevel(d.xp, max)}${i === data.length - 1 ? ' today' : ''}`}
-                x={left + col * step} y={topPad + row * step} width={cell} height={cell} rx={3}
-                onPointerEnter={() => setHover(i)} onPointerLeave={() => setHover(null)}
-              />
-            );
-          })}
-        </svg>
-        {h && hover !== null && (
-          <Tip x={left + pos(hover).col * step + cell / 2} y={topPad + pos(hover).row * step + cell / 2} width={svgW}>
-            <span className="tip-title">{shortDate(h.ts)}</span>
-            <span className="mono tip-value">{h.xp} XP</span>
-            <Breakdown d={h} />
-          </Tip>
-        )}
-      </div>
-      <div className="heat-legend" aria-hidden="true">
-        <span className="muted">Menos</span>
-        {[0, 1, 2, 3, 4].map((l) => <span key={l} className={`heat-swatch heat-${l}`} />)}
-        <span className="muted">Más</span>
-        <span className="muted heat-note">Cada cuadrado es un día; más brillo, más XP respecto a tu mejor día.</span>
-      </div>
     </section>
   );
 }
