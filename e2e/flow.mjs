@@ -212,9 +212,9 @@ check(await seen('.kingdom-stage:has-text("Campamento · 0/2")'), 'reino con 2 c
 await page.waitForSelector('.city-scene .scaffold');
 await page.click('button[aria-label="Completar Terminar una calculadora"]');
 check(await seen('.toast:has-text("+50 XP")'), 'construir la torre da +50 XP');
-check(await seen('.kingdom-stage:has-text("Villa · 1/2")'), 'el reino pasa a Villa 1/2');
+check(await seen('.kingdom-stage:has-text("Aldea · 1/2")'), 'con una construcción el reino pasa a Aldea 1/2');
 check(await seen('.city-scene .bld.built') && await seen('.city-scene .palisade'), 'la ciudad dibuja el torreón y la empalizada de la villa');
-check(await seen('.kingdom-node[aria-label*="50 %"]'), 'el mapa muestra el reino al 50 %');
+check(await seen('.kingdom-node[aria-label*="Aldea, 1 construcciones"]'), 'el mapa muestra el reino como Aldea con 1 construcción');
 check(await seen('.realm .chart-sub:has-text("Dominio 50 %")'), 'dominio del mapa 50 %');
 await page.click('.kingdom-node');
 check(await seen('.kingdom.flash'), 'pulsar el reino en el mapa lleva a su ciudad');

@@ -29,21 +29,27 @@ export function buildings(s: GameState, kingdomId: string): Quest[] {
   return s.quests.filter((q) => q.kingdomId === kingdomId);
 }
 
-// Etapas según el % construido. Sin construcciones planeadas = tierras baldías.
+// Etapas según el número de construcciones levantadas (como el castillo: más estructuras, mejor reino).
 const STAGES: { min: number; name: string; icon: string }[] = [
-  { min: 1, name: 'Reino glorioso', icon: '👑' },
-  { min: 0.67, name: 'Ciudad amurallada', icon: '🏰' },
-  { min: 0.34, name: 'Villa', icon: '🏘️' },
-  { min: 0.0001, name: 'Aldea', icon: '🛖' },
+  { min: 10, name: 'Reino glorioso', icon: '👑' },
+  { min: 6, name: 'Ciudad amurallada', icon: '🏰' },
+  { min: 3, name: 'Villa', icon: '🏘️' },
+  { min: 1, name: 'Aldea', icon: '🛖' },
   { min: 0, name: 'Campamento', icon: '⛺' },
 ];
 const WASTELAND = { name: 'Tierras baldías', icon: '🌾' };
+
+/** Etapa siguiente y cuántas construcciones faltan para ella (null en Reino glorioso). */
+export function nextStage(built: number) {
+  const next = [...STAGES].reverse().find((x) => x.min > built);
+  return next ? { name: next.name, icon: next.icon, missing: next.min - built } : null;
+}
 
 export function kingdomProgress(s: GameState, kingdomId: string) {
   const all = buildings(s, kingdomId);
   const built = all.filter((q) => q.completedAt).length;
   const progress = all.length ? built / all.length : 0;
-  const st = all.length === 0 ? WASTELAND : STAGES.find((x) => progress >= x.min)!;
+  const st = all.length === 0 && built === 0 ? WASTELAND : STAGES.find((x) => built >= x.min)!;
   return { built, total: all.length, progress, stage: st.name, icon: st.icon, complete: all.length > 0 && built === all.length };
 }
 

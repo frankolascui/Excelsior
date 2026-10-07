@@ -141,7 +141,7 @@ export function RealmMap({ state, onSelect }: { state: GameState; onSelect: (kin
               transform={`translate(${x},${y})`}
               role="button"
               tabIndex={0}
-              aria-label={`${k.name}: ${p.stage}, ${Math.round(p.progress * 100)} %`}
+              aria-label={`${k.name}: ${p.stage}, ${p.built} construcciones`}
               onClick={() => onSelect(k.id)}
               onKeyDown={(e) => key(e, k.id)}
             >
@@ -152,7 +152,7 @@ export function RealmMap({ state, onSelect }: { state: GameState; onSelect: (kin
               <circle r={27} className="node-ring" pathLength={1} strokeDasharray={`${p.progress} 1`} transform="rotate(-90)" />
               <text className="node-icon" fontSize={24} dy="0.35em" textAnchor="middle">{p.icon}</text>
               <text className="node-name" y={45} textAnchor="middle">{clip(k.name, nameLen)}</text>
-              <text className="node-pct" y={61} textAnchor="middle">{Math.round(p.progress * 100)} %{W < 600 ? '' : ` · ${p.stage}`}</text>
+              <text className="node-pct" y={61} textAnchor="middle">{p.icon} {p.built}{W < 600 ? '' : ` · ${p.stage}`}</text>
             </g>
           ))}
         </svg>

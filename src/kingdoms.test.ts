@@ -16,10 +16,10 @@ describe('reinos', () => {
     expect(kingdomProgress(s, k)).toMatchObject({ stage: 'Campamento', icon: '⛺' });
     s = completeQuest(s, buildings(s, k)[0].id, NOW).state;
     expect(totalXp(s)).toBe(50);
-    expect(kingdomProgress(s, k)).toMatchObject({ built: 1, total: 2, progress: 0.5, stage: 'Villa', complete: false });
+    expect(kingdomProgress(s, k)).toMatchObject({ built: 1, total: 2, progress: 0.5, stage: 'Aldea', complete: false });
     expect(realmProgress(s)).toEqual({ built: 1, total: 2, progress: 0.5 });
     s = completeQuest(s, buildings(s, k)[1].id, NOW).state;
-    expect(kingdomProgress(s, k)).toMatchObject({ stage: 'Reino glorioso', icon: '👑', complete: true });
+    expect(kingdomProgress(s, k)).toMatchObject({ stage: 'Aldea', complete: true });
   });
 
   it('borrar un reino quita lo pendiente y conserva lo construido', () => {
@@ -38,5 +38,14 @@ describe('reinos', () => {
     expect(m.version).toBe(5);
     expect(m.goals).toEqual([]);
     expect(Object.keys(m.kingdoms[0]).sort()).toEqual(['createdAt', 'id', 'name']);
+  });
+});
+
+describe('etapa del reino por número de construcciones', () => {
+  it('1 Aldea, 3 Villa, 6 Ciudad amurallada, 10 Reino glorioso', async () => {
+    const { nextStage } = await import('./kingdoms');
+    expect(nextStage(0)).toMatchObject({ name: 'Aldea', missing: 1 });
+    expect(nextStage(4)).toMatchObject({ name: 'Ciudad amurallada', missing: 2 });
+    expect(nextStage(10)).toBeNull();
   });
 });

@@ -3,7 +3,7 @@ import type { useGame } from './store';
 import type { DeepWorkArea, FocusPhase, Quest, QuestType } from './types';
 import { addGoal, avatarInfo, DEEP_WORK_AREA_HINT, deepWorkRewards, inferDeepWorkArea, deleteGoal, formatAttrXp, goalProgress, habitRewards, questRewards, updateGoal } from './attributes';
 import { CustomizeToggle, RewardEditor, sameRewards, type CustomValue } from './customize';
-import { addKingdom, BUILDINGS, buildings, deleteKingdom, kingdomName, kingdomProgress } from './kingdoms';
+import { addKingdom, BUILDINGS, buildings, deleteKingdom, kingdomName, kingdomProgress, nextStage } from './kingdoms';
 import { CityScene } from './city';
 import { kingdomBonus } from './economy';
 import { RealmMap } from './realm';
@@ -746,7 +746,8 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
       <header className="kingdom-head">
         <div>
           <h2 id={`k-${kingdomId}`} className="kingdom-name">{kingdom.name}</h2>
-          <p className="kingdom-stage">{p.stage} · {p.built}/{p.total} construcciones{bonus > 0 && ` · tributo +${bonus} 🪙`}</p>
+          <p className="kingdom-stage">{p.icon} {p.stage} · {p.built}/{p.total} construcciones{bonus > 0 && ` · tributo +${bonus} 🪙`}</p>
+          <p className="muted small-text">{(() => { const n = nextStage(p.built); return n ? `${n.icon} ${n.name} con ${n.missing} ${n.missing === 1 ? 'construcción' : 'construcciones'} más` : 'Tu reino ya es glorioso. Cada construcción nueva lo hace aún más grande.'; })()}</p>
         </div>
         <span className="kingdom-pct mono">{Math.round(p.progress * 100)} %</span>
       </header>

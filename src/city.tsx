@@ -763,7 +763,7 @@ function FrontCity({ quests, progress, complete, stage, icon, W, fresh, setHover
           ))}
         </g>
       )}
-      {showLabel && <text x={14} y={24} className="city-stage">{icon} {stage} · {Math.round(progress * 100)} %</text>}
+      {showLabel && <text x={14} y={24} className="city-stage">{icon} {stage} · {built} {built === 1 ? 'construcción' : 'construcciones'}</text>}
       {quests.length === 0 && <EmptyText x={W / 2} y={GROUND - 50} W={W} />}
     </svg>
   );
