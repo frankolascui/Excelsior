@@ -803,9 +803,7 @@ button.mode-card:hover { transform: translateY(-2px); box-shadow: 0 0 0 1px colo
 .keep rect { fill: color-mix(in srgb, var(--c3) 20%, #3a3742); }
 .city-stage { fill: var(--fg); font-family: var(--display); font-size: 16px; paint-order: stroke; stroke: #000; stroke-width: 4px; }
 .city-empty-text { fill: var(--muted); font-size: 14px; }
-/* Vida en la ciudad: nubes, obreros, aldeanos y edificios recién construidos */
-.cloud { fill: rgba(255,255,255,0.07); animation: cloud-drift linear infinite; }
-@keyframes cloud-drift { from { transform: translateX(-60px); } to { transform: translateX(calc(var(--w) + 60px)); } }
+/* Vida en la ciudad: obreros, aldeanos y edificios recién construidos */
 .builder .skin, .villager .skin { fill: #f1c9a5; }
 .builder .helmet { fill: #ffcf3f; }
 .builder .tunic { fill: #3c6fd8; }
@@ -828,7 +826,7 @@ button.mode-card:hover { transform: translateY(-2px); box-shadow: 0 0 0 1px colo
 .dust circle { fill: #c9b79a; opacity: 0; transform-box: fill-box; transform-origin: center; animation: dust 0.9s ease-out 0.5s; }
 @keyframes dust { 0% { opacity: 0.7; transform: scale(0.3); } 100% { opacity: 0; transform: scale(2) translateY(-6px); } }
 @media (prefers-reduced-motion: reduce) {
-  .banner, .smoke circle, .boss-icon, .guide-eye, .cloud, .villager, .villager .bob, .builder .hammer, .builder .spark, .bld.built .window, .just-built, .dust circle, .boss.hit, .boss-shadow, .dmg-float, .slash { animation: none; }
+  .banner, .smoke circle, .boss-icon, .guide-eye, .villager, .villager .bob, .builder .hammer, .builder .spark, .bld.built .window, .just-built, .dust circle, .boss.hit, .boss-shadow, .dmg-float, .slash { animation: none; }
 }
 
 /* Cuenta */
@@ -965,9 +963,14 @@ i.q-side { background: var(--side); }
 .pm-star { fill: #fff; opacity: 0.7; animation: pm-twinkle 3s ease-in-out infinite; }
 @keyframes pm-twinkle { 50% { opacity: 0.15; } }
 .pm-summit { animation: ring-pulse 4s ease-in-out infinite; transform-origin: 938px 58px; }
-.pm-clouds ellipse { fill: rgba(255, 255, 255, 0.06); }
-.pm-clouds { animation: pm-drift 30s ease-in-out infinite alternate; }
-@keyframes pm-drift { to { transform: translateX(60px); } }
+.pm-star.big { filter: drop-shadow(0 0 3px #fff); }
+.pm-moon { fill: color-mix(in srgb, var(--c1) 8%, #fff8e6); filter: drop-shadow(0 0 6px rgba(255, 248, 230, 0.6)); }
+.pm-rays { transform: translate(938px, 58px); }
+.pm-rays path { fill: #fff6c8; opacity: 0.05; }
+.pm-rays { animation: pm-rays 60s linear infinite; }
+@keyframes pm-rays { from { transform: translate(938px, 58px) rotate(0deg); } to { transform: translate(938px, 58px) rotate(360deg); } }
+.pm-motes circle { fill: color-mix(in srgb, var(--c1) 60%, #fff); filter: drop-shadow(0 0 4px var(--c1)); opacity: 0; animation: pm-mote ease-out infinite; }
+@keyframes pm-mote { 0% { transform: translate(0, 0); opacity: 0; } 15% { opacity: 0.85; } 100% { transform: translate(18px, -150px); opacity: 0; } }
 .pm-trail { fill: none; stroke: rgba(255, 255, 255, 0.22); stroke-width: 4; stroke-dasharray: 2 10; stroke-linecap: round; }
 .pm-walked { fill: none; stroke-width: 7; stroke-linecap: round; filter: drop-shadow(0 0 8px var(--c1)); }
 .path-node { cursor: pointer; outline: none; }
@@ -1197,8 +1200,11 @@ i.q-side { background: var(--side); }
 }
 
 /* Calendario de días bajo la gráfica de Actividad */
-.day-cal { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-top: 6px; }
-.day-cal svg { display: block; max-width: 100%; }
+.day-cal { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; min-width: 0; }
+.day-cal svg { display: block; }
+.day-cal .day-legend { align-self: flex-end; }
+.day-cal .day-num { fill: var(--fg); opacity: 0.55; font-family: var(--mono); font-size: 10px; pointer-events: none; }
+.day-cal .day-num.on-bright { fill: #0b0b11; opacity: 0.7; }
 .day-cal .axis { fill: var(--muted); font-family: var(--mono); font-size: 10px; }
 .day-legend { display: inline-flex; align-items: center; gap: 4px; }
 .day-legend i { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
@@ -1263,6 +1269,38 @@ i.q-side { background: var(--side); }
 @keyframes node-float { 50% { transform: translateY(-6px); } }
 @media (prefers-reduced-motion: reduce) {
   .pm-walked { animation: none; stroke-dashoffset: 0; }
-  .pm-flow, .pm-spark { display: none; }
+  .pm-flow, .pm-spark, .pm-motes { display: none; }
+  .pm-rays { animation: none; }
   .pm-next, .node-float { animation: none; }
+}
+
+/* ---------- Ambiente de los paisajes (sky-fx.tsx): estrellas fugaces, nubes, bruma y pájaros ---------- */
+.fx-shoot { opacity: 0; transform: translate(var(--x), var(--y)); animation: fx-shoot linear infinite; }
+@keyframes fx-shoot {
+  0% { transform: translate(var(--x), var(--y)); opacity: 0; }
+  1.5% { opacity: 1; }
+  9% { transform: translate(calc(var(--x) + var(--dx)), calc(var(--y) + var(--dy))); opacity: 0; }
+  100% { transform: translate(calc(var(--x) + var(--dx)), calc(var(--y) + var(--dy))); opacity: 0; }
+}
+.fx-shoot-head { fill: #fff; filter: drop-shadow(0 0 3px #fff) drop-shadow(0 0 6px var(--c2)); }
+.fx-cloud { animation: fx-cloud linear infinite; }
+.fx-cloud-body { filter: blur(2.2px); }
+.fx-cloud-body ellipse { fill: color-mix(in srgb, var(--c2) 14%, #fff); }
+.fx-cloud-shadow { opacity: 0.22; filter: blur(4px); }
+.fx-cloud-shadow ellipse { fill: #000; }
+@keyframes fx-cloud { from { transform: translateX(-140px); } to { transform: translateX(calc(var(--w) + 140px)); } }
+.fx-mist-band { animation: fx-mist ease-in-out infinite alternate; }
+@keyframes fx-mist { from { transform: translateX(-70px); } to { transform: translateX(70px); } }
+.fx-birds { transform: translateX(-80px); animation: fx-birds linear infinite; }
+@keyframes fx-birds {
+  0% { transform: translate(-80px, 0); }
+  25% { transform: translate(calc(var(--w) * 0.5), -12px); }
+  50% { transform: translate(calc(var(--w) + 80px), 4px); }
+  100% { transform: translate(calc(var(--w) + 80px), 4px); }
+}
+.fx-bird { fill: none; stroke: color-mix(in srgb, var(--c2) 30%, #e4e0ff); stroke-opacity: 0.6; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; transform-box: fill-box; transform-origin: center; animation: fx-flap 0.45s ease-in-out infinite alternate; }
+@keyframes fx-flap { to { transform: scaleY(-0.55); } }
+@media (prefers-reduced-motion: reduce) {
+  .fx-shooting, .fx-birds { display: none; }
+  .fx-cloud, .fx-mist-band { animation-play-state: paused; }
 }

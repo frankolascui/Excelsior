@@ -49,44 +49,69 @@ const WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 function DayCalendar({ data, hover, onHover }: { data: DayActivity[]; hover: number | null; onHover: (i: number | null) => void }) {
   const best = Math.max(1, ...data.map((d) => d.xp));
   const last = data.length - 1;
+  const [box, width] = useWidth<HTMLDivElement>(600);
   const scroller = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => { // en rangos largos, que se vea hoy (a la derecha)
+  const offset = (new Date(data[0].ts).getDay() + 6) % 7; // lunes = 0
+  // Hasta un mes: como un calendario (columnas L…D, una fila por semana). Más días: una columna por semana (filas L…D).
+  const week = data.length <= 7;
+  const month = !week && data.length <= 31;
+  const gap = 4;
+  const left = week || month ? 0 : 18;
+  const top = 16;
+  const cols = week ? data.length : month ? 7 : Math.ceil((offset + data.length) / 7);
+  const rows = week ? 1 : month ? Math.ceil((offset + data.length) / 7) : 7;
+  // Las casillas reparten todo el ancho; el alto tiene tope para que un rango corto no se convierta en un muro.
+  const step = Math.max(month || week ? 20 : 12, (width - left + gap) / cols);
+  const cellW = step - (step < 16 ? 3 : gap);
+  const cellH = Math.min(cellW, week ? 40 : month ? 34 : 26);
+  const rowStep = cellH + (step < 16 ? 3 : gap);
+  const W = Math.ceil(left + cols * step - (step < 16 ? 3 : gap));
+  const H = top + rows * rowStep;
+  const pos = (i: number) => week ? { col: i, row: 0 } : month ? { col: (offset + i) % 7, row: Math.floor((offset + i) / 7) } : { col: Math.floor((offset + i) / 7), row: (offset + i) % 7 };
+  const months = month || week ? [] : data.map((d, i) => ({ i, d: new Date(d.ts) })).filter(({ i, d }) => pos(i).row === 0 && d.getDate() <= 7 || i === 0)
+    .filter(({ i }, k, arr) => k === 0 || pos(i).col - pos(arr[k - 1].i).col >= 2);
+  const numbers = cellH >= 22; // con sitio, cada casilla lleva su día del mes
+  useLayoutEffect(() => { // si no cabe (rangos muy largos), que se vea hoy (a la derecha)
     const el = scroller.current;
     if (el) el.scrollLeft = el.scrollWidth;
-  }, [data.length]);
-  const offset = (new Date(data[0].ts).getDay() + 6) % 7; // lunes = 0
-  const week = data.length <= 7; // una semana cabe en una fila; más días, una columna por semana
-  const cols = Math.ceil((offset + data.length) / 7);
-  const cell = week ? 26 : cols > 20 ? 11 : cols > 8 ? 16 : 20;
-  const step = cell + (cols > 20 ? 3 : 4);
-  const left = 18;
-  const top = 16;
-  const pos = (i: number) => week ? { col: i, row: 0 } : { col: Math.floor((offset + i) / 7), row: (offset + i) % 7 };
-  const months = data.map((d, i) => ({ i, d: new Date(d.ts) })).filter(({ i, d }) => pos(i).row === 0 && d.getDate() <= 7 || i === 0)
-    .filter(({ i }, k, arr) => k === 0 || pos(i).col - pos(arr[k - 1].i).col >= 2);
+  }, [data.length, W]);
   return (
-    <div className="day-cal">
+    <div className="day-cal" ref={box}>
       <div className="day-cal-scroll" ref={scroller}>
-      <svg className="heat day-strip" width={week ? data.length * step : left + cols * step} height={week ? top + step : top + 7 * step} role="img" aria-label={`${data.filter((d) => d.xp > 0).length} días con actividad de ${data.length}`}>
+      <svg className="heat day-strip" width={W} height={H} role="img" aria-label={`${data.filter((d) => d.xp > 0).length} días con actividad de ${data.length}`}>
         {week && data.map((d, i) => (
-          <text key={d.day} className="axis" x={i * step + cell / 2} y={10} textAnchor="middle">{WEEKDAYS[(new Date(d.ts).getDay() + 6) % 7]}</text>
+          <text key={d.day} className="axis" x={i * step + cellW / 2} y={10} textAnchor="middle">{WEEKDAYS[(new Date(d.ts).getDay() + 6) % 7]}</text>
         ))}
-        {!week && WEEKDAYS.map((w, r) => (
-          <text key={w} className="axis" x={0} y={top + r * step + cell / 2} dy="0.35em">{w}</text>
+        {month && WEEKDAYS.map((w, c) => (
+          <text key={w} className="axis" x={c * step + cellW / 2} y={10} textAnchor="middle">{w}</text>
         ))}
-        {data.length > 7 && months.map(({ i, d }) => (
+        {!week && !month && WEEKDAYS.map((w, r) => (
+          <text key={w} className="axis" x={0} y={top + r * rowStep + cellH / 2} dy="0.35em">{w}</text>
+        ))}
+        {months.map(({ i, d }) => (
           <text key={i} className="axis" x={left + pos(i).col * step} y={10}>{d.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '')}</text>
         ))}
         {data.map((d, i) => {
           const { col, row } = pos(i);
+          const x = left + col * step;
+          const y = top + row * rowStep;
+          const date = new Date(d.ts);
+          const level = heatLevel(d.xp, best);
           return (
-            <rect
-              key={d.day} className={`heat-${heatLevel(d.xp, best)}${i === last ? ' today' : ''}${hover === i ? ' on' : ''}`}
-              x={(week ? 0 : left) + col * step} y={top + row * step} width={cell} height={cell} rx={cell > 12 ? 4 : 2}
-              onPointerEnter={() => onHover(i)} onPointerLeave={() => onHover(null)}
-            >
-              <title>{`${shortDate(d.ts)}: ${d.xp} XP`}</title>
-            </rect>
+            <g key={d.day}>
+              <rect
+                className={`heat-${level}${i === last ? ' today' : ''}${hover === i ? ' on' : ''}`}
+                x={x} y={y} width={cellW} height={cellH} rx={cellH > 12 ? 4 : 2}
+                onPointerEnter={() => onHover(i)} onPointerLeave={() => onHover(null)}
+              >
+                <title>{`${shortDate(d.ts)}: ${d.xp} XP`}</title>
+              </rect>
+              {numbers && (
+                <text className={`day-num${level >= 3 ? ' on-bright' : ''}`} x={x + 5} y={y + 5} dy="0.8em">
+                  {date.getDate() === 1 ? date.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '') : date.getDate()}
+                </text>
+              )}
+            </g>
           );
         })}
       </svg>

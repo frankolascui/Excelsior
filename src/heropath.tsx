@@ -5,6 +5,7 @@ import { AVATARS, avatarInfo, avatarRequirements, requirementStatus } from './at
 import { AvatarPortrait, initialOf } from './portrait';
 import { RitualCTA } from './ritual';
 import { DEFAULT_GUIDE } from './tutorial';
+import { Birds, Clouds, Mist, ShootingStars } from './sky-fx';
 
 const W = 1000;
 const H = 470;
@@ -82,19 +83,41 @@ export function HeroPath({ state, now }: { state: GameState; now: number }) {
             <radialGradient id="pm-summit">
               <stop offset="0%" stopColor="#fff6c8" stopOpacity="0.9" /><stop offset="100%" stopColor="var(--c1)" stopOpacity="0" />
             </radialGradient>
+            <radialGradient id="pm-moon-halo">
+              <stop offset="0%" stopColor="#fff8e6" stopOpacity="0.28" /><stop offset="100%" stopColor="#fff8e6" stopOpacity="0" />
+            </radialGradient>
+            <mask id="pm-moon-cut">
+              <circle cx={120} cy={74} r={20} fill="#fff" />
+              <circle cx={130} cy={67} r={17} fill="#000" />
+            </mask>
           </defs>
           <rect width={W} height={H} fill="url(#pm-sky)" />
-          {Array.from({ length: 40 }, (_, i) => (
-            <circle key={i} className="pm-star" cx={(i * 263) % W} cy={(i * 97) % 200} r={i % 5 ? 1 : 1.8} style={{ animationDelay: `${(i % 7) * 0.4}s` }} />
+          {Array.from({ length: 70 }, (_, i) => (
+            <circle key={i} className={i % 9 === 0 ? 'pm-star big' : 'pm-star'} cx={(i * 263 + (i % 3) * 41) % W} cy={(i * 97) % 230} r={i % 9 === 0 ? 2 : i % 5 ? 0.9 : 1.5} style={{ animationDelay: `${(i % 11) * 0.37}s`, animationDuration: `${2.4 + (i % 5) * 0.7}s` }} />
           ))}
+          <circle cx={120} cy={74} r={70} fill="url(#pm-moon-halo)" />
+          <circle cx={120} cy={74} r={20} className="pm-moon" mask="url(#pm-moon-cut)" />
+          <ShootingStars gid="pm-shoot" W={W} H={H} n={3} len={90} />
+          <g className="pm-rays" aria-hidden="true">
+            {Array.from({ length: 10 }, (_, i) => (
+              <path key={i} d="M0 0 L-9 -190 L9 -190 Z" transform={`rotate(${i * 36})`} />
+            ))}
+          </g>
           <circle cx={938} cy={58} r={120} fill="url(#pm-summit)" className="pm-summit" />
+          <Clouds W={W} rows={[{ y: 128, s: 1.5, dur: 110, o: 0.07 }, { y: 178, s: 1, dur: 80, o: 0.06 }, { y: 96, s: 0.8, dur: 140, o: 0.05 }]} />
           <path d="M0 300 L120 210 L210 260 L330 150 L450 230 L560 120 L680 190 L800 80 L900 40 L1000 90 L1000 470 L0 470 Z" fill="url(#pm-far)" />
           <path d="M800 80 L835 112 L818 108 L800 122 L782 104 L768 110 Z M560 120 L590 150 L572 146 L560 156 L546 142 Z" fill="rgba(255,255,255,0.35)" />
-          <g className="pm-clouds">
-            <ellipse cx={240} cy={190} rx={70} ry={12} />
-            <ellipse cx={620} cy={150} rx={90} ry={13} />
-          </g>
+          <Birds W={W} y={150} n={3} dur={40} delay={3} />
+          <Birds W={W} y={235} n={2} dur={52} delay={24} s={0.8} />
+          <Clouds W={W} rows={[{ y: 236, s: 2.2, dur: 150, o: 0.06 }, { y: 200, s: 1.2, dur: 95, o: 0.05 }]} />
+          <Mist gid="pm-mist-far" W={W} bands={[{ y: 285, h: 26, o: 0.09 }]} />
           <path d="M0 420 L90 340 L200 380 L320 300 L430 340 L540 260 L660 300 L760 210 L880 170 L1000 140 L1000 470 L0 470 Z" fill="url(#pm-near)" />
+          <Mist gid="pm-mist" W={W} bands={[{ y: 430, h: 46, o: 0.12 }, { y: 360, h: 30, o: 0.07 }]} />
+          <g className="pm-motes" aria-hidden="true">
+            {Array.from({ length: 9 }, (_, i) => (
+              <circle key={i} cx={60 + ((i * 113) % 900)} cy={455} r={i % 3 ? 1.4 : 2} style={{ animationDuration: `${7 + (i % 4) * 1.8}s`, animationDelay: `${-i * 1.3}s` }} />
+            ))}
+          </g>
 
           <path className="pm-trail" d={smooth(STOPS)} />
           <path className="pm-walked" d={smooth(walked)} stroke="url(#pm-walk)" pathLength={1} />

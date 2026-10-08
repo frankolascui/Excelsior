@@ -886,6 +886,12 @@ export function pixelize(px: Uint8ClampedArray, w: number, h: number, silhouette
   px.set(out);
 }
 
+// Ilustraciones propias de cada boss (src/assets/bosses/<id>.webp). Si un boss no tiene, se dibuja el sprite generado.
+const ART = import.meta.glob('./assets/bosses/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
+export function bossImage(templateId?: string): string | undefined {
+  return templateId ? ART[`./assets/bosses/${templateId}.webp`] : undefined;
+}
+
 /** Boss de cuerpo entero en pixel art. `scale` = píxeles de pantalla por píxel del sprite. */
 export function PixelBoss({ templateId, icon, phase = 'calma', scale = 3, className = '', silhouette = false }: {
   templateId?: string; icon: string; phase?: BossPhase; scale?: number; className?: string; silhouette?: boolean;
@@ -919,6 +925,14 @@ export function PixelBoss({ templateId, icon, phase = 'calma', scale = 3, classN
     img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`;
     return () => { alive = false; };
   }, [templateId, icon, phase, silhouette]);
+  const photo = bossImage(templateId);
+  if (photo) {
+    return (
+      <span className={`pixel-boss has-img phase-${phase}${silhouette ? ' is-silhouette' : ''} ${className}`} style={{ width: SPRITE_W * scale, height: SPRITE_H * scale }} aria-hidden="true">
+        <img src={photo} alt="" draggable={false} decoding="async" />
+      </span>
+    );
+  }
   return (
     <span className={`pixel-boss phase-${phase}${silhouette ? ' is-silhouette' : ''} ${className}`} style={{ width: SPRITE_W * scale, height: SPRITE_H * scale }} aria-hidden="true">
       <svg ref={src} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 170" width={SPRITE_W * 4} height={SPRITE_H * 4} className="pixel-src">

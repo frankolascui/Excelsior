@@ -296,6 +296,11 @@
 .pixel-boss { position: relative; display: inline-block; }
 .pixel-boss .pixel-src { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; overflow: hidden; }
 .pixel-boss canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
+.pixel-boss.has-img img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: 50% 100%; user-select: none; -webkit-user-drag: none; }
+.pixel-boss.has-img.phase-herido img { filter: saturate(1.15) drop-shadow(0 0 6px rgba(251, 146, 60, 0.45)); }
+.pixel-boss.has-img.phase-furioso img { filter: saturate(1.3) contrast(1.08) drop-shadow(0 0 8px rgba(255, 45, 74, 0.6)); }
+/* Bloqueado: solo la silueta, con un filo de luz para que se adivine la forma */
+.pixel-boss.has-img.is-silhouette img { filter: brightness(0) drop-shadow(0 -1px 0 rgba(150, 150, 190, 0.45)) drop-shadow(0 0 1px rgba(150, 150, 190, 0.35)); opacity: 0.9; }
 
 /* Boss activo como escenario de combate (cabecera, vida y sprite grande con aura roja) */
 .arena .boss.boss-fight {
@@ -316,6 +321,9 @@
 .arena .boss-fight .hp-bar.big .hp-fill { background: linear-gradient(90deg, #c8102e, #ff3d5a 70%, #ff7088); }
 .arena .boss-fight .boss-hp { font-size: 14px; color: var(--fg); white-space: nowrap; }
 .arena .boss-fight .boss-stage { position: relative; width: 180px; height: 255px; display: grid; place-items: end center; margin: 4px 0 2px; }
+/* Con ilustración propia, el escenario se ensancha: muchas bestias (Hidra, Caronte…) son más anchas que altas */
+.arena .boss-fight .boss-stage:has(.has-img) { width: 250px; height: 280px; }
+.arena .boss-fight .boss-stage .pixel-boss.has-img { width: 250px !important; height: 280px !important; }
 .fight-aura { position: absolute; inset: 14% 0 6%; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 45, 74, 0.38), transparent); filter: blur(10px); animation: aura 3.2s ease-in-out infinite; }
 @keyframes aura { 50% { opacity: 0.65; transform: scale(0.94); } }
 .arena .boss-fight .boss-stage .boss-art { position: relative; filter: drop-shadow(0 0 1px #ff2d4a) drop-shadow(0 0 16px rgba(255, 45, 74, 0.45)); animation: pixel-bob 1.6s steps(2, jump-none) infinite; }
@@ -331,6 +339,7 @@
   .arena .boss-fight .boss-name { font-size: 23px; }
   .arena .boss-fight .boss-stage { width: 150px; height: 213px; }
   .arena .boss-fight .boss-stage .boss-art, .arena .boss-fight .boss-stage .boss-art canvas { width: 150px !important; height: 212px !important; }
+  .arena .boss-fight .boss-stage:has(.has-img), .arena .boss-fight .boss-stage .pixel-boss.has-img { width: 200px !important; height: 230px !important; }
 }
 @media (prefers-reduced-motion: reduce) {
   .fight-aura, .arena .boss-fight .boss-stage .boss-art { animation: none !important; }

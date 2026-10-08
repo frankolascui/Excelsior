@@ -19,14 +19,6 @@
 @keyframes twinkle { 50% { opacity: 0.12; } }
 .moon { fill: color-mix(in srgb, var(--c1) 10%, #fff8e6); filter: none; }
 .crater { fill: color-mix(in srgb, var(--c3) 25%, #cfc6c0); opacity: 0.45; }
-.shooting-star { stroke: #fff; stroke-width: 1.3; stroke-linecap: round; opacity: 0; animation: shoot 11s ease-in 3s infinite; }
-@keyframes shoot {
-  0% { transform: translate(var(--sx), 18px); opacity: 0; }
-  1% { opacity: 0.9; }
-  6% { transform: translate(calc(var(--sx) + 150px), 64px); opacity: 0; }
-  100% { transform: translate(calc(var(--sx) + 150px), 64px); opacity: 0; }
-}
-.cloud { fill: rgba(255, 255, 255, 0.06); }
 .mountains { fill: color-mix(in srgb, var(--c3) 22%, #0b0a12); }
 .mountain-rim { fill: none; stroke: color-mix(in srgb, var(--c2) 45%, transparent); stroke-width: 1; stroke-linejoin: round; }
 .hills { fill: color-mix(in srgb, var(--c3) 14%, #0c0c10); }

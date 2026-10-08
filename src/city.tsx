@@ -4,6 +4,7 @@
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import type { Quest, QuestType } from './types';
 import { useWidth } from './charts';
+import { Birds, Clouds, Mist, ShootingStars } from './sky-fx';
 import { BUILDINGS } from './kingdoms';
 import './city.css';
 
@@ -672,7 +673,7 @@ function FrontCity({ quests, progress, complete, stage, icon, W, fresh, setHover
       </defs>
       <rect width={W} height={H} fill={`url(#${id('sky')})`} />
       {STARS.map((s, i) => <circle key={i} cx={s.x * W} cy={s.y * H} r={s.r} className={i % 5 === 0 ? 'star tw' : 'star'} style={i % 5 === 0 ? { animationDelay: `${-(i % 7) * 0.6}s` } : undefined} />)}
-      <line x1={0} y1={0} x2={34} y2={10} className="shooting-star" style={{ ['--sx' as string]: `${W * 0.15}px` }} />
+      <ShootingStars gid={id('shoot')} W={W} H={GROUND * 0.6} n={3} len={W < 500 ? 50 : 70} />
       <circle cx={W - 70} cy={70} r={46} fill={`url(#${id('halo')})`} />
       <circle cx={W - 70} cy={70} r={16} className="moon" />
       <circle cx={W - 75} cy={66} r={3.2} className="crater" />
@@ -685,17 +686,12 @@ function FrontCity({ quests, progress, complete, stage, icon, W, fresh, setHover
           <Firework x={W * 0.7} y={44} delay={2.4} hue="var(--c2)" />
         </>
       )}
-      <g className="clouds">
-        {[0, 1, 2].map((i) => (
-          <g key={i} className="cloud" style={{ animationDuration: `${60 + i * 25}s`, animationDelay: `${-i * 22}s`, ['--w' as string]: `${W}px` }}>
-            <ellipse cx={0} cy={30 + i * 22} rx={26 - i * 4} ry={7} />
-            <ellipse cx={14} cy={26 + i * 22} rx={14} ry={7} />
-            <ellipse cx={-12} cy={31 + i * 22} rx={10} ry={5} />
-          </g>
-        ))}
-      </g>
+      <Clouds W={W} rows={[{ y: 34, s: 0.9, dur: 75, o: 0.07 }, { y: 58, s: 0.6, dur: 95, o: 0.06 }, { y: 86, s: 1.2, dur: 120, o: 0.06 }, { y: 22, s: 0.5, dur: 140, o: 0.05 }]} />
+      <Birds W={W} y={GROUND * 0.32} n={3} dur={38} delay={5} s={0.9} />
       <path d={deco.mountains} className="mountains" />
       <path d={deco.rim} className="mountain-rim" />
+      <Clouds W={W} rows={[{ y: GROUND - 92, s: 1.6, dur: 160, o: 0.05 }]} />
+      <Mist gid={id('mist')} W={W} bands={[{ y: GROUND - 62, h: 18, o: 0.08 }]} />
       <path d={`M0,${GROUND - 34} Q${W * 0.2},${GROUND - 70} ${W * 0.42},${GROUND - 40} T${W * 0.8},${GROUND - 52} T${W},${GROUND - 36} L${W},${GROUND} L0,${GROUND} Z`} className="hills" />
       <path d={deco.pines} className="pines" />
       <rect x={0} y={GROUND - 44} width={W} height={50} fill={`url(#${id('fog')})`} className="fog" />
@@ -1579,6 +1575,7 @@ function IsoCity({ quests, progress, complete, stage, icon, W, fresh, setHover, 
       {walkers}
       {frontWalls}
       {forest.filter((t) => t.depth >= G).map((t, k) => <Pine key={k} x={t.x} y={t.y} s={t.s} />)}
+      <Mist gid={id('mist')} W={W} bands={[{ y: H * 0.3, h: H * 0.12, o: 0.07 }, { y: H * 0.78, h: H * 0.1, o: 0.06 }]} />
       <g className="cloud-shadows">
         {[0, 1].map((i) => (
           <ellipse key={i} className="cloud-shadow" cx={0} cy={H * (0.35 + i * 0.3)} rx={90 + i * 30} ry={34 + i * 10} fill={`url(#${id('cloud')})`} style={{ animationDuration: `${70 + i * 30}s`, animationDelay: `${-i * 35}s`, ['--w' as string]: `${W}px` }} />
@@ -1587,6 +1584,8 @@ function IsoCity({ quests, progress, complete, stage, icon, W, fresh, setHover, 
       <g className="fireflies">
         {flies.map((f) => <circle key={f.i} cx={f.x} cy={f.y} r={1.3} style={{ animationDuration: `${f.d}s`, animationDelay: `${-f.i * 1.3}s` }} />)}
       </g>
+      <Birds W={W} y={H * 0.22} n={3} dur={30} delay={6} />
+      <Clouds W={W} shadow rows={[{ y: H * 0.3, s: 1.6, dur: 70, o: 0.06 }, { y: H * 0.68, s: 2.1, dur: 100, o: 0.05 }]} />
       <rect width={W} height={H} fill={`url(#${id('vig')})`} pointerEvents="none" />
       {W >= 560 && <text x={14} y={24} className="city-stage">{icon} {stage} · {Math.round(progress * 100)} %</text>}
       {n === 0 && <EmptyText x={W / 2} y={oy - (W < 480 ? 30 : 14)} W={W} />}

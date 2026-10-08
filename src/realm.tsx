@@ -3,6 +3,7 @@ import type { KeyboardEvent } from 'react';
 import type { GameState } from './types';
 import { kingdomProgress, realmProgress } from './kingdoms';
 import { useWidth } from './charts';
+import { Birds, Clouds, Mist } from './sky-fx';
 import './city.css';
 
 // Posiciones (fracción del mapa) pensadas para que las etiquetas no choquen. Del 13.º en adelante, espiral.
@@ -124,6 +125,9 @@ export function RealmMap({ state, onSelect }: { state: GameState; onSelect: (kin
             );
           })}
 
+          <Mist gid="realm-mist" W={W} bands={[{ y: H * 0.35, h: H * 0.14, o: 0.06 }, { y: H * 0.82, h: H * 0.12, o: 0.05 }]} />
+          <Birds W={W} y={H * 0.12} n={3} dur={34} delay={4} />
+          <Clouds W={W} shadow rows={[{ y: H * 0.22, s: 1.3, dur: 80, o: 0.07 }, { y: H * 0.62, s: 1.8, dur: 115, o: 0.05 }, { y: H * 0.9, s: 1, dur: 95, o: 0.05 }]} />
           <rect width={W} height={H} rx={14} fill="url(#realm-vig)" pointerEvents="none" />
           <g className="capital" transform={`translate(${cx},${cy})`}>
             <circle r={62} fill="url(#realm-halo)" className="node-halo capital-halo" />
