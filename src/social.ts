@@ -5,6 +5,7 @@ import { levelInfo, totalXp } from './game';
 import { attributeLevel, attributeXp, avatarInfo } from './attributes';
 import { bossStatus } from './bosses';
 import { cloudClient, getUserId } from './cloud';
+import { publicWeeks, type WeekStats } from './ranking';
 
 // ---------- Reglas puras ----------
 
@@ -16,6 +17,9 @@ export interface PublicStats {
   achievements: number;
   deepHours: number;
   bosses: number;
+  /** Rankings: lo de esta semana y lo de la anterior (ranking.ts). */
+  week: WeekStats;
+  prev: WeekStats;
 }
 
 export interface PublicProfile {
@@ -50,6 +54,7 @@ export function publicFields(s: GameState, now: number) {
       achievements: (s.achievements ?? []).length,
       deepHours: Math.floor(s.sessions.reduce((n, x) => n + x.minutes, 0) / 60),
       bosses: s.bosses.filter((b) => bossStatus(s, b, now).defeated).length,
+      ...publicWeeks(s, now),
     } satisfies PublicStats,
   };
 }

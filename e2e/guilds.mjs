@@ -28,12 +28,13 @@ const state = {
   tours: ['intro', 'reinos', 'arena', 'gremios'],
 };
 
+const mondayKey = () => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const prof = (user_id, tag, name, level) => ({
   user_id, tag, name, bio: '', photo: null, level, xp: level * 100, avatar_index: 1, avatar_name: 'Iniciado', stats: { attrs: {}, achievements: 3, deepHours: 4, bosses: 0 },
 });
 const db = {
   saves: { user_id: ME, state, updated_at: iso(now) },
-  profiles: [prof(ME, 'Nicolas#1234', 'Nicolas', 7), prof(ANA, 'Ana#0001', 'Ana', 4), prof(LEO, 'Leo#0002', 'Leo', 6)],
+  profiles: [prof(ME, 'Nicolas#1234', 'Nicolas', 7), { ...prof(ANA, 'Ana#0001', 'Ana', 4), stats: { attrs: {}, achievements: 3, deepHours: 4, bosses: 0, week: { key: mondayKey(), xp: 5000, deep: 300, habits: 9 } } }, prof(LEO, 'Leo#0002', 'Leo', 6)],
   friendships: [
     { requester: ANA, addressee: ME, status: 'accepted', created_at: iso(now) },
     { requester: ME, addressee: LEO, status: 'accepted', created_at: iso(now) },
@@ -174,6 +175,11 @@ db.guild_invites = db.guild_invites.filter((i) => i.user_id !== ANA);
 await openGuilds(page);
 check(await page.isVisible('.count:has-text("2/8")'), 'con Ana son 2/8');
 check(await page.isVisible('.pick-card:has-text("1 h 40 min")') || await page.isVisible('.pick-card:has-text("100")'), 'las metas se recalculan para 2 miembros (mínimo 100 min)');
+const glb = await page.locator('section.leaderboard:has(#lb-guild-h) .lb-row').evaluateAll((els) => els.map((e) => e.innerText.replace(/\s+/g, ' ').trim()));
+check(glb.length === 2 && glb[0].includes('Ana') && glb[0].includes('5000 XP') && glb[1].includes('Nicolas (tú)'), `ranking del gremio con sus miembros (${glb.join(' / ')})`);
+await page.click('section.leaderboard:has(#lb-guild-h) button[aria-label="Ver perfil de Ana"]');
+check(await page.isVisible('.profile-card:has-text("Ana")'), 'desde el ranking se abre el perfil de Ana');
+await page.click('.profile-card .close-x');
 
 // Empieza la misión de los cien minutos.
 await page.click('.pick-card:has-text("Los 100 minutos") button');

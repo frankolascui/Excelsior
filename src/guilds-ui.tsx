@@ -3,7 +3,8 @@ import { useEffect, useState, type FormEvent } from 'react';
 import type { Game } from './screens';
 import { RequireAccount } from './account';
 import { useCloud } from './cloud';
-import { Face } from './friends';
+import { Face, ProfileDialog } from './friends';
+import { freshMe, Leaderboard } from './ranking-ui';
 import { PixelBoss } from './boss-art';
 import { refreshSocial, useSocial, type PublicProfile } from './social';
 import { formatMinutes } from './ui';
@@ -344,6 +345,8 @@ function InGuild({ game, now }: { game: Game; now: number }) {
   const guild = g.guild!;
   const mine = g.members.find((m) => m.user_id === me);
   const rank: Rank | null = mine ? rankOf(guild.owner, mine) : null;
+  const [open, setOpen] = useState<PublicProfile | null>(null);
+  const ranked = g.members.map((m) => (m.user_id === me ? freshMe(me, game.state, g.people[me], now) : g.people[m.user_id])).filter(Boolean);
   return (
     <>
       <section className="panel guild-card">
@@ -357,6 +360,9 @@ function InGuild({ game, now }: { game: Game; now: number }) {
       </section>
 
       {active ? <ChallengeCard game={game} c={active} now={now} /> : <PickChallenge game={game} members={g.members.length} command={canCommand(rank)} leader={g.people[guild.owner]?.name ?? 'tu líder'} />}
+
+      <Leaderboard id="lb-guild-h" title="Ranking del gremio" people={ranked} me={me} now={now} onOpen={setOpen}
+        hint={g.members.length === 1 ? 'Invita a tus amigos al gremio para competir por la corona de la semana.' : undefined} />
 
       {past.length > 0 && (
         <section className="panel" aria-labelledby="gpast-h">
@@ -378,6 +384,7 @@ function InGuild({ game, now }: { game: Game; now: number }) {
           </div>
         ) : <button className="link danger-text" onClick={() => setLeaving(true)}>Salir del gremio</button>}
       </section>
+      {open && <ProfileDialog game={game} p={open} onClose={() => setOpen(null)} />}
     </>
   );
 }

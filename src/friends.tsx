@@ -5,6 +5,7 @@ import { RequireAccount } from './account';
 import { useCloud } from './cloud';
 import { ATTRIBUTES } from './attributes';
 import { AvatarPortrait, initialOf } from './portrait';
+import { freshMe, Leaderboard } from './ranking-ui';
 import {
   acceptRequest, BIO_MAX, findByTag, refreshSocial, relationWith, removeRelation, sendRequest, setBio, setPhoto, shrinkPhoto, useSocial,
   type PublicProfile, type Relation,
@@ -30,7 +31,7 @@ function RelationButton({ game, p, rel }: { game: Game; p: PublicProfile; rel: R
   return <button className="primary small" disabled={busy} onClick={() => go(async () => { const e = await sendRequest(p, game.state); if (!e) game.toast(`Solicitud enviada a ${p.name}`, 'info'); return e; })}>+ Añadir</button>;
 }
 
-function ProfileDialog({ game, p, onClose }: { game: Game; p: PublicProfile; onClose: () => void }) {
+export function ProfileDialog({ game, p, onClose }: { game: Game; p: PublicProfile; onClose: () => void }) {
   const { rows } = useSocial();
   const me = useCloud().userId!;
   const rel = relationWith(me, p.user_id, rows);
@@ -217,6 +218,12 @@ function FriendsBody({ game }: { game: Game }) {
           </ul>
         </section>
       )}
+
+      <Leaderboard
+        id="lb-friends-h" title="Ranking de amigos" me={me} now={Date.now()} onOpen={setOpen}
+        people={[freshMe(me, state, social.me, Date.now()), ...friends]}
+        hint={friends.length === 0 ? 'Añade amigos con su tag y competid cada semana por el podio.' : undefined}
+      />
 
       <section className="panel" aria-labelledby="fr-h">
         <header className="panel-head"><h3 id="fr-h">Tus amigos</h3><span className="count mono">{friends.length}</span></header>

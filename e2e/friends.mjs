@@ -13,13 +13,18 @@ const LEO = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
 const USER = { id: ME, email: 'nico@test.com', aud: 'authenticated', role: 'authenticated', app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() };
 const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*', 'access-control-expose-headers': '*' };
 
+// Semana actual y anterior (lunes, hora local), como las publica la app.
+const monday = (weeksAgo) => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7) - 7 * weeksAgo); return d; };
+const key = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const weeks = (xp, prev) => ({ week: { key: key(monday(0)), xp, deep: 95, habits: 4 }, prev: { key: key(monday(1)), xp: prev, deep: 0, habits: 0 } });
 const prof = (user_id, tag, name, level, extra = {}) => ({
   user_id, tag, name, bio: '', photo: null, level, xp: level * 100, avatar_index: 1, avatar_name: 'Iniciado',
   stats: { attrs: { voluntad: 3, sabiduria: 2 }, achievements: 7, deepHours: 12, bosses: 2 }, ...extra,
 });
 const db = {
   saves: null,
-  profiles: [prof(ANA, 'Ana#0001', 'Ana', 4), prof(LEO, 'Leo#0002', 'Leo', 6, { bio: 'Opositando y entrenando.' })],
+  profiles: [prof(ANA, 'Ana#0001', 'Ana', 4), prof(LEO, 'Leo#0002', 'Leo', 6, { bio: 'Opositando y entrenando.' })]
+    .map((p) => ({ ...p, stats: { ...p.stats, ...(p.user_id === LEO ? weeks(240, 90) : weeks(0, 0)) } })),
   friendships: [{ requester: LEO, addressee: ME, status: 'pending', created_at: new Date().toISOString() }],
 };
 const val = (v) => decodeURIComponent(v);
@@ -122,6 +127,8 @@ check(await page.waitForSelector('#myp-h', { timeout: 5000 }).then(() => true, (
 const tag = await page.waitForSelector('.tag-chip', { timeout: 5000 }).then((e) => e.innerText(), () => '');
 check(/^Nicolas#\d{4}/.test(tag), `se crea su tag (${tag.trim()})`);
 check(db.profiles.some((x) => x.user_id === ME && x.name === 'Nicolas' && x.level === 1), 'su perfil público se guarda en el servidor');
+check(db.profiles.find((x) => x.user_id === ME)?.stats?.week?.key === key(monday(0)), 'publica lo de esta semana para los rankings');
+check(await page.isVisible('section.leaderboard >> text=Añade amigos con su tag'), 'sin amigos, el ranking explica cómo empezar');
 
 // Foto y biografía.
 await page.setInputFiles('[data-testid="photo-input"]', 'e2e/04-dashboard.png');
@@ -165,6 +172,23 @@ await page.click('section:has(#inc-h) button:has-text("Aceptar")');
 await page.waitForSelector('section:has(#fr-h) .person:has-text("Leo")');
 check(db.friendships.find((f) => f.requester === LEO).status === 'accepted', 'aceptar a Leo se guarda');
 check(!(await page.isVisible('#inc-h')), 'ya no quedan solicitudes');
+
+// Ranking de amigos: Leo va primero esta semana y ganó la pasada.
+const lb = 'section.leaderboard:has(#lb-friends-h)';
+const rows = async () => page.locator(`${lb} .lb-row`).evaluateAll((els) => els.map((e) => e.innerText.replace(/\s+/g, ' ').trim()));
+let r = await rows();
+check(r.length === 2 && r[0].includes('Leo') && r[0].includes('240 XP') && r[1].includes('Nicolas (tú)'), `ranking de amigos: Leo primero y tú después (${r.join(' / ')})`);
+check(await page.isVisible(`${lb} .lb-row.p1:has-text("Leo") .lb-crown`), 'Leo lleva la corona de la semana pasada');
+check(await page.isVisible(`${lb} .lb-row.p1:has-text("🥇")`) && /Termina en/.test(await page.innerText(lb)), 'medalla de oro y cuenta atrás de la semana');
+check(/1 h 35 min de foco · 4 hábitos/.test(r[0]), 'cada fila dice el foco y los hábitos de la semana');
+await page.click(`${lb} button[role="radio"]:has-text("Semana pasada")`);
+r = await rows();
+check(r[0].includes('Leo') && r[0].includes('90 XP') && /Del \d+/.test(await page.innerText(lb)), 'semana pasada: 90 XP de Leo y las fechas');
+await page.click(`${lb} button[role="radio"]:has-text("Siempre")`);
+r = await rows();
+check(r[0].includes('600 XP') && r[0].includes('Nv 6'), 'siempre: XP total y nivel');
+await page.click(`${lb} button[role="radio"]:has-text("Esta semana")`);
+await page.locator(lb).screenshot({ path: 'e2e/14-ranking.png' });
 await page.click('section:has(#fr-h) button[aria-label="Ver perfil de Leo"]');
 check(await page.isVisible('.profile-card:has-text("Opositando y entrenando.")'), 'el perfil de Leo muestra su biografía');
 check(await page.isVisible('.profile-card:has-text("7 logros")') && await page.isVisible('.profile-card >> text=✓ Amigos'), 'y sus estadísticas y que sois amigos');
