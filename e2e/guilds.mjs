@@ -251,7 +251,7 @@ mp.on('pageerror', (e) => errors.push(e.message));
 await login(mp);
 await openGuilds(mp);
 await mp.waitForSelector('.challenge.st-active', { timeout: 5000 });
-check(await mp.isVisible('.guild-fight :text("Jefe de gremio")') && await mp.isVisible('.guild-fight canvas'), 'el jefe de gremio sale como combate con su sprite');
+check(await mp.isVisible('.guild-fight :text("Jefe de gremio")') && await mp.isVisible('.guild-fight .pixel-boss.has-img img'), 'el jefe de gremio sale como combate con su ilustración');
 const hp = Number((await mp.locator('.guild-fight .fight-hp .mono').last().innerText()).split('/')[0]);
 check(hp > 0 && hp <= 69, `su vida baja con lo que aporta el gremio (${hp} / 100)`);
 check(await mp.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'móvil: Gremios sin scroll horizontal');
