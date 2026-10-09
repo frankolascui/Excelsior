@@ -346,7 +346,7 @@
 .arena .boss-template.locked .en-rest, .arena .boss-template.locked .en-epithet { color: #5d5a72; }
 
 /* Barra de vida: adornos de la saga en pixel art (alas y emblema), barra por segmentos y rastro del golpe */
-.bhp { --px: 3px; display: flex; flex-direction: column; align-items: center; gap: 2px; width: min(660px, 100%); }
+.bhp { --px: 2px; display: flex; flex-direction: column; align-items: center; gap: 2px; width: min(520px, 100%); }
 .bhp-body { position: relative; width: 100%; height: calc(26 * var(--px)); display: flex; align-items: center; }
 .bhp-bar {
   position: relative; flex: 1; min-width: 0; margin-inline: calc(33 * var(--px)); height: calc(7 * var(--px)); padding: var(--px);
@@ -413,7 +413,7 @@
   .en-epithet { font-size: 11px; letter-spacing: 0.14em; }
   .en-epithet::before, .en-epithet::after { width: 18px; }
   .fight-stage, .boss-stage.fight-stage { height: 230px; }
-  .bhp { --px: 2px; }
+  .bhp { --px: 1.5px; }
   .bhp .boss-hp { font-size: 13px; }
 }
 @media (prefers-reduced-motion: reduce) {
