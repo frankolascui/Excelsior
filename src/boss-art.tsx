@@ -888,6 +888,9 @@ export function pixelize(px: Uint8ClampedArray, w: number, h: number, silhouette
 
 // Ilustraciones propias de cada boss (src/assets/bosses/<id>.webp). Si un boss no tiene, se dibuja el sprite generado.
 const ART = import.meta.glob('./assets/bosses/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
+/** Todos los bosses miran a la izquierda: estas ilustraciones vienen mirando a la derecha y se voltean. */
+const FACES_RIGHT = new Set(['cerbero', 'caronte', 'sirenas', 'hades', 'tifon', 'escila']);
+
 export function bossImage(templateId?: string): string | undefined {
   return templateId ? ART[`./assets/bosses/${templateId}.webp`] : undefined;
 }
@@ -926,10 +929,13 @@ export function PixelBoss({ templateId, icon, phase = 'calma', scale = 3, classN
     return () => { alive = false; };
   }, [templateId, icon, phase, silhouette]);
   const photo = bossImage(templateId);
+  const flip = !!templateId && FACES_RIGHT.has(templateId);
   if (photo) {
     return (
       <span className={`pixel-boss has-img phase-${phase}${silhouette ? ' is-silhouette' : ''} ${className}`} style={{ width: SPRITE_W * scale, height: SPRITE_H * scale }} aria-hidden="true">
-        <img src={photo} alt="" draggable={false} decoding="async" />
+        {silhouette
+          ? <span className={`pb-silhouette${flip ? ' flip' : ''}`} style={{ WebkitMaskImage: `url(${photo})`, maskImage: `url(${photo})` }} />
+          : <img src={photo} alt="" draggable={false} decoding="async" className={flip ? 'flip' : undefined} />}
       </span>
     );
   }

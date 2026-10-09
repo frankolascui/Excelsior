@@ -6,6 +6,7 @@ import { useCloud } from './cloud';
 import { Face, ProfileDialog } from './friends';
 import { freshMe, Leaderboard } from './ranking-ui';
 import { PixelBoss } from './boss-art';
+import { BossHpBar, EpicName } from './boss-ui';
 import { refreshSocial, useSocial, type PublicProfile } from './social';
 import { formatMinutes } from './ui';
 import { confetti } from './confetti';
@@ -126,6 +127,7 @@ function ChallengeCard({ game, c, now }: { game: Game; c: ChallengeRow; now: num
   const st = challengeState(c, now);
   const fight = st === 'active' && t?.kind === 'jefe' && !!t.art;
   const hpLeft = Math.max(0, Math.round((1 - p.fraction) * 100));
+  const phase = hpLeft <= 25 ? 'furioso' : hpLeft <= 60 ? 'herido' : 'calma';
   const mine = contribs.find((x) => x.user_id === me);
   const claimed = (game.state.guildClaims ?? []).includes(c.id);
   const canClaim = st === 'won' && !claimed && !!mine && (mine.deep + mine.habits + mine.xp > 0);
@@ -142,18 +144,14 @@ function ChallengeCard({ game, c, now }: { game: Game; c: ChallengeRow; now: num
       {fight ? (
         <div className="guild-fight">
           <header className="fight-head">
-            <span className="fight-eyebrow mono">— Jefe de gremio</span>
-            <h3 id={`ch-${c.id}`} className="fight-name">{t!.name}</h3>
-            <span className="fight-since mono">{timeLeft(c.ends_at, now)}</span>
+            <EpicName name={t!.name} epithet={t!.epithet} as="h3" id={`ch-${c.id}`} />
           </header>
-          <div className="fight-hp">
-            <span className="fight-hp-label mono">HP</span>
-            <Bar value={hpLeft} goal={100} />
-            <span className="mono">{hpLeft} / 100</span>
-          </div>
-          <span className="fight-stage" aria-hidden="true">
+          <BossHpBar max={100} left={hpLeft} phase={phase} label={<><b>{hpLeft}</b> / 100</>} />
+          <span className="fight-since mono">Jefe de gremio · {timeLeft(c.ends_at, now)}</span>
+          <span className={`fight-stage phase-${phase}`} aria-hidden="true">
             <span className="fight-aura" />
-            <PixelBoss templateId={t!.art} icon={t!.icon} phase={hpLeft <= 25 ? 'furioso' : hpLeft <= 60 ? 'herido' : 'calma'} scale={2.4} />
+            <span className="fight-ground" />
+            <PixelBoss templateId={t!.art} icon={t!.icon} phase={phase} scale={2.4} className="boss-art" />
           </span>
           <p className="muted small-text">{t!.lore}</p>
         </div>

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { GameState, XPTransaction } from './types';
 import { createProfile, emptyState, migrate, xpForLevel } from './game';
 import {
+  splitBossName,
   activeBosses, BOSS_TEMPLATES, bossLock, bossPhase, bossStatus, MAX_ACTIVE_BOSSES, nextInSaga, SAGAS, summonBoss, summonCheck, summonTemplate,
   templateOf, timesDefeated,
 } from './bosses';
@@ -162,5 +163,19 @@ describe('partidas antiguas', () => {
     const s = oldSave();
     const fromXp = Math.floor((xpForLevel(6) + 60) / 5);
     expect(coinBalance(s, NOW)).toBe(fromXp + 88 + 38 - 25);
+  });
+});
+
+describe('nombre épico', () => {
+  it('parte el nombre en título y resto', () => {
+    expect(splitBossName('Hidra de la Procrastinación')).toEqual({ title: 'Hidra', rest: 'de la Procrastinación' });
+    expect(splitBossName('Hades, señor de las Sombras')).toEqual({ title: 'Hades', rest: 'señor de las Sombras' });
+    expect(splitBossName('Las Sirenas del Scroll')).toEqual({ title: 'Las Sirenas', rest: 'del Scroll' });
+    expect(splitBossName('Caronte el Barquero')).toEqual({ title: 'Caronte', rest: 'el Barquero' });
+    expect(splitBossName('Caos primordial')).toEqual({ title: 'Caos', rest: 'primordial' });
+    expect(splitBossName('Escila y Caribdis')).toEqual({ title: 'Escila y Caribdis', rest: '' });
+  });
+  it('todos los bosses de la escalera tienen sobrenombre', () => {
+    expect(BOSS_TEMPLATES.every((t) => t.epithet)).toBe(true);
   });
 });

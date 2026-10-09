@@ -20,7 +20,7 @@
 .arena .saga-tag { font-size: 12.5px; color: var(--muted); }
 .arena .phase-tag { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 8px; border-radius: 99px; }
 .arena .phase-tag.herido { color: #fdba74; background: rgba(251, 146, 60, 0.12); border: 1px solid rgba(251, 146, 60, 0.4); }
-.arena .phase-tag.furioso { color: #fff; background: #e11d48; box-shadow: 0 0 14px rgba(225, 29, 72, 0.7); animation: rage-pulse 1.2s ease-in-out infinite; }
+.arena .phase-tag.furioso { color: #fff; background: #e11d48; box-shadow: 0 0 14px rgba(225, 29, 72, 0.7); animation: rage-pulse 2.6s ease-in-out infinite; }
 @keyframes rage-pulse { 50% { box-shadow: 0 0 4px rgba(225, 29, 72, 0.3); } }
 
 /* ---------- Boss activo ---------- */
@@ -42,28 +42,14 @@
 .arena .boss.phase-furioso {
   border-color: #e11d48;
   background: radial-gradient(90% 140% at 0% 50%, rgba(225, 29, 72, 0.28), transparent 60%), linear-gradient(180deg, #1a0a10, #0a0508);
-  animation: rage-glow 1.6s ease-in-out infinite;
+  animation: rage-glow 3.6s ease-in-out infinite;
 }
 @keyframes rage-glow { 50% { box-shadow: 0 0 0 1px rgba(225, 29, 72, 0.4), 0 0 36px rgba(225, 29, 72, 0.35); } }
-.arena .boss-stage { width: 120px; height: 120px; }
-.arena .boss-stage .boss-art { animation: boss-breathe 3s ease-in-out infinite; filter: drop-shadow(0 0 18px color-mix(in srgb, var(--tier) 45%, transparent)); }
-.arena .boss.phase-furioso .boss-art { animation: boss-rage 0.9s ease-in-out infinite; filter: drop-shadow(0 0 22px rgba(225, 29, 72, 0.75)); }
 @keyframes boss-rage { 25% { transform: translate(-1px, 1px) scale(1.03); } 50% { transform: translate(1px, -1px); } 75% { transform: translate(-1px, 0) scale(1.02); } }
-.arena .boss.hit .boss-art { animation: boss-hit 0.5s ease; filter: drop-shadow(0 0 18px #fff) brightness(1.6); }
-.arena .boss-shadow { bottom: -6px; width: 70px; }
 .arena .boss-body { gap: 6px; }
 .arena .boss-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .arena .boss-name { font-size: 25px; line-height: 1.1; text-wrap: balance; }
 .arena .boss-lore { font-style: italic; color: color-mix(in srgb, var(--fg) 72%, var(--muted)); font-size: 15px; }
-.arena .hp-bar.big { height: 18px; margin-top: 4px; border: 1px solid #2a2a36; background: #0a0a10; box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.7); }
-.arena .hp-bar.big .hp-fill {
-  background: linear-gradient(90deg, #b91c1c, #ff3d5a 45%, var(--c1));
-  box-shadow: 0 0 16px rgba(255, 61, 90, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.35);
-  transition: width 0.7s cubic-bezier(.2, .9, .3, 1.1);
-}
-.arena .boss.phase-furioso .hp-fill { background: linear-gradient(90deg, #7f1d1d, #e11d48); animation: hp-throb 0.9s ease-in-out infinite; }
-@keyframes hp-throb { 50% { filter: brightness(1.35); } }
-.arena .hp-notch { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: rgba(0, 0, 0, 0.75); z-index: 2; }
 .arena .boss-hp-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .arena .boss-hp { font-size: 17px; font-weight: 700; }
 .arena .boss-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13.5px; color: var(--muted); }
@@ -154,7 +140,11 @@
 @keyframes rays { to { transform: rotate(360deg); } }
 .intro-eyebrow { margin-bottom: 2px; }
 .intro-art { animation: rise 0.9s cubic-bezier(.2, 1.3, .4, 1) 0.15s both; filter: drop-shadow(0 0 30px color-mix(in srgb, var(--c1) 40%, transparent)); }
-.summon-intro .intro-art .boss-art { animation: boss-rage 0.5s ease-in-out 0.9s 3; }
+.summon-intro .intro-art .boss-art { animation: boss-roar 1.4s ease-in-out 0.9s; transform-origin: 50% 100%; }
+@keyframes boss-roar { 30% { transform: scale(1.05); } 60% { transform: scale(0.99); } }
+.intro-art .pixel-boss.has-img { width: min(360px, 76vw) !important; height: 240px !important; }
+.victory .intro-art .pixel-boss.has-img { width: min(300px, 70vw) !important; height: 190px !important; }
+.intro-name-wrap { animation: fade-up 0.5s ease 0.7s both; max-width: 100%; }
 @keyframes rise { 0% { transform: translateY(40px) scale(0.3); opacity: 0; filter: brightness(4) blur(4px); } 100% { transform: none; opacity: 1; } }
 .intro-cry { font-family: var(--mono); font-size: 13px; letter-spacing: 0.2em; text-transform: uppercase; color: #fda4af; animation: fade-up 0.4s ease 0.6s both; }
 .intro-name {
@@ -259,8 +249,6 @@
 }
 @media (max-width: 600px) {
   .arena .boss { grid-template-columns: 84px 1fr; gap: 12px; padding: 14px; }
-  .arena .boss-stage { width: 84px; height: 84px; align-self: start; }
-  .arena .boss-stage .boss-art { width: 84px; height: auto; }
   .arena .boss-name { font-size: 20px; }
   .arena .boss-lore { font-size: 14px; }
   .arena .boss-body { grid-column: 1 / -1; grid-row: 2; }
@@ -297,62 +285,156 @@
 .pixel-boss .pixel-src { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; overflow: hidden; }
 .pixel-boss canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
 .pixel-boss.has-img img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: 50% 100%; user-select: none; -webkit-user-drag: none; }
-.pixel-boss.has-img.phase-herido img { filter: saturate(1.15) drop-shadow(0 0 6px rgba(251, 146, 60, 0.45)); }
-.pixel-boss.has-img.phase-furioso img { filter: saturate(1.3) contrast(1.08) drop-shadow(0 0 8px rgba(255, 45, 74, 0.6)); }
-/* Bloqueado: solo la silueta, con un filo de luz para que se adivine la forma */
-.pixel-boss.has-img.is-silhouette img { filter: brightness(0) drop-shadow(0 -1px 0 rgba(150, 150, 190, 0.45)) drop-shadow(0 0 1px rgba(150, 150, 190, 0.35)); opacity: 0.9; }
-
-/* Boss activo como escenario de combate (cabecera, vida y sprite grande con aura roja) */
-.arena .boss.boss-fight {
-  display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 22px 18px 18px; text-align: center;
-  background:
-    radial-gradient(60% 55% at 50% 58%, rgba(225, 29, 72, 0.22), transparent 70%),
-    linear-gradient(180deg, #14070b, #070407);
+.pixel-boss.has-img img.flip, .pixel-boss .pb-silhouette.flip { scale: -1 1; }
+.pixel-boss.has-img.phase-herido img { filter: saturate(1.08); }
+.pixel-boss.has-img.phase-furioso img { filter: saturate(1.18) contrast(1.05); }
+/* Bloqueado: la silueta rellena de un degradado de noche, con un filo de luz para que se adivine la forma */
+.pixel-boss .pb-silhouette {
+  display: block; width: 100%; height: 100%;
+  background: linear-gradient(180deg, #4a4270 0%, #26213c 45%, #0e0c18 100%);
+  -webkit-mask-size: contain; mask-size: contain; -webkit-mask-position: 50% 100%; mask-position: 50% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
 }
-.arena .boss.boss-fight::after { opacity: 0.18; }
+.pixel-boss.has-img.is-silhouette { filter: drop-shadow(0 -1px 0 rgba(190, 180, 255, 0.35)) drop-shadow(0 0 6px rgba(120, 100, 220, 0.18)); }
+
+/* ---------- Combate: Arena y jefes de gremio ----------
+   Calma visual: el boss respira despacio (sin saltos ni temblores), la sombra está detrás y en el suelo,
+   y solo un brillo suave cambia con la fase. */
+.arena .boss.boss-fight {
+  display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 26px 18px 20px; text-align: center;
+  background:
+    radial-gradient(70% 60% at 50% 66%, color-mix(in srgb, var(--tier) 15%, transparent), transparent 72%),
+    linear-gradient(180deg, #110b14, #060508);
+}
+.arena .boss.boss-fight.phase-furioso {
+  background: radial-gradient(70% 60% at 50% 66%, rgba(225, 29, 72, 0.2), transparent 72%), linear-gradient(180deg, #16080d, #070407);
+  animation: rage-glow 3.6s ease-in-out infinite;
+}
+.arena .boss.boss-fight::after { opacity: 0.12; }
 .arena .boss-fight .boss-actions { position: absolute; top: 12px; right: 12px; z-index: 2; }
-.fight-head { display: flex; align-items: baseline; justify-content: center; flex-wrap: wrap; gap: 4px 14px; max-width: 100%; }
-.fight-eyebrow { color: #ff4d6a; font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase; }
-.arena .boss-fight .boss-name { font-family: var(--sans, system-ui), sans-serif; font-weight: 800; font-size: 30px; letter-spacing: -0.01em; margin: 0; }
-.fight-since { color: var(--muted); font-size: 12px; }
-.fight-hp { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; width: min(520px, 100%); }
-.fight-hp-label { color: #ff4d6a; font-size: 12px; letter-spacing: 0.12em; }
-.arena .boss-fight .hp-bar.big { margin: 0; height: 14px; border-radius: 99px; border-color: #3a0f1a; }
-.arena .boss-fight .hp-bar.big .hp-fill { background: linear-gradient(90deg, #c8102e, #ff3d5a 70%, #ff7088); }
-.arena .boss-fight .boss-hp { font-size: 14px; color: var(--fg); white-space: nowrap; }
-.arena .boss-fight .boss-stage { position: relative; width: 180px; height: 255px; display: grid; place-items: end center; margin: 4px 0 2px; }
-/* Con ilustración propia, el escenario se ensancha: muchas bestias (Hidra, Caronte…) son más anchas que altas */
-.arena .boss-fight .boss-stage:has(.has-img) { width: 250px; height: 280px; }
-.arena .boss-fight .boss-stage .pixel-boss.has-img { width: 250px !important; height: 280px !important; }
-.fight-aura { position: absolute; inset: 14% 0 6%; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 45, 74, 0.38), transparent); filter: blur(10px); animation: aura 3.2s ease-in-out infinite; }
-@keyframes aura { 50% { opacity: 0.65; transform: scale(0.94); } }
-.arena .boss-fight .boss-stage .boss-art { position: relative; filter: drop-shadow(0 0 1px #ff2d4a) drop-shadow(0 0 16px rgba(255, 45, 74, 0.45)); animation: pixel-bob 1.6s steps(2, jump-none) infinite; }
-@keyframes pixel-bob { 50% { transform: translateY(-3px); } }
-.arena .boss-fight.phase-furioso .boss-stage .boss-art { animation: boss-rage 0.9s steps(3) infinite; filter: drop-shadow(0 0 2px #ff2d4a) drop-shadow(0 0 24px rgba(255, 45, 74, 0.8)); }
-.arena .boss-fight.hit .boss-stage .boss-art { animation: boss-hit 0.5s steps(4); filter: brightness(2.2) drop-shadow(0 0 18px #fff); }
-.arena .boss-fight .boss-shadow { bottom: 2px; width: 110px; height: 10px; }
+.fight-head { display: flex; flex-direction: column; align-items: center; max-width: 100%; }
+.fight-since { color: var(--muted); font-size: 12px; letter-spacing: 0.04em; }
 .arena .boss-fight .boss-body { align-items: center; max-width: 560px; }
 .arena .boss-fight .boss-tags, .arena .boss-fight .boss-meta { justify-content: center; }
-.arena .boss-fight .dmg-float { top: 30px; right: 0; font-size: 30px; }
+.arena .boss-fight .dmg-float { top: 34px; right: 12%; font-size: 30px; }
+
+/* Nombre épico: sobrenombre entre filigranas, título grabado en oro y el resto del nombre en versalitas */
+.epic-name { display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: 100%; }
+.en-epithet {
+  display: inline-flex; align-items: center; gap: 10px; max-width: 100%;
+  font-family: var(--display); font-weight: 500; font-size: 13px; letter-spacing: 0.2em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--tier, #e7b866) 55%, #f4e3c1);
+}
+.en-epithet::before, .en-epithet::after { content: ''; flex: none; width: 34px; height: 1px; background: linear-gradient(90deg, transparent, currentColor); }
+.en-epithet::after { transform: scaleX(-1); }
+.epic-name .en-heading { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; line-height: 1; font-weight: 500; text-wrap: balance; }
+.en-title {
+  font-family: var(--display); font-weight: 700; font-size: clamp(34px, 5.4vw, 50px); line-height: 1.02; letter-spacing: 0.07em; text-transform: uppercase;
+  background: linear-gradient(180deg, #fffaf0 8%, #f7dc9c 40%, #c8893a 62%, #f1cf86 92%); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.9)) drop-shadow(0 0 18px color-mix(in srgb, var(--tier, #c8893a) 30%, transparent));
+}
+.en-rest { font-family: var(--display); font-weight: 500; font-size: 18px; letter-spacing: 0.08em; color: #eadfc8; }
+.en-lg .en-title { font-size: clamp(32px, 8vw, 42px); }
+.en-lg .en-rest { font-size: 17px; }
+/* En las cartas de las sagas: lo mismo en pequeño */
+.en-sm { gap: 3px; }
+.en-sm .en-epithet { font-size: 10px; letter-spacing: 0.14em; gap: 6px; }
+.en-sm .en-epithet::before, .en-sm .en-epithet::after { width: 14px; }
+.en-sm .en-heading { gap: 2px; }
+.en-sm .en-title { font-size: 21px; letter-spacing: 0.05em; filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.9)); }
+.en-sm .en-rest { font-size: 14px; letter-spacing: 0.04em; }
+.arena .boss-template.locked .en-title { background: none; color: #77748e; filter: none; }
+.arena .boss-template.locked .en-rest, .arena .boss-template.locked .en-epithet { color: #5d5a72; }
+
+/* Barra de vida: marco con puntas del color del rango, relleno con volumen, marcas cada 10 % y rastro del golpe */
+.bhp { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; width: min(560px, 100%); }
+.bhp-bar { position: relative; filter: drop-shadow(0 0 10px rgba(225, 29, 72, 0.22)); }
+.bhp-frame {
+  height: 22px; padding: 3px 4px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tier, #c8893a) 70%, #fff3d6), color-mix(in srgb, var(--tier, #c8893a) 45%, #2a1c10) 45%, color-mix(in srgb, var(--tier, #c8893a) 60%, #120c08));
+  clip-path: polygon(11px 0, calc(100% - 11px) 0, 100% 50%, calc(100% - 11px) 100%, 11px 100%, 0 50%);
+}
+.bhp-track {
+  position: relative; height: 100%; overflow: hidden; background: linear-gradient(180deg, #030102, #1c0a10);
+  clip-path: polygon(8px 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 8px 100%, 0 50%);
+}
+.bhp-track::after { /* marcas cada 10 % y brillo de cristal arriba */
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.04) 45%, transparent 55%),
+    repeating-linear-gradient(90deg, transparent 0 calc(10% - 1px), rgba(0, 0, 0, 0.42) calc(10% - 1px) 10%);
+}
+.bhp-fill, .bhp-trail { position: absolute; inset: 0 auto 0 0; }
+.bhp-fill { background: linear-gradient(180deg, #ff8d99 0%, #f2334f 32%, #b8122f 72%, #7a0920 100%); transition: width 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.bhp-trail { background: linear-gradient(180deg, #fff1cf, #f2b45e); opacity: 0.85; transition: width 0.9s ease-in-out 0.6s; }
+.bhp.phase-herido .bhp-fill { background: linear-gradient(180deg, #ffa08a 0%, #f2513a 32%, #b52a1a 72%, #7a1610 100%); }
+.bhp.phase-furioso .bhp-fill { background: linear-gradient(180deg, #ff6f86 0%, #e0123f 32%, #990a2a 72%, #5a0518 100%); }
+.bhp.phase-furioso .bhp-bar { animation: bhp-pulse 3.6s ease-in-out infinite; }
+@keyframes bhp-pulse { 50% { filter: drop-shadow(0 0 16px rgba(255, 30, 70, 0.5)); } }
+.bhp .boss-hp { font-size: 15px; font-weight: 500; color: #d9cdb6; white-space: nowrap; }
+.bhp .boss-hp b { color: #fff; font-weight: 700; }
+
+/* Escenario: aura detrás, sombra en el suelo y el boss respirando (la base no se mueve) */
+.fight-stage, .boss-stage.fight-stage {
+  position: relative; display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: end center;
+  width: min(440px, 100%); height: 290px; margin-top: 4px;
+}
+.fight-stage > * { grid-area: 1 / 1; }
+.fight-stage .pixel-boss.has-img { width: 100% !important; height: 100% !important; }
+.fight-stage .boss-art {
+  position: relative; z-index: 1; transform-origin: 50% 100%;
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.55));
+  animation: boss-breathe-soft 5.2s ease-in-out infinite;
+}
+@keyframes boss-breathe-soft { 50% { transform: translateY(-2px) scale(1.012, 1.02); } }
+.fight-stage.phase-furioso .boss-art { animation-duration: 3.4s; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 14px rgba(255, 45, 74, 0.3)); }
+.fight-aura {
+  align-self: center; z-index: 0; width: 82%; height: 78%; border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--tier, #c056ff) 30%, transparent), transparent);
+  filter: blur(16px); opacity: 0.7; animation: aura-soft 7s ease-in-out infinite;
+}
+.fight-stage.phase-furioso .fight-aura { background: radial-gradient(closest-side, rgba(255, 45, 74, 0.36), transparent); }
+@keyframes aura-soft { 50% { opacity: 0.45; transform: scale(0.95); } }
+.fight-ground {
+  z-index: 0; width: 64%; height: 30px; margin-bottom: -10px; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.32) 60%, transparent);
+}
+/* Golpe: un destello y un pequeño retroceso, sin sacudidas */
+.boss-fight.hit .fight-stage .boss-art { animation: boss-hit-soft 0.6s ease-out; }
+@keyframes boss-hit-soft {
+  0% { transform: none; filter: brightness(1); }
+  15% { transform: translateX(7px) scale(0.985); filter: brightness(2) drop-shadow(0 0 16px #fff); }
+  45% { transform: translateX(-2px); filter: brightness(1.25); }
+  100% { transform: none; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.55)); }
+}
 @media (max-width: 600px) {
-  .arena .boss.boss-fight { padding: 46px 14px 16px; }
-  .arena .boss-fight .boss-name { font-size: 23px; }
-  .arena .boss-fight .boss-stage { width: 150px; height: 213px; }
-  .arena .boss-fight .boss-stage .boss-art, .arena .boss-fight .boss-stage .boss-art canvas { width: 150px !important; height: 212px !important; }
-  .arena .boss-fight .boss-stage:has(.has-img), .arena .boss-fight .boss-stage .pixel-boss.has-img { width: 200px !important; height: 230px !important; }
+  .arena .boss.boss-fight { padding: 48px 14px 16px; }
+  .en-title { font-size: clamp(28px, 9vw, 36px); }
+  .en-rest { font-size: 15px; }
+  .en-epithet { font-size: 11px; letter-spacing: 0.14em; }
+  .en-epithet::before, .en-epithet::after { width: 18px; }
+  .fight-stage, .boss-stage.fight-stage { height: 230px; }
+  .bhp { gap: 8px; }
+  .bhp .boss-hp { font-size: 13px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .fight-aura, .arena .boss-fight .boss-stage .boss-art { animation: none !important; }
+  .fight-aura, .fight-stage .boss-art, .boss-fight.hit .fight-stage .boss-art, .bhp.phase-furioso .bhp-bar, .arena .boss.boss-fight.phase-furioso { animation: none !important; }
+  .bhp-fill, .bhp-trail { transition: none; }
 }
 
 /* Sagas: el boss en pixel art, sin marco, sobre un pedestal de luz del color de su rango */
 .arena .boss-template { border-top: 2px solid color-mix(in srgb, var(--tier) 55%, var(--line)); }
 .arena .boss-template.locked { border-top-color: #23232e; }
-.arena .tpl-art { width: 96px; height: 124px; display: grid; place-items: end center; }
+.arena .tpl-art { width: min(100%, 210px); height: 132px; display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: end center; }
+.arena .tpl-art .pixel-boss.has-img { width: 100% !important; height: 100% !important; }
 .arena .tpl-art::before { content: ''; position: absolute; left: 6px; right: 6px; bottom: -2px; height: 16px; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--tier) 45%, transparent), transparent); }
 .arena .boss-template.locked .tpl-art::before { background: radial-gradient(closest-side, rgba(255, 255, 255, 0.06), transparent); }
 .arena .boss-template.ready .tpl-art .boss-art { filter: drop-shadow(0 0 10px color-mix(in srgb, var(--tier) 40%, transparent)); transition: transform 0.25s ease; }
 .arena .boss-template.ready:hover .tpl-art .boss-art { transform: translateY(-4px) scale(1.04); }
 .arena .boss-template.fighting .tpl-art .boss-art { filter: drop-shadow(0 0 10px rgba(255, 45, 74, 0.6)); }
 .arena .tpl-lock { right: 2px; bottom: 6px; }
-@media (max-width: 760px) { .arena .tpl-art { width: 72px; height: 96px; } .arena .tpl-art .boss-art, .arena .tpl-art .boss-art canvas { width: 72px !important; height: 102px !important; } }
+@media (max-width: 760px) {
+  .arena .tpl-art { width: 104px; height: 104px; }
+  .arena .tpl-art .boss-art, .arena .tpl-art .boss-art canvas { width: 72px !important; height: 102px !important; }
+  .arena .tpl-art .pixel-boss.has-img { width: 104px !important; height: 104px !important; }
+  .arena .boss-template .epic-name, .arena .boss-template .en-heading { align-items: flex-start; text-align: left; }
+}

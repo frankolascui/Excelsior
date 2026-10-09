@@ -1217,14 +1217,7 @@ i.q-side { background: var(--side); }
 
 /* Jefe de gremio en combate (mismo escenario que la Arena) */
 .challenge.jefe.st-active { background: radial-gradient(60% 50% at 50% 34%, rgba(225, 29, 72, 0.2), transparent 70%), linear-gradient(180deg, #14070b, #070407); }
-.guild-fight { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
-.guild-fight .fight-name { font-weight: 800; font-size: 26px; margin: 0; }
-.guild-fight .fight-hp .g-bar { height: 12px; }
-.guild-fight .fight-hp .g-fill { background: linear-gradient(90deg, #c8102e, #ff3d5a 70%, #ff7088); box-shadow: 0 0 14px rgba(255, 61, 90, 0.5); }
-.fight-stage { position: relative; display: grid; place-items: end center; padding-top: 6px; }
-.fight-stage .pixel-boss { filter: drop-shadow(0 0 1px #ff2d4a) drop-shadow(0 0 14px rgba(255, 45, 74, 0.45)); animation: pixel-bob 1.6s steps(2, jump-none) infinite; }
-@media (max-width: 600px) { .guild-fight .fight-name { font-size: 21px; } }
-@media (prefers-reduced-motion: reduce) { .fight-stage .pixel-boss { animation: none; } }
+.guild-fight { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; padding: 10px 0 4px; }
 
 /* Descripción de atributos: frase, qué es, con qué sube y ejemplos */
 .attr-desc { display: flex; flex-direction: column; gap: 4px; }

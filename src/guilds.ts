@@ -32,6 +32,8 @@ export interface ChallengeTemplate {
   guildXp: number;
   /** Jefes: sprite de la Arena que lo representa. */
   art?: string;
+  /** Jefes: sobrenombre épico sobre su nombre. */
+  epithet?: string;
 }
 
 export const CHALLENGES: ChallengeTemplate[] = [
@@ -52,16 +54,19 @@ export const CHALLENGES: ChallengeTemplate[] = [
   },
   {
     id: 'dragon', kind: 'jefe', name: 'El Dragón de la Procrastinación', icon: '🐉', days: 7,
+    epithet: 'Guardián del tesoro de mañana',
     lore: 'Duerme sobre todo lo que dejáis para mañana. Solo cae con horas de foco real.',
     per: { deep: 480 }, min: { deep: 960 }, participation: 0.5, reward: 120, guildXp: 150, art: 'tifon',
   },
   {
     id: 'hidra-rota', kind: 'jefe', name: 'La Hidra del Hábito Roto', icon: '🐍', days: 7,
+    epithet: 'La que renace de cada excusa',
     lore: 'Cada hábito que se rompe le hace crecer otra cabeza. Foco y constancia a la vez.',
     per: { deep: 240, habits: 6 }, min: { deep: 600, habits: 15 }, participation: 0.75, reward: 150, guildXp: 200, art: 'hidra',
   },
   {
     id: 'titan-olvido', kind: 'jefe', name: 'El Titán del Olvido', icon: '🗿', days: 14,
+    epithet: 'El asedio de las dos semanas',
     lore: 'Dos semanas de asedio. Nadie lo vence solo; nadie se queda mirando.',
     per: { deep: 720, habits: 10, xp: 600 }, min: { deep: 1800, habits: 30, xp: 1500 }, participation: 1, reward: 300, guildXp: 400, art: 'cronos',
   },

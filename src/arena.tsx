@@ -15,6 +15,7 @@ import { sfx } from './sfx';
 import { confetti } from './confetti';
 import { ConfirmButton, useNow } from './ui';
 import { BossArt, PixelBoss, TIER_COLOR } from './boss-art';
+import { BossHpBar, EpicName } from './boss-ui';
 import './arena.css';
 
 const BOSS_ICONS = ['🐉', '🐍', '🐂', '🐺', '🦁', '👁️', '🌀', '🌪️', '🦂', '🦅', '🕷️', '💀', '👹', '🧟', '🦈', '🐙'];
@@ -82,19 +83,6 @@ export function TierBadge({ tier }: { tier: BossTier }) {
   );
 }
 
-function HpBar({ hp, shown, ghost }: { hp: number; shown: number; ghost: number }) {
-  const pct = (dmg: number) => Math.max(0, 1 - dmg / hp) * 100;
-  const left = Math.max(0, hp - shown);
-  return (
-    <div className="hp-bar big" role="progressbar" aria-label="Vida restante" aria-valuemin={0} aria-valuemax={hp} aria-valuenow={Math.round(left)}>
-      <div className="hp-ghost" style={{ width: `${pct(ghost)}%` }} />
-      <div className="hp-fill" style={{ width: `${pct(shown)}%` }} />
-      <span className="hp-notch" style={{ left: '50%' }} />
-      <span className="hp-notch" style={{ left: '25%' }} />
-    </div>
-  );
-}
-
 const PHASE_LABEL = { calma: null, herido: 'Herido', furioso: '¡Furioso!' } as const;
 
 function BossCard({ boss: b, st, onFlee }: { boss: Boss; st: ReturnType<typeof bossStatus>; onFlee: () => void }) {
@@ -131,19 +119,15 @@ function BossCard({ boss: b, st, onFlee }: { boss: Boss; st: ReturnType<typeof b
         <ConfirmButton label="Huir" confirmLabel="Sí, huir" onConfirm={onFlee} />
       </div>
       <header className="fight-head">
-        <span className="fight-eyebrow mono">— Boss</span>
-        <h4 className="boss-name">{b.name}</h4>
-        <span className="fight-since mono">desde {since}</span>
+        <EpicName name={b.name} epithet={t?.epithet ?? 'Boss propio'} split={!!t} />
       </header>
-      <div className="fight-hp">
-        <span className="fight-hp-label mono">HP</span>
-        <HpBar hp={b.hp} shown={shown} ghost={hit ? shown - hit : shown} />
-        <span className="mono boss-hp">{fmtNum(st.hpLeft)} / {b.hp}</span>
-      </div>
-      <span className="boss-stage" aria-hidden="true">
+      <BossHpBar max={b.hp} left={b.hp - shown} trail={hit ? b.hp - shown + hit : undefined} phase={phase}
+        label={<><b>{fmtNum(st.hpLeft)}</b> / {b.hp}</>} />
+      <span className="fight-since mono">En combate desde el {since}</span>
+      <span className={`boss-stage fight-stage phase-${phase}`} aria-hidden="true">
         <span className="fight-aura" />
+        <span className="fight-ground" />
         <PixelBoss templateId={t?.id} icon={b.icon} phase={phase} scale={3} className="boss-art" />
-        <span className="boss-shadow" />
         {hit > 0 && <span className="dmg-float mono">−{fmtNum(hit)}</span>}
         {hit > 0 && <span className="slash" />}
       </span>
@@ -178,7 +162,7 @@ function TemplateCard({ t, state, now, full, onSummon }: { t: BossTemplate; stat
       </div>
       <div className="tpl-body">
         <TierBadge tier={t.tier} />
-        <h5>{t.name}</h5>
+        <EpicName name={t.name} epithet={t.epithet} as="h5" size="sm" />
         {lock ? (
           <p className="lock-reason"><span aria-hidden="true">🔒</span> {lock.label}</p>
         ) : (
@@ -232,7 +216,7 @@ function SummonIntro({ boss, onClose }: { boss: Boss; onClose: () => void }) {
         <PixelBoss templateId={t?.id} icon={boss.icon} scale={3} className="boss-art" />
       </div>
       <p className="intro-cry">¡Ha aparecido!</p>
-      <h2 className="intro-name">{boss.name}</h2>
+      <div className="intro-name-wrap"><EpicName name={boss.name} epithet={t?.epithet} split={!!t} as="h2" size="lg" /></div>
       {t && <p className="intro-lore">«{t.lore}»</p>}
       <p className="intro-stats mono">
         <span>❤️ {boss.hp} {SOURCE_LABEL[boss.source].unit}</span>

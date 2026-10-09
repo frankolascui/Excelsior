@@ -10,7 +10,8 @@
 // ERASE=x0,y0,x1,y1;… (borra rectángulos: recortes de referencia pegados), HOLES=x,y;… (fuerza a quitar el hueco gris que contiene ese punto), DBG=1 (lista los huecos candidatos). Recetas usadas: hidra cyan · medusa none + velo 610,398,70 · minotauro red ·
 // cerbero red · caronte none STRICT · hades cyan · talos red · polifemo none · sirenas none GLOW=2 CLEAR=481,320,72 ·
 // escila none STRICT ERASE=0,0,178,190;178,0,275,112;0,190,125,315;0,315,88,385;718,538,1024,722;0,355,80,395 HOLES=830,272;730,385 ·
-// esfinge cyan GLOW=2 · quimera none STRICT=2 GLOW · caos none HOLES=550,700 · cronos none · tifon none STRICT.
+// esfinge cyan GLOW=2 · quimera (v2, alada) none STRICT=1 BOX2=175,180,335,400 ERASE=430,0,520,45;750,392,770,412 HOLES=705,268;875,216 · caos none HOLES=550,700 · cronos none · tifon none STRICT.
+// BOX2=x0,y0,x1,y1: STRICT=2 solo dentro de ese rectángulo (lo gris de verdad) y STRICT=1 en el resto.
 // STRICT=2 además exige el tono que toca en cada casilla de la rejilla (salvó la cabra gris de la Quimera).
 import { chromium } from 'playwright';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -18,7 +19,7 @@ const [, , input, output, maxH = '420', tint = 'none', veil = ''] = process.argv
 const src = 'data:image/png;base64,' + readFileSync(input).toString('base64');
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
 const p = await b.newPage();
-const r = await p.evaluate(async ({ src, maxH, tint, DBG, veil, STRICT, GLOW, CLEAR, ERASE, HOLES }) => {
+const r = await p.evaluate(async ({ src, maxH, tint, DBG, veil, STRICT, GLOW, CLEAR, ERASE, HOLES, BOX2 }) => {
   const img = new Image(); img.src = src; await img.decode();
   const W = img.width, H = img.height;
   const c = document.createElement('canvas'); c.width = W; c.height = H;
@@ -47,12 +48,15 @@ const r = await p.evaluate(async ({ src, maxH, tint, DBG, veil, STRICT, GLOW, CL
   const expected = (x, y) => (parity(x, y) === p0 ? toneA : toneB);
   // dentro de una casilla del tablero el color es plano: 3×3 casi sin variación
   const flat = (x, y) => { let lo = 255, hi = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const xx = Math.min(W - 1, Math.max(0, x + dx)), yy = Math.min(H - 1, Math.max(0, y + dy)); const l = lumAt(xx, yy); lo = Math.min(lo, l); hi = Math.max(hi, l); } return hi - lo <= 10; };
+  // BOX2: STRICT=2 solo dentro de ese rectángulo (lo que es gris de verdad) y STRICT=1 en el resto (limpia mejor los bordes)
+  const modeAt = (x, y) => (BOX2 && x >= BOX2[0] && x <= BOX2[2] && y >= BOX2[1] && y <= BOX2[3] ? '2' : STRICT);
   const bgLike = (i) => { const r = d[i], g = d[i + 1], bl = d[i + 2]; const mx = Math.max(r, g, bl), mn = Math.min(r, g, bl); const lum = (r + g + bl) / 3;
-    if (STRICT === '2') { // además, el tono tiene que ser el que toca en esa casilla del tablero
+    const SM = BOX2 ? modeAt((i / 4) % W, ((i / 4) / W) | 0) : STRICT;
+    if (SM === '2') { // además, el tono tiene que ser el que toca en esa casilla del tablero
       const x = (i / 4) % W, y = ((i / 4) / W) | 0; const bx = ((x - ph) % T + T) % T, by = ((y - phy) % T + T) % T;
       const edge = bx <= 1 || bx >= T - 2 || by <= 1 || by >= T - 2;
       if (mx - mn <= 24 && (edge ? fp.some((t) => Math.abs(lum - t) <= 22) : Math.abs(lum - expected(x, y)) <= 12 && flat(x, y))) return true; }
-    else if (STRICT) { if (mx - mn <= 24 && fp.some((t) => Math.abs(lum - t) <= 22)) return true; }
+    else if (SM) { if (mx - mn <= 24 && fp.some((t) => Math.abs(lum - t) <= 22)) return true; }
     else if (mx - mn <= 24 && lum >= grayMin) return true;
     if (tint === 'cyan') return mx - mn <= 75 && bl >= r && lum >= 120;
     if (tint === 'red') return mx - mn <= 75 && r >= bl && r >= g && lum >= 120;
@@ -92,10 +96,11 @@ const r = await p.evaluate(async ({ src, maxH, tint, DBG, veil, STRICT, GLOW, CL
       for (const n of [x > 0 ? k - 1 : -1, x < W - 1 ? k + 1 : -1, y > 0 ? k - W : -1, y < H - 1 ? k + W : -1]) if (n >= 0 && !seen[n] && !bg[n] && holeLike(n)) { seen[n] = 1; st.push(n); } }
     let nA = 0, nB = 0; for (const k of comp) { const l = lumAt(k % W, (k / W) | 0); if (Math.abs(l - pk[0]) < 16) nA++; else if (Math.abs(l - pk[1]) < 16) nB++; }
     const twoTone = pk.length === 2 && nA > comp.length * 0.2 && nB > comp.length * 0.2 && nA + nB > comp.length * 0.7;
-    let flatTone = 0; if (STRICT === '2') for (const k of comp) { const x = k % W, y = (k / W) | 0; const l = lumAt(x, y); if (pk.some((t) => Math.abs(l - t) < 16) && flat(x, y)) flatTone++; }
+    const CM = modeAt(s % W, (s / W) | 0);
+    let flatTone = 0; if (CM === '2') for (const k of comp) { const x = k % W, y = (k / W) | 0; const l = lumAt(x, y); if (pk.some((t) => Math.abs(l - t) < 16) && flat(x, y)) flatTone++; }
     let seeded = false; if (HOLES) { let bx0 = W, by0 = H, bx1 = 0, by1 = 0; for (const k of comp) { const x = k % W, y = (k / W) | 0; if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y; }
       seeded = HOLES.some(([hx, hy]) => hx >= bx0 && hx <= bx1 && hy >= by0 && hy <= by1); }
-    if (seeded || comp.length > 120 && (match > comp.length * 0.6 || (STRICT === '2' ? flatTone > comp.length * 0.4 && nA > comp.length * 0.15 && nB > comp.length * 0.15 : twoTone))) { comp.forEach((k) => (bg[k] = 1)); holes++; }
+    if (seeded || comp.length > 120 && (match > comp.length * 0.6 || (CM === '2' ? flatTone > comp.length * 0.4 && nA > comp.length * 0.15 && nB > comp.length * 0.15 : twoTone))) { comp.forEach((k) => (bg[k] = 1)); holes++; }
     if (globalThis.DBG && comp.length > 200) { let bx0 = W, by0 = H, bx1 = 0, by1 = 0; for (const k of comp) { const x = k % W, y = (k / W) | 0; bx0 = Math.min(bx0, x); by0 = Math.min(by0, y); bx1 = Math.max(bx1, x); by1 = Math.max(by1, y); }
       dbg.push([comp.length, match, nA, nB, flatTone, bx0, by0, bx1, by1].join(',')); }
   }
@@ -174,7 +179,7 @@ const r = await p.evaluate(async ({ src, maxH, tint, DBG, veil, STRICT, GLOW, CL
   const preview = document.createElement('canvas'); preview.width = o.width; preview.height = o.height;
   const pctx = preview.getContext('2d'); pctx.fillStyle = '#1a0a10'; pctx.fillRect(0, 0, o.width, o.height); pctx.drawImage(o, 0, 0);
   return { glowed, grayMin, veiled, dbg, holes, pk, T, ph, phy, toneA, toneB, crop: [x0, y0, cw, ch], out: [o.width, o.height], webp: o.toDataURL('image/webp', 0.9), preview: preview.toDataURL('image/png') };
-}, { src, maxH: Number(maxH), tint, DBG: !!process.env.DBG, STRICT: process.env.STRICT ?? '', GLOW: process.env.GLOW ?? '', CLEAR: process.env.CLEAR ? process.env.CLEAR.split(',').map(Number) : null, HOLES: process.env.HOLES ? process.env.HOLES.split(';').map((r) => r.split(',').map(Number)) : null, ERASE: process.env.ERASE ? process.env.ERASE.split(';').map((r) => r.split(',').map(Number)) : null, veil: veil ? veil.split(',').map(Number) : null });
+}, { src, maxH: Number(maxH), tint, DBG: !!process.env.DBG, BOX2: process.env.BOX2 ? process.env.BOX2.split(',').map(Number) : null, STRICT: process.env.STRICT ?? '', GLOW: process.env.GLOW ?? '', CLEAR: process.env.CLEAR ? process.env.CLEAR.split(',').map(Number) : null, HOLES: process.env.HOLES ? process.env.HOLES.split(';').map((r) => r.split(',').map(Number)) : null, ERASE: process.env.ERASE ? process.env.ERASE.split(';').map((r) => r.split(',').map(Number)) : null, veil: veil ? veil.split(',').map(Number) : null });
 writeFileSync(output, Buffer.from(r.webp.split(',')[1], 'base64'));
 writeFileSync(output.replace(/\.webp$/, '-preview.png'), Buffer.from(r.preview.split(',')[1], 'base64'));
 if (r.dbg.length) console.log(r.dbg.join('\n'));

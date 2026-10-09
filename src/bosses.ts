@@ -69,44 +69,73 @@ export interface BossTemplate {
   requires?: string;
   /** Monedas al derrotarlo. */
   reward: number;
+  /** Sobrenombre épico que se lee sobre su nombre en el combate: «La de las nueve cabezas». */
+  epithet?: string;
+}
+
+/**
+ * Nombre partido para el combate: el título grande y lo que le sigue («Hidra» · «de la Procrastinación»,
+ * «Hades» · «señor de las Sombras»). Si no hay por dónde partirlo, todo es título.
+ */
+export function splitBossName(name: string): { title: string; rest: string } {
+  const n = name.trim();
+  const comma = n.indexOf(', ');
+  if (comma > 0) return { title: n.slice(0, comma), rest: n.slice(comma + 2) };
+  const m = n.match(/^(.+?)\s+((?:del?|el|la|los|las)\s.+|primordial)$/i);
+  return m ? { title: m[1], rest: m[2] } : { title: n, rest: '' };
 }
 
 // La escalera. Los nombres de los ocho originales no cambian: las partidas antiguas los reconocen por nombre.
 export const BOSS_TEMPLATES: BossTemplate[] = [
   // Saga del Héroe
   { id: 'hidra', short: 'la Hidra', name: 'Hidra de la Procrastinación', icon: '🐉', source: 'xp', hp: 700, days: 7, saga: 'heroe', tier: 1, level: 5, reward: 90,
+    epithet: 'La de las nueve cabezas',
     lore: 'Por cada tarea que aplazas le crecen dos cabezas.' },
   { id: 'medusa', short: 'Medusa', name: 'Medusa de la Distracción', icon: '🐍', source: 'deepwork', hp: 300, days: 7, saga: 'heroe', tier: 2, level: 8, requires: 'hidra', reward: 140,
+    epithet: 'La mirada que petrifica',
     lore: 'Quien mira el móvil se queda de piedra.' },
   { id: 'minotauro', short: 'el Minotauro', name: 'Minotauro de la Rutina', icon: '🐂', source: 'habits', hp: 30, days: 10, saga: 'heroe', tier: 2, level: 12, requires: 'medusa', reward: 180,
+    epithet: 'Señor del Laberinto',
     lore: 'Vive en el laberinto de los días iguales. Tu hilo de Ariadna: un hábito cada día.' },
   // Saga del Inframundo
   { id: 'cerbero', short: 'Cerbero', name: 'Cerbero de la Pereza', icon: '🐺', source: 'voluntad', hp: 150, days: 7, saga: 'inframundo', tier: 1, level: 5, reward: 80,
+    epithet: 'Guardián de las puertas del Hades',
     lore: 'Tres cabezas: «luego», «mañana» y «total, para qué».' },
   { id: 'caronte', short: 'Caronte', name: 'Caronte el Barquero', icon: '⛵', source: 'xp', hp: 1400, days: 10, saga: 'inframundo', tier: 2, level: 10, requires: 'cerbero', reward: 150,
+    epithet: 'El que cruza la laguna Estigia',
     lore: 'Cobra en XP el paso de la laguna Estigia. Sin óbolo, te quedas en la orilla.' },
   { id: 'hades', short: 'Hades', name: 'Hades, señor de las Sombras', icon: '💀', source: 'deepwork', hp: 900, days: 14, saga: 'inframundo', tier: 3, level: 18, requires: 'caronte', reward: 320,
+    epithet: 'Rey del Inframundo',
     lore: 'Reina sobre todos los que se fueron «un ratito» a las redes y nunca volvieron.' },
   // Saga del Ingenio
   { id: 'esfinge', short: 'la Esfinge', name: 'Esfinge de la Ignorancia', icon: '🦁', source: 'sabiduria', hp: 80, days: 7, saga: 'ingenio', tier: 1, level: 5, reward: 75,
+    epithet: 'Guardiana de los enigmas',
     lore: 'Solo deja pasar a quien aprende algo cada día.' },
   { id: 'quimera', short: 'la Quimera', name: 'Quimera del Perfeccionismo', icon: '🔥', source: 'creacion', hp: 80, days: 10, saga: 'ingenio', tier: 2, level: 11, requires: 'esfinge', reward: 150,
+    epithet: 'Aliento de fuego, tres bestias en una',
     lore: 'León del miedo, cabra de la duda, serpiente del «aún no está listo». Vence publicando.' },
   { id: 'talos', short: 'Talos', name: 'Talos, el gigante de bronce', icon: '🗿', source: 'maestria', hp: 250, days: 14, saga: 'ingenio', tier: 3, level: 16, requires: 'quimera', reward: 300,
+    epithet: 'Coloso forjado por Hefesto',
     lore: 'Forjado por Hefesto. Solo cae ante la técnica pulida golpe a golpe.' },
   // Saga de la Odisea
   { id: 'polifemo', short: 'Polifemo', name: 'Polifemo el Solitario', icon: '👁️', source: 'conexion', hp: 40, days: 7, saga: 'odisea', tier: 1, level: 5, reward: 75,
+    epithet: 'El cíclope de la cueva',
     lore: 'Un solo ojo y ningún amigo. No acabes como él.' },
   { id: 'sirenas', short: 'las Sirenas', name: 'Las Sirenas del Scroll', icon: '🧜', source: 'voluntad', hp: 220, days: 10, saga: 'odisea', tier: 2, level: 13, requires: 'polifemo', reward: 150,
+    epithet: 'El canto que hunde barcos',
     lore: 'Su canto es una notificación infinita. Átate al mástil como Ulises.' },
   { id: 'escila', short: 'Escila y Caribdis', name: 'Escila y Caribdis', icon: '🌊', source: 'habits', hp: 45, days: 14, saga: 'odisea', tier: 3, level: 20, requires: 'sirenas', reward: 320,
+    epithet: 'Entre el monstruo y el remolino',
     lore: 'A un lado, el exceso que te quema; al otro, el remolino de no hacer nada. Pasa por el medio: constancia.' },
   // Saga Primordial
   { id: 'caos', short: 'Caos', name: 'Caos primordial', icon: '🌀', source: 'creacion', hp: 60, days: 7, saga: 'primordial', tier: 2, level: 15, reward: 200,
+    epithet: 'El vacío antes de todo',
     lore: 'Antes del mundo solo había Caos. Vence creando algo.' },
   { id: 'cronos', short: 'Cronos', name: 'Cronos, devorador del tiempo', icon: '⏳', source: 'deepwork', hp: 1500, days: 21, saga: 'primordial', tier: 4, level: 24, requires: 'caos', reward: 550,
+    epithet: 'Rey de los Titanes',
     lore: 'Hermano de Hiperión. Devora cada hora que no proteges.' },
   { id: 'tifon', short: 'Tifón', name: 'Tifón, padre de monstruos', icon: '🌪️', source: 'xp', hp: 6000, days: 30, saga: 'primordial', tier: 4, level: 30, requires: 'cronos', reward: 1000,
+    epithet: 'Terror de los dioses',
     lore: 'El jefe final. Hasta Zeus le temió.' },
 ];
 
