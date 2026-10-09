@@ -4,3 +4,5 @@ dist-single/
 *.log
 .DS_Store
 dist-cloud/
+# capturas que generan las pruebas e2e en cada ejecución
+e2e/*.png
