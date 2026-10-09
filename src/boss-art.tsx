@@ -889,7 +889,7 @@ export function pixelize(px: Uint8ClampedArray, w: number, h: number, silhouette
 // Ilustraciones propias de cada boss (src/assets/bosses/<id>.webp). Si un boss no tiene, se dibuja el sprite generado.
 const ART = import.meta.glob('./assets/bosses/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
 /** Todos los bosses miran a la izquierda: estas ilustraciones vienen mirando a la derecha y se voltean. */
-const FACES_RIGHT = new Set(['cerbero', 'caronte', 'sirenas', 'hades', 'tifon', 'escila']);
+const FACES_RIGHT = new Set(['cerbero', 'caronte', 'sirenas', 'hades', 'tifon', 'escila', 'talos']);
 
 export function bossImage(templateId?: string): string | undefined {
   return templateId ? ART[`./assets/bosses/${templateId}.webp`] : undefined;

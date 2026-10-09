@@ -146,7 +146,7 @@ function ChallengeCard({ game, c, now }: { game: Game; c: ChallengeRow; now: num
           <header className="fight-head">
             <EpicName name={t!.name} epithet={t!.epithet} as="h3" id={`ch-${c.id}`} />
           </header>
-          <BossHpBar max={100} left={hpLeft} phase={phase} label={<><b>{hpLeft}</b> / 100</>} />
+          <BossHpBar max={100} left={hpLeft} phase={phase} theme="gremio" label={<><b>{hpLeft}</b> / 100</>} />
           <span className="fight-since mono">Jefe de gremio · {timeLeft(c.ends_at, now)}</span>
           <span className={`fight-stage phase-${phase}`} aria-hidden="true">
             <span className="fight-aura" />

@@ -345,32 +345,32 @@
 .arena .boss-template.locked .en-title { background: none; color: #77748e; filter: none; }
 .arena .boss-template.locked .en-rest, .arena .boss-template.locked .en-epithet { color: #5d5a72; }
 
-/* Barra de vida: marco con puntas del color del rango, relleno con volumen, marcas cada 10 % y rastro del golpe */
-.bhp { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; width: min(560px, 100%); }
-.bhp-bar { position: relative; filter: drop-shadow(0 0 10px rgba(225, 29, 72, 0.22)); }
-.bhp-frame {
-  height: 22px; padding: 3px 4px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--tier, #c8893a) 70%, #fff3d6), color-mix(in srgb, var(--tier, #c8893a) 45%, #2a1c10) 45%, color-mix(in srgb, var(--tier, #c8893a) 60%, #120c08));
-  clip-path: polygon(11px 0, calc(100% - 11px) 0, 100% 50%, calc(100% - 11px) 100%, 11px 100%, 0 50%);
+/* Barra de vida: adornos de la saga en pixel art (alas y emblema), barra por segmentos y rastro del golpe */
+.bhp { --px: 3px; display: flex; flex-direction: column; align-items: center; gap: 2px; width: min(660px, 100%); }
+.bhp-body { position: relative; width: 100%; height: calc(26 * var(--px)); display: flex; align-items: center; }
+.bhp-bar {
+  position: relative; flex: 1; min-width: 0; margin-inline: calc(33 * var(--px)); height: calc(7 * var(--px)); padding: var(--px);
+  background: #0b0710; box-shadow: 0 0 0 var(--px) color-mix(in srgb, var(--bar-mid) 30%, #1a1024), 0 0 18px color-mix(in srgb, var(--bar-mid) 28%, transparent);
 }
-.bhp-track {
-  position: relative; height: 100%; overflow: hidden; background: linear-gradient(180deg, #030102, #1c0a10);
-  clip-path: polygon(8px 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 8px 100%, 0 50%);
-}
-.bhp-track::after { /* marcas cada 10 % y brillo de cristal arriba */
+.bhp-track { position: relative; height: 100%; overflow: hidden; background: #22152c; }
+.bhp-track::after { /* separaciones cada 10 %, más claras, como segmentos */
   content: ''; position: absolute; inset: 0; pointer-events: none;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.04) 45%, transparent 55%),
-    repeating-linear-gradient(90deg, transparent 0 calc(10% - 1px), rgba(0, 0, 0, 0.42) calc(10% - 1px) 10%);
+  background: repeating-linear-gradient(90deg, transparent 0 calc(10% - var(--px)), rgba(255, 255, 255, 0.22) calc(10% - var(--px)) 10%);
 }
 .bhp-fill, .bhp-trail { position: absolute; inset: 0 auto 0 0; }
-.bhp-fill { background: linear-gradient(180deg, #ff8d99 0%, #f2334f 32%, #b8122f 72%, #7a0920 100%); transition: width 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); }
-.bhp-trail { background: linear-gradient(180deg, #fff1cf, #f2b45e); opacity: 0.85; transition: width 0.9s ease-in-out 0.6s; }
-.bhp.phase-herido .bhp-fill { background: linear-gradient(180deg, #ffa08a 0%, #f2513a 32%, #b52a1a 72%, #7a1610 100%); }
-.bhp.phase-furioso .bhp-fill { background: linear-gradient(180deg, #ff6f86 0%, #e0123f 32%, #990a2a 72%, #5a0518 100%); }
-.bhp.phase-furioso .bhp-bar { animation: bhp-pulse 3.6s ease-in-out infinite; }
-@keyframes bhp-pulse { 50% { filter: drop-shadow(0 0 16px rgba(255, 30, 70, 0.5)); } }
-.bhp .boss-hp { font-size: 15px; font-weight: 500; color: #d9cdb6; white-space: nowrap; }
+.bhp-fill {
+  background: linear-gradient(180deg, var(--bar-hi) 0 30%, var(--bar-mid) 30% 72%, var(--bar-lo) 72%);
+  transition: width 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.bhp-trail { background: linear-gradient(180deg, #fff6dc 0 30%, #f6c66e 30%); opacity: 0.9; transition: width 0.9s ease-in-out 0.6s; }
+.bhp-wing, .bhp-crest { position: absolute; top: 50%; image-rendering: pixelated; image-rendering: crisp-edges; pointer-events: none; user-select: none; }
+.bhp-wing { width: calc(42 * var(--px)); height: calc(24 * var(--px)); }
+.bhp-wing.left { left: 0; transform: translateY(-50%); }
+.bhp-wing.right { right: 0; transform: translateY(-50%) scaleX(-1); }
+.bhp-crest { left: 50%; width: calc(30 * var(--px)); height: calc(26 * var(--px)); transform: translate(-50%, -50%); }
+.bhp.phase-furioso .bhp-crest { animation: bhp-pulse 3.6s ease-in-out infinite; }
+@keyframes bhp-pulse { 50% { filter: drop-shadow(0 0 16px rgba(255, 30, 70, 0.75)); } }
+.bhp .boss-hp { font-size: 14px; font-weight: 500; color: #d9cdb6; white-space: nowrap; }
 .bhp .boss-hp b { color: #fff; font-weight: 700; }
 
 /* Escenario: aura detrás, sombra en el suelo y el boss respirando (la base no se mueve) */
@@ -413,11 +413,11 @@
   .en-epithet { font-size: 11px; letter-spacing: 0.14em; }
   .en-epithet::before, .en-epithet::after { width: 18px; }
   .fight-stage, .boss-stage.fight-stage { height: 230px; }
-  .bhp { gap: 8px; }
+  .bhp { --px: 2px; }
   .bhp .boss-hp { font-size: 13px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .fight-aura, .fight-stage .boss-art, .boss-fight.hit .fight-stage .boss-art, .bhp.phase-furioso .bhp-bar, .arena .boss.boss-fight.phase-furioso { animation: none !important; }
+  .fight-aura, .fight-stage .boss-art, .boss-fight.hit .fight-stage .boss-art, .bhp.phase-furioso .bhp-crest, .arena .boss.boss-fight.phase-furioso { animation: none !important; }
   .bhp-fill, .bhp-trail { transition: none; }
 }
 

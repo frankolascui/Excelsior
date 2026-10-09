@@ -16,6 +16,7 @@ import { confetti } from './confetti';
 import { ConfirmButton, useNow } from './ui';
 import { BossArt, PixelBoss, TIER_COLOR } from './boss-art';
 import { BossHpBar, EpicName } from './boss-ui';
+import type { BarTheme } from './bar-art';
 import './arena.css';
 
 const BOSS_ICONS = ['🐉', '🐍', '🐂', '🐺', '🦁', '👁️', '🌀', '🌪️', '🦂', '🦅', '🕷️', '💀', '👹', '🧟', '🦈', '🐙'];
@@ -121,7 +122,7 @@ function BossCard({ boss: b, st, onFlee }: { boss: Boss; st: ReturnType<typeof b
       <header className="fight-head">
         <EpicName name={b.name} epithet={t?.epithet ?? 'Boss propio'} split={!!t} />
       </header>
-      <BossHpBar max={b.hp} left={b.hp - shown} trail={hit ? b.hp - shown + hit : undefined} phase={phase}
+      <BossHpBar max={b.hp} left={b.hp - shown} trail={hit ? b.hp - shown + hit : undefined} phase={phase} theme={(t?.saga ?? 'heroe') as BarTheme}
         label={<><b>{fmtNum(st.hpLeft)}</b> / {b.hp}</>} />
       <span className="fight-since mono">En combate desde el {since}</span>
       <span className={`boss-stage fight-stage phase-${phase}`} aria-hidden="true">
