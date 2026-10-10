@@ -7,6 +7,7 @@ import {
 } from './game';
 import { CustomizeToggle, InlineEdit, RewardEditor, sameRewards, type CustomValue } from './customize';
 import { RitualCTA } from './ritual';
+import { DatePicker } from './pickers';
 import { AvatarPortrait, initialOf } from './portrait';
 
 export function useNow(intervalMs = 1000): number {
@@ -92,7 +93,6 @@ export function QuestItem({
 }) {
   const done = !!quest.completedAt;
   const [editing, setEditing] = useState(false);
-  const [dating, setDating] = useState(false);
   const due = quest.deadline && !done ? deadlineLabel(quest.deadline, Date.now()) : null;
   if (editing && onEdit) {
     const initial: CustomValue = { xp: quest.xp, rewards: quest.rewards ?? (quest.focus ? questRewards(quest.type, quest.title, quest.focus) : undefined) };
@@ -118,19 +118,12 @@ export function QuestItem({
         <span className="item-meta">
           <TypeChip type={quest.type} />
           {due && (onDeadline
-            ? <button type="button" className={`due due-${due.tone}`} onClick={() => setDating(!dating)} title="Cambiar la fecha límite">📅 {due.text}</button>
+            ? <DatePicker value={quest.deadline ?? null} onChange={onDeadline} label={`Fecha límite de ${quest.title}`} clearLabel="Quitar fecha límite" className={`due due-${due.tone}`}>📅 {due.text}</DatePicker>
             : <span className={`due due-${due.tone}`}>📅 {due.text}</span>)}
           {kingdom && <span className="kingdom-tag">🏰 {kingdom}</span>}
           <span className="mono xp-tag">+{questXp(quest)} XP</span>
           <RewardTags rewards={questAttributeRewards(quest)} />
         </span>
-        {dating && onDeadline && (
-          <span className="due-edit">
-            <input type="date" value={quest.deadline ?? ''} autoFocus aria-label={`Fecha límite de ${quest.title}`}
-              onChange={(e) => { onDeadline(e.target.value || null); if (e.target.value) setDating(false); }} />
-            {quest.deadline && <button type="button" className="link" onClick={() => { onDeadline(null); setDating(false); }}>Quitar fecha</button>}
-          </span>
-        )}
       </div>
       <div className="item-actions">
         {onStart && !done && (
@@ -138,7 +131,7 @@ export function QuestItem({
         )}
         {onUndo && done && <button className="ghost small" onClick={onUndo}>Deshacer</button>}
         {onDeadline && !done && !quest.deadline && (
-          <button className="icon-btn" onClick={() => setDating(!dating)} aria-label={`Poner fecha límite a ${quest.title}`} title="Poner fecha límite">📅</button>
+          <DatePicker value={null} onChange={onDeadline} label={`Poner fecha límite a ${quest.title}`} className="icon-btn due-add">📅</DatePicker>
         )}
         {onEdit && !done && (
           <button className="icon-btn edit-btn" onClick={() => setEditing(true)} aria-label={`Editar ${quest.title}`} title="Editar XP y atributos">✎</button>
@@ -199,10 +192,7 @@ export function QuickAddQuest({
           ))}
         </div>
         {!fixedDeadline && (
-          <label className="deadline-field" title="Fecha límite (opcional)">
-            <span aria-hidden="true">📅</span>
-            <input id="new-quest-deadline" type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} aria-label="Fecha límite (opcional)" />
-          </label>
+          <DatePicker id="new-quest-deadline" value={deadline || null} onChange={(d) => setDeadline(d ?? '')} label="Fecha límite (opcional)" clearLabel="Sin fecha límite" placeholder="Fecha límite" />
         )}
         <CustomizeToggle open={open} onToggle={() => setOpen(!open)} custom={isCustom} />
         <button type="submit" className="primary" disabled={!title.trim()}>Crear</button>

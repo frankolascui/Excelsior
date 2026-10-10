@@ -70,16 +70,53 @@ export const EVENT_KINDS: { id: EventKind; name: string; icon: string }[] = [
 
 export const eventIcon = (k: EventKind) => EVENT_KINDS.find((x) => x.id === k)?.icon ?? '📌';
 
-export function addEvent(
-  s: GameState,
-  e: { title: string; day: string; time?: string; end?: string; kind: EventKind; repeat?: EventRepeat },
-  now: number,
-): GameState {
-  const ev: CalendarEvent = { id: uid(), title: e.title.trim(), day: e.day, kind: e.kind, createdAt: now };
-  if (e.time) ev.time = e.time;
-  if (e.time && e.end && e.end > e.time) ev.end = e.end;
-  if (e.repeat) ev.repeat = e.repeat;
-  return { ...s, events: [...(s.events ?? []), ev] };
+/** Colores para los eventos, como los de Google Calendar. */
+export const EVENT_COLORS: { id: string; name: string; hex: string }[] = [
+  { id: 'tomate', name: 'Tomate', hex: '#e5484d' },
+  { id: 'flamenco', name: 'Flamenco', hex: '#e93d82' },
+  { id: 'mandarina', name: 'Mandarina', hex: '#f76b15' },
+  { id: 'platano', name: 'Plátano', hex: '#f5c542' },
+  { id: 'albahaca', name: 'Albahaca', hex: '#30a46c' },
+  { id: 'salvia', name: 'Salvia', hex: '#5bc8a0' },
+  { id: 'pavo', name: 'Pavo real', hex: '#0090ff' },
+  { id: 'arandano', name: 'Arándano', hex: '#3e63dd' },
+  { id: 'lavanda', name: 'Lavanda', hex: '#9b9ef0' },
+  { id: 'uva', name: 'Uva', hex: '#8e4ec6' },
+  { id: 'grafito', name: 'Grafito', hex: '#8b8d98' },
+];
+
+export const eventColor = (e: { color?: string }) => (e.color ? EVENT_COLORS.find((c) => c.id === e.color)?.hex : undefined);
+
+type EventFields = { title: string; day: string; time?: string; end?: string; kind: EventKind; repeat?: EventRepeat; color?: string };
+
+/** Evento limpio: sin campos vacíos, fin solo si va después del inicio. */
+function cleanEvent(ev: CalendarEvent): CalendarEvent {
+  const out: CalendarEvent = { id: ev.id, title: ev.title.trim(), day: ev.day, kind: ev.kind, createdAt: ev.createdAt };
+  if (ev.time) out.time = ev.time;
+  if (ev.time && ev.end && ev.end > ev.time) out.end = ev.end;
+  if (ev.repeat) out.repeat = ev.repeat;
+  if (ev.repeat && ev.skip?.length) out.skip = ev.skip;
+  if (ev.color) out.color = ev.color;
+  return out;
+}
+
+export function addEvent(s: GameState, e: EventFields, now: number): GameState {
+  return { ...s, events: [...(s.events ?? []), cleanEvent({ ...e, id: uid(), createdAt: now })] };
+}
+
+/** Cambia un evento (la serie entera si se repite). Un campo a `undefined` se quita. */
+export function updateEvent(s: GameState, id: string, patch: Partial<EventFields>): GameState {
+  return { ...s, events: (s.events ?? []).map((e) => (e.id === id ? cleanEvent({ ...e, ...patch }) : e)) };
+}
+
+/**
+ * Mover o alargar un evento desde la vista por horas. Si se repite, solo cambia ese día:
+ * se quita de la serie y queda como evento suelto en su nuevo sitio (como «Solo este evento» en Google).
+ */
+export function moveEvent(s: GameState, occ: CalendarEvent, to: { day: string; time: string; end: string }, now: number): GameState {
+  if (!occ.repeat) return updateEvent(s, occ.id, to);
+  const moved = skipEventDay(s, occ.id, occ.day);
+  return addEvent(moved, { title: occ.title, kind: occ.kind, color: occ.color, ...to }, now);
 }
 
 /** Quita un solo día de un evento que se repite (el resto de la serie sigue). */

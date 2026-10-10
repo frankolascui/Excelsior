@@ -143,9 +143,8 @@ export function Dashboard({
         )}
       </section>
 
-      <RemindersPanel game={game} now={now} />
-
       <div className="columns">
+        <div className="col-stack">
         <section className="panel">
           <header className="panel-head">
             <h3>Misiones pendientes</h3>
@@ -162,6 +161,9 @@ export function Dashboard({
           )}
           {s.kind !== 'create' && <QuickAddQuest onAdd={(t, ty, c) => act((st) => addQuest(st, t, ty, Date.now(), c))} />}
         </section>
+
+        <RemindersPanel game={game} now={now} />
+        </div>
 
         <section className="panel">
           <header className="panel-head">

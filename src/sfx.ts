@@ -53,6 +53,26 @@ function note(ac: AudioContext, freq: number, at: number, dur: number, type: Osc
   osc.stop(t0 + dur + 0.02);
 }
 
+/** Soplo de ruido con filtro que barre de `from` a `to` Hz (deslizar, pasar página, abrir). */
+function swish(ac: AudioContext, at: number, dur: number, from: number, to: number, vol = 0.08) {
+  const t0 = ac.currentTime + at;
+  const len = Math.ceil(ac.sampleRate * dur);
+  const buf = ac.createBuffer(1, len, ac.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * Math.sin((Math.PI * i) / len);
+  const src = ac.createBufferSource();
+  const filter = ac.createBiquadFilter();
+  const gain = ac.createGain();
+  src.buffer = buf;
+  filter.type = 'bandpass';
+  filter.Q.value = 1.4;
+  filter.frequency.setValueAtTime(from, t0);
+  filter.frequency.exponentialRampToValueAtTime(to, t0 + dur);
+  gain.gain.value = vol;
+  src.connect(filter).connect(gain).connect(ac.destination);
+  src.start(t0);
+}
+
 /** Golpe de ruido filtrado (impactos, martillazos). */
 function thump(ac: AudioContext, at: number, dur: number, freq: number, vol = 0.25) {
   const t0 = ac.currentTime + at;
@@ -151,6 +171,44 @@ export const sfx = {
   }),
   /** Pasar de paso en el tutorial o abrir algo. */
   tick: () => play((ac) => note(ac, 1400, 0, 0.05, 'sine', 0.05)),
+  /** Tachar algo de la lista: «tic» seco con un brillo encima. */
+  check: () => play((ac) => {
+    thump(ac, 0, 0.05, 3200, 0.18);
+    note(ac, 1318.5, 0.02, 0.09, 'triangle', 0.08);
+    note(ac, 1975.5, 0.07, 0.16, 'sine', 0.06);
+  }),
+  /** Destachar: el mismo «tic» hacia abajo. */
+  uncheck: () => play((ac) => note(ac, 900, 0, 0.12, 'sine', 0.06, 520)),
+  /** Añadir algo al calendario o a una lista: ficha que se coloca. */
+  place: () => play((ac) => {
+    thump(ac, 0, 0.07, 1800, 0.22);
+    note(ac, G5, 0.04, 0.14, 'triangle', 0.08);
+    note(ac, D6, 0.1, 0.2, 'sine', 0.06);
+  }),
+  /** Coger un evento para moverlo. */
+  grab: () => play((ac) => note(ac, 660, 0, 0.06, 'sine', 0.06, 990)),
+  /** Soltarlo en su nuevo sitio. */
+  drop: () => play((ac) => {
+    thump(ac, 0, 0.08, 900, 0.28);
+    note(ac, 330, 0, 0.1, 'triangle', 0.07, 247);
+  }),
+  /** Abrir una hoja o un desplegable. */
+  open: () => play((ac) => swish(ac, 0, 0.16, 600, 2600, 0.07)),
+  /** Pasar de mes, semana o día. */
+  page: () => play((ac) => swish(ac, 0, 0.13, 2400, 900, 0.06)),
+  /** Borrar: soplo grave que se va. */
+  remove: () => play((ac) => {
+    swish(ac, 0, 0.2, 1400, 250, 0.08);
+    note(ac, 330, 0, 0.16, 'sine', 0.05, 165);
+  }),
+  /** Aviso de un recordatorio: campanilla doble. */
+  bell: () => play((ac) => {
+    [0, 0.22].forEach((t) => {
+      note(ac, 1567.98, t, 0.7, 'sine', 0.1);
+      note(ac, 2349.3, t, 0.5, 'sine', 0.04);
+      note(ac, 3135.9, t, 0.25, 'sine', 0.02);
+    });
+  }),
   /** Fin de la cuenta atrás: campana. */
   done: () => play((ac) => {
     note(ac, C6, 0, 0.9, 'sine', 0.16);

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createProfile, emptyState } from './game';
 import {
-  addEvent, addReminder, deleteReminder, dueAlerts, eventSpan, eventsOn, laterReminders, layoutLanes, occursOn, remindersOn,
-  skipEventDay, todayReminders, toggleReminder, upcomingEvents,
+  addEvent, addReminder, deleteReminder, dueAlerts, eventColor, eventSpan, eventsOn, laterReminders, layoutLanes, moveEvent, occursOn, remindersOn,
+  skipEventDay, todayReminders, toggleReminder, upcomingEvents, updateEvent,
 } from './life';
 
 const NOW = new Date(2026, 9, 6, 10, 0).getTime(); // martes 6 de octubre, 10:00
@@ -99,5 +99,33 @@ describe('vista por horas', () => {
     expect(layoutLanes([[540, 600], [570, 660], [600, 660], [720, 780]])).toEqual([
       { lane: 0, lanes: 2 }, { lane: 1, lanes: 2 }, { lane: 0, lanes: 2 }, { lane: 0, lanes: 1 },
     ]);
+  });
+});
+
+describe('mover, alargar y colores', () => {
+  it('mover un evento suelto cambia su día y sus horas', () => {
+    let s = addEvent(base(), { title: 'Gimnasio', day: '2026-10-06', time: '18:00', end: '19:00', kind: 'bloque' }, NOW);
+    s = moveEvent(s, s.events![0], { day: '2026-10-07', time: '19:30', end: '21:00' }, NOW);
+    expect(s.events).toHaveLength(1);
+    expect(s.events![0]).toMatchObject({ day: '2026-10-07', time: '19:30', end: '21:00' });
+  });
+
+  it('mover un día de una serie solo cambia ese día', () => {
+    let s = addEvent(base(), { title: 'Estudiar', day: '2026-10-05', time: '09:00', end: '10:00', kind: 'bloque', repeat: 'daily', color: 'uva' }, NOW);
+    const occ = eventsOn(s, '2026-10-07')[0];
+    s = moveEvent(s, occ, { day: '2026-10-07', time: '11:00', end: '12:30' }, NOW);
+    expect(eventsOn(s, '2026-10-07').map((e) => [e.time, e.end, e.repeat, e.color])).toEqual([['11:00', '12:30', undefined, 'uva']]);
+    expect(eventsOn(s, '2026-10-08')[0]).toMatchObject({ time: '09:00', repeat: 'daily' });
+  });
+
+  it('editar cambia la serie entera y quitar un campo lo borra', () => {
+    let s = addEvent(base(), { title: 'Estudiar', day: '2026-10-05', time: '09:00', end: '10:00', kind: 'bloque', repeat: 'daily' }, NOW);
+    const id = s.events![0].id;
+    s = updateEvent(s, id, { color: 'albahaca', title: 'Estudiar física' });
+    expect(eventsOn(s, '2026-10-09')[0]).toMatchObject({ title: 'Estudiar física', color: 'albahaca' });
+    expect(eventColor(s.events![0])).toBe('#30a46c');
+    s = updateEvent(s, id, { time: undefined, end: undefined, repeat: undefined });
+    expect(s.events![0].time).toBeUndefined();
+    expect(eventsOn(s, '2026-10-09')).toHaveLength(0);
   });
 });

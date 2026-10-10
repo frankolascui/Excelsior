@@ -1,10 +1,11 @@
 // Calendario: mes, semana o día por horas. Eventos, bloques de tiempo, recordatorios, fechas límite de misiones y lo completado.
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import type { Game } from './screens';
 import type { Quest } from './types';
 import { addQuest, completeQuest, dayKey, deleteQuest, pendingQuests, setQuestDeadline, undoQuest, updateQuest, xpOnDay } from './game';
 import { QuestItem, QuickAddQuest, shortDate } from './ui';
-import { eventIcon, eventsOn, remindersOn } from './life';
+import { eventColor, eventIcon, eventsOn, remindersOn } from './life';
+import { sfx } from './sfx';
 import { addDays, DayAgenda, mondayOf, TimeGrid } from './agenda-ui';
 
 type CalView = 'month' | 'week' | 'day';
@@ -45,6 +46,7 @@ export function QuestCalendar({
     }
   });
   function pickView(v: CalView) {
+    if (v !== view) sfx.tick();
     setView(v);
     try {
       localStorage.setItem(CAL_VIEW_KEY, v);
@@ -67,6 +69,7 @@ export function QuestCalendar({
   const due = (day: string) => state.quests.filter((q) => !q.completedAt && q.deadline === day);
   const doneOn = (day: string) => state.quests.filter((q) => q.completedAt && dayKey(q.completedAt) === day);
   const move = (delta: number) => {
+    sfx.page();
     if (view === 'week') return select(addDays(selected, 7 * delta));
     if (view === 'day') return select(addDays(selected, delta));
     const d = new Date(cursor.y, cursor.m + delta, 1);
@@ -114,7 +117,7 @@ export function QuestCalendar({
               >
                 <span className="cal-num mono">{Number(day.slice(8))}</span>
                 <span className="cal-items" aria-hidden="true">
-                  {evs.slice(0, 2).map((e) => <span key={e.id} className={`cal-ev ev-${e.kind}`}>{eventIcon(e.kind)} {e.time ? `${e.time} ` : ''}{e.title}</span>)}
+                  {evs.slice(0, 2).map((e) => <span key={e.id} className={`cal-ev ev-${e.kind}`} style={eventColor(e) ? ({ '--ev': eventColor(e) } as CSSProperties) : undefined}>{eventIcon(e.kind)} {e.time ? `${e.time} ` : ''}{e.title}</span>)}
                   {evs.length > 2 && <span className="cal-more">+{evs.length - 2} eventos</span>}
                   {rems.slice(0, 1).map((r) => <span key={r.id} className="cal-rem">🔔 {r.title}</span>)}
                   {rems.length > 1 && <span className="cal-more">+{rems.length - 1} 🔔</span>}

@@ -234,8 +234,10 @@ export interface CalendarEvent {
   end?: string; // HH:MM; sin ella dura una hora
   kind: EventKind;
   repeat?: EventRepeat;
-  /** Días en que no se repite (se borró solo ese día). */
+  /** Días en que no se repite (se borró o se movió solo ese día). */
   skip?: string[];
+  /** Color elegido (id de EVENT_COLORS); sin él, el del tipo. */
+  color?: string;
   createdAt: number;
 }
 

@@ -1,11 +1,11 @@
 // Tu vida real en pantalla: medidas (Personaje), cierre del día y próximos eventos (Hoy), eventos del calendario.
-import { useState, type FormEvent } from 'react';
+import { useState, type CSSProperties, type FormEvent } from 'react';
 import type { Game } from './screens';
 import type { GameState, Metric } from './types';
 import { dayKey, daysUntil } from './game';
 import { formatAttrXp } from './attributes';
 import {
-  addMetric, dailyReport, dayLog, deleteMetric, eventIcon, logMetric, METRIC_PRESETS,
+  addMetric, dailyReport, dayLog, deleteMetric, eventColor, eventIcon, logMetric, METRIC_PRESETS,
   metricHistory, saveDayLog, upcomingEvents,
 } from './life';
 import { saveFile } from './download';
@@ -221,7 +221,7 @@ export function UpcomingEvents({ state, now }: { state: GameState; now: number }
       <header className="panel-head"><h3 id="upcoming-h">Próximos eventos</h3><span className="count mono">{list.length}</span></header>
       <ul className="ev-strip">
         {list.slice(0, 6).map((e) => (
-          <li key={e.id} className={`ev-chip ev-${e.kind}${e.day === dayKey(now) ? ' today' : ''}`}>
+          <li key={e.id} className={`ev-chip ev-${e.kind}${e.day === dayKey(now) ? ' today' : ''}`} style={eventColor(e) ? ({ '--ev': eventColor(e) } as CSSProperties) : undefined}>
             <span aria-hidden="true">{eventIcon(e.kind)}</span> <strong>{e.title}</strong>
             <span className="muted"> · {relDay(e.day, now)}{e.time ? ` ${e.time}` : ''}</span>
           </li>
