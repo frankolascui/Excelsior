@@ -45,55 +45,61 @@ function Tip({ x, y, width, children }: { x: number; y: number; width: number; c
 
 const WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
-/** Un cuadrado por día: filas de lunes a domingo y una columna por semana, como un calendario. */
+/**
+ * Elige cuántas filas usar para que los cuadraditos llenen todo el ancho sin pasar de pequeños: la primera
+ * cantidad de filas con la que cada casilla mide al menos `minStep` px.
+ */
+export function flowGrid(n: number, width: number, minStep = 13): { rows: number; cols: number; step: number } {
+  for (let rows = 1; ; rows++) {
+    const cols = Math.ceil(n / rows);
+    const step = width / cols;
+    if (step >= minStep || cols <= 1) return { rows, cols, step };
+  }
+}
+
+/**
+ * Un cuadradito por día. La semana va en una fila con su día (L…D); el resto de rangos, en orden de izquierda a
+ * derecha y de arriba abajo, repartidos para ocupar todo el ancho; hoy queda en la esquina de abajo a la derecha.
+ */
 function DayCalendar({ data, hover, onHover }: { data: DayActivity[]; hover: number | null; onHover: (i: number | null) => void }) {
   const best = Math.max(1, ...data.map((d) => d.xp));
   const last = data.length - 1;
   const [box, width] = useWidth<HTMLDivElement>(600);
-  const scroller = useRef<HTMLDivElement>(null);
-  const offset = (new Date(data[0].ts).getDay() + 6) % 7; // lunes = 0
-  // Hasta un mes: como un calendario (columnas L…D, una fila por semana). Más días: una columna por semana (filas L…D).
   const week = data.length <= 7;
-  const month = !week && data.length <= 31;
-  const gap = 4;
-  const left = week || month ? 0 : 18;
-  const top = 16;
-  const cols = week ? data.length : month ? 7 : Math.ceil((offset + data.length) / 7);
-  const rows = week ? 1 : month ? Math.ceil((offset + data.length) / 7) : 7;
-  // Las casillas reparten todo el ancho; el alto tiene tope para que un rango corto no se convierta en un muro.
-  const step = Math.max(month || week ? 20 : 12, (width - left + gap) / cols);
-  const cellW = step - (step < 16 ? 3 : gap);
-  const cellH = Math.min(cellW, week ? 40 : month ? 34 : 26);
-  const rowStep = cellH + (step < 16 ? 3 : gap);
-  const W = Math.ceil(left + cols * step - (step < 16 ? 3 : gap));
-  const H = top + rows * rowStep;
-  const pos = (i: number) => week ? { col: i, row: 0 } : month ? { col: (offset + i) % 7, row: Math.floor((offset + i) / 7) } : { col: Math.floor((offset + i) / 7), row: (offset + i) % 7 };
-  const months = month || week ? [] : data.map((d, i) => ({ i, d: new Date(d.ts) })).filter(({ i, d }) => pos(i).row === 0 && d.getDate() <= 7 || i === 0)
-    .filter(({ i }, k, arr) => k === 0 || pos(i).col - pos(arr[k - 1].i).col >= 2);
-  const numbers = cellH >= 22; // con sitio, cada casilla lleva su día del mes
-  useLayoutEffect(() => { // si no cabe (rangos muy largos), que se vea hoy (a la derecha)
-    const el = scroller.current;
-    if (el) el.scrollLeft = el.scrollWidth;
-  }, [data.length, W]);
+  let pos: (i: number) => { col: number; row: number };
+  let step: number, cellW: number, cellH: number, rowStep: number, rows: number, top: number;
+  if (week) {
+    const gap = 4;
+    step = Math.max(20, (width + gap) / data.length);
+    cellW = step - gap;
+    cellH = Math.min(cellW, 40);
+    rowStep = cellH + gap;
+    rows = 1;
+    top = 16;
+    pos = (i) => ({ col: i, row: 0 });
+  } else {
+    const g = flowGrid(data.length, width + 3);
+    const gap = g.step < 18 ? 3 : 4;
+    step = (width + gap) / g.cols;
+    cellW = cellH = step - gap;
+    rowStep = step;
+    rows = g.rows;
+    top = 0;
+    const pad = g.rows * g.cols - data.length; // huecos al principio para que hoy cierre la última fila
+    pos = (i) => ({ col: (pad + i) % g.cols, row: Math.floor((pad + i) / g.cols) });
+  }
+  const W = Math.max(1, Math.floor(width));
+  const H = Math.ceil(week ? top + rowStep : rows * rowStep - (rowStep - cellH));
+  const numbers = week && cellH >= 22;
   return (
     <div className="day-cal" ref={box}>
-      <div className="day-cal-scroll" ref={scroller}>
       <svg className="heat day-strip" width={W} height={H} role="img" aria-label={`${data.filter((d) => d.xp > 0).length} días con actividad de ${data.length}`}>
         {week && data.map((d, i) => (
           <text key={d.day} className="axis" x={i * step + cellW / 2} y={10} textAnchor="middle">{WEEKDAYS[(new Date(d.ts).getDay() + 6) % 7]}</text>
         ))}
-        {month && WEEKDAYS.map((w, c) => (
-          <text key={w} className="axis" x={c * step + cellW / 2} y={10} textAnchor="middle">{w}</text>
-        ))}
-        {!week && !month && WEEKDAYS.map((w, r) => (
-          <text key={w} className="axis" x={0} y={top + r * rowStep + cellH / 2} dy="0.35em">{w}</text>
-        ))}
-        {months.map(({ i, d }) => (
-          <text key={i} className="axis" x={left + pos(i).col * step} y={10}>{d.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '')}</text>
-        ))}
         {data.map((d, i) => {
           const { col, row } = pos(i);
-          const x = left + col * step;
+          const x = col * step;
           const y = top + row * rowStep;
           const date = new Date(d.ts);
           const level = heatLevel(d.xp, best);
@@ -101,7 +107,7 @@ function DayCalendar({ data, hover, onHover }: { data: DayActivity[]; hover: num
             <g key={d.day}>
               <rect
                 className={`heat-${level}${i === last ? ' today' : ''}${hover === i ? ' on' : ''}`}
-                x={x} y={y} width={cellW} height={cellH} rx={cellH > 12 ? 4 : 2}
+                x={x} y={y} width={cellW} height={cellH} rx={cellH > 14 ? 4 : cellH > 8 ? 3 : 1.5}
                 onPointerEnter={() => onHover(i)} onPointerLeave={() => onHover(null)}
               >
                 <title>{`${shortDate(d.ts)}: ${d.xp} XP`}</title>
@@ -115,8 +121,10 @@ function DayCalendar({ data, hover, onHover }: { data: DayActivity[]; hover: num
           );
         })}
       </svg>
-      </div>
-      <span className="day-legend muted small-text">menos {[0, 1, 2, 3, 4].map((l) => <i key={l} className={`heat-${l}`} />)} más</span>
+      <span className="day-legend muted small-text">
+        {!week && <span className="day-range">{shortDate(data[0].ts).replace('.', '')} → hoy</span>}
+        menos {[0, 1, 2, 3, 4].map((l) => <i key={l} className={`heat-${l}`} />)} más
+      </span>
     </div>
   );
 }
