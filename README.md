@@ -54,4 +54,4 @@ node e2e/flow.mjs out  # prueba de extremo a extremo con Playwright (requiere bu
 - Perfil personalizable (foto, biografía) cuando haya red social.
 
 ## Publicar
-La web se publica en **Netlify** desde este repo (build `npm run build`, carpeta `dist`). GitHub Actions (`.github/workflows/ci.yml`) solo pasa tests y build en cada push.
+La web se publica en **Netlify** desde este repo (build `npm run build`, carpeta `dist`). GitHub Actions (`.github/workflows/ci.yml`) solo pasa tests y build en cada push. La rama `v2-social` se publica como vista previa en GitHub Pages (`.github/workflows/preview.yml`, rama `gh-pages`): https://frankolascui.github.io/Excelsior/
