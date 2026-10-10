@@ -346,10 +346,13 @@
 .arena .boss-template.locked .en-rest, .arena .boss-template.locked .en-epithet { color: #5d5a72; }
 
 /* Barra de vida: adornos de la saga en pixel art (alas y emblema), barra por segmentos y rastro del golpe */
-.bhp { --px: 2px; display: flex; flex-direction: column; align-items: center; gap: 2px; width: min(520px, 100%); }
-.bhp-body { position: relative; width: 100%; height: calc(26 * var(--px)); display: flex; align-items: center; }
+.bhp {
+  /* Los adornos se dibujan a 1 píxel de arte por píxel CSS (74×38 el ala, 54×46 el emblema); --k los escala en móvil. */
+  --px: 2px; --k: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; width: min(540px, 100%);
+}
+.bhp-body { position: relative; width: 100%; height: calc(48px * var(--k)); display: flex; align-items: center; }
 .bhp-bar {
-  position: relative; flex: 1; min-width: 0; margin-inline: calc(33 * var(--px)); height: calc(7 * var(--px)); padding: var(--px);
+  position: relative; flex: 1; min-width: 0; margin-inline: calc(58px * var(--k)); height: calc(7 * var(--px)); padding: var(--px);
   background: #0b0710; box-shadow: 0 0 0 var(--px) color-mix(in srgb, var(--bar-mid) 30%, #1a1024), 0 0 18px color-mix(in srgb, var(--bar-mid) 28%, transparent);
 }
 .bhp-track { position: relative; height: 100%; overflow: hidden; background: #22152c; }
@@ -364,10 +367,10 @@
 }
 .bhp-trail { background: linear-gradient(180deg, #fff6dc 0 30%, #f6c66e 30%); opacity: 0.9; transition: width 0.9s ease-in-out 0.6s; }
 .bhp-wing, .bhp-crest { position: absolute; top: 50%; image-rendering: pixelated; image-rendering: crisp-edges; pointer-events: none; user-select: none; }
-.bhp-wing { width: calc(42 * var(--px)); height: calc(24 * var(--px)); }
+.bhp-wing { width: calc(74px * var(--k)); height: calc(38px * var(--k)); }
 .bhp-wing.left { left: 0; transform: translateY(-50%); }
 .bhp-wing.right { right: 0; transform: translateY(-50%) scaleX(-1); }
-.bhp-crest { left: 50%; width: calc(30 * var(--px)); height: calc(26 * var(--px)); transform: translate(-50%, -50%); }
+.bhp-crest { left: 50%; width: calc(54px * var(--k)); height: calc(46px * var(--k)); transform: translate(-50%, -50%); }
 .bhp.phase-furioso .bhp-crest { animation: bhp-pulse 3.6s ease-in-out infinite; }
 @keyframes bhp-pulse { 50% { filter: drop-shadow(0 0 16px rgba(255, 30, 70, 0.75)); } }
 .bhp .boss-hp { font-size: 14px; font-weight: 500; color: #d9cdb6; white-space: nowrap; }
@@ -413,7 +416,7 @@
   .en-epithet { font-size: 11px; letter-spacing: 0.14em; }
   .en-epithet::before, .en-epithet::after { width: 18px; }
   .fight-stage, .boss-stage.fight-stage { height: 230px; }
-  .bhp { --px: 1.5px; }
+  .bhp { --px: 1.5px; --k: 0.82; }
   .bhp .boss-hp { font-size: 13px; }
 }
 @media (prefers-reduced-motion: reduce) {

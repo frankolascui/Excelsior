@@ -5,7 +5,7 @@ import type { AttributeId, Boss, BossSource, GameState } from './types';
 import { levelInfo, totalXp, uid } from './game';
 
 const DAY = 86_400_000;
-export const MAX_ACTIVE_BOSSES = 3;
+export const MAX_ACTIVE_BOSSES = 2;
 
 export const SOURCE_LABEL: Record<BossSource, { name: string; unit: string; hint: string }> = {
   xp: { name: 'Cualquier XP', unit: 'XP', hint: 'cada XP que ganes es un tajo' },

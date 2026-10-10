@@ -100,9 +100,8 @@ describe('escalera de bosses', () => {
     expect(s.bosses[0]).toMatchObject({ templateId: 'hidra', hp: 700, reward: 90, deadline: NOW + 7 * DAY });
     expect(summonCheck(s, 'hidra', NOW)).toEqual({ ok: false, reason: 'Ya está en combate' });
     s = summonBoss(s, 'cerbero', NOW).state;
-    s = summonBoss(s, 'esfinge', NOW).state;
     expect(activeBosses(s, NOW)).toHaveLength(MAX_ACTIVE_BOSSES);
-    expect(summonBoss(s, 'polifemo', NOW)).toMatchObject({ ok: false, reason: 'Máximo 3 a la vez' });
+    expect(summonBoss(s, 'esfinge', NOW)).toMatchObject({ ok: false, reason: 'Máximo 2 a la vez' });
   });
 
   it('el reto de la crónica (summonTemplate) puede abrir un boss aún bloqueado', () => {
