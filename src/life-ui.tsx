@@ -1,11 +1,11 @@
 // Tu vida real en pantalla: medidas (Personaje), cierre del día y próximos eventos (Hoy), eventos del calendario.
 import { useState, type FormEvent } from 'react';
 import type { Game } from './screens';
-import type { EventKind, GameState, Metric } from './types';
+import type { GameState, Metric } from './types';
 import { dayKey, daysUntil } from './game';
 import { formatAttrXp } from './attributes';
 import {
-  addEvent, addMetric, dailyReport, dayLog, deleteEvent, deleteMetric, EVENT_KINDS, eventIcon, eventsOn, logMetric, METRIC_PRESETS,
+  addMetric, dailyReport, dayLog, deleteMetric, eventIcon, logMetric, METRIC_PRESETS,
   metricHistory, saveDayLog, upcomingEvents,
 } from './life';
 import { saveFile } from './download';
@@ -228,43 +228,5 @@ export function UpcomingEvents({ state, now }: { state: GameState; now: number }
         ))}
       </ul>
     </section>
-  );
-}
-
-export function DayEvents({ game, day }: { game: Game; day: string }) {
-  const { state, act } = game;
-  const list = eventsOn(state, day);
-  const [form, setForm] = useState<{ title: string; kind: EventKind; time: string }>({ title: '', kind: 'examen', time: '' });
-  function submit(e: FormEvent) {
-    e.preventDefault();
-    if (!form.title.trim()) return;
-    act((s) => addEvent(s, { title: form.title, day, kind: form.kind, time: form.time || undefined }, Date.now()));
-    setForm({ ...form, title: '', time: '' });
-  }
-  return (
-    <div className="day-events">
-      {list.length > 0 && (
-        <ul className="list">
-          {list.map((e) => (
-            <li key={e.id} className={`item ev-item ev-${e.kind}`}>
-              <span className="ev-icon" aria-hidden="true">{eventIcon(e.kind)}</span>
-              <div className="item-body">
-                <span className="item-title">{e.title}</span>
-                <span className="muted small-text">{EVENT_KINDS.find((k) => k.id === e.kind)?.name}{e.time ? ` · ${e.time}` : ''}</span>
-              </div>
-              <button className="icon-btn" onClick={() => act((s) => deleteEvent(s, e.id))} aria-label={`Borrar evento ${e.title}`}>×</button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <form className="ev-form" onSubmit={submit}>
-        <select className="freq-select" value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value as EventKind })} aria-label="Tipo de evento">
-          {EVENT_KINDS.map((k) => <option key={k.id} value={k.id}>{k.icon} {k.name}</option>)}
-        </select>
-        <input id="ev-title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Evento (ej. Examen de cálculo)" maxLength={60} aria-label="Nombre del evento" />
-        <input id="ev-time" type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} aria-label="Hora (opcional)" />
-        <button type="submit" className="secondary" disabled={!form.title.trim()}>+ Evento</button>
-      </form>
-    </div>
   );
 }

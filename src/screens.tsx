@@ -26,6 +26,7 @@ import { HeroJournal, ReviewBanner, TimedGoals } from './ritual';
 import { QuestCalendar } from './calendar';
 import { AvatarPortrait, initialOf } from './portrait';
 import { DayClose, MetricsPanel, UpcomingEvents } from './life-ui';
+import { RemindersPanel } from './agenda-ui';
 import { AchievementsPanel } from './achievements-ui';
 import { latestMetric, logMetric } from './life';
 
@@ -142,6 +143,8 @@ export function Dashboard({
         )}
       </section>
 
+      <RemindersPanel game={game} now={now} />
+
       <div className="columns">
         <section className="panel">
           <header className="panel-head">
@@ -213,7 +216,7 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
 
 const VIEW_KEY = 'excelsior:quests-view';
 
-export function Quests({ game, focusQuest }: { game: Game; focusQuest: (q: Quest) => void }) {
+export function Quests({ game, focusQuest, startFocus }: { game: Game; focusQuest: (q: Quest) => void; startFocus?: (label: string) => void }) {
   const { state, act } = game;
   const now = useNow(60_000);
   const pending = pendingQuests(state, now);
@@ -246,7 +249,7 @@ export function Quests({ game, focusQuest }: { game: Game; focusQuest: (q: Quest
     return (
       <div className="screen">
         <div className="title-row"><h1 className="screen-title">Misiones</h1>{toggle}</div>
-        <QuestCalendar game={game} now={now} focusQuest={focusQuest} capNote={CAP_QUEST} questOpts={questOpts} />
+        <QuestCalendar game={game} now={now} focusQuest={focusQuest} startFocus={startFocus} capNote={CAP_QUEST} questOpts={questOpts} />
       </div>
     );
   }
@@ -308,12 +311,12 @@ const POMODOROS = [{ focus: 50, rest: 10 }, { focus: 90, rest: 30 }];
 
 const PHASE_LABEL = { focus: 'Foco', break: 'Descanso', distraction: 'Distracción' } as const;
 
-export function DeepWork({ game, preselect, clearPreselect }: { game: Game; preselect: string | null; clearPreselect: () => void }) {
+export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }: { game: Game; preselect: string | null; presetIntent?: string; clearPreselect: () => void }) {
   const { state, act } = game;
   const now = useNow(250);
   const [questId, setQuestId] = useState<string | null>(preselect);
   const [result, setResult] = useState<SessionResult | null>(null);
-  const [intent, setIntent] = useState('');
+  const [intent, setIntent] = useState(presetIntent);
   const [pomo, setPomo] = useState(() => {
     try {
       return localStorage.getItem(POMO_KEY) === '90' ? 1 : 0;

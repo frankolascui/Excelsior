@@ -1,6 +1,6 @@
 // Tu vida real dentro de Excelsior: medidas (dinero, peso…), cierre del día y eventos del calendario.
 // Funciones puras sobre GameState, como el resto de reglas.
-import type { CalendarEvent, DayLog, EventKind, GameState, Metric } from './types';
+import type { CalendarEvent, DayLog, EventKind, EventRepeat, GameState, Metric, Reminder } from './types';
 import { dayKey, deepWorkMinutesOnDay, isHabitDone, levelInfo, totalXp, uid, xpOnDay } from './game';
 import { formatAttrXp } from './attributes';
 
@@ -60,6 +60,7 @@ export function saveDayLog(s: GameState, patch: Omit<DayLog, 'day' | 'at'>, now:
 // ---------- Eventos ----------
 
 export const EVENT_KINDS: { id: EventKind; name: string; icon: string }[] = [
+  { id: 'bloque', name: 'Bloque de tiempo', icon: '🕒' },
   { id: 'examen', name: 'Examen', icon: '📝' },
   { id: 'lanzamiento', name: 'Lanzamiento', icon: '🚀' },
   { id: 'llamada', name: 'Llamada', icon: '📞' },
@@ -69,27 +70,141 @@ export const EVENT_KINDS: { id: EventKind; name: string; icon: string }[] = [
 
 export const eventIcon = (k: EventKind) => EVENT_KINDS.find((x) => x.id === k)?.icon ?? '📌';
 
-export function addEvent(s: GameState, e: { title: string; day: string; time?: string; kind: EventKind }, now: number): GameState {
+export function addEvent(
+  s: GameState,
+  e: { title: string; day: string; time?: string; end?: string; kind: EventKind; repeat?: EventRepeat },
+  now: number,
+): GameState {
   const ev: CalendarEvent = { id: uid(), title: e.title.trim(), day: e.day, kind: e.kind, createdAt: now };
   if (e.time) ev.time = e.time;
+  if (e.time && e.end && e.end > e.time) ev.end = e.end;
+  if (e.repeat) ev.repeat = e.repeat;
   return { ...s, events: [...(s.events ?? []), ev] };
 }
+
+/** Quita un solo día de un evento que se repite (el resto de la serie sigue). */
+export function skipEventDay(s: GameState, id: string, day: string): GameState {
+  return { ...s, events: (s.events ?? []).map((e) => (e.id === id ? { ...e, skip: [...(e.skip ?? []), day] } : e)) };
+}
+
+/** Si el evento cae ese día (contando las repeticiones). */
+export function occursOn(e: CalendarEvent, day: string): boolean {
+  if (day === e.day) return !e.skip?.includes(day);
+  if (!e.repeat || day < e.day || e.skip?.includes(day)) return false;
+  const wd = (d: string) => new Date(`${d}T12:00:00`).getDay();
+  if (e.repeat === 'daily') return true;
+  if (e.repeat === 'weekdays') return wd(day) >= 1 && wd(day) <= 5;
+  return wd(day) === wd(e.day);
+}
+
+export const REPEAT_NAMES: Record<EventRepeat, string> = { daily: 'Cada día', weekdays: 'De lunes a viernes', weekly: 'Cada semana' };
 
 export function deleteEvent(s: GameState, id: string): GameState {
   return { ...s, events: (s.events ?? []).filter((e) => e.id !== id) };
 }
 
+/** Eventos de ese día (las repeticiones salen con `day` cambiado a ese día), por hora. */
 export function eventsOn(s: GameState, day: string): CalendarEvent[] {
-  return (s.events ?? []).filter((e) => e.day === day).sort((a, b) => (a.time ?? '99').localeCompare(b.time ?? '99'));
+  return (s.events ?? []).filter((e) => occursOn(e, day)).map((e) => (e.day === day ? e : { ...e, day }))
+    .sort((a, b) => (a.time ?? '99').localeCompare(b.time ?? '99'));
 }
 
-/** Eventos de hoy en adelante, dentro de `days` días. */
+/**
+ * Eventos señalados de hoy en adelante, dentro de `days` días. Los bloques de tiempo no salen (son el plan del día),
+ * y de un evento que se repite solo sale la próxima vez.
+ */
 export function upcomingEvents(s: GameState, now: number, days: number): CalendarEvent[] {
-  const from = dayKey(now);
-  const to = dayKey(now + days * 86_400_000);
-  return (s.events ?? [])
-    .filter((e) => e.day >= from && e.day <= to)
-    .sort((a, b) => a.day.localeCompare(b.day) || (a.time ?? '99').localeCompare(b.time ?? '99'));
+  const out: CalendarEvent[] = [];
+  const seen = new Set<string>();
+  for (let i = 0; i <= days; i++) {
+    const day = dayKey(now + i * 86_400_000);
+    for (const e of eventsOn(s, day)) if (e.kind !== 'bloque' && !seen.has(e.id)) { seen.add(e.id); out.push(e); }
+  }
+  return out;
+}
+
+// ---------- Recordatorios ----------
+
+export function addReminder(s: GameState, r: { title: string; day?: string; time?: string }, now: number): GameState {
+  const rem: Reminder = { id: uid(), title: r.title.trim(), createdAt: now };
+  if (r.day) rem.day = r.day;
+  if (r.day && r.time) rem.time = r.time;
+  return { ...s, reminders: [...(s.reminders ?? []), rem] };
+}
+
+export function toggleReminder(s: GameState, id: string, now: number): GameState {
+  return { ...s, reminders: (s.reminders ?? []).map((r) => (r.id !== id ? r : r.doneAt ? (({ doneAt: _, ...rest }) => rest)(r) : { ...r, doneAt: now })) };
+}
+
+export function deleteReminder(s: GameState, id: string): GameState {
+  return { ...s, reminders: (s.reminders ?? []).filter((r) => r.id !== id) };
+}
+
+const remOrder = (a: Reminder, b: Reminder) =>
+  (a.day ?? '9999').localeCompare(b.day ?? '9999') || (a.time ?? '99').localeCompare(b.time ?? '99') || a.createdAt - b.createdAt;
+
+/** Lo que tienes que tener presente hoy: lo atrasado, lo de hoy y lo que no tiene fecha (más lo tachado hoy). */
+export function todayReminders(s: GameState, now: number): Reminder[] {
+  const today = dayKey(now);
+  return (s.reminders ?? [])
+    .filter((r) => (r.doneAt ? dayKey(r.doneAt) === today : !r.day || r.day <= today))
+    .sort((a, b) => Number(!!a.doneAt) - Number(!!b.doneAt) || remOrder(a, b));
+}
+
+export function remindersOn(s: GameState, day: string): Reminder[] {
+  return (s.reminders ?? []).filter((r) => r.day === day).sort(remOrder);
+}
+
+/** Recordatorios pendientes de días posteriores a hoy. */
+export function laterReminders(s: GameState, now: number): Reminder[] {
+  const today = dayKey(now);
+  return (s.reminders ?? []).filter((r) => !r.doneAt && r.day && r.day > today).sort(remOrder);
+}
+
+/** Avisos que tocan ya: recordatorios con hora y eventos con hora de hoy cuya hora llegó en la última media hora. */
+export function dueAlerts(s: GameState, now: number): { key: string; text: string }[] {
+  const today = dayKey(now);
+  const hm = (t: string) => new Date(`${today}T${t}:00`).getTime();
+  const fresh = (t: string) => hm(t) <= now && now - hm(t) < 30 * 60_000;
+  const out: { key: string; text: string }[] = [];
+  for (const r of s.reminders ?? []) if (!r.doneAt && r.day === today && r.time && fresh(r.time)) out.push({ key: `r:${r.id}:${today}`, text: `🔔 ${r.title}` });
+  for (const e of eventsOn(s, today)) if (e.time && fresh(e.time)) out.push({ key: `e:${e.id}:${today}`, text: `${eventIcon(e.kind)} ${e.time} · ${e.title}` });
+  return out;
+}
+
+// ---------- Horas ----------
+
+export const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+export const fromMin = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+/** Inicio y fin en minutos de un evento con hora (una hora si no tiene fin; nunca pasa de medianoche). */
+export function eventSpan(e: { time?: string; end?: string }): [number, number] | null {
+  if (!e.time) return null;
+  const a = toMin(e.time);
+  const b = e.end ? toMin(e.end) : a + 60;
+  return [a, Math.min(24 * 60, Math.max(b, a + 15))];
+}
+
+/**
+ * Carriles para lo que se pisa en la vista por horas: cada bloque recibe su carril y cuántos carriles tiene su grupo
+ * (bloques que se solapan entre sí, directa o indirectamente).
+ */
+export function layoutLanes(spans: [number, number][]): { lane: number; lanes: number }[] {
+  const order = spans.map((s, i) => ({ s, i })).sort((a, b) => a.s[0] - b.s[0] || b.s[1] - a.s[1]);
+  const out: { lane: number; lanes: number }[] = spans.map(() => ({ lane: 0, lanes: 1 }));
+  let group: number[] = [];
+  let laneEnds: number[] = [];
+  let groupEnd = -1;
+  const close = () => { for (const i of group) out[i].lanes = laneEnds.length; group = []; laneEnds = []; };
+  for (const { s, i } of order) {
+    if (s[0] >= groupEnd) close();
+    let lane = laneEnds.findIndex((end) => end <= s[0]);
+    if (lane < 0) { lane = laneEnds.length; laneEnds.push(s[1]); } else laneEnds[lane] = s[1];
+    out[i].lane = lane;
+    group.push(i);
+    groupEnd = Math.max(groupEnd, s[1]);
+  }
+  close();
+  return out;
 }
 
 // ---------- Informe del día (para pegarlo en una IA) ----------

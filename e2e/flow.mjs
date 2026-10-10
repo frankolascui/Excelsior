@@ -445,12 +445,51 @@ if (!(await page.isVisible('.calendar'))) await page.click('[role=radio]:has-tex
 await page.selectOption('.ev-form select', 'examen');
 await page.fill('#ev-title', 'Examen de cálculo');
 await page.fill('#ev-time', '10:00');
-await page.click('.ev-form button:has-text("Evento")');
+await page.click('.ev-form button:has-text("Añadir")');
 check(await seen('.cal-day.sel .cal-ev:has-text("Examen de cálculo")'), 'el evento aparece en el calendario');
 await page.screenshot({ path: `${out}/15-calendar-events.png`, fullPage: true });
 await page.click('.nav-item:has-text("Hoy")');
 check(await seen('.upcoming:has-text("Examen de cálculo")'), 'Hoy muestra los próximos eventos');
+
+// 7g. Recordatorios y calendario por horas
+await page.fill('.rem-form .rem-title', 'Comprar la cena');
+await page.click('.rem-form button:has-text("Recordar")');
+await page.fill('.rem-form .rem-title', 'Llevarme el cuaderno a casa');
+await page.selectOption('.rem-form select', 'none');
+await page.click('.rem-form button:has-text("Recordar")');
+check(await seen('.reminders .rem-item:has-text("Comprar la cena")') && await seen('.reminders .rem-item:has-text("Cuando puedas")'), 'los recordatorios salen en Hoy, con fecha o sin ella');
+await page.click('.reminders .rem-item:has-text("Comprar la cena") button.check');
+check(await seen('.reminders .rem-item.done:has-text("Comprar la cena")'), 'un recordatorio se tacha');
+const hhmm = await page.evaluate(() => { const d = new Date(); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; });
+await page.fill('.rem-form .rem-title', 'Llamar a casa');
+await page.selectOption('.rem-form select', 'today');
+await page.fill('.rem-form input[type=time]', hhmm);
+await page.click('.rem-form button:has-text("Recordar")');
+await page.clock.fastForward(21_000);
+check(await seen('.toast:has-text("Llamar a casa")'), 'avisa cuando llega la hora del recordatorio');
 await page.screenshot({ path: `${out}/16-today-life.png`, fullPage: true });
+
+await page.click('.nav-item:has-text("Misiones")');
+await page.click('.cal-views [role=radio]:has-text("Día")');
+check(await seen('.tg-day .tg-block:has-text("Examen de cálculo")'), 'la vista del día pone el evento en su hora');
+await page.evaluate(() => { document.querySelector('.tg-scroll').scrollTop = 14 * 52; });
+await page.click('.tg-day .tg-col', { position: { x: 60, y: 16 * 52 + 10 } });
+check(await seen('.sheet .eyebrow:has-text("16:00")'), 'pulsar una hora libre abre «Nuevo» a esa hora');
+await page.fill('.sheet #ev-title', 'Estudiar física');
+await page.selectOption('.sheet select[aria-label=Repetir]', 'daily');
+await page.click('.sheet button:has-text("Añadir")');
+check(await seen('.tg-day .tg-block:has-text("Estudiar física")') && await seen('.tg-block:has-text("16:00 – 17:00")'), 'el bloque de tiempo aparece de 16:00 a 17:00');
+await page.screenshot({ path: `${out}/17-calendar-day.png` });
+await page.click('.cal-views [role=radio]:has-text("Semana")');
+check((await page.$$('.tg-week .tg-dayhead')).length === 7, 'la semana tiene 7 días');
+check((await page.$$('.tg-week .tg-block:has-text("Estudiar física")')).length >= 1, 'el bloque diario se repite en la semana');
+await page.screenshot({ path: `${out}/18-calendar-week.png` });
+await page.click('.tg-week .tg-block:has-text("Estudiar física") >> nth=0');
+await page.click('.sheet button:has-text("Deep Work")');
+check(await page.inputValue('#dw-intent') === 'Estudiar física', 'un bloque abre Deep Work con su nombre');
+await page.click('.nav-item:has-text("Misiones")');
+await page.click('.cal-views [role=radio]:has-text("Mes")');
+await page.click('.nav-item:has-text("Hoy")');
 
 // 8. Móvil
 await page.setViewportSize({ width: 390, height: 844 });

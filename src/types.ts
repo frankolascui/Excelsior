@@ -187,8 +187,10 @@ export interface GameState {
   metricEntries?: MetricEntry[];
   /** Cierre del día: energía, ánimo, sueño y nota. */
   dayLogs?: DayLog[];
-  /** Eventos del calendario: exámenes, lanzamientos, llamadas… */
+  /** Eventos del calendario: exámenes, lanzamientos, llamadas, bloques de tiempo… */
   events?: CalendarEvent[];
+  /** Recordatorios: cosas pequeñas (comprar la cena, llevarme el cuaderno) con día y hora opcionales. */
+  reminders?: Reminder[];
   /** Logros conseguidos y cuándo (una vez conseguido, no se pierde). */
   achievements?: { id: string; at: number }[];
   /** (V2) Retos de gremio cuya recompensa ya cobraste. */
@@ -219,14 +221,30 @@ export interface DayLog {
   note?: string;
 }
 
-export type EventKind = 'examen' | 'lanzamiento' | 'llamada' | 'reunion' | 'otro';
+export type EventKind = 'bloque' | 'examen' | 'lanzamiento' | 'llamada' | 'reunion' | 'otro';
+
+/** Repetición de un evento: cada día, de lunes a viernes o cada semana (mismo día de la semana). */
+export type EventRepeat = 'daily' | 'weekdays' | 'weekly';
 
 export interface CalendarEvent {
   id: string;
   title: string;
-  day: string; // YYYY-MM-DD
+  day: string; // YYYY-MM-DD (primer día si se repite)
   time?: string; // HH:MM
+  end?: string; // HH:MM; sin ella dura una hora
   kind: EventKind;
+  repeat?: EventRepeat;
+  /** Días en que no se repite (se borró solo ese día). */
+  skip?: string[];
+  createdAt: number;
+}
+
+export interface Reminder {
+  id: string;
+  title: string;
+  day?: string; // YYYY-MM-DD; sin día = «cuando puedas»
+  time?: string; // HH:MM
+  doneAt?: number;
   createdAt: number;
 }
 

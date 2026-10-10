@@ -74,10 +74,10 @@ export function useGame() {
   const [achieved, setAchieved] = useState<AchievementDef[]>([]);
   const dismissAchievement = useCallback(() => setAchieved((q) => q.slice(1)), []);
 
-  const toast = useCallback((text: string, tone: Toast['tone'] = 'xp') => {
+  const toast = useCallback((text: string, tone: Toast['tone'] = 'xp', ms = 2600) => {
     const id = Date.now() + Math.random();
     setToasts((t) => [...t, { id, text, tone }]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 2600);
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), ms);
   }, []);
 
   useEffect(() => save(state), [state]);

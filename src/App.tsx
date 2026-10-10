@@ -12,6 +12,7 @@ import { Guilds } from './guilds-ui';
 import { cloudEnabled, useCloud } from './cloud';
 import { coinBalance } from './economy';
 import { Character, Dashboard, DeepWork, Habits, Kingdoms, Onboarding, Quests, type Tab } from './screens';
+import { useAgendaAlerts } from './agenda-ui';
 import { SettingsScreen } from './settings';
 import { Friends } from './friends';
 import type { Quest } from './types';
@@ -40,9 +41,11 @@ function tabFromHash(): Tab {
 
 export default function App() {
   const game = useGame();
+  useAgendaAlerts(game.state, game.toast);
   const { state } = game;
   const [tab, setTab] = useState<Tab>(tabFromHash);
   const [preselect, setPreselect] = useState<string | null>(null);
+  const [presetIntent, setPresetIntent] = useState('');
   const [muted, setMutedState] = useState(isMuted);
   const [tutorial, setTutorial] = useState<TutorialPrefs>(loadTutorial);
   const [tour, setTour] = useState<{ id: string; step: number } | null>(null);
@@ -121,6 +124,14 @@ export default function App() {
 
   function focusQuest(q: Quest | null) {
     setPreselect(q?.id ?? null);
+    setPresetIntent('');
+    go('deepwork');
+  }
+
+  /** Deep Work desde un bloque del calendario: la sesión lleva su nombre. */
+  function startFocus(label: string) {
+    setPreselect(null);
+    setPresetIntent(label);
     go('deepwork');
   }
 
@@ -179,12 +190,12 @@ export default function App() {
         {locked ? <LockedScreen tab={tab} level={level} xp={totalXp(state)} /> : (
           <>
             {tab === 'hoy' && <Dashboard game={game} go={go} focusQuest={focusQuest} guide={tutorial.guide} />}
-            {tab === 'misiones' && <Quests game={game} focusQuest={focusQuest} />}
+            {tab === 'misiones' && <Quests game={game} focusQuest={focusQuest} startFocus={startFocus} />}
             {tab === 'reinos' && <Kingdoms game={game} focusQuest={focusQuest} />}
             {tab === 'arena' && <Arena game={game} />}
             {tab === 'amigos' && <Friends game={game} />}
             {tab === 'gremios' && <Guilds game={game} />}
-            {tab === 'deepwork' && <DeepWork key={preselect ?? 'free'} game={game} preselect={preselect} clearPreselect={() => setPreselect(null)} />}
+            {tab === 'deepwork' && <DeepWork key={preselect ?? `free:${presetIntent}`} game={game} preselect={preselect} presetIntent={presetIntent} clearPreselect={() => { setPreselect(null); setPresetIntent(''); }} />}
             {tab === 'habitos' && <Habits game={game} />}
             {tab === 'personaje' && <Character game={game} />}
             {tab === 'ajustes' && (
