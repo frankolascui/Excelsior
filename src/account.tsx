@@ -3,8 +3,9 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import { cloudEnabled, sendCode, signOut, useCloud, verifyCode, type RemoteSave } from './cloud';
 import { levelInfo, totalXp } from './game';
 import type { GameState } from './types';
+import { Icon, rich } from './icons';
 
-const STATUS = { off: '', saving: 'Guardando…', saved: '☁ Guardado en la nube', error: '⚠ Sin conexión: se guardará al volver' };
+const STATUS = { off: '', saving: 'Guardando…', saved: '{i:cloud} Guardado en la nube', error: '{i:cloud-off} Sin conexión: se guardará al volver' };
 
 /** Formulario de entrada en dos pasos. */
 export function LoginForm({ onDone }: { onDone?: () => void }) {
@@ -31,14 +32,14 @@ export function LoginForm({ onDone }: { onDone?: () => void }) {
         <>
           <label htmlFor="login-email">Tu email</label>
           <input id="login-email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@email.com" />
-          <button className="primary" disabled={busy || !email.includes('@')}>{busy ? 'Enviando…' : 'Enviarme un código'}</button>
+          <button className="primary" disabled={busy || !email.includes('@')}><Icon name="mail" /> {busy ? 'Enviando…' : 'Enviarme un código'}</button>
         </>
       ) : (
         <>
           <label htmlFor="login-code">Escribe el código que te hemos enviado a <strong>{email}</strong></label>
           <input id="login-code" inputMode="numeric" autoComplete="one-time-code" maxLength={10} required value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} placeholder="12345678" className="code-input mono" autoFocus />
           <span className="settings-row">
-            <button className="primary" disabled={busy || code.length < 6}>{busy ? 'Comprobando…' : 'Entrar'}</button>
+            <button className="primary" disabled={busy || code.length < 6}><Icon name="log-in" /> {busy ? 'Comprobando…' : 'Entrar'}</button>
             <button type="button" className="link" onClick={() => { setStep('email'); setCode(''); setError(null); }}>Cambiar email</button>
           </span>
           <p className="hint">Si no te llega, mira en spam. Puedes pedir otro en un minuto.</p>
@@ -59,8 +60,8 @@ export function AccountPanel() {
       {cloud.email ? (
         <>
           <p>Has entrado como <strong>{cloud.email}</strong>. Tu partida se guarda en la nube y la verás igual en cualquier dispositivo.</p>
-          <p className="muted small-text" aria-live="polite">{STATUS[cloud.status]}</p>
-          <button className="ghost" onClick={() => void signOut()}>Cerrar sesión</button>
+          <p className="muted small-text" aria-live="polite">{rich(STATUS[cloud.status])}</p>
+          <button className="ghost" onClick={() => void signOut()}><Icon name="log-out" /> Cerrar sesión</button>
         </>
       ) : (
         <>
@@ -85,11 +86,11 @@ export function ConflictDialog({ local, remote, onChoose }: { local: GameState; 
         <p>¿Con cuál te quedas? La otra se sustituirá.</p>
         <div className="conflict-options">
           <button className="secondary" onClick={() => onChoose(true)}>
-            <strong>☁ La de la nube</strong>
+            <strong><Icon name="cloud" /> La de la nube</strong>
             <span className="muted small-text">{describe(remote.state)}</span>
           </button>
           <button className="secondary" onClick={() => onChoose(false)}>
-            <strong>💻 La de este dispositivo</strong>
+            <strong><Icon name="laptop" /> La de este dispositivo</strong>
             <span className="muted small-text">{describe(local)}</span>
           </button>
         </div>
@@ -140,7 +141,7 @@ export function RequireAccount({ feature, children }: { feature: string; childre
   if (!cloudEnabled || cloud.email) return <>{children}</>;
   return (
     <section className="panel require-account">
-      <h3>🔒 Necesitas registrarte para {feature}</h3>
+      <h3><Icon name="lock" /> Necesitas registrarte para {feature}</h3>
       <p className="hint">Es gratis y sin contraseña: escribe tu email y te mandamos un código. Tu partida actual se sube a tu cuenta.</p>
       <LoginForm />
     </section>

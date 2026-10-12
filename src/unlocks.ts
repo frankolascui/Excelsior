@@ -1,13 +1,14 @@
 // Secciones que se desbloquean al subir de nivel; cada una trae su propio tutorial al abrirla.
 import type { GameState } from './types';
+import type { IconName } from './icon-data';
 import type { Tab } from './screens';
 import { levelInfo, totalXp } from './game';
 import { ADMIN } from './admin';
 
-export const UNLOCKS: { tab: Tab; level: number; name: string; icon: string }[] = [
-  { tab: 'reinos', level: 3, name: 'Reinos', icon: '🏰' },
-  { tab: 'arena', level: 5, name: 'Arena', icon: '⚔️' },
-  { tab: 'gremios', level: 7, name: 'Gremios', icon: '🛡️' },
+export const UNLOCKS: { tab: Tab; level: number; name: string; icon: IconName }[] = [
+  { tab: 'reinos', level: 3, name: 'Reinos', icon: 'castle' },
+  { tab: 'arena', level: 5, name: 'Arena', icon: 'crossed-swords' },
+  { tab: 'gremios', level: 7, name: 'Gremios', icon: 'round-shield' },
 ];
 
 export function unlockLevel(tab: Tab): number | null {

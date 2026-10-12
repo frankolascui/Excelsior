@@ -2,6 +2,7 @@
 // Cuando haya backend, este es el único módulo que debe cambiar.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { GameState } from './types';
+import { tok } from './icons';
 import { emptyState, levelInfo, migrate, totalXp } from './game';
 import { avatarInfo, ensureAscended, rebalance } from './attributes';
 import { sfx } from './sfx';
@@ -141,7 +142,7 @@ export function useGame() {
     // Al cumplir los requisitos del siguiente avatar, Hiperión avisa del ritual (la ascensión la celebra el ritual).
     const ready = readyFor(state);
     if (ready && ready !== prevReady.current) {
-      toast(`🕯️ Ritual disponible: ${ready}. Hiperión te espera`, 'level');
+      toast(`{i:candle} Ritual disponible: ${ready}. Hiperión te espera`, 'level');
       sfx.levelUp();
     }
     prevReady.current = ready;
@@ -149,7 +150,7 @@ export function useGame() {
     const defeated = defeatedIds(state);
     for (const b of state.bosses) {
       if (defeated.has(b.id) && !prevDefeated.current.has(b.id)) {
-        toast(`${b.icon} ¡Has derrotado a ${b.name}! +${b.reward} 🪙`, 'level');
+        toast(`${tok(b.icon)} ¡Has derrotado a ${b.name}! +${b.reward} {i:coin}`, 'level');
         setTimeout(() => sfx.victory(), 300);
         confetti({ big: true, count: 200 });
       }
@@ -160,7 +161,7 @@ export function useGame() {
     for (const k of state.kingdoms) {
       if (kingdoms.has(k.id) && !prevKingdoms.current.has(k.id)) {
         const bonus = kingdomBonus(state, k.id);
-        toast(`👑 ${k.name} es un reino glorioso${bonus ? ` · +${bonus} 🪙` : ''}`, 'level');
+        toast(`{i:crown} ${k.name} es un reino glorioso${bonus ? ` · +${bonus} {i:coin}` : ''}`, 'level');
         setTimeout(() => sfx.victory(), 300);
         confetti({ big: true, count: 200 });
       }
@@ -178,7 +179,7 @@ export function useGame() {
     setState(next);
     if (!state.achievements || list.length === 0) return;
     setAchieved((q) => [...q, ...list]);
-    setTimeout(() => sfx.victory(), 200);
+    setTimeout(() => sfx.achievement(), 200);
     confetti({ count: 120 });
   }, [state]);
 
@@ -213,7 +214,7 @@ export function useGame() {
             if (before.active && after.active && after.damage > before.damage) {
               const dmg = Math.round((after.damage - before.damage) * 10) / 10;
               setTimeout(() => {
-                toast(`${b.icon} −${dmg} HP a ${b.name}`, 'info');
+                toast(`${tok(b.icon)} −${dmg} HP a ${b.name}`, 'info');
                 sfx.hit();
               }, 350);
               break;

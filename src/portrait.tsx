@@ -3,6 +3,7 @@
 // más capas, mejor material y una silueta mayor, con pocas gemas grandes como punto focal.
 // Dentro va la inicial (o el icono del avatar); el día que haya foto de perfil, irá la foto.
 import { createContext, useContext, useId, type CSSProperties, type ReactNode } from 'react';
+import { Icon, type IconName } from './icons';
 import './portrait.css';
 
 const C = 100; // centro del lienzo 200×200
@@ -289,8 +290,8 @@ const EMBERS6: [number, number, number, number][] = [
 /* ---------- Retrato ---------- */
 
 export function AvatarPortrait({
-  tier, label, size = 96, photo, dim = false, title,
-}: { tier: number; label: string; size?: number; photo?: string; dim?: boolean; title?: string }) {
+  tier, label, icon, size = 96, photo, dim = false, title,
+}: { tier: number; label?: string; icon?: IconName; size?: number; photo?: string; dim?: boolean; title?: string }) {
   const id = useId().replace(/:/g, '');
   const g = (n: string) => `url(#${id}-${n})`;
   const t = Math.max(0, Math.min(9, tier));
@@ -637,7 +638,7 @@ export function AvatarPortrait({
 
   return (
     <Ids.Provider value={id}>
-      <svg className={`portrait tier-${t}${dim ? ' dim' : ''}`} viewBox="0 0 200 200" width={size} height={size} role="img" aria-label={title ?? label}>
+      <svg className={`portrait tier-${t}${dim ? ' dim' : ''}`} viewBox="0 0 200 200" width={size} height={size} role="img" aria-label={title ?? label ?? ''}>
         <defs>
           {TIER_MATS[t].map((name) => {
             const m = MATS[name];
@@ -699,7 +700,9 @@ export function AvatarPortrait({
         <circle cx={C} cy={C} r={60} fill={g('face')} />
         {photo
           ? <image href={photo} x={40} y={40} width={120} height={120} clipPath={`url(#${id}-clip)`} preserveAspectRatio="xMidYMid slice" />
-          : <text x={C} y={C} textAnchor="middle" dominantBaseline="central" className="portrait-label" fontSize={label.length > 1 ? 50 : 64}>{label}</text>}
+          : icon
+            ? <Icon name={icon} x={C - 34} y={C - 34} size={68} className="portrait-icon" />
+            : <text x={C} y={C} textAnchor="middle" dominantBaseline="central" className="portrait-label" fontSize={(label ?? '').length > 1 ? 50 : 64}>{label}</text>}
 
         {/* Sombra del aro: copia estática debajo, para que no oscurezca los canales animados */}
         <g filter={g('shadow')} aria-hidden="true">{frame}</g>

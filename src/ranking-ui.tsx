@@ -1,12 +1,13 @@
 // Tabla de clasificación (amigos o gremio): XP de esta semana, de la pasada o de siempre.
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { GameState } from './types';
 import { Face } from './friends';
 import { formatMinutes } from './ui';
 import { publicFields, type PublicProfile } from './social';
 import { addWeeks, lastWeekChampion, PERIOD_LABEL, rankRows, weekEndsIn, weekStart, type Period, type RankRow } from './ranking';
+import { Icon } from './icons';
 
-const MEDAL: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
+const MEDAL: Record<number, ReactNode> = { 1: <Icon name="medal" className="medal-1" />, 2: <Icon name="medal" className="medal-2" />, 3: <Icon name="medal" className="medal-3" /> };
 const PERIODS: Period[] = ['week', 'last', 'all'];
 
 /** Tu perfil con los datos de tu partida de ahora mismo (el publicado puede ir unos segundos por detrás). */
@@ -70,7 +71,7 @@ export function Leaderboard({ id, title, people, me, now, onOpen, hint }: {
                 <span className="lb-text">
                   <span className="lb-name">
                     {r.p.name}{self && <span className="muted"> (tú)</span>}
-                    {champ === r.p.user_id && <span className="lb-crown" title="Ganó la semana pasada" aria-label="Ganó la semana pasada">👑</span>}
+                    {champ === r.p.user_id && <span className="lb-crown" title="Ganó la semana pasada" aria-label="Ganó la semana pasada"><Icon name="crown" /></span>}
                   </span>
                   <span className="muted small-text">
                     {detail(r)}

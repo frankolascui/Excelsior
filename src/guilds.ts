@@ -1,5 +1,6 @@
 // Gremios (V2): retos de gremio con la regla del 30 %, recompensas y conexión con Supabase (docs/supabase-gremios.sql).
 import { useSyncExternalStore } from 'react';
+import type { IconName } from './icon-data';
 import type { GameState, XPTransaction } from './types';
 import { uid } from './game';
 import { cloudClient, getUserId } from './cloud';
@@ -18,7 +19,7 @@ export interface ChallengeTemplate {
   id: string;
   kind: 'mision' | 'jefe';
   name: string;
-  icon: string;
+  icon: IconName;
   lore: string;
   days: number;
   /** Meta por miembro del gremio (minutos de Deep Work, hábitos, XP); la total se multiplica por los miembros. */
@@ -38,34 +39,34 @@ export interface ChallengeTemplate {
 
 export const CHALLENGES: ChallengeTemplate[] = [
   {
-    id: 'cien-minutos', kind: 'mision', name: 'Los 100 minutos', icon: '⏳', days: 7,
+    id: 'cien-minutos', kind: 'mision', name: 'Los 100 minutos', icon: 'hourglass', days: 7,
     lore: 'El calentamiento de todo gremio: minutos de foco entre todos esta semana.',
     per: { deep: 30 }, min: { deep: 100 }, reward: 40, guildXp: 50,
   },
   {
-    id: 'pacto-habitos', kind: 'mision', name: 'Pacto de los Hábitos', icon: '🔗', days: 7,
+    id: 'pacto-habitos', kind: 'mision', name: 'Pacto de los Hábitos', icon: 'linked-rings', days: 7,
     lore: 'Un eslabón por cada hábito cumplido. La cadena la forjáis todos.',
     per: { habits: 8 }, min: { habits: 20 }, reward: 40, guildXp: 50,
   },
   {
-    id: 'forja-comun', kind: 'mision', name: 'La Forja Común', icon: '🔥', days: 7,
+    id: 'forja-comun', kind: 'mision', name: 'La Forja Común', icon: 'anvil-impact', days: 7,
     lore: 'Todo el XP que ganéis alimenta la misma fragua.',
     per: { xp: 250 }, min: { xp: 600 }, reward: 50, guildXp: 60,
   },
   {
-    id: 'dragon', kind: 'jefe', name: 'El Dragón de la Procrastinación', icon: '🐉', days: 7,
+    id: 'dragon', kind: 'jefe', name: 'El Dragón de la Procrastinación', icon: 'dragon-head', days: 7,
     epithet: 'Guardián del tesoro de mañana',
     lore: 'Duerme sobre todo lo que dejáis para mañana. Solo cae con horas de foco real.',
     per: { deep: 480 }, min: { deep: 960 }, participation: 0.5, reward: 120, guildXp: 150, art: 'tifon',
   },
   {
-    id: 'hidra-rota', kind: 'jefe', name: 'La Hidra del Hábito Roto', icon: '🐍', days: 7,
+    id: 'hidra-rota', kind: 'jefe', name: 'La Hidra del Hábito Roto', icon: 'hydra', days: 7,
     epithet: 'La que renace de cada excusa',
     lore: 'Cada hábito que se rompe le hace crecer otra cabeza. Foco y constancia a la vez.',
     per: { deep: 240, habits: 6 }, min: { deep: 600, habits: 15 }, participation: 0.75, reward: 150, guildXp: 200, art: 'hidra',
   },
   {
-    id: 'titan-olvido', kind: 'jefe', name: 'El Titán del Olvido', icon: '🗿', days: 14,
+    id: 'titan-olvido', kind: 'jefe', name: 'El Titán del Olvido', icon: 'rock-golem', days: 14,
     epithet: 'El asedio de las dos semanas',
     lore: 'Dos semanas de asedio. Nadie lo vence solo; nadie se queda mirando.',
     per: { deep: 720, habits: 10, xp: 600 }, min: { deep: 1800, habits: 30, xp: 1500 }, participation: 1, reward: 300, guildXp: 400, art: 'cronos',
@@ -184,7 +185,11 @@ export function claimReward(s: GameState, c: ChallengeRow, now: number): GameSta
   return { ...s, xp: [...s.xp, tx], guildClaims: [...(s.guildClaims ?? []), c.id] };
 }
 
-export const EMBLEMS = ['🛡️', '⚔️', '🐉', '🦁', '🦅', '🐺', '🔥', '⚡', '🌙', '👑', '🏹', '🗡️'];
+export const EMBLEMS: IconName[] = ['round-shield', 'crossed-swords', 'dragon-head', 'lion', 'eagle', 'wolf', 'flame', 'lightning-helix', 'moon-emblem', 'crown', 'bow-arrow', 'pointy-sword'];
+export const EMBLEM_NAME: Partial<Record<IconName, string>> = {
+  'round-shield': 'Escudo', 'crossed-swords': 'Espadas', 'dragon-head': 'Dragón', lion: 'León', eagle: 'Águila', wolf: 'Lobo', flame: 'Llama',
+  'lightning-helix': 'Rayo', 'moon-emblem': 'Luna', crown: 'Corona', 'bow-arrow': 'Arco', 'pointy-sword': 'Daga',
+};
 
 // ---------- Estado compartido ----------
 
@@ -200,10 +205,10 @@ export type Role = 'officer' | 'member';
 export interface Member { user_id: string; guild_id: string; joined_at: string; role?: Role }
 export type Rank = 'leader' | 'officer' | 'member';
 export const OFFICER_MAX = 2;
-export const RANK_LABEL: Record<Rank, { name: string; icon: string }> = {
-  leader: { name: 'Líder', icon: '👑' },
-  officer: { name: 'Colíder', icon: '⚔️' },
-  member: { name: 'Miembro', icon: '🛡️' },
+export const RANK_LABEL: Record<Rank, { name: string; icon: IconName }> = {
+  leader: { name: 'Líder', icon: 'crown' as IconName },
+  officer: { name: 'Colíder', icon: 'crossed-swords' as IconName },
+  member: { name: 'Miembro', icon: 'round-shield' as IconName },
 };
 
 /** Rango de un miembro: el líder es el dueño del gremio; los demás, colíder o miembro. */

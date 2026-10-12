@@ -1,5 +1,6 @@
 // Monedas y tienda de recompensas. El saldo se deriva: lo ganado (XP, bosses, reinos) menos lo gastado.
 import type { GameState, Purchase, Reward } from './types';
+import type { IconName } from './icon-data';
 import { totalXp, uid } from './game';
 import { defeatedBosses } from './bosses';
 import { kingdomProgress } from './kingdoms';
@@ -12,24 +13,27 @@ export const COIN_RULES = {
 
 /** Categorías de la tienda, de lo pequeño a lo grande. */
 export type RewardCategory = 'descanso' | 'ocio' | 'caprichos' | 'grandes';
-export const REWARD_CATEGORIES: { id: RewardCategory; name: string; icon: string; hint: string }[] = [
-  { id: 'descanso', name: 'Descanso', icon: '😴', hint: 'Recargar sin culpa' },
-  { id: 'ocio', name: 'Ocio', icon: '🎮', hint: 'Series, juegos, planes' },
-  { id: 'caprichos', name: 'Caprichos', icon: '🍔', hint: 'Antojos y compras pequeñas' },
-  { id: 'grandes', name: 'Premios grandes', icon: '🏆', hint: 'Para los que se ganan a pulso' },
+export const REWARD_CATEGORIES: { id: RewardCategory; name: string; icon: IconName; hint: string }[] = [
+  { id: 'descanso', name: 'Descanso', icon: 'sleep', hint: 'Recargar sin culpa' },
+  { id: 'ocio', name: 'Ocio', icon: 'gamepad', hint: 'Series, juegos, planes' },
+  { id: 'caprichos', name: 'Caprichos', icon: 'burger', hint: 'Antojos y compras pequeñas' },
+  { id: 'grandes', name: 'Premios grandes', icon: 'trophy', hint: 'Para los que se ganan a pulso' },
 ];
 
 /** Iconos sugeridos al crear una recompensa (también se puede escribir cualquier emoji). */
-export const REWARD_ICONS = ['🎁', '📺', '🎮', '🍔', '🍕', '🍦', '🍻', '☕', '😴', '🛁', '🧘', '🏖️', '🎬', '🎧', '📚', '🛍️', '👟', '⚽', '✈️', '🎟️', '💆', '🏆'];
+export const REWARD_ICONS: IconName[] = [
+  'present', 'tv', 'gamepad', 'film', 'burger', 'pizza', 'ice-cream', 'cake', 'beer', 'coffee-cup', 'sleep', 'bath', 'meditation', 'spa',
+  'palm', 'headphones', 'guitar', 'books', 'shopping-bag', 'shoe', 'ball', 'mountain-climb', 'plane', 'ticket', 'trophy',
+];
 
 const DEFAULTS: [string, string, number, RewardCategory][] = [
-  ['Ver un episodio de una serie', '📺', 25, 'ocio'],
-  ['Siesta larga sin alarma', '😴', 30, 'descanso'],
-  ['1 hora de videojuegos', '🎮', 40, 'ocio'],
-  ['Comida trampa', '🍔', 80, 'caprichos'],
-  ['Salir con amigos', '🍻', 100, 'ocio'],
-  ['Día libre sin culpa', '🏖️', 350, 'grandes'],
-  ['Comprarme algo que llevo tiempo queriendo', '🛍️', 600, 'grandes'],
+  ['Ver un episodio de una serie', 'tv', 25, 'ocio'],
+  ['Siesta larga sin alarma', 'sleep', 30, 'descanso'],
+  ['1 hora de videojuegos', 'gamepad', 40, 'ocio'],
+  ['Comida trampa', 'burger', 80, 'caprichos'],
+  ['Salir con amigos', 'beer', 100, 'ocio'],
+  ['Día libre sin culpa', 'palm', 350, 'grandes'],
+  ['Comprarme algo que llevo tiempo queriendo', 'shopping-bag', 600, 'grandes'],
 ];
 
 export function defaultRewards(now: number): Reward[] {
@@ -71,7 +75,7 @@ export function coinBalance(s: GameState, now: number): number {
 }
 
 export function addReward(s: GameState, r: { name: string; icon: string; cost: number; category?: RewardCategory }, now: number): GameState {
-  const reward: Reward = { id: uid(), name: r.name.trim(), icon: r.icon.trim() || '🎁', cost: Math.max(1, Math.round(r.cost)), createdAt: now };
+  const reward: Reward = { id: uid(), name: r.name.trim(), icon: r.icon.trim() || 'present', cost: Math.max(1, Math.round(r.cost)), createdAt: now };
   if (r.category) reward.category = r.category;
   return { ...s, rewards: [...s.rewards, reward] };
 }

@@ -128,6 +128,6 @@ describe('eventos y cierre del día', () => {
     expect(md).toContain('Energía: 5/5 · Ánimo: 3/5 · Sueño: 7,5 h');
     expect(md).toContain('- Peso: 72,5 kg');
     expect(md).toContain('Buen día');
-    expect(md).toContain('2026-10-08 · 📝 Examen');
+    expect(md).toContain('2026-10-08 · Examen: Examen');
   });
 });

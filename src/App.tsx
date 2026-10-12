@@ -20,17 +20,18 @@ import { loadTutorial, saveTutorial, Tutorial, TOURS, type TutorialPrefs } from 
 import { isUnlocked, unlockedBetween, unlockLevel, UNLOCKS } from './unlocks';
 import { ADMIN, setAdmin } from './admin';
 import { onReviewRequest, onRitualRequest, openRitual, ReviewDialog, RitualDialog } from './ritual';
+import { Glyph, Icon, rich, type IconName } from './icons';
 
-const TABS: { id: Tab; label: string; glyph: string }[] = [
-  { id: 'hoy', label: 'Hoy', glyph: '◆' },
-  { id: 'misiones', label: 'Misiones', glyph: '✦' },
-  { id: 'habitos', label: 'Hábitos', glyph: '✓' },
-  { id: 'deepwork', label: 'Deep Work', glyph: '◷' },
-  { id: 'reinos', label: 'Reinos', glyph: '♖' },
-  { id: 'arena', label: 'Arena', glyph: '⚔' },
-  { id: 'amigos', label: 'Amigos', glyph: '☻' },
-  { id: 'gremios', label: 'Gremios', glyph: '⛨' },
-  { id: 'personaje', label: 'Personaje', glyph: '♜' },
+const TABS: { id: Tab; label: string; glyph: IconName }[] = [
+  { id: 'hoy', label: 'Hoy', glyph: 'nav-hoy' },
+  { id: 'misiones', label: 'Misiones', glyph: 'nav-misiones' },
+  { id: 'habitos', label: 'Hábitos', glyph: 'nav-habitos' },
+  { id: 'deepwork', label: 'Deep Work', glyph: 'nav-deepwork' },
+  { id: 'reinos', label: 'Reinos', glyph: 'nav-reinos' },
+  { id: 'arena', label: 'Arena', glyph: 'nav-arena' },
+  { id: 'amigos', label: 'Amigos', glyph: 'nav-amigos' },
+  { id: 'gremios', label: 'Gremios', glyph: 'nav-gremios' },
+  { id: 'personaje', label: 'Personaje', glyph: 'nav-personaje' },
 ];
 
 function tabFromHash(): Tab {
@@ -154,7 +155,7 @@ export default function App() {
     <div className={ADMIN ? 'app admin' : 'app'}>
       {ADMIN && (
         <div className="admin-bar" role="status">
-          🛠 Modo admin · partida de pruebas, todo desbloqueado · <button className="link" onClick={() => setAdmin(false)}>Salir</button>
+          <Icon name="wrench" /> Modo admin · partida de pruebas, todo desbloqueado · <button className="link" onClick={() => setAdmin(false)}>Salir</button>
         </div>
       )}
       <nav className="nav" aria-label="Secciones">
@@ -166,7 +167,7 @@ export default function App() {
               key={t.id} className={`nav-item${tab === t.id ? ' on' : ''}${open ? '' : ' locked'}`} aria-current={tab === t.id ? 'page' : undefined}
               onClick={() => go(t.id)} title={open ? undefined : `Se desbloquea en el nivel ${unlockLevel(t.id)}`}
             >
-              <span className="nav-glyph" aria-hidden="true">{open ? t.glyph : '🔒'}</span>
+              <span className="nav-glyph" aria-hidden="true"><Icon name={open ? t.glyph : 'lock'} /></span>
               <span className="nav-label">{t.label}</span>
               {!open && <span className="nav-lock mono">Nv {unlockLevel(t.id)}</span>}
               {open && unlockLevel(t.id) !== null && !hasSeenTour(state, t.id) && introSeen && <span className="nav-new">nuevo</span>}
@@ -180,9 +181,9 @@ export default function App() {
       </nav>
 
       <div className="top-actions">
-        <button className={tab === 'ajustes' ? 'icon-round on' : 'icon-round'} onClick={() => go('ajustes')} aria-label="Ajustes" title="Ajustes">⚙</button>
+        <button className={tab === 'ajustes' ? 'icon-round on' : 'icon-round'} onClick={() => go('ajustes')} aria-label="Ajustes" title="Ajustes"><Icon name="settings" /></button>
         <button className="icon-round" onClick={toggleSound} aria-pressed={!muted} aria-label={muted ? 'Activar sonido' : 'Silenciar sonido'} title={muted ? 'Activar sonido' : 'Silenciar sonido'}>
-          {muted ? '🔇' : '🔊'}
+          <Icon name={muted ? 'mute' : 'volume'} />
         </button>
       </div>
 
@@ -222,7 +223,7 @@ export default function App() {
 
       <div className="toasts" aria-live="polite">
         {game.toasts.map((t) => (
-          <div key={t.id} className={`toast toast-${t.tone}`}>{t.text}</div>
+          <div key={t.id} className={`toast toast-${t.tone}`}>{rich(t.text)}</div>
         ))}
       </div>
 
@@ -238,9 +239,9 @@ export default function App() {
             <div className="emblem big" aria-hidden="true"><span className="mono">{game.levelUp}</span></div>
             <h2 id="lvl-h">Nivel {game.levelUp}</h2>
             <p className="muted">Nivel global · {avatar.current.name}</p>
-            {avatar.ready && <p className="unlock-line">🕯️ Ritual disponible: <strong>{avatar.next!.icon} {avatar.next!.name}</strong></p>}
+            {avatar.ready && <p className="unlock-line"><Icon name="candle" /> Ritual disponible: <strong><Glyph icon={avatar.next!.icon} /> {avatar.next!.name}</strong></p>}
             {newlyUnlocked.map((u) => (
-              <p key={u.tab} className="unlock-line">🔓 Desbloqueado: <strong>{u.icon} {u.name}</strong></p>
+              <p key={u.tab} className="unlock-line"><Icon name="unlock" /> Desbloqueado: <strong><Glyph icon={u.icon} /> {u.name}</strong></p>
             ))}
             {newlyUnlocked.length > 0 ? (
               <button className="primary big" autoFocus onClick={() => { game.dismissLevelUp(); go(newlyUnlocked[0].tab); }}>
@@ -264,8 +265,8 @@ function LockedScreen({ tab, level, xp }: { tab: Tab; level: number; xp: number 
   return (
     <div className="screen">
       <section className="panel locked-screen">
-        <div className="locked-icon" aria-hidden="true">🔒</div>
-        <h1 className="screen-title">{u.icon} {u.name}</h1>
+        <div className="locked-icon" aria-hidden="true"><Icon name="lock" /></div>
+        <h1 className="screen-title"><Glyph icon={u.icon} /> {u.name}</h1>
         <p>Se desbloquea en el <strong>nivel {u.level}</strong>. Estás en el nivel {level}: te faltan <strong className="mono">{Math.max(0, need - xp)} XP</strong>.</p>
         <p className="muted">Completa misiones, hábitos y Deep Work para llegar antes.</p>
       </section>

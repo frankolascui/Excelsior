@@ -13,10 +13,11 @@ import { confetti } from './confetti';
 import { sfx } from './sfx';
 import {
   acceptInvite, buildGoal, cancelInvite, CHALLENGES, challengeProgress, challengeState, challengeTemplate, claimReward, createGuild,
-  declineInvite, EMBLEMS, GUILD_MAX, guildLevel, guildXpFrom, invite, kick, leaveGuild, memberShare, METRIC_LABEL, refreshGuild,
+  declineInvite, EMBLEM_NAME, EMBLEMS, GUILD_MAX, guildLevel, guildXpFrom, invite, kick, leaveGuild, memberShare, METRIC_LABEL, refreshGuild,
   byRank, canCommand, canKick, demote, makeLeader, OFFICER_MAX, promote, RANK_LABEL, rankOf, successor, type Rank,
   startChallenge, useGuild, type ChallengeRow, type ChallengeTemplate, type Contribution, type Goal, type Metric,
 } from './guilds';
+import { Glyph, Icon } from './icons';
 
 const fmt = (m: Metric, n: number) => (m === 'deep' ? formatMinutes(n) : `${n}${m === 'xp' ? ' XP' : ''}`);
 const DAY = 86_400_000;
@@ -53,7 +54,7 @@ function NoGuild({ game }: { game: Game }) {
   function submit(e: FormEvent) {
     e.preventDefault();
     if (form.name.trim().length < 2) return;
-    void act(() => createGuild(form, game.state), `${form.emblem} ${form.name.trim()} ha sido fundado`);
+    void act(() => createGuild(form, game.state), `{i:${form.emblem}} ${form.name.trim()} ha sido fundado`);
   }
   return (
     <>
@@ -63,14 +64,14 @@ function NoGuild({ game }: { game: Game }) {
           <ul className="list">
             {invites.map((i) => (
               <li key={i.guild_id} className="item guild-invite">
-                <span className="guild-emblem small" aria-hidden="true">{i.guild?.emblem ?? '🛡️'}</span>
+                <span className="guild-emblem small" aria-hidden="true"><Glyph icon={i.guild?.emblem ?? 'round-shield'} /></span>
                 <span className="item-body">
                   <span className="item-title">{i.guild?.name ?? 'Gremio'}</span>
                   <span className="muted small-text">{i.guild?.motto ? `«${i.guild.motto}» · ` : ''}te invita {i.from?.name ?? 'un amigo'}</span>
                 </span>
                 <span className="item-actions">
-                  <button className="primary small" disabled={busy} onClick={() => act(() => acceptInvite(i.guild_id, game.state), `Bienvenido a ${i.guild?.name ?? 'tu gremio'}`)}>Unirme</button>
-                  <button className="ghost small" disabled={busy} onClick={() => act(() => declineInvite(i.guild_id, game.state))}>Rechazar</button>
+                  <button className="primary small" disabled={busy} onClick={() => act(() => acceptInvite(i.guild_id, game.state), `Bienvenido a ${i.guild?.name ?? 'tu gremio'}`)}><Icon name="check" /> Unirme</button>
+                  <button className="ghost small" disabled={busy} onClick={() => act(() => declineInvite(i.guild_id, game.state))}><Icon name="x" /> Rechazar</button>
                 </span>
               </li>
             ))}
@@ -83,12 +84,12 @@ function NoGuild({ game }: { game: Game }) {
         <form className="guild-form" onSubmit={submit}>
           <div className="emblem-pick" role="radiogroup" aria-label="Emblema">
             {EMBLEMS.map((e) => (
-              <button key={e} type="button" role="radio" aria-checked={form.emblem === e} className={form.emblem === e ? 'emblem-opt on' : 'emblem-opt'} onClick={() => setForm({ ...form, emblem: e })}>{e}</button>
+              <button key={e} type="button" role="radio" aria-checked={form.emblem === e} className={form.emblem === e ? 'emblem-opt on' : 'emblem-opt'} aria-label={EMBLEM_NAME[e] ?? e} title={EMBLEM_NAME[e]} data-emblem={e} onClick={() => setForm({ ...form, emblem: e })}><Icon name={e} /></button>
             ))}
           </div>
           <input id="guild-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nombre del gremio" maxLength={32} aria-label="Nombre del gremio" />
           <input id="guild-motto" value={form.motto} onChange={(e) => setForm({ ...form, motto: e.target.value })} placeholder="Lema (opcional)" maxLength={80} aria-label="Lema" />
-          <button className="primary" disabled={busy || form.name.trim().length < 2}>Fundar gremio</button>
+          <button className="primary" disabled={busy || form.name.trim().length < 2}><Icon name="plus" /> Fundar gremio</button>
         </form>
       </section>
       <RuleCard />
@@ -99,7 +100,7 @@ function NoGuild({ game }: { game: Game }) {
 function RuleCard() {
   return (
     <section className="panel quiet rule-card">
-      <h3>⚖️ La regla del 30 %</h3>
+      <h3><Icon name="scale" /> La regla del 30 %</h3>
       <p className="hint">En cada encargo, a nadie le cuenta más del 30 % de la meta. Si haces más, se ve, pero no suma: el gremio gana cuando todos empujan, no cuando uno carga con todo. En gremios de menos de 4, el tope sube a partes iguales (la mitad con 2, un tercio con 3).</p>
     </section>
   );
@@ -157,7 +158,7 @@ function ChallengeCard({ game, c, now }: { game: Game; c: ChallengeRow; now: num
         </div>
       ) : (
       <div className="ch-head">
-        <span className="ch-icon" aria-hidden="true">{t?.icon ?? '⚔️'}</span>
+        <span className="ch-icon" aria-hidden="true"><Icon name={t?.icon ?? 'crossed-swords'} /></span>
         <div className="ch-title">
           <p className="eyebrow">{t?.kind === 'jefe' ? 'Jefe de gremio' : 'Misión de gremio'} · {st === 'active' ? timeLeft(c.ends_at, now) : st === 'won' ? '¡Victoria!' : 'Se escapó'}</p>
           <h3 id={`ch-${c.id}`}>{t?.name ?? c.template}</h3>
@@ -179,8 +180,8 @@ function ChallengeCard({ game, c, now }: { game: Game; c: ChallengeRow; now: num
       </p>
       {st === 'won' && (
         <div className="ch-win">
-          <strong>🏆 ¡Encargo cumplido!</strong>
-          {canClaim ? <button className="primary small" onClick={claim}>Cobrar +{t?.reward} XP</button>
+          <strong><Icon name="trophy" /> ¡Encargo cumplido!</strong>
+          {canClaim ? <button className="primary small" onClick={claim}><Icon name="sparkles" /> Cobrar +{t?.reward} XP</button>
             : claimed ? <span className="muted small-text">Recompensa cobrada</span>
             : <span className="muted small-text">Solo cobra quien aportó algo</span>}
         </div>
@@ -198,7 +199,7 @@ function ChallengeCard({ game, c, now }: { game: Game; c: ChallengeRow; now: num
                   {share.map((s) => (
                     <span key={s.metric} className="ch-mbar" title={`${METRIC_LABEL[s.metric]}: ${fmt(s.metric, s.real)} (cuentan ${fmt(s.metric, s.counted)})`}>
                       <Bar value={s.counted} goal={s.cap} />
-                      <span className="mono small-text">{fmt(s.metric, s.counted)}{s.capped && ' 🔒'}</span>
+                      <span className="mono small-text">{fmt(s.metric, s.counted)}{s.capped && <> <Icon name="lock" className="cap-lock" title="Tope alcanzado" /></>}</span>
                     </span>
                   ))}
                 </span>
@@ -215,7 +216,7 @@ function PickChallenge({ game, members, command, leader }: { game: Game; members
   const [busy, act] = useAct(game);
   const card = (t: ChallengeTemplate) => (
     <li key={t.id} className={`pick-card ${t.kind}`}>
-      <span className="pick-icon" aria-hidden="true">{t.icon}</span>
+      <span className="pick-icon" aria-hidden="true"><Icon name={t.icon} /></span>
       <strong>{t.name}</strong>
       <span className="muted small-text">{t.lore}</span>
       <span className="mono small-text">{goalLine(buildGoal(t, members))} · {t.days} días</span>
@@ -231,7 +232,7 @@ function PickChallenge({ game, members, command, leader }: { game: Game; members
     <section className="panel" aria-labelledby="pick-h">
       <header className="panel-head"><h3 id="pick-h">Tablón de encargos</h3></header>
       <p className="hint">Las metas se calculan para {members} {members === 1 ? 'miembro' : 'miembros'}. Cuenta lo que hagáis desde que empieza el encargo.</p>
-      {!command && <p className="hint rank-note">👑 Solo el líder y los colíderes aceptan encargos. Dile a {leader} cuál os apetece.</p>}
+      {!command && <p className="hint rank-note"><Icon name="crown" /> Solo el líder y los colíderes aceptan encargos. Dile a {leader} cuál os apetece.</p>}
       <p className="eyebrow">Misiones</p>
       <ul className="pick-grid">{CHALLENGES.filter((t) => t.kind === 'mision').map(card)}</ul>
       <p className="eyebrow">Jefes</p>
@@ -277,7 +278,7 @@ function Members({ game }: { game: Game }) {
               <span className="person-main">
                 {p && <Face p={p} size={44} />}
                 <span className="item-body">
-                  <span className="item-title">{name}{m.user_id === me && ' (tú)'} <span className={`rank-tag ${rank}`}>{RANK_LABEL[rank].icon} {RANK_LABEL[rank].name}</span></span>
+                  <span className="item-title">{name}{m.user_id === me && ' (tú)'} <span className={`rank-tag ${rank}`}><Icon name={RANK_LABEL[rank].icon} /> {RANK_LABEL[rank].name}</span></span>
                   <span className="muted small-text">{p ? `Nv ${p.level} · ${p.avatar_name}` : ''}</span>
                 </span>
               </span>
@@ -292,13 +293,13 @@ function Members({ game }: { game: Game }) {
                   ) : (
                     <>
                       {isLeader && rank === 'member' && officers < OFFICER_MAX && (
-                        <button className="ghost small" disabled={busy} onClick={() => act(() => promote(m.user_id, game.state), `${name} es colíder`)}>Hacer colíder</button>
+                        <button className="ghost small" disabled={busy} onClick={() => act(() => promote(m.user_id, game.state), `${name} es colíder`)}><Icon name="crossed-swords" /> Hacer colíder</button>
                       )}
                       {isLeader && rank === 'officer' && (
-                        <button className="ghost small" disabled={busy} onClick={() => act(() => demote(m.user_id, game.state))}>Quitar colíder</button>
+                        <button className="ghost small" disabled={busy} onClick={() => act(() => demote(m.user_id, game.state))}><Icon name="x" /> Quitar colíder</button>
                       )}
-                      {isLeader && <button className="link" onClick={() => setConfirm(`lead:${m.user_id}`)}>Ceder liderazgo</button>}
-                      {canKick(myRankNow, rank) && <button className="link danger-text" onClick={() => setConfirm(`kick:${m.user_id}`)}>Expulsar</button>}
+                      {isLeader && <button className="ghost small" onClick={() => setConfirm(`lead:${m.user_id}`)}><Icon name="crown" /> Ceder liderazgo</button>}
+                      {canKick(myRankNow, rank) && <button className="ghost small danger-text" onClick={() => setConfirm(`kick:${m.user_id}`)}><Icon name="log-out" /> Expulsar</button>}
                     </>
                   )}
                 </span>
@@ -307,7 +308,7 @@ function Members({ game }: { game: Game }) {
           );
         })}
       </ul>
-      <p className="hint">👑 El líder nombra hasta {OFFICER_MAX} colíderes. Líder y colíderes aceptan encargos e invitan; todos aportan.</p>
+      <p className="hint"><Icon name="crown" /> El líder nombra hasta {OFFICER_MAX} colíderes. Líder y colíderes aceptan encargos e invitan; todos aportan.</p>
       <p className="eyebrow">Invitar amigos</p>
       {!canCommand(myRankNow) ? <p className="hint">Solo el líder y los colíderes pueden invitar. Si quieres traer a un amigo, díselo a ellos.</p>
         : full ? <p className="hint">El gremio está completo.</p> : friends.length === 0
@@ -319,8 +320,8 @@ function Members({ game }: { game: Game }) {
                 <span className="person-main"><Face p={p} size={40} /><span className="item-body"><span className="item-title">{p.name}</span><span className="muted small-text">Nv {p.level}</span></span></span>
                 <span className="item-actions">
                   {invited.has(p.user_id)
-                    ? <button className="ghost small" disabled={busy} onClick={() => act(() => cancelInvite(p.user_id, game.state))}>Invitado · cancelar</button>
-                    : <button className="primary small" disabled={busy} onClick={() => act(() => invite(p.user_id, game.state), `Invitación enviada a ${p.name}`)}>Invitar</button>}
+                    ? <button className="ghost small" disabled={busy} onClick={() => act(() => cancelInvite(p.user_id, game.state))}><Icon name="x" /> Cancelar invitación</button>
+                    : <button className="primary small" disabled={busy} onClick={() => act(() => invite(p.user_id, game.state), `Invitación enviada a ${p.name}`)}><Icon name="user-plus" /> Invitar</button>}
                 </span>
               </li>
             ))}
@@ -348,7 +349,7 @@ function InGuild({ game, now }: { game: Game; now: number }) {
   return (
     <>
       <section className="panel guild-card">
-        <span className="guild-emblem" aria-hidden="true">{guild.emblem}</span>
+        <span className="guild-emblem" aria-hidden="true"><Glyph icon={guild.emblem} /></span>
         <div className="guild-info">
           <h2>{guild.name}</h2>
           {guild.motto && <p className="guild-motto">«{guild.motto}»</p>}
@@ -380,7 +381,7 @@ function InGuild({ game, now }: { game: Game; now: number }) {
             <button className="ghost small danger-text" disabled={busy} onClick={() => act(() => leaveGuild(game.state), 'Has salido del gremio')}>Sí, salir</button>
             <button className="link" onClick={() => setLeaving(false)}>Cancelar</button>
           </div>
-        ) : <button className="link danger-text" onClick={() => setLeaving(true)}>Salir del gremio</button>}
+        ) : <button className="link danger-text" onClick={() => setLeaving(true)}><Icon name="log-out" /> Salir del gremio</button>}
       </section>
       {open && <ProfileDialog game={game} p={open} onClose={() => setOpen(null)} />}
     </>
@@ -403,7 +404,7 @@ function GuildBody({ game }: { game: Game }) {
       {g.error && (
         <section className="panel">
           <p className="error-text" role="alert">{g.error}</p>
-          <button className="ghost small" onClick={() => void refreshGuild(game.state)}>Reintentar</button>
+          <button className="ghost small" onClick={() => void refreshGuild(game.state)}><Icon name="rotate-ccw" /> Reintentar</button>
         </section>
       )}
       {g.guild ? <InGuild game={game} now={now} /> : <NoGuild game={game} />}

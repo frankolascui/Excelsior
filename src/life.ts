@@ -1,6 +1,7 @@
 // Tu vida real dentro de Excelsior: medidas (dinero, peso…), cierre del día y eventos del calendario.
 // Funciones puras sobre GameState, como el resto de reglas.
 import type { CalendarEvent, DayLog, EventKind, EventRepeat, GameState, Metric, Reminder } from './types';
+import type { IconName } from './icon-data';
 import { dayKey, deepWorkMinutesOnDay, isHabitDone, levelInfo, totalXp, uid, xpOnDay } from './game';
 import { formatAttrXp } from './attributes';
 
@@ -59,16 +60,16 @@ export function saveDayLog(s: GameState, patch: Omit<DayLog, 'day' | 'at'>, now:
 
 // ---------- Eventos ----------
 
-export const EVENT_KINDS: { id: EventKind; name: string; icon: string }[] = [
-  { id: 'bloque', name: 'Bloque de tiempo', icon: '🕒' },
-  { id: 'examen', name: 'Examen', icon: '📝' },
-  { id: 'lanzamiento', name: 'Lanzamiento', icon: '🚀' },
-  { id: 'llamada', name: 'Llamada', icon: '📞' },
-  { id: 'reunion', name: 'Reunión', icon: '🤝' },
-  { id: 'otro', name: 'Otro', icon: '📌' },
+export const EVENT_KINDS: { id: EventKind; name: string; icon: IconName }[] = [
+  { id: 'bloque', name: 'Bloque de tiempo', icon: 'ev-bloque' },
+  { id: 'examen', name: 'Examen', icon: 'ev-examen' },
+  { id: 'lanzamiento', name: 'Lanzamiento', icon: 'ev-lanzamiento' },
+  { id: 'llamada', name: 'Llamada', icon: 'ev-llamada' },
+  { id: 'reunion', name: 'Reunión', icon: 'ev-reunion' },
+  { id: 'otro', name: 'Otro', icon: 'ev-otro' },
 ];
 
-export const eventIcon = (k: EventKind) => EVENT_KINDS.find((x) => x.id === k)?.icon ?? '📌';
+export const eventIcon = (k: EventKind): IconName => EVENT_KINDS.find((x) => x.id === k)?.icon ?? 'ev-otro';
 
 /** Colores para los eventos, como los de Google Calendar. */
 export const EVENT_COLORS: { id: string; name: string; hex: string }[] = [
@@ -204,8 +205,8 @@ export function dueAlerts(s: GameState, now: number): { key: string; text: strin
   const hm = (t: string) => new Date(`${today}T${t}:00`).getTime();
   const fresh = (t: string) => hm(t) <= now && now - hm(t) < 30 * 60_000;
   const out: { key: string; text: string }[] = [];
-  for (const r of s.reminders ?? []) if (!r.doneAt && r.day === today && r.time && fresh(r.time)) out.push({ key: `r:${r.id}:${today}`, text: `🔔 ${r.title}` });
-  for (const e of eventsOn(s, today)) if (e.time && fresh(e.time)) out.push({ key: `e:${e.id}:${today}`, text: `${eventIcon(e.kind)} ${e.time} · ${e.title}` });
+  for (const r of s.reminders ?? []) if (!r.doneAt && r.day === today && r.time && fresh(r.time)) out.push({ key: `r:${r.id}:${today}`, text: `{i:bell} ${r.title}` });
+  for (const e of eventsOn(s, today)) if (e.time && fresh(e.time)) out.push({ key: `e:${e.id}:${today}`, text: `{i:${eventIcon(e.kind)}} ${e.time} · ${e.title}` });
   return out;
 }
 
@@ -258,7 +259,7 @@ export function dailyReport(s: GameState, now: number): string {
     const today = (s.metricEntries ?? []).find((e) => e.metricId === m.id && e.day === day);
     return today ? `- ${m.name}: ${formatAttrXp(today.value)} ${m.unit}` : null;
   }).filter(Boolean);
-  const soon = upcomingEvents(s, now + 86_400_000, 6).map((e) => `- ${e.day}${e.time ? ` ${e.time}` : ''} · ${eventIcon(e.kind)} ${e.title}`);
+  const soon = upcomingEvents(s, now + 86_400_000, 6).map((e) => `- ${e.day}${e.time ? ` ${e.time}` : ''} · ${EVENT_KINDS.find((k) => k.id === e.kind)?.name ?? 'Evento'}: ${e.title}`);
   const due = s.quests.filter((q) => !q.completedAt && q.deadline && q.deadline <= dayKey(now + 7 * 86_400_000))
     .map((q) => `- ${q.deadline} · ${q.title}`);
   const lines = [

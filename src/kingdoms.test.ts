@@ -13,7 +13,7 @@ describe('reinos', () => {
     s = addQuest(s, 'Aprender Git', 'side', NOW, { kingdomId: k });
     s = addQuest(s, 'Misión suelta', 'daily', NOW);
     expect(buildings(s, k)).toHaveLength(2);
-    expect(kingdomProgress(s, k)).toMatchObject({ stage: 'Campamento', icon: '⛺' });
+    expect(kingdomProgress(s, k)).toMatchObject({ stage: 'Campamento', icon: 'tent' });
     s = completeQuest(s, buildings(s, k)[0].id, NOW).state;
     expect(totalXp(s)).toBe(50);
     expect(kingdomProgress(s, k)).toMatchObject({ built: 1, total: 2, progress: 0.5, stage: 'Aldea', complete: false });

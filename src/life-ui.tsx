@@ -10,6 +10,7 @@ import {
 } from './life';
 import { saveFile } from './download';
 import { shortDate } from './ui';
+import { Icon, type IconName } from './icons';
 
 const num = (v: string) => (v.trim() === '' ? null : Number(v.replace(',', '.')));
 const validNum = (v: string) => { const n = num(v); return n !== null && !Number.isNaN(n); };
@@ -67,8 +68,8 @@ function MetricRow({ game, metric }: { game: Game; metric: Metric }) {
       <form className="item-actions metric-log" onSubmit={submit}>
         <input type="text" inputMode="decimal" className="goal-input" value={value} onChange={(e) => setValue(e.target.value)}
           placeholder={last ? formatAttrXp(last.value) : 'Hoy'} aria-label={`Valor de hoy de ${metric.name}`} />
-        <button type="submit" className="ghost small" disabled={!validNum(value)}>Apuntar</button>
-        <button type="button" className="icon-btn" onClick={() => act((s) => deleteMetric(s, metric.id))} aria-label={`Borrar ${metric.name}`}>×</button>
+        <button type="submit" className="ghost small" disabled={!validNum(value)}><Icon name="check" /> Apuntar</button>
+        <button type="button" className="icon-btn" onClick={() => act((s) => deleteMetric(s, metric.id))} aria-label={`Borrar ${metric.name}`} title="Borrar"><Icon name="trash" /></button>
       </form>
     </li>
   );
@@ -92,13 +93,13 @@ export function MetricsPanel({ game }: { game: Game }) {
       {metrics.length > 0 && <ul className="list">{metrics.map((m) => <MetricRow key={m.id} game={game} metric={m} />)}</ul>}
       <div className="row metric-presets">
         {presets.map((p) => (
-          <button key={p.name} className="secondary small" onClick={() => act((s) => addMetric(s, p.name, p.unit, Date.now()))}>+ {p.name} ({p.unit})</button>
+          <button key={p.name} className="secondary small" onClick={() => act((s) => addMetric(s, p.name, p.unit, Date.now()))}><Icon name="plus" /> {p.name} ({p.unit})</button>
         ))}
       </div>
       <form className="metric-form" onSubmit={submit}>
         <input id="metric-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Otra medida (ej. Ahorro, Pasos)" maxLength={30} aria-label="Nombre de la medida" />
         <input id="metric-unit" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="Unidad" maxLength={10} aria-label="Unidad de la medida" />
-        <button type="submit" className="primary" disabled={!form.name.trim()}>Añadir</button>
+        <button type="submit" className="primary" disabled={!form.name.trim()}><Icon name="plus" /> Añadir</button>
       </form>
     </section>
   );
@@ -106,22 +107,22 @@ export function MetricsPanel({ game }: { game: Game }) {
 
 // ---------- Cierre del día ----------
 
-function Scale({ label, value, onChange, icons }: { label: string; value?: number; onChange: (n: number) => void; icons: string[] }) {
+function Scale({ label, value, onChange, icons }: { label: string; value?: number; onChange: (n: number) => void; icons: IconName[] }) {
   return (
     <div className="scale">
       <span className="scale-label">{label}</span>
       <div className="segmented" role="radiogroup" aria-label={label}>
         {icons.map((ic, i) => (
           <button key={i} type="button" role="radio" aria-checked={value === i + 1} aria-label={`${label} ${i + 1} de 5`}
-            className={value === i + 1 ? 'seg on' : 'seg'} onClick={() => onChange(i + 1)}>{ic}</button>
+            className={value === i + 1 ? 'seg on' : 'seg'} onClick={() => onChange(i + 1)}><Icon name={ic} /></button>
         ))}
       </div>
     </div>
   );
 }
 
-const ENERGY = ['🪫', '😮‍💨', '🙂', '⚡', '🔥'];
-const MOOD = ['😞', '😕', '😐', '😊', '😄'];
+const ENERGY: IconName[] = ['energy-1', 'energy-2', 'energy-3', 'energy-4', 'energy-5'];
+const MOOD: IconName[] = ['mood-1', 'mood-2', 'mood-3', 'mood-4', 'mood-5'];
 
 function DayCloseForm({ game, now }: { game: Game; now: number }) {
   const { state, act, toast } = game;
@@ -191,11 +192,11 @@ function DayCloseForm({ game, now }: { game: Game; now: number }) {
       <textarea id="day-note" value={note} onChange={(e) => setNote(e.target.value)} rows={3} maxLength={1200}
         placeholder="¿Qué ha ido bien? ¿Qué te ha frenado? ¿Qué harás distinto mañana?" aria-label="Nota del día" />
       <div className="row">
-        <button type="submit" className="primary">{saved ? 'Actualizar el día' : 'Guardar el día'}</button>
-        <button type="button" className="secondary" onClick={copy}>Copiar informe para la IA</button>
-        <button type="button" className="ghost" onClick={download}>Descargar .md</button>
+        <button type="submit" className="primary"><Icon name="save" /> {saved ? 'Actualizar el día' : 'Guardar el día'}</button>
+        <button type="button" className="secondary" onClick={copy}><Icon name="copy" /> Copiar informe para la IA</button>
+        <button type="button" className="ghost" onClick={download}><Icon name="download" /> Descargar .md</button>
       </div>
-      {saved && <p className="muted small-text">✓ Guardado a las {new Date(saved.at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</p>}
+      {saved && <p className="muted small-text"><Icon name="check" /> Guardado a las {new Date(saved.at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</p>}
     </form>
   );
 }
@@ -222,7 +223,7 @@ export function UpcomingEvents({ state, now }: { state: GameState; now: number }
       <ul className="ev-strip">
         {list.slice(0, 6).map((e) => (
           <li key={e.id} className={`ev-chip ev-${e.kind}${e.day === dayKey(now) ? ' today' : ''}`} style={eventColor(e) ? ({ '--ev': eventColor(e) } as CSSProperties) : undefined}>
-            <span aria-hidden="true">{eventIcon(e.kind)}</span> <strong>{e.title}</strong>
+            <Icon name={eventIcon(e.kind)} /> <strong>{e.title}</strong>
             <span className="muted"> · {relDay(e.day, now)}{e.time ? ` ${e.time}` : ''}</span>
           </li>
         ))}

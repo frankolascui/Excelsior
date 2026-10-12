@@ -1,8 +1,20 @@
 // Interfaz del sonido de fondo: panel de control en Deep Work y reproductor fijo que sigue sonando entre pantallas.
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import {
-  AMBIENTS, parseLink, playAmbient, playLink, setAmbientVolume, stopAmbient, stopLink, useAmbient,
+  AMBIENTS, gainFor, parseLink, playAmbient, playLink, setAmbientVolume, stopAmbient, stopLink, useAmbient,
 } from './ambient';
+import { Icon } from './icons';
+
+/** Deslizador de volumen: va en pasos finos y sigue una curva, así se puede dejar muy bajito. */
+function Volume({ value, label, className }: { value: number; label: string; className: string }) {
+  const pct = Math.round(gainFor(value) * 100);
+  return (
+    <label className={className} title={`Volumen ${pct < 1 && value > 0 ? '<1' : pct} %`}>
+      <Icon name={value === 0 ? 'mute' : value < 0.55 ? 'volume-low' : 'volume'} />
+      <input type="range" min={0} max={1} step={0.01} value={value} onChange={(e) => setAmbientVolume(Number(e.target.value))} aria-label={label} aria-valuetext={`${pct} %`} />
+    </label>
+  );
+}
 
 export function AmbientPanel() {
   const a = useAmbient();
@@ -21,21 +33,17 @@ export function AmbientPanel() {
             key={x.id} type="button" className={a.playing === x.id ? 'chip-btn on' : 'chip-btn'} aria-pressed={a.playing === x.id}
             onClick={() => (a.playing === x.id ? stopAmbient() : playAmbient(x.id))}
           >
-            <span aria-hidden="true">{x.icon}</span> {x.name}
+            <Icon name={x.icon} /> {x.name}
           </button>
         ))}
-        <label className="ambient-vol">
-          <span className="sr-only">Volumen</span>
-          <span aria-hidden="true">🔉</span>
-          <input type="range" min={0} max={1} step={0.05} value={a.volume} onChange={(e) => setAmbientVolume(Number(e.target.value))} aria-label="Volumen" />
-        </label>
+        <Volume value={a.volume} label="Volumen" className="ambient-vol" />
       </div>
       <form className="ambient-link" onSubmit={submit}>
         <input id="ambient-link" value={link} onChange={(e) => setLink(e.target.value)} placeholder="O pega un enlace: YouTube, Spotify o un .mp3" aria-label="Enlace de música" />
         {a.linkOn ? (
-          <button type="button" className="ghost" onClick={stopLink}>Parar</button>
+          <button type="button" className="ghost" onClick={stopLink}><Icon name="stop" /> Parar</button>
         ) : (
-          <button type="submit" className="secondary" disabled={!parsed}>▶ Reproducir</button>
+          <button type="submit" className="secondary" disabled={!parsed}><Icon name="play" /> Reproducir</button>
         )}
       </form>
       {link.trim() && !parsed && <p className="muted small-text">Ese enlace no parece válido.</p>}
@@ -43,6 +51,9 @@ export function AmbientPanel() {
     </section>
   );
 }
+
+/** YouTube solo acepta volúmenes enteros de 0 a 100: lo más bajo que no sea silencio es 1. */
+const ytVolume = (pos: number) => (pos <= 0 ? 0 : Math.max(1, Math.round(gainFor(pos) * 100)));
 
 /** Manda una orden al reproductor de YouTube incrustado (API por postMessage, sin cargar scripts). */
 function ytCommand(frame: HTMLIFrameElement | null, func: string, args: unknown[] = []) {
@@ -59,15 +70,15 @@ export function AmbientDock() {
 
   // El mismo control de volumen manda en todo lo que suena.
   useEffect(() => {
-    if (audio.current) audio.current.volume = a.volume;
-    if (embed?.kind === 'youtube') ytCommand(frame.current, 'setVolume', [Math.round(a.volume * 100)]);
+    if (audio.current) audio.current.volume = gainFor(a.volume);
+    if (embed?.kind === 'youtube') ytCommand(frame.current, 'setVolume', [ytVolume(a.volume)]);
   }, [a.volume, embed?.kind, embed?.src]);
 
   function onFrameLoad() {
     if (embed?.kind !== 'youtube') return;
     // YouTube solo escucha órdenes cuando el reproductor está listo: se reintenta unas veces.
     frame.current?.contentWindow?.postMessage(JSON.stringify({ event: 'listening' }), '*');
-    [300, 1000, 2500].forEach((ms) => setTimeout(() => ytCommand(frame.current, 'setVolume', [Math.round(a.volume * 100)]), ms));
+    [300, 1000, 2500].forEach((ms) => setTimeout(() => ytCommand(frame.current, 'setVolume', [ytVolume(a.volume)]), ms));
   }
 
   if (!embed && !synth) return null;
@@ -75,14 +86,14 @@ export function AmbientDock() {
     <div className={embed && embed.kind !== 'audio' ? 'ambient-dock with-player' : 'ambient-dock'}>
       {synth && (
         <span className="ambient-now">
-          <span aria-hidden="true">{synth.icon}</span> {synth.name}
-          <button className="icon-btn" onClick={stopAmbient} aria-label="Parar sonido de fondo">■</button>
+          <Icon name={synth.icon} /> {synth.name}
+          <button className="icon-btn" onClick={stopAmbient} aria-label="Parar sonido de fondo" title="Parar"><Icon name="stop" /></button>
         </span>
       )}
       {embed?.kind === 'audio' && (
         <span className="ambient-now">
-          🎵 <audio ref={audio} src={embed.src} autoPlay loop controls />
-          <button className="icon-btn" onClick={stopLink} aria-label="Parar música">■</button>
+          <Icon name="music" /> <audio ref={audio} src={embed.src} autoPlay loop controls />
+          <button className="icon-btn" onClick={stopLink} aria-label="Parar música" title="Parar"><Icon name="stop" /></button>
         </span>
       )}
       {embed && embed.kind !== 'audio' && (
@@ -92,14 +103,11 @@ export function AmbientDock() {
             title="Música de fondo" src={embed.src} allow="autoplay; encrypted-media"
             className={embed.kind === 'spotify' ? 'spotify' : 'youtube'}
           />
-          <button className="icon-btn dock-close" onClick={stopLink} aria-label="Cerrar reproductor">×</button>
+          <button className="icon-btn dock-close" onClick={stopLink} aria-label="Cerrar reproductor" title="Cerrar"><Icon name="x" /></button>
         </>
       )}
       {embed?.kind !== 'spotify' && (
-        <label className="dock-vol">
-          <span aria-hidden="true">🔉</span>
-          <input type="range" min={0} max={1} step={0.05} value={a.volume} onChange={(e) => setAmbientVolume(Number(e.target.value))} aria-label="Volumen del sonido de fondo" />
-        </label>
+        <Volume value={a.volume} label="Volumen del sonido de fondo" className="dock-vol" />
       )}
     </div>
   );

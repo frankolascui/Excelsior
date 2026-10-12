@@ -152,7 +152,7 @@ check(await page.isVisible('.rec-card:has-text("Ana")'), 'Ana aparece en recomen
 await page.fill('#friend-tag', 'ana #0001');
 await page.click('button:has-text("Buscar")');
 await page.waitForSelector('section:has(#add-h) .person:has-text("Ana")');
-await page.click('section:has(#add-h) button:has-text("+ Añadir")');
+await page.click('section:has(#add-h) button:has-text("Añadir")');
 await page.waitForSelector('text=Solicitud enviada a Ana');
 check(db.friendships.some((f) => f.requester === ME && f.addressee === ANA && f.status === 'pending'), 'la solicitud a Ana llega al servidor');
 await page.waitForTimeout(400);
@@ -179,7 +179,7 @@ const rows = async () => page.locator(`${lb} .lb-row`).evaluateAll((els) => els.
 let r = await rows();
 check(r.length === 2 && r[0].includes('Leo') && r[0].includes('240 XP') && r[1].includes('Nicolas (tú)'), `ranking de amigos: Leo primero y tú después (${r.join(' / ')})`);
 check(await page.isVisible(`${lb} .lb-row.p1:has-text("Leo") .lb-crown`), 'Leo lleva la corona de la semana pasada');
-check(await page.isVisible(`${lb} .lb-row.p1:has-text("🥇")`) && /Termina en/.test(await page.innerText(lb)), 'medalla de oro y cuenta atrás de la semana');
+check(await page.isVisible(`${lb} .lb-row.p1 .medal-1`) && /Termina en/.test(await page.innerText(lb)), 'medalla de oro y cuenta atrás de la semana');
 check(/1 h 35 min de foco · 4 hábitos/.test(r[0]), 'cada fila dice el foco y los hábitos de la semana');
 await page.click(`${lb} button[role="radio"]:has-text("Semana pasada")`);
 r = await rows();
@@ -191,7 +191,7 @@ await page.click(`${lb} button[role="radio"]:has-text("Esta semana")`);
 await page.locator(lb).screenshot({ path: 'e2e/14-ranking.png' });
 await page.click('section:has(#fr-h) button[aria-label="Ver perfil de Leo"]');
 check(await page.isVisible('.profile-card:has-text("Opositando y entrenando.")'), 'el perfil de Leo muestra su biografía');
-check(await page.isVisible('.profile-card:has-text("7 logros")') && await page.isVisible('.profile-card >> text=✓ Amigos'), 'y sus estadísticas y que sois amigos');
+check(await page.isVisible('.profile-card:has-text("7 logros")') && await page.isVisible('.profile-card .friend-badge:has-text("Amigos")'), 'y sus estadísticas y que sois amigos');
 await page.screenshot({ path: 'e2e/12-friend-profile.png' });
 await page.click('.profile-card >> text=Eliminar amigo');
 await page.click('.profile-card >> text=Sí, eliminar a Leo');

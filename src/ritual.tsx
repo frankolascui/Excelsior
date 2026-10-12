@@ -10,6 +10,7 @@ import { GuidePortrait } from './tutorial';
 import { confetti } from './confetti';
 import { sfx } from './sfx';
 import { AvatarPortrait, initialOf } from './portrait';
+import { Icon } from './icons';
 
 const DAY_MS = 86_400_000;
 
@@ -89,7 +90,7 @@ export function RitualCTA({ state, now }: { state: GameState; now: number }) {
   if (!a.ready || !a.next) return null;
   return (
     <button className="primary ritual-cta" onClick={() => openRitual()}>
-      🕯️ Ritual de ascensión: {a.next.name}
+      <Icon name="candle" /> Ritual de ascensión: {a.next.name}
     </button>
   );
 }
@@ -163,7 +164,7 @@ export function RitualDialog({ game, guide, onClose }: { game: Game; guide: stri
           <span className="tour-portrait" aria-hidden="true"><GuidePortrait /></span>
           <div>
             <p className="eyebrow">{guide} · Ritual de {target.name} · {step + 1}/{total}</p>
-            <h2 id="ritual-h" className="tour-title">{isIntro ? `${target.icon} Ritual de ascensión` : isOath ? 'El juramento' : current?.kind === 'goals' ? 'Tus objetivos' : 'Responde con honestidad'}</h2>
+            <h2 id="ritual-h" className="tour-title">{isIntro ? <><Icon name={target.icon} /> Ritual de ascensión</> : isOath ? 'El juramento' : current?.kind === 'goals' ? 'Tus objetivos' : 'Responde con honestidad'}</h2>
           </div>
         </div>
 
@@ -188,7 +189,7 @@ export function RitualDialog({ game, guide, onClose }: { game: Game; guide: stri
                 <input value={g.unit} onChange={(e) => setRow(i, { unit: e.target.value })} placeholder="Unidad (€, kg…)" maxLength={12} aria-label={`Unidad del objetivo ${i + 1}`} />
               </div>
             ))}
-            {rows.length < 3 && <button className="link" onClick={() => setGoals({ ...goals, [step]: [...rows, { ...EMPTY_GOAL }] })}>+ Otro objetivo</button>}
+            {rows.length < 3 && <button className="link" onClick={() => setGoals({ ...goals, [step]: [...rows, { ...EMPTY_GOAL }] })}><Icon name="plus" /> Otro objetivo</button>}
             <p className="muted small-text">Ejemplos: ahorrar de 0 a 1500 €, bajar de 82 a 76 kg, leer 0 → 6 libros. «Ahora» y «Meta» tienen que ser números distintos.</p>
           </div>
         )}
@@ -245,7 +246,7 @@ export function TimedGoals({ game }: { game: Game }) {
               <div className="item-actions goal-actions">
                 <input type="number" step="any" className="goal-input" aria-label={`Valor actual de ${g.name}`} value={g.current}
                   onChange={(e) => e.target.value !== '' && act((s) => updateGoal(s, g.id, Number(e.target.value)))} />
-                <button className="icon-btn" onClick={() => act((s) => deleteGoal(s, g.id))} aria-label={`Borrar ${g.name}`}>×</button>
+                <button className="icon-btn" onClick={() => act((s) => deleteGoal(s, g.id))} aria-label={`Borrar ${g.name}`} title="Borrar"><Icon name="trash" /></button>
               </div>
             </li>
           );
@@ -267,7 +268,7 @@ export function HeroJournal({ state }: { state: GameState }) {
           const a = AVATARS.find((x) => x.id === r.avatarId);
           return (
             <li key={r.at}>
-              <p className="eyebrow">{a?.icon} {a?.name} · {new Date(r.at).toLocaleDateString('es-ES')}</p>
+              <p className="eyebrow">{a && <Icon name={a.icon} />} {a?.name} · {new Date(r.at).toLocaleDateString('es-ES')}</p>
               {r.answers.map((x) => (
                 <div key={x.q} className="journal-qa">
                   <p className="muted small-text">{x.q}</p>
@@ -362,14 +363,14 @@ export function ReviewDialog({ game, guide, onClose }: { game: Game; guide: stri
                   </span>
                   {due.final && p < 1 && (
                     <span className="renegotiate">
-                      <button className="ghost small" onClick={() => act((s) => extendGoal(s, g.id, 30))}>+30 días</button>
+                      <button className="ghost small" onClick={() => act((s) => extendGoal(s, g.id, 30))}><Icon name="plus" /> 30 días de plazo</button>
                       {editing === g.id ? (
                         <form className="admin-inline" onSubmit={(e) => { e.preventDefault(); if (target !== '' && !Number.isNaN(Number(target))) act((s) => setGoalTarget(s, g.id, Number(target))); setEditing(null); }}>
                           <input type="number" step="any" value={target} onChange={(e) => setTarget(e.target.value)} aria-label={`Nueva meta de ${g.name}`} autoFocus />
                           <button type="submit" className="ghost small">Guardar</button>
                         </form>
                       ) : <button className="ghost small" onClick={() => { setEditing(g.id); setTarget(String(g.target)); }}>Cambiar la meta</button>}
-                      <button className="ghost small danger" onClick={() => act((s) => deleteGoal(s, g.id))}>Dejarlo</button>
+                      <button className="ghost small danger" onClick={() => act((s) => deleteGoal(s, g.id))}>Abandonar meta</button>
                     </span>
                   )}
                 </div>

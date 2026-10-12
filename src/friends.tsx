@@ -10,6 +10,7 @@ import {
   acceptRequest, BIO_MAX, findByTag, refreshSocial, relationWith, removeRelation, sendRequest, setBio, setPhoto, shrinkPhoto, useSocial,
   type PublicProfile, type Relation,
 } from './social';
+import { Icon } from './icons';
 
 export function Face({ p, size = 56 }: { p: Pick<PublicProfile, 'name' | 'photo' | 'avatar_index' | 'avatar_name'>; size?: number }) {
   return <AvatarPortrait tier={p.avatar_index} label={initialOf(p.name)} photo={p.photo ?? undefined} size={size} title={p.avatar_name} />;
@@ -25,10 +26,10 @@ function RelationButton({ game, p, rel }: { game: Game; p: PublicProfile; rel: R
     if (err) game.toast(err, 'info');
   }
   if (rel === 'self') return <span className="muted small-text">Eres tú</span>;
-  if (rel === 'friend') return <span className="friend-badge">✓ Amigos</span>;
-  if (rel === 'outgoing') return <button className="ghost small" disabled={busy} onClick={() => go(() => removeRelation(p.user_id, game.state))}>Cancelar solicitud</button>;
-  if (rel === 'incoming') return <button className="primary small" disabled={busy} onClick={() => go(() => acceptRequest(p.user_id, game.state))}>Aceptar</button>;
-  return <button className="primary small" disabled={busy} onClick={() => go(async () => { const e = await sendRequest(p, game.state); if (!e) game.toast(`Solicitud enviada a ${p.name}`, 'info'); return e; })}>+ Añadir</button>;
+  if (rel === 'friend') return <span className="friend-badge"><Icon name="user-check" /> Amigos</span>;
+  if (rel === 'outgoing') return <button className="ghost small" disabled={busy} onClick={() => go(() => removeRelation(p.user_id, game.state))}><Icon name="x" /> Cancelar solicitud</button>;
+  if (rel === 'incoming') return <button className="primary small" disabled={busy} onClick={() => go(() => acceptRequest(p.user_id, game.state))}><Icon name="check" /> Aceptar</button>;
+  return <button className="primary small" disabled={busy} onClick={() => go(async () => { const e = await sendRequest(p, game.state); if (!e) game.toast(`Solicitud enviada a ${p.name}`, 'info'); return e; })}><Icon name="user-plus" /> Añadir</button>;
 }
 
 export function ProfileDialog({ game, p, onClose }: { game: Game; p: PublicProfile; onClose: () => void }) {
@@ -40,7 +41,7 @@ export function ProfileDialog({ game, p, onClose }: { game: Game; p: PublicProfi
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="pf-h" onClick={onClose}>
       <div className="overlay-card profile-card" onClick={(e) => e.stopPropagation()}>
-        <button className="icon-btn close-x" onClick={onClose} aria-label="Cerrar">×</button>
+        <button className="icon-btn close-x" onClick={onClose} aria-label="Cerrar"><Icon name="x" /></button>
         <div className="profile-head">
           <Face p={p} size={120} />
           <div>
@@ -52,17 +53,17 @@ export function ProfileDialog({ game, p, onClose }: { game: Game; p: PublicProfi
         {p.bio ? <p className="profile-bio">{p.bio}</p> : <p className="muted small-text">Sin biografía todavía.</p>}
         <ul className="profile-attrs">
           {ATTRIBUTES.filter((a) => attrs[a.id]).map((a) => (
-            <li key={a.id}><span aria-hidden="true">{a.icon}</span> {a.name} <strong className="mono">Nv {attrs[a.id]}</strong></li>
+            <li key={a.id}><Icon name={a.icon} className={`attr-ico a-${a.id}`} /> {a.name} <strong className="mono">Nv {attrs[a.id]}</strong></li>
           ))}
         </ul>
         <div className="profile-stats mono">
-          <span>🏆 {p.stats?.achievements ?? 0} logros</span>
-          <span>◷ {p.stats?.deepHours ?? 0} h de Deep Work</span>
-          <span>⚔ {p.stats?.bosses ?? 0} bosses</span>
+          <span><Icon name="trophy" /> {p.stats?.achievements ?? 0} logros</span>
+          <span><Icon name="hourglass" /> {p.stats?.deepHours ?? 0} h de Deep Work</span>
+          <span><Icon name="crossed-swords" /> {p.stats?.bosses ?? 0} bosses</span>
         </div>
         <div className="row">
           <RelationButton game={game} p={p} rel={rel} />
-          {rel === 'incoming' && <button className="ghost small" onClick={() => void removeRelation(p.user_id, game.state)}>Rechazar</button>}
+          {rel === 'incoming' && <button className="ghost small" onClick={() => void removeRelation(p.user_id, game.state)}><Icon name="x" /> Rechazar</button>}
           {rel === 'friend' && (confirm
             ? <button className="ghost small danger-text" onClick={() => { void removeRelation(p.user_id, game.state); onClose(); }}>Sí, eliminar a {p.name}</button>
             : <button className="link" onClick={() => setConfirm(true)}>Eliminar amigo</button>)}
@@ -123,13 +124,13 @@ function MyProfile({ game }: { game: Game }) {
       <div className="profile-head">
         <button className="photo-btn" onClick={() => file.current?.click()} aria-label="Cambiar foto de perfil" title="Cambiar foto">
           <AvatarPortrait tier={me?.avatar_index ?? 0} label={initialOf(state.profile?.name)} photo={state.profile?.photo} size={110} />
-          <span className="photo-edit">📷</span>
+          <span className="photo-edit"><Icon name="camera" /></span>
         </button>
         <input ref={file} type="file" accept="image/*" hidden onChange={(e) => { void pick(e.target.files?.[0]); e.target.value = ''; }} data-testid="photo-input" />
         <div>
           <h2>{state.profile?.name}</h2>
           {me ? (
-            <button className="tag-chip mono" onClick={copyTag} title="Copiar tag">{me.tag} <span aria-hidden="true">⧉</span></button>
+            <button className="tag-chip mono" onClick={copyTag} title="Copiar tag">{me.tag} <Icon name="copy" /></button>
           ) : <p className="muted small-text">Creando tu tag…</p>}
           <p className="hint">Tus amigos te añaden con este tag.</p>
           {state.profile?.photo && <button className="link" onClick={() => act((s) => setPhoto(s, null))}>Quitar foto</button>}
@@ -139,7 +140,7 @@ function MyProfile({ game }: { game: Game }) {
         <label htmlFor="bio" className="scale-label">Biografía</label>
         <textarea id="bio" rows={3} maxLength={BIO_MAX} value={bio} onChange={(e) => setBioText(e.target.value)} placeholder="Quién eres, qué estás construyendo, qué te mueve…" />
         <div className="row">
-          <button className="primary small" disabled={!dirty}>Guardar biografía</button>
+          <button className="primary small" disabled={!dirty}><Icon name="save" /> Guardar biografía</button>
           <span className="muted small-text mono">{bio.length}/{BIO_MAX}</span>
         </div>
       </form>
@@ -169,7 +170,7 @@ function AddByTag({ game, open }: { game: Game; open: (p: PublicProfile) => void
       <header className="panel-head"><h3 id="add-h">Añadir amigo</h3></header>
       <form className="row add-friend" onSubmit={search}>
         <input id="friend-tag" value={q} onChange={(e) => { setQ(e.target.value); setRes(undefined); }} placeholder="Nombre#1234" aria-label="Tag de tu amigo" autoComplete="off" />
-        <button className="secondary" disabled={busy || !q.trim()}>{busy ? 'Buscando…' : 'Buscar'}</button>
+        <button className="secondary" disabled={busy || !q.trim()}><Icon name="search" /> {busy ? 'Buscando…' : 'Buscar'}</button>
       </form>
       {res === 'invalid' && <p className="error-text">Un tag es así: <span className="mono">Nombre#1234</span>.</p>}
       {res === 'none' && <p className="muted">No hay nadie con ese tag. Revisa el número.</p>}
@@ -199,7 +200,7 @@ function FriendsBody({ game }: { game: Game }) {
       {social.error && (
         <section className="panel">
           <p className="error-text" role="alert">{social.error}</p>
-          <button className="ghost small" onClick={() => void refreshSocial(state)}>Reintentar</button>
+          <button className="ghost small" onClick={() => void refreshSocial(state)}><Icon name="rotate-ccw" /> Reintentar</button>
         </section>
       )}
       <MyProfile game={game} />
@@ -212,7 +213,7 @@ function FriendsBody({ game }: { game: Game }) {
             {incoming.map((p) => (
               <PersonRow key={p.user_id} p={p} onOpen={() => setOpen(p)}>
                 <RelationButton game={game} p={p} rel="incoming" />
-                <button className="ghost small" onClick={() => void removeRelation(p.user_id, state)}>Rechazar</button>
+                <button className="ghost small" onClick={() => void removeRelation(p.user_id, state)}><Icon name="x" /> Rechazar</button>
               </PersonRow>
             ))}
           </ul>

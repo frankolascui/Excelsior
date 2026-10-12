@@ -1,13 +1,14 @@
 // Reinos: proyectos que se construyen como una ciudad. Cada construcción es una misión
 // normal (con kingdomId), así que da XP y atributos igual que cualquier otra.
 import type { GameState, Quest, QuestType } from './types';
+import type { IconName } from './icon-data';
 import { uid } from './game';
 
 // Ambientación medieval: cabañas, herrerías y torreones.
-export const BUILDINGS: Record<QuestType, { name: string; icon: string }> = {
-  side: { name: 'Cabaña', icon: '🛖' },
-  daily: { name: 'Herrería', icon: '⚒️' },
-  main: { name: 'Torreón', icon: '🏰' },
+export const BUILDINGS: Record<QuestType, { name: string; icon: IconName }> = {
+  side: { name: 'Cabaña', icon: 'cabin' },
+  daily: { name: 'Herrería', icon: 'anvil' },
+  main: { name: 'Torreón', icon: 'stone-tower' },
 };
 
 export function addKingdom(s: GameState, name: string, now: number): GameState {
@@ -30,14 +31,14 @@ export function buildings(s: GameState, kingdomId: string): Quest[] {
 }
 
 // Etapas según el número de construcciones levantadas (como el castillo: más estructuras, mejor reino).
-const STAGES: { min: number; name: string; icon: string }[] = [
-  { min: 10, name: 'Reino glorioso', icon: '👑' },
-  { min: 6, name: 'Ciudad amurallada', icon: '🏰' },
-  { min: 3, name: 'Villa', icon: '🏘️' },
-  { min: 1, name: 'Aldea', icon: '🛖' },
-  { min: 0, name: 'Campamento', icon: '⛺' },
+const STAGES: { min: number; name: string; icon: IconName }[] = [
+  { min: 10, name: 'Reino glorioso', icon: 'crown' },
+  { min: 6, name: 'Ciudad amurallada', icon: 'castle' },
+  { min: 3, name: 'Villa', icon: 'village' },
+  { min: 1, name: 'Aldea', icon: 'hut' },
+  { min: 0, name: 'Campamento', icon: 'tent' },
 ];
-const WASTELAND = { name: 'Tierras baldías', icon: '🌾' };
+const WASTELAND = { name: 'Tierras baldías', icon: 'wheat' as IconName };
 
 /** Etapa siguiente y cuántas construcciones faltan para ella (null en Reino glorioso). */
 export function nextStage(built: number) {

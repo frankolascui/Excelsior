@@ -2,6 +2,14 @@
 // En silueta (bloqueados) todo se vuelve negro y los ojos se apagan. Las fases (herido / furioso) añaden grietas y brillo rojo.
 import { useId, useLayoutEffect, useRef, type ReactNode } from 'react';
 import type { BossPhase, BossTier } from './bosses';
+import { Icon, iconOf } from './icons';
+
+/** Boss propio (sin dibujo): su símbolo, o el texto que eligió en versiones antiguas. */
+function CustomFigure({ icon, cy, size, color }: { icon?: string; cy: number; size: number; color: string }) {
+  const name = iconOf(icon);
+  if (name) return <Icon name={name} x={60 - size / 2} y={cy - size / 2} size={size} style={{ color }} />;
+  return <text x="60" y={cy} textAnchor="middle" dominantBaseline="middle" fontSize={size}>{icon}</text>;
+}
 
 export const TIER_COLOR: Record<BossTier, string> = {
   1: '#d6a77a', // bronce
@@ -736,7 +744,7 @@ export function BossArt({
   const classes = ['boss-art', full ? 'is-full' : '', silhouette ? 'is-silhouette' : '', `phase-${phase}`, defeated ? 'is-defeated' : '', className].filter(Boolean).join(' ');
   const creature = (
     <g className="ba-creature" filter={silhouette ? `url(#${id}-sil)` : undefined}>
-      {draw ? draw(ink) : <text x="60" y={full ? 100 : 64} textAnchor="middle" dominantBaseline="middle" fontSize={full ? 70 : 58}>{icon}</text>}
+      {draw ? draw(ink) : <CustomFigure icon={icon} cy={full ? 100 : 64} size={full ? 76 : 62} color={p.a} />}
     </g>
   );
   const cracks = !silhouette && phase !== 'calma' && (
@@ -953,7 +961,7 @@ export function PixelBoss({ templateId, icon, phase = 'calma', scale = 3, classN
             <stop offset="100%" stopColor={templateId === 'hades' ? '#e0f2fe' : '#fde047'} />
           </linearGradient>
         </defs>
-        {draw ? draw(ink) : <text x="60" y="100" textAnchor="middle" dominantBaseline="middle" fontSize="70">{icon}</text>}
+        {draw ? draw(ink) : <CustomFigure icon={icon} cy={100} size={76} color={p.a} />}
         {phase !== 'calma' && !silhouette && (
           <path d={CRACKS[phase]} transform="translate(0 34)" stroke={phase === 'furioso' ? '#ff2d4a' : '#fff'} strokeOpacity="0.9" strokeWidth="2.2" fill="none" />
         )}

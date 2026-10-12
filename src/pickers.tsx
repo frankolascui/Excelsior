@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { dayKey } from './game';
 import { fromMin, toMin } from './life';
 import { sfx } from './sfx';
+import { Icon } from './icons';
 
 const WD = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
@@ -117,7 +118,7 @@ export function DatePicker({ value, onChange, clearLabel, placeholder = 'Fecha',
   return (
     <>
       <button type="button" ref={btn} id={id} className={`pick-btn${value ? ' set' : ''} ${className}`} onClick={toggle} aria-label={`${label}: ${value ? dayWords(value, today) : 'sin fecha'}`} aria-expanded={open}>
-        {children ?? <><span aria-hidden="true">📅</span> {value ? dayWords(value, today) : placeholder}</>}
+        {children ?? <><Icon name="calendar" /> {value ? dayWords(value, today) : placeholder}</>}
       </button>
       {open && (
         <Popover anchor={btn.current} onClose={() => setOpen(false)} className="pop-date">
@@ -129,9 +130,9 @@ export function DatePicker({ value, onChange, clearLabel, placeholder = 'Fecha',
             ))}
           </div>
           <div className="pop-month">
-            <button type="button" className="icon-btn" onClick={() => shift(-1)} aria-label="Mes anterior">‹</button>
+            <button type="button" className="icon-btn" onClick={() => shift(-1)} aria-label="Mes anterior"><Icon name="chevron-left" /></button>
             <b>{monthName[0].toUpperCase() + monthName.slice(1)}</b>
-            <button type="button" className="icon-btn" onClick={() => shift(1)} aria-label="Mes siguiente">›</button>
+            <button type="button" className="icon-btn" onClick={() => shift(1)} aria-label="Mes siguiente"><Icon name="chevron-right" /></button>
           </div>
           <div className="pop-grid" role="grid">
             {WD.map((w) => <span key={w} className="pop-wd">{w}</span>)}
@@ -170,7 +171,7 @@ export function TimePicker({ value, onChange, from, clearLabel, placeholder = 'H
   return (
     <>
       <button type="button" ref={btn} id={id} className={`pick-btn${value ? ' set' : ''}`} onClick={toggle} aria-label={`${label}: ${value ?? 'sin hora'}`} aria-expanded={open}>
-        <span aria-hidden="true">🕒</span> {value ?? placeholder}
+        <Icon name="clock" /> {value ?? placeholder}
       </button>
       {open && (
         <Popover anchor={btn.current} onClose={() => setOpen(false)} className="pop-time">

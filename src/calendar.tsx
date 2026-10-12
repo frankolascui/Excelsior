@@ -7,6 +7,7 @@ import { QuestItem, QuickAddQuest, shortDate } from './ui';
 import { eventColor, eventIcon, eventsOn, remindersOn } from './life';
 import { sfx } from './sfx';
 import { addDays, DayAgenda, mondayOf, TimeGrid } from './agenda-ui';
+import { Icon } from './icons';
 
 type CalView = 'month' | 'week' | 'day';
 const CAL_VIEW_KEY = 'excelsior:cal-view';
@@ -86,9 +87,9 @@ export function QuestCalendar({
     <>
       <section className={`panel calendar cal-view-${view}`} aria-labelledby="cal-h">
         <header className="cal-head">
-          <button className="icon-btn" onClick={() => move(-1)} aria-label={`${unit} anterior`}>‹</button>
+          <button className="icon-btn" onClick={() => move(-1)} aria-label={`${unit} anterior`}><Icon name="chevron-left" /></button>
           <h3 id="cal-h" className="cal-month">{title}</h3>
-          <button className="icon-btn" onClick={() => move(1)} aria-label={`${unit} siguiente`}>›</button>
+          <button className="icon-btn" onClick={() => move(1)} aria-label={`${unit} siguiente`}><Icon name="chevron-right" /></button>
           <button className="ghost small" onClick={goToday}>Hoy</button>
           <div className="segmented cal-views" role="radiogroup" aria-label="Vista del calendario">
             {(Object.keys(VIEW_NAMES) as CalView[]).map((v) => (
@@ -117,17 +118,17 @@ export function QuestCalendar({
               >
                 <span className="cal-num mono">{Number(day.slice(8))}</span>
                 <span className="cal-items" aria-hidden="true">
-                  {evs.slice(0, 2).map((e) => <span key={e.id} className={`cal-ev ev-${e.kind}`} style={eventColor(e) ? ({ '--ev': eventColor(e) } as CSSProperties) : undefined}>{eventIcon(e.kind)} {e.time ? `${e.time} ` : ''}{e.title}</span>)}
+                  {evs.slice(0, 2).map((e) => <span key={e.id} className={`cal-ev ev-${e.kind}`} style={eventColor(e) ? ({ '--ev': eventColor(e) } as CSSProperties) : undefined}><Icon name={eventIcon(e.kind)} /> {e.time ? `${e.time} ` : ''}{e.title}</span>)}
                   {evs.length > 2 && <span className="cal-more">+{evs.length - 2} eventos</span>}
-                  {rems.slice(0, 1).map((r) => <span key={r.id} className="cal-rem">🔔 {r.title}</span>)}
-                  {rems.length > 1 && <span className="cal-more">+{rems.length - 1} 🔔</span>}
+                  {rems.slice(0, 1).map((r) => <span key={r.id} className="cal-rem"><Icon name="bell" /> {r.title}</span>)}
+                  {rems.length > 1 && <span className="cal-more">+{rems.length - 1} <Icon name="bell" /></span>}
                   {items.slice(0, MAX_IN_CELL).map((q) => <span key={q.id} className={`cal-q q-${q.type}`}>{q.title}</span>)}
                   {items.length > MAX_IN_CELL && <span className="cal-more">+{items.length - MAX_IN_CELL}</span>}
-                  {finished.length > 0 && <span className="cal-done">✓ {finished.length}</span>}
+                  {finished.length > 0 && <span className="cal-done"><Icon name="check" /> {finished.length}</span>}
                 </span>
                 <span className="cal-dots" aria-hidden="true">
-                  {evs.length > 0 && <b className="ev-dot">{eventIcon(evs[0].kind)}</b>}
-                  {rems.length > 0 && <b className="ev-dot">🔔</b>}
+                  {evs.length > 0 && <b className="ev-dot"><Icon name={eventIcon(evs[0].kind)} /></b>}
+                  {rems.length > 0 && <b className="ev-dot"><Icon name="bell" /></b>}
                   {items.slice(0, 4).map((q) => <i key={q.id} className={`q-${q.type}`} />)}
                 </span>
               </button>
@@ -136,11 +137,11 @@ export function QuestCalendar({
         </div>
         <p className="hint cal-legend">
           <span><i className="q-main" /> Principal</span><span><i className="q-daily" /> Diaria</span><span><i className="q-side" /> Secundaria</span>
-          <span>📝🚀📞 Eventos</span><span>🔔 Recordatorios</span>
+          <span><Icon name="ev-otro" /> Eventos</span><span><Icon name="bell" /> Recordatorios</span>
           <span className="late-key">En rojo: fecha pasada sin terminar</span>
         </p>
         </>}
-        {view !== 'month' && <p className="hint cal-legend">Pulsa una hora libre para añadir algo a esa hora. ⚡ = tus sesiones de Deep Work. ↻ = se repite.</p>}
+        {view !== 'month' && <p className="hint cal-legend">Pulsa una hora libre para añadir algo a esa hora. <Icon name="zap" /> = tus sesiones de Deep Work. <Icon name="repeat" /> = se repite.</p>}
       </section>
 
       <section className="panel" aria-labelledby="cal-day-h">
@@ -149,7 +150,7 @@ export function QuestCalendar({
           <span className="count mono">{selDue.length}</span>
         </header>
         <DayAgenda key={selected} game={game} day={selected} now={now} startFocus={startFocus} />
-        {view === 'month' && <button className="link cal-open-day" onClick={() => pickView('day')}>Ver el día por horas →</button>}
+        {view === 'month' && <button className="link cal-open-day" onClick={() => pickView('day')}>Ver el día por horas <Icon name="arrow-right" /></button>}
         {selDue.length === 0 && selDone.length === 0 && <p className="empty">Sin misiones para este día.</p>}
         {selDue.length > 0 && (
           <ul className="list">
@@ -181,7 +182,7 @@ export function QuestCalendar({
       {undated.length > 0 && (
         <section className="panel quiet" aria-labelledby="undated-h">
           <header className="panel-head"><h3 id="undated-h">Sin fecha</h3><span className="count mono">{undated.length}</span></header>
-          <p className="hint">Ponles fecha con 📅 para verlas en el calendario.</p>
+          <p className="hint">Ponles fecha con <Icon name="calendar-plus" /> para verlas en el calendario.</p>
           <ul className="list">
             {undated.map((q) => (
               <QuestItem key={q.id} quest={q} onDeadline={(d) => act((st) => setQuestDeadline(st, q.id, d))}

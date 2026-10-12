@@ -79,9 +79,9 @@ describe('recordatorios', () => {
     s = addEvent(s, { title: 'Estudiar', day: '2026-10-01', time: '19:10', kind: 'bloque', repeat: 'daily' }, NOW);
     const at = (h: number, m: number) => new Date(2026, 9, 6, h, m).getTime();
     expect(dueAlerts(s, at(18, 59))).toEqual([]);
-    expect(dueAlerts(s, at(19, 0)).map((a) => a.text)).toEqual(['🔔 Comprar la cena']);
-    expect(dueAlerts(s, at(19, 15)).map((a) => a.text)).toEqual(['🔔 Comprar la cena', '🕒 19:10 · Estudiar']);
-    expect(dueAlerts(s, at(19, 31)).map((a) => a.text)).toEqual(['🕒 19:10 · Estudiar']);
+    expect(dueAlerts(s, at(19, 0)).map((a) => a.text)).toEqual(['{i:bell} Comprar la cena']);
+    expect(dueAlerts(s, at(19, 15)).map((a) => a.text)).toEqual(['{i:bell} Comprar la cena', '{i:ev-bloque} 19:10 · Estudiar']);
+    expect(dueAlerts(s, at(19, 31)).map((a) => a.text)).toEqual(['{i:ev-bloque} 19:10 · Estudiar']);
     expect(dueAlerts(toggleReminder(s, s.reminders![0].id, NOW), at(19, 5))).toEqual([]);
   });
 });

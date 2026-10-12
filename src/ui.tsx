@@ -9,6 +9,7 @@ import { CustomizeToggle, InlineEdit, RewardEditor, sameRewards, type CustomValu
 import { RitualCTA } from './ritual';
 import { DatePicker } from './pickers';
 import { AvatarPortrait, initialOf } from './portrait';
+import { Icon } from './icons';
 
 export function useNow(intervalMs = 1000): number {
   const [now, setNow] = useState(() => Date.now());
@@ -118,26 +119,26 @@ export function QuestItem({
         <span className="item-meta">
           <TypeChip type={quest.type} />
           {due && (onDeadline
-            ? <DatePicker value={quest.deadline ?? null} onChange={onDeadline} label={`Fecha límite de ${quest.title}`} clearLabel="Quitar fecha límite" className={`due due-${due.tone}`}>📅 {due.text}</DatePicker>
-            : <span className={`due due-${due.tone}`}>📅 {due.text}</span>)}
-          {kingdom && <span className="kingdom-tag">🏰 {kingdom}</span>}
+            ? <DatePicker value={quest.deadline ?? null} onChange={onDeadline} label={`Fecha límite de ${quest.title}`} clearLabel="Quitar fecha límite" className={`due due-${due.tone}`}><Icon name="calendar" /> {due.text}</DatePicker>
+            : <span className={`due due-${due.tone}`}><Icon name="calendar" /> {due.text}</span>)}
+          {kingdom && <span className="kingdom-tag"><Icon name="castle" /> {kingdom}</span>}
           <span className="mono xp-tag">+{questXp(quest)} XP</span>
           <RewardTags rewards={questAttributeRewards(quest)} />
         </span>
       </div>
       <div className="item-actions">
         {onStart && !done && (
-          <button className="ghost small" onClick={onStart} title="Hacer Deep Work en esta misión">▶ Foco</button>
+          <button className="ghost small" onClick={onStart} title="Hacer Deep Work en esta misión"><Icon name="play" /> Foco</button>
         )}
-        {onUndo && done && <button className="ghost small" onClick={onUndo}>Deshacer</button>}
+        {onUndo && done && <button className="ghost small" onClick={onUndo}><Icon name="rotate-ccw" /> Deshacer</button>}
         {onDeadline && !done && !quest.deadline && (
-          <DatePicker value={null} onChange={onDeadline} label={`Poner fecha límite a ${quest.title}`} className="icon-btn due-add">📅</DatePicker>
+          <DatePicker value={null} onChange={onDeadline} label={`Poner fecha límite a ${quest.title}`} className="icon-btn due-add"><Icon name="calendar-plus" /></DatePicker>
         )}
         {onEdit && !done && (
-          <button className="icon-btn edit-btn" onClick={() => setEditing(true)} aria-label={`Editar ${quest.title}`} title="Editar XP y atributos">✎</button>
+          <button className="icon-btn edit-btn" onClick={() => setEditing(true)} aria-label={`Editar ${quest.title}`} title="Editar XP y atributos"><Icon name="sliders" /></button>
         )}
         {onDelete && !done && (
-          <button className="icon-btn" onClick={onDelete} aria-label={`Borrar ${quest.title}`} title="Borrar">×</button>
+          <button className="icon-btn" onClick={onDelete} aria-label={`Borrar ${quest.title}`} title="Borrar"><Icon name="trash" /></button>
         )}
       </div>
     </li>
@@ -195,7 +196,7 @@ export function QuickAddQuest({
           <DatePicker id="new-quest-deadline" value={deadline || null} onChange={(d) => setDeadline(d ?? '')} label="Fecha límite (opcional)" clearLabel="Sin fecha límite" placeholder="Fecha límite" />
         )}
         <CustomizeToggle open={open} onToggle={() => setOpen(!open)} custom={isCustom} />
-        <button type="submit" className="primary" disabled={!title.trim()}>Crear</button>
+        <button type="submit" className="primary" disabled={!title.trim()}><Icon name="plus" /> Crear</button>
       </div>
       {open && (
         <RewardEditor autoXp={XP_RULES.quest[type]} autoRewards={questRewards(type, title)} value={custom} onChange={setCustom} maxXp={CUSTOM_LIMITS.questXp} idPrefix="new-quest" />
@@ -249,7 +250,7 @@ export function HabitItem({
       <div className="item-body">
         <span className="item-title">{habit.name}</span>
         <span className="item-meta">
-          {weekly && <span className={weekDone ? 'freq-tag done' : 'freq-tag'}>{weekCount}/{habit.perWeek} esta semana{weekDone ? ' ✓' : ''}</span>}
+          {weekly && <span className={weekDone ? 'freq-tag done' : 'freq-tag'}>{weekCount}/{habit.perWeek} esta semana{weekDone && <> <Icon name="check" /></>}</span>}
           <span className="week" aria-label="Últimos 7 días">
             {week.map((d) => (
               <span key={d} className={isHabitDone(state, habit.id, d) ? 'dot on' : 'dot'} title={d} />
@@ -261,8 +262,8 @@ export function HabitItem({
         </span>
       </div>
       <div className="item-actions">
-        {onEdit && <button className="icon-btn edit-btn" onClick={() => setEditing(true)} aria-label={`Editar ${habit.name}`} title="Editar XP y atributos">✎</button>}
-        {onDelete && <button className="icon-btn" onClick={onDelete} aria-label={`Borrar ${habit.name}`} title="Borrar">×</button>}
+        {onEdit && <button className="icon-btn edit-btn" onClick={() => setEditing(true)} aria-label={`Editar ${habit.name}`} title="Editar XP y atributos"><Icon name="sliders" /></button>}
+        {onDelete && <button className="icon-btn" onClick={onDelete} aria-label={`Borrar ${habit.name}`} title="Borrar"><Icon name="trash" /></button>}
       </div>
     </li>
   );
@@ -271,7 +272,7 @@ export function HabitItem({
 /** Confirmación en la propia página (los diálogos nativos no siempre están disponibles). */
 export function ConfirmButton({ label, confirmLabel, onConfirm }: { label: string; confirmLabel: string; onConfirm: () => void }) {
   const [asking, setAsking] = useState(false);
-  if (!asking) return <button className="ghost danger" onClick={() => setAsking(true)}>{label}</button>;
+  if (!asking) return <button className="ghost danger" onClick={() => setAsking(true)}><Icon name="trash" /> {label}</button>;
   return (
     <span className="confirm">
       <button className="danger-solid" onClick={onConfirm}>{confirmLabel}</button>
@@ -280,7 +281,7 @@ export function ConfirmButton({ label, confirmLabel, onConfirm }: { label: strin
   );
 }
 
-/** Iconos compactos del XP de atributo que da una acción (p. ej. ⚔️5 🔨5). */
+/** Símbolos compactos del XP de atributo que da una acción (p. ej. [puño]+5 [martillo]+5). */
 export function RewardTags({ rewards }: { rewards: AttributeRewards }) {
   const items = ATTRIBUTES.filter((a) => (rewards[a.id] ?? 0) > 0);
   if (items.length === 0) return null;
@@ -288,7 +289,7 @@ export function RewardTags({ rewards }: { rewards: AttributeRewards }) {
     <span className="rewards mono" aria-label={items.map((a) => `+${formatAttrXp(rewards[a.id]!)} ${a.name}`).join(', ')}>
       {items.map((a) => (
         <span key={a.id}>
-          <span aria-hidden="true">{a.icon}</span>+{formatAttrXp(rewards[a.id]!)}
+          <Icon name={a.icon} className={`attr-ico a-${a.id}`} />+{formatAttrXp(rewards[a.id]!)}
         </span>
       ))}
     </span>
@@ -317,7 +318,7 @@ export function AvatarCard({ state, now, showRequirements = false }: { state: Ga
             <li className="req-head">Para ascender a {a.next.name}:</li>
             {a.requirements.map((r) => (
               <li key={r.label} className={r.met ? 'req met' : 'req'}>
-                <span aria-hidden="true">{r.met ? '✓' : '○'}</span> {r.label}
+                <Icon name={r.met ? 'check' : 'target'} className={r.met ? 'req-ico met' : 'req-ico'} /> {r.label}
                 <span className="mono muted"> · {Math.floor(r.progress * 100)} %</span>
               </li>
             ))}
@@ -340,7 +341,7 @@ export function AttributeList({ state, detailed = false }: { state: GameState; d
         if (asleep) {
           return (
             <li key={a.id} className="attr idle asleep" title={`${a.tagline} ${a.desc}`}>
-              <span className="attr-icon" aria-hidden="true">🔒</span>
+              <span className="attr-icon" aria-hidden="true"><Icon name="lock" /></span>
               <span className="attr-name">{a.name}</span>
               <span className="attr-level mono">Nv {a.unlockLevel}</span>
               <span className="attr-asleep-text">Atributo avanzado: se despierta en el nivel global {a.unlockLevel}. Lo que hagas antes ya cuenta.</span>
@@ -356,7 +357,7 @@ export function AttributeList({ state, detailed = false }: { state: GameState; d
         }
         return (
           <li key={a.id} className={xp[a.id] === 0 ? 'attr idle' : 'attr'} title={`${a.tagline} ${a.desc}`}>
-            <span className="attr-icon" aria-hidden="true">{a.icon}</span>
+            <span className={`attr-icon a-${a.id}`} aria-hidden="true"><Icon name={a.icon} /></span>
             <span className="attr-name">{a.name}</span>
             <span className="attr-level mono">Nv {lvl.level}</span>
             <div className="attr-bar" role="progressbar" aria-label={`${a.name}: ${formatAttrXp(lvl.current)} de ${lvl.needed} XP`} aria-valuemin={0} aria-valuemax={lvl.needed} aria-valuenow={lvl.current}>

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import type { GameState } from './types';
 import { ACHIEVEMENTS, stats, TIER_LABEL, type AchievementDef } from './achievements';
 import { formatMinutes } from './ui';
+import { Icon } from './icons';
 
 const inMinutes = (a: AchievementDef) => a.id.startsWith('dw-') && a.id !== 'dw-perfect';
 const fmt = (a: AchievementDef, n: number) => (inMinutes(a) ? formatMinutes(n) : String(n));
@@ -10,7 +11,7 @@ const fmt = (a: AchievementDef, n: number) => (inMinutes(a) ? formatMinutes(n) :
 function Medal({ a, locked = false }: { a: AchievementDef; locked?: boolean }) {
   return (
     <span className={`medal tier-${a.tier}${locked ? ' locked' : ''}`} aria-hidden="true">
-      <span className="medal-icon">{locked ? '🔒' : a.icon}</span>
+      <span className="medal-icon"><Icon name={locked ? 'lock' : a.icon} /></span>
     </span>
   );
 }
@@ -28,7 +29,7 @@ export function AchievementPopup({ queue, dismiss }: { queue: AchievementDef[]; 
     <button key={a.id} className={`achv-pop tier-${a.tier}`} onClick={dismiss} aria-live="assertive">
       <Medal a={a} />
       <span className="achv-pop-text">
-        <span className="eyebrow">🏆 Logro desbloqueado · {TIER_LABEL[a.tier]}</span>
+        <span className="eyebrow"><Icon name="trophy" /> Logro desbloqueado · {TIER_LABEL[a.tier]}</span>
         <strong className="achv-pop-name">{a.name}</strong>
         <span className="muted small-text">{a.desc}</span>
       </span>
@@ -53,7 +54,7 @@ export function AchievementsPanel({ state, now }: { state: GameState; now: numbe
   return (
     <section className="panel achievements" aria-labelledby="achv-h">
       <header className="panel-head">
-        <h3 id="achv-h">🏆 Logros</h3>
+        <h3 id="achv-h"><Icon name="trophy" /> Logros</h3>
         <span className="count mono">{got.size}/{ACHIEVEMENTS.length}</span>
       </header>
       {categories.map((c) => {

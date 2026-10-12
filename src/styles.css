@@ -956,6 +956,7 @@ i.q-side { background: var(--side); }
 /* Retrato con aro de avatar */
 .portrait { display: block; overflow: visible; flex: none; }
 .portrait-label { fill: #fff; font-family: var(--display); font-weight: 700; }
+.portrait-icon { color: #fff; opacity: 0.92; }
 .portrait.dim { filter: grayscale(1) brightness(0.55); }
 .portrait .ring-spin, .portrait .ring-spin-slow, .portrait .ring-orbit, .portrait .ring-dash { transform-origin: 100px 100px; transform-box: view-box; }
 .portrait .ring-spin { animation: ring-rot 14s linear infinite; }
@@ -1242,8 +1243,8 @@ i.q-side { background: var(--side); }
   .tg-week .tg-cell { padding: 3px 1px; }
   .tg-week .tg-chip, .tg-week .tg-cell .cal-q { font-size: 10px; padding: 1px 3px; }
   .tg-week .tg-block { font-size: 10px; padding: 2px 2px 2px 3px; border-left-width: 2px; }
-  .tg-week .tg-rem { font-size: 0; padding: 0; width: 14px; height: 14px; }
-  .tg-week .tg-rem::before { content: '🔔'; font-size: 10px; }
+  .tg-week .tg-rem { font-size: 0; padding: 0; width: 14px; height: 14px; display: grid; place-items: center; }
+  .tg-week .tg-rem .ico { width: 10px; height: 10px; }
 }
 
 /* Hoja (añadir o ver un evento) */
@@ -1534,3 +1535,96 @@ i.q-side { background: var(--side); }
   .lb-text > .small-text { white-space: normal; line-height: 1.3; }
 }
 @media (prefers-reduced-motion: reduce) { .lb-crown { animation: none; } }
+
+/* ---------- Símbolos ---------- */
+.ico { display: inline-block; flex: none; vertical-align: -0.14em; overflow: visible; }
+.ig-1 { stop-color: var(--c1); }
+.ig-2 { stop-color: var(--c2); }
+.ig-3 { stop-color: var(--c3); }
+/* Emblemas grandes (premios, logros, gremios, avatares…) con el degradado del tema. */
+:is(.reward-icon, .medal-icon, .chest-icon, .guild-emblem, .path-detail-icon, .ch-icon, .pick-icon, .shop-next-icon, .purchase-icon,
+  .reward-preview, .locked-icon, .mode-icon, .achv-pop .eyebrow, .emblem-opt.on, .icon-pick.on, .hero-title, .unlock-line strong,
+  .screen-title, .ritual-cta, .tour-title, .victory-next, .kingdom-stage) .ico-fill :is(path, circle, g) { fill: url(#ico-grad); }
+:is(.mode-icon, .locked-icon, .shop-next-icon) .ico-line :is(path, circle, rect, line, polyline) { stroke: url(#ico-grad); }
+.medal.locked .medal-icon .ico-fill :is(path, circle, g) { fill: currentColor; }
+.reward.locked .reward-icon .ico-fill :is(path, circle, g) { fill: currentColor; }
+.coin-ico :is(path, circle, g), .coins .ico-fill :is(path, circle, g), .loot .ico-fill :is(path, circle, g) { fill: url(#ico-gold); }
+.coin-ico { filter: drop-shadow(0 0 3px rgba(245, 197, 66, 0.35)); }
+.hp-ico { color: #ff5c7a; }
+.medal-1 { color: #f5c542; } .medal-2 { color: #cfd6e3; } .medal-3 { color: #d08a4f; }
+.lb-crown { color: var(--gold); }
+.req-ico { color: var(--muted); }
+.req-ico.met { color: var(--ok); }
+.attr-ico { color: var(--c1); vertical-align: -0.18em; }
+.glyph-text { font-style: normal; }
+.city-stage-ico { color: var(--fg); opacity: 0.85; }
+.path-node .node-lock { color: var(--muted); }
+svg .node-icon { color: var(--fg); }
+.compass { color: var(--muted); }
+.nav-glyph { display: inline-grid; place-items: center; }
+.nav-glyph .ico { width: 1.05em; height: 1.05em; }
+.locked-icon .ico, .mode-icon .ico { width: 1em; height: 1em; }
+
+/* ---------- Botones: un solo sistema ----------
+   Todos con icono + texto alineados, alto mínimo cómodo para el dedo, foco visible, «hundirse» al pulsar
+   y un brillo que sigue al ratón en los principales. */
+:is(.primary, .secondary, .ghost, .danger-solid, .chip-btn, .phase-btn, .link, .seg, .pick-btn, .pick, .pop-chip) {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.45em; line-height: 1.15;
+}
+.link { justify-content: flex-start; }
+:is(.primary, .secondary, .ghost, .danger-solid) {
+  min-height: 40px; border-radius: 12px; letter-spacing: 0.01em;
+  transition: transform 0.12s cubic-bezier(0.3, 1.4, 0.5, 1), box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, filter 0.2s ease, color 0.2s ease;
+}
+:is(.primary, .secondary, .ghost, .danger-solid).small { min-height: 32px; border-radius: 10px; }
+:is(.primary, .secondary, .ghost, .danger-solid).big { min-height: 50px; border-radius: 14px; }
+:is(.primary, .secondary, .ghost, .danger-solid) .ico { width: 1.1em; height: 1.1em; }
+.primary {
+  position: relative; isolation: isolate; overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), inset 0 -2px 0 rgba(0, 0, 0, 0.18), 0 6px 22px color-mix(in srgb, var(--c1) 32%, transparent);
+}
+.primary::after {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.28) 48%, transparent 66%);
+  transform: translateX(-110%); transition: transform 0.6s ease;
+}
+.primary:hover:not(:disabled)::after { transform: translateX(110%); }
+.primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32), inset 0 -2px 0 rgba(0, 0, 0, 0.18), 0 10px 30px color-mix(in srgb, var(--c1) 48%, transparent);
+}
+.secondary { background: linear-gradient(180deg, color-mix(in srgb, var(--fg) 6%, var(--surface-2)), var(--surface-2)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05); }
+.secondary:hover:not(:disabled) { border-color: color-mix(in srgb, var(--c2) 55%, var(--line)); transform: translateY(-1px); box-shadow: 0 6px 18px color-mix(in srgb, var(--c2) 18%, transparent); }
+.ghost:hover:not(:disabled) { background: color-mix(in srgb, var(--fg) 6%, transparent); border-color: color-mix(in srgb, var(--fg) 22%, var(--line)); }
+.ghost.danger:hover:not(:disabled), .ghost.danger-text:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 12%, transparent); border-color: color-mix(in srgb, var(--danger) 50%, var(--line)); }
+.danger-solid:hover:not(:disabled) { filter: brightness(1.08); box-shadow: 0 6px 20px color-mix(in srgb, var(--danger) 35%, transparent); }
+:is(.primary, .secondary, .ghost, .danger-solid, .chip-btn, .phase-btn, .icon-btn, .icon-round, .seg, .pick, .icon-pick, .emblem-opt):active:not(:disabled) {
+  transform: translateY(1px) scale(0.97); transition-duration: 0.05s;
+}
+:is(.primary, .secondary, .ghost, .danger-solid, .chip-btn, .phase-btn):disabled { opacity: 0.42; cursor: not-allowed; box-shadow: none; filter: saturate(0.6); }
+:is(button, .pick-btn):focus-visible { outline: 2px solid var(--c1); outline-offset: 2px; }
+.link { border-radius: 6px; text-underline-offset: 3px; }
+.link:hover:not(:disabled) { text-decoration: underline; text-decoration-thickness: 1px; }
+.link .ico { transition: transform 0.15s ease; }
+.link:hover .ico:last-child:not(:first-child) { transform: translateX(2px); }
+.chip-btn { min-height: 36px; transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, transform 0.12s ease; }
+.chip-btn:hover:not(.on) { border-color: color-mix(in srgb, var(--c2) 45%, var(--line)); }
+.phase-btn { min-height: 50px; transition: background 0.2s ease, transform 0.12s ease; }
+
+/* Botones de solo icono: cuadrados, centrados; rojo solo cuando borran. */
+.icon-btn {
+  display: inline-grid; place-items: center; min-width: 34px; min-height: 34px; padding: 6px; font-size: 18px; border-radius: 10px;
+  transition: color 0.15s ease, background 0.15s ease, transform 0.12s ease;
+}
+.icon-btn:hover:not(:disabled) { color: var(--fg); background: var(--surface-2); }
+.icon-btn:is([aria-label^='Borrar'], [aria-label^='Quitar']):hover:not(:disabled) { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+.icon-round { transition: border-color 0.2s ease, transform 0.12s ease, box-shadow 0.2s ease; }
+.icon-round:hover { box-shadow: 0 0 14px color-mix(in srgb, var(--c2) 30%, transparent); }
+.icon-round .ico { width: 19px; height: 19px; }
+.icon-pick, .emblem-opt { display: inline-grid; place-items: center; transition: border-color 0.15s ease, box-shadow 0.2s ease, transform 0.12s ease, color 0.15s ease; color: var(--muted); }
+.icon-pick:hover, .emblem-opt:hover { color: var(--fg); border-color: color-mix(in srgb, var(--c2) 50%, var(--line)); }
+.icon-pick.on, .emblem-opt.on { color: var(--fg); }
+@media (prefers-reduced-motion: reduce) {
+  .primary::after { display: none; }
+  :is(.primary, .secondary, .ghost, .danger-solid, .chip-btn, .icon-btn):hover { transform: none !important; }
+}

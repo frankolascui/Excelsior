@@ -17,9 +17,10 @@ import { ConfirmButton, useNow } from './ui';
 import { BossArt, PixelBoss, TIER_COLOR } from './boss-art';
 import { BossHpBar, EpicName } from './boss-ui';
 import type { BarTheme } from './bar-art';
+import { Glyph, Icon, tok, type IconName } from './icons';
 import './arena.css';
 
-const BOSS_ICONS = ['🐉', '🐍', '🐂', '🐺', '🦁', '👁️', '🌀', '🌪️', '🦂', '🦅', '🕷️', '💀', '👹', '🧟', '🦈', '🐙'];
+const BOSS_ICONS: IconName[] = ['dragon-head', 'snake', 'bull', 'wolf', 'lion', 'evil-eye', 'vortex', 'tornado', 'scorpion', 'eagle', 'spider', 'death-skull', 'ogre', 'zombie', 'shark', 'octopus'];
 
 function timeLeft(ms: number): string {
   const h = Math.floor(ms / 3_600_000);
@@ -31,7 +32,7 @@ function timeLeft(ms: number): string {
 const fmtNum = (n: number) => String(Math.round(n * 10) / 10).replace('.', ',');
 
 export function CoinBadge({ amount }: { amount: number }) {
-  return <span className={amount < 0 ? 'coins debt mono' : 'coins mono'}>🪙 {amount}</span>;
+  return <span className={amount < 0 ? 'coins debt mono' : 'coins mono'}><Icon name="coin" className="coin-ico" /> {amount}</span>;
 }
 
 // ---------- Memoria local de la Arena (por navegador): daño ya visto, intros y victorias ya celebradas ----------
@@ -140,9 +141,9 @@ function BossCard({ boss: b, st, onFlee }: { boss: Boss; st: ReturnType<typeof b
         </div>
         {t && <p className="boss-lore">«{t.lore}»</p>}
         <p className="boss-meta">
-          <span>⚔️ {SOURCE_LABEL[b.source].hint}</span>
-          <span className={urgent ? 'urgent' : ''}>⏳ quedan {timeLeft(st.msLeft)}</span>
-          <span className="loot">🪙 botín {b.reward}</span>
+          <span><Icon name="crossed-swords" /> {SOURCE_LABEL[b.source].hint}</span>
+          <span className={urgent ? 'urgent' : ''}><Icon name="hourglass" /> quedan {timeLeft(st.msLeft)}</span>
+          <span className="loot"><Icon name="coin" className="coin-ico" /> botín {b.reward}</span>
         </p>
       </div>
     </article>
@@ -158,25 +159,25 @@ function TemplateCard({ t, state, now, full, onSummon }: { t: BossTemplate; stat
     <article className={cls} style={{ ['--tier' as string]: TIER_COLOR[t.tier] }} aria-label={lock ? `${t.name}: bloqueado, ${lock.label}` : t.name}>
       <div className="tpl-art">
         <PixelBoss templateId={t.id} icon={t.icon} scale={1.4} silhouette={!!lock} className="boss-art" />
-        {lock && <span className="tpl-lock" aria-hidden="true">🔒</span>}
-        {wins > 0 && <span className="tpl-wins mono" title={`Derrotado ${wins} ${wins === 1 ? 'vez' : 'veces'}`}>✓{wins > 1 ? ` ×${wins}` : ''}</span>}
+        {lock && <span className="tpl-lock" aria-hidden="true"><Icon name="lock" /></span>}
+        {wins > 0 && <span className="tpl-wins mono" title={`Derrotado ${wins} ${wins === 1 ? 'vez' : 'veces'}`}><Icon name="check" />{wins > 1 ? ` ×${wins}` : ''}</span>}
       </div>
       <div className="tpl-body">
         <TierBadge tier={t.tier} />
         <EpicName name={t.name} epithet={t.epithet} as="h5" size="sm" />
         {lock ? (
-          <p className="lock-reason"><span aria-hidden="true">🔒</span> {lock.label}</p>
+          <p className="lock-reason"><Icon name="lock" /> {lock.label}</p>
         ) : (
           <p className="muted small-text tpl-lore">{t.lore}</p>
         )}
         <p className="mono small-text tpl-stats">
-          {t.hp} {SOURCE_LABEL[t.source].unit} · {t.days} días · <span className="loot">{t.reward} 🪙</span>
+          {t.hp} {SOURCE_LABEL[t.source].unit} · {t.days} días · <span className="loot">{t.reward} <Icon name="coin" className="coin-ico" /></span>
         </p>
         {!lock && (fighting ? (
-          <span className="tpl-state">⚔️ En combate</span>
+          <span className="tpl-state"><Icon name="crossed-swords" /> En combate</span>
         ) : (
           <button className="primary summon-btn" onClick={onSummon} disabled={full} title={full ? `Máximo ${MAX_ACTIVE_BOSSES} a la vez` : undefined}>
-            {wins ? 'Invocar de nuevo' : 'Invocar'}
+            <Icon name="crossed-swords" /> {wins ? 'Invocar de nuevo' : 'Invocar'}
           </button>
         ))}
       </div>
@@ -220,12 +221,12 @@ function SummonIntro({ boss, onClose }: { boss: Boss; onClose: () => void }) {
       <div className="intro-name-wrap"><EpicName name={boss.name} epithet={t?.epithet} split={!!t} as="h2" size="lg" /></div>
       {t && <p className="intro-lore">«{t.lore}»</p>}
       <p className="intro-stats mono">
-        <span>❤️ {boss.hp} {SOURCE_LABEL[boss.source].unit}</span>
-        <span>⏳ {days} {days === 1 ? 'día' : 'días'}</span>
-        <span className="loot">🪙 {boss.reward}</span>
+        <span><Icon name="hp" className="hp-ico" /> {boss.hp} {SOURCE_LABEL[boss.source].unit}</span>
+        <span><Icon name="hourglass" /> {days} {days === 1 ? 'día' : 'días'}</span>
+        <span className="loot"><Icon name="coin" className="coin-ico" /> {boss.reward}</span>
       </p>
       <p className="muted small-text">{SOURCE_LABEL[boss.source].hint[0].toUpperCase() + SOURCE_LABEL[boss.source].hint.slice(1)}.</p>
-      <button className="primary big" onClick={onClose}>¡Al combate!</button>
+      <button className="primary big" onClick={onClose}><Icon name="crossed-swords" /> ¡Al combate!</button>
     </Overlay>
   );
 }
@@ -242,17 +243,17 @@ function VictoryOverlay({ boss, state, now, onClose }: { boss: Boss; state: Game
       </div>
       <p className="victory-title">¡Victoria!</p>
       <h2 className="intro-name">Has derrotado a {t ? t.short : boss.name}</h2>
-      <p className="victory-loot mono" aria-label={`Botín: ${boss.reward} monedas`}>+{boss.reward} <span aria-hidden="true">🪙</span></p>
+      <p className="victory-loot mono" aria-label={`Botín: ${boss.reward} monedas`}>+{boss.reward} <Icon name="coin" className="coin-ico" /></p>
       {next.map((n) => {
         const lock = bossLock(state, n.id, now);
         return (
           <p key={n.id} className={lock ? 'victory-next muted' : 'victory-next'}>
-            {lock ? <>Siguiente en la saga: <strong>{n.name}</strong> · {lock.label}</> : <>🔓 Nuevo boss desbloqueado: <strong>{n.name}</strong></>}
+            {lock ? <>Siguiente en la saga: <strong>{n.name}</strong> · {lock.label}</> : <><Icon name="unlock" /> Nuevo boss desbloqueado: <strong>{n.name}</strong></>}
           </p>
         );
       })}
-      {t && next.length === 0 && <p className="victory-next">👑 Has completado la {sagaOf(t).name}.</p>}
-      <button className="primary big" onClick={onClose}>Reclamar botín</button>
+      {t && next.length === 0 && <p className="victory-next"><Icon name="crown" /> Has completado la {sagaOf(t).name}.</p>}
+      <button className="primary big" onClick={onClose}><Icon name="coin" /> Reclamar botín</button>
     </Overlay>
   );
 }
@@ -363,7 +364,7 @@ export function Arena({ game }: { game: Game }) {
               <section key={saga.id} className={won === list.length ? 'saga done' : 'saga'} aria-label={saga.name}>
                 <header className="saga-head">
                   <h5>{saga.name}</h5>
-                  <span className="mono saga-count">{won}/{list.length}{won === list.length ? ' 👑' : ''}</span>
+                  <span className="mono saga-count">{won}/{list.length}{won === list.length && <> <Icon name="crown" /></>}</span>
                   <p className="muted small-text">{saga.blurb}</p>
                 </header>
                 <ol className="saga-chain">
@@ -389,7 +390,7 @@ export function Arena({ game }: { game: Game }) {
                   <li key={b.id} className={st.defeated ? 'combat win-row' : 'combat'}>
                     <BossArt templateId={t?.id} icon={b.icon} tier={t?.tier} size={34} defeated={st.defeated} />
                     <span className="combat-name">{b.name}</span>
-                    <span className={st.defeated ? 'mono win' : 'mono muted'}>{st.defeated ? `Derrotado · +${b.reward} 🪙` : 'Escapó'}</span>
+                    <span className={st.defeated ? 'mono win' : 'mono muted'}>{st.defeated ? <>Derrotado · +{b.reward} <Icon name="coin" className="coin-ico" /></> : 'Escapó'}</span>
                   </li>
                 );
               })}
@@ -423,7 +424,7 @@ function Shop({ game, balance, now }: { game: Game; balance: number; now: number
     const reward = state.rewards.find((x) => x.id === rewardId)!;
     sfx.purchase();
     confetti({ count: 90 });
-    toast(`${reward.icon} ${reward.name} guardado en tu cofre. −${reward.cost} 🪙`, 'level');
+    toast(`${tok(reward.icon)} ${reward.name} guardado en tu cofre. −${reward.cost} {i:coin}`, 'level');
   }
 
   const [cat, setCat] = useState<RewardCategory | 'todo'>('todo');
@@ -442,16 +443,16 @@ function Shop({ game, balance, now }: { game: Game; balance: number; now: number
 
       {state.rewards.length > 0 && (next ? (
         <div className="shop-next">
-          <span className="shop-next-icon" aria-hidden="true">{next.reward.icon}</span>
+          <span className="shop-next-icon" aria-hidden="true"><Glyph icon={next.reward.icon} /></span>
           <div className="shop-next-body">
             <p>Tu próximo premio: <strong>{next.reward.name}</strong></p>
             <div className="afford-bar" aria-hidden="true"><div style={{ width: `${Math.max(0, Math.min(100, (balance / next.reward.cost) * 100))}%` }} /></div>
-            <p className="muted small-text">Te faltan <b className="mono">{next.missing} 🪙</b> · unos {next.xp} XP más</p>
+            <p className="muted small-text">Te faltan <b className="mono">{next.missing} <Icon name="coin" className="coin-ico" /></b> · unos {next.xp} XP más</p>
           </div>
         </div>
       ) : (
         <div className="shop-next ready">
-          <span className="shop-next-icon" aria-hidden="true">✨</span>
+          <span className="shop-next-icon" aria-hidden="true"><Icon name="sparkles" /></span>
           <p>Puedes permitirte cualquier premio de la tienda. Te lo has ganado.</p>
         </div>
       ))}
@@ -461,7 +462,7 @@ function Shop({ game, balance, now }: { game: Game; balance: number; now: number
           <button className={cat === 'todo' ? 'chip-btn on' : 'chip-btn'} aria-pressed={cat === 'todo'} onClick={() => setCat('todo')}>Todo</button>
           {cats.map((c) => (
             <button key={c.id} className={cat === c.id ? 'chip-btn on' : 'chip-btn'} aria-pressed={cat === c.id} onClick={() => setCat(c.id)} title={c.hint}>
-              <span aria-hidden="true">{c.icon}</span> {c.name}
+              <Icon name={c.icon} /> {c.name}
             </button>
           ))}
         </div>
@@ -477,27 +478,27 @@ function Shop({ game, balance, now }: { game: Game; balance: number; now: number
         ))}
       </div>
 
-      <RewardForm onCreate={(r) => { act((s) => addReward(s, r, Date.now())); sfx.coin(); }} />
+      <RewardForm onCreate={(r) => { act((s) => addReward(s, r, Date.now())); sfx.place(); }} />
 
       {history.length > 0 && (
         <>
           <h4 className="sub-h">Historial de canjes</h4>
-          <p className="muted small-text">{history.length} {history.length === 1 ? 'premio canjeado' : 'premios canjeados'} · {coinsSpent(state)} 🪙 en total</p>
+          <p className="muted small-text">{history.length} {history.length === 1 ? 'premio canjeado' : 'premios canjeados'} · {coinsSpent(state)} <Icon name="coin" className="coin-ico" /> en total</p>
           <ul className="list plain purchases">
             {history.slice(0, showAll ? 50 : 6).map((p) => (
               <li key={p.id} className="purchase">
-                <span className="purchase-icon" aria-hidden="true">{p.icon}</span>
+                <span className="purchase-icon" aria-hidden="true"><Glyph icon={p.icon} /></span>
                 <span className="purchase-body">
                   <span className="purchase-name">{p.name}</span>
                   <span className="muted small-text">
                     Canjeado el {fmtWhen(p.at)}
-                    {p.usedAt === null ? ' · 🎁 en el cofre' : p.usedAt ? ` · usado el ${fmtWhen(p.usedAt)}` : ''}
+                    {p.usedAt === null ? <> · <Icon name="chest" /> en el cofre</> : p.usedAt ? ` · usado el ${fmtWhen(p.usedAt)}` : ''}
                   </span>
                 </span>
                 <span className="mono purchase-cost">
-                  −{p.cost} 🪙
+                  −{p.cost} <Icon name="coin" className="coin-ico" />
                   {dayKey(p.at) === dayKey(now) && !p.usedAt && (
-                    <button className="link" onClick={() => { act((s) => refundPurchase(s, p.id)); sfx.coin(); }}>Devolver</button>
+                    <button className="link" onClick={() => { act((s) => refundPurchase(s, p.id)); sfx.coin(); }}><Icon name="rotate-ccw" /> Devolver</button>
                   )}
                 </span>
               </li>
@@ -527,18 +528,18 @@ function Chest({ game }: { game: Game }) {
     act((s) => consumePurchase(s, id, Date.now()));
     sfx.purchase();
     confetti({ count: 120 });
-    toast(`${p.icon} ¡A disfrutar de ${p.name}! Te lo has ganado.`, 'level');
+    toast(`${tok(p.icon)} ¡A disfrutar de ${p.name}! Te lo has ganado.`, 'level');
   }
   return (
     <div className="chest" aria-labelledby="chest-h">
-      <h4 id="chest-h" className="sub-h">🎁 Tu cofre <span className="count mono">{items.length}</span></h4>
+      <h4 id="chest-h" className="sub-h"><Icon name="chest" /> Tu cofre <span className="count mono">{items.length}</span></h4>
       <p className="muted small-text">Lo que has canjeado y aún no has usado. Úsalo cuando vayas a disfrutarlo.</p>
       <ul className="chest-items">
         {[...groups.values()].map((g) => (
           <li key={g[0].id} className="chest-item">
-            <span className="chest-icon" aria-hidden="true">{g[0].icon}</span>
+            <span className="chest-icon" aria-hidden="true"><Glyph icon={g[0].icon} /></span>
             <span className="chest-name">{g[0].name}{g.length > 1 && <b className="mono"> ×{g.length}</b>}</span>
-            <button className="primary small" onClick={() => use(g[0].id)}>Usar</button>
+            <button className="primary small" onClick={() => use(g[0].id)}><Icon name="sparkles" /> Usar</button>
           </li>
         ))}
       </ul>
@@ -552,37 +553,34 @@ function RewardCard({ reward: r, balance, count, onBuy, onEdit }: { reward: Rewa
   const category = REWARD_CATEGORIES.find((c) => c.id === rewardCategory(r))!;
   return (
     <article className={missing > 0 ? 'reward locked' : 'reward affordable'}>
-      <button className="icon-btn reward-edit" onClick={onEdit} aria-label={`Editar ${r.name}`} title="Editar">✎</button>
+      <button className="icon-btn reward-edit" onClick={onEdit} aria-label={`Editar ${r.name}`} title="Editar"><Icon name="pencil" /></button>
       {count > 0 && <span className="reward-count mono" title={`Canjeado ${count} ${count === 1 ? 'vez' : 'veces'}`}>×{count}</span>}
-      <span className="reward-icon" aria-hidden="true">{r.icon}</span>
-      <span className={`reward-cat cat-${category.id}`}>{category.icon} {category.name}</span>
+      <span className="reward-icon" aria-hidden="true"><Glyph icon={r.icon} /></span>
+      <span className={`reward-cat cat-${category.id}`}><Icon name={category.icon} /> {category.name}</span>
       <span className="reward-name">{r.name}</span>
-      <span className="reward-cost mono">🪙 {r.cost}</span>
+      <span className="reward-cost mono"><Icon name="coin" className="coin-ico" /> {r.cost}</span>
       {missing > 0 ? (
         <>
           <div className="afford-bar small" aria-hidden="true"><div style={{ width: `${pct}%` }} /></div>
-          <span className="reward-missing small-text">te faltan {missing} 🪙</span>
+          <span className="reward-missing small-text">te faltan {missing} <Icon name="coin" className="coin-ico" /></span>
         </>
       ) : (
         <span className="reward-ok small-text">Lo puedes pagar</span>
       )}
       <button className="primary reward-buy" disabled={missing > 0} onClick={onBuy} aria-label={`Canjear ${r.name} por ${r.cost} monedas`}>
-        Canjear
+        <Icon name="coin" /> Canjear
       </button>
     </article>
   );
 }
 
-function IconPicker({ value, onChange, idPrefix }: { value: string; onChange: (v: string) => void; idPrefix: string }) {
+/** Rejilla de símbolos para elegir el de una recompensa o un boss propio. */
+function IconPicker({ value, onChange, icons = REWARD_ICONS, label = 'Símbolo' }: { value: string; onChange: (v: IconName) => void; icons?: IconName[]; label?: string }) {
   return (
-    <div className="icon-picker" role="group" aria-label="Icono">
-      {REWARD_ICONS.map((i) => (
-        <button type="button" key={i} className={value === i ? 'icon-pick on' : 'icon-pick'} aria-pressed={value === i} onClick={() => onChange(i)}>{i}</button>
+    <div className="icon-picker" role="radiogroup" aria-label={label}>
+      {icons.map((i) => (
+        <button type="button" key={i} role="radio" className={value === i ? 'icon-pick on' : 'icon-pick'} aria-checked={value === i} aria-label={i} onClick={() => { onChange(i); sfx.tick(); }}><Icon name={i} /></button>
       ))}
-      <label className="icon-own" htmlFor={`${idPrefix}-own`}>
-        <span className="muted small-text">o el tuyo</span>
-        <input id={`${idPrefix}-own`} value={REWARD_ICONS.includes(value) ? '' : value} onChange={(e) => onChange([...e.target.value].slice(0, 2).join(''))} placeholder="🙂" aria-label="Emoji propio" />
-      </label>
     </div>
   );
 }
@@ -591,7 +589,7 @@ function CategorySelect({ value, onChange, id }: { value: RewardCategory | ''; o
   return (
     <select id={id} value={value} onChange={(e) => onChange(e.target.value as RewardCategory | '')} aria-label="Categoría" className="attr-select">
       <option value="">Categoría: auto</option>
-      {REWARD_CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+      {REWARD_CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
     </select>
   );
 }
@@ -607,18 +605,18 @@ function RewardEditor({ reward, onSave, onDelete, onCancel }: {
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!valid) return;
-    onSave({ name: form.name, icon: form.icon || '🎁', cost: Number(form.cost), category: form.category || undefined });
+    onSave({ name: form.name, icon: form.icon || 'present', cost: Number(form.cost), category: form.category || undefined });
   }
   return (
     <form className="reward reward-editing" onSubmit={submit} aria-label={`Editar ${reward.name}`}>
-      <IconPicker value={form.icon} onChange={(icon) => setForm({ ...form, icon })} idPrefix={`edit-${reward.id}`} />
+      <IconPicker value={form.icon} onChange={(icon) => setForm({ ...form, icon })} />
       <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} maxLength={50} aria-label="Nombre de la recompensa" />
       <input type="number" min={1} value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} aria-label="Precio en monedas" />
       <CategorySelect id={`cat-${reward.id}`} value={form.category} onChange={(category) => setForm({ ...form, category })} />
       <span className="reward-edit-actions">
         <ConfirmButton label="Borrar" confirmLabel="Sí, borrar" onConfirm={onDelete} />
         <button type="button" className="ghost" onClick={onCancel}>Cancelar</button>
-        <button type="submit" className="primary" disabled={!valid}>Guardar</button>
+        <button type="submit" className="primary" disabled={!valid}><Icon name="save" /> Guardar</button>
       </span>
     </form>
   );
@@ -626,32 +624,32 @@ function RewardEditor({ reward, onSave, onDelete, onCancel }: {
 
 function RewardForm({ onCreate }: { onCreate: (r: { name: string; icon: string; cost: number; category?: RewardCategory }) => void }) {
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ name: '', icon: '🎁', cost: '', category: '' as RewardCategory | '' });
+  const [form, setForm] = useState({ name: '', icon: 'present', cost: '', category: '' as RewardCategory | '' });
   const valid = form.name.trim() && Number(form.cost) > 0;
   const autoCat = REWARD_CATEGORIES.find((c) => c.id === rewardCategory({ name: form.name, cost: Number(form.cost) || 0 }))!;
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!valid) return;
-    onCreate({ name: form.name, icon: form.icon || '🎁', cost: Number(form.cost), category: form.category || undefined });
-    setForm({ name: '', icon: '🎁', cost: '', category: '' });
+    onCreate({ name: form.name, icon: form.icon || 'present', cost: Number(form.cost), category: form.category || undefined });
+    setForm({ name: '', icon: 'present', cost: '', category: '' });
   }
-  if (!open) return <button className="ghost new-reward-btn" onClick={() => setOpen(true)}>+ Crear una recompensa propia</button>;
+  if (!open) return <button className="ghost new-reward-btn" onClick={() => setOpen(true)}><Icon name="plus" /> Crear una recompensa propia</button>;
   return (
     <form className="reward-form" onSubmit={submit}>
       <p className="reward-form-title">
-        <span className="reward-preview" aria-hidden="true">{form.icon || '🎁'}</span>
-        <span><strong>{form.name.trim() || 'Nueva recompensa'}</strong><br /><span className="muted small-text">{Number(form.cost) > 0 ? `🪙 ${form.cost} · ` : ''}{form.category ? REWARD_CATEGORIES.find((c) => c.id === form.category)!.name : `${autoCat.name} (automática)`}</span></span>
+        <span className="reward-preview" aria-hidden="true"><Glyph icon={form.icon || 'present'} /></span>
+        <span><strong>{form.name.trim() || 'Nueva recompensa'}</strong><br /><span className="muted small-text">{Number(form.cost) > 0 && <><Icon name="coin" className="coin-ico" /> {form.cost} · </>}{form.category ? REWARD_CATEGORIES.find((c) => c.id === form.category)!.name : `${autoCat.name} (automática)`}</span></span>
       </p>
-      <IconPicker value={form.icon} onChange={(icon) => setForm({ ...form, icon })} idPrefix="new-reward" />
+      <IconPicker value={form.icon} onChange={(icon) => setForm({ ...form, icon })} />
       <div className="reward-form-row">
         <input id="reward-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nombre (ej. Ir al cine)" maxLength={50} aria-label="Nombre de la recompensa" />
         <input id="reward-cost" type="number" min={1} value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} placeholder="Precio" aria-label="Precio en monedas" />
         <CategorySelect id="reward-cat" value={form.category} onChange={(category) => setForm({ ...form, category })} />
       </div>
-      <p className="muted small-text">Referencia: 1 🪙 = {COIN_RULES.xpPerCoin} XP. Un episodio ~25, salir con amigos ~100, un día libre ~350.</p>
+      <p className="muted small-text">Referencia: 1 <Icon name="coin" className="coin-ico" /> = {COIN_RULES.xpPerCoin} XP. Un episodio ~25, salir con amigos ~100, un día libre ~350.</p>
       <span className="boss-form-actions">
         <button type="button" className="ghost" onClick={() => setOpen(false)}>Cerrar</button>
-        <button type="submit" className="primary" disabled={!valid}>Añadir a la tienda</button>
+        <button type="submit" className="primary" disabled={!valid}><Icon name="plus" /> Añadir a la tienda</button>
       </span>
     </form>
   );
@@ -661,11 +659,11 @@ const SOURCES: BossSource[] = ['xp', 'deepwork', 'habits', 'voluntad', 'sabiduri
 
 function CustomBossForm({ onCreate }: { onCreate: (b: { name: string; icon: string; source: BossSource; hp: number; days: number }) => void }) {
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ name: '', icon: '🦂', source: 'xp' as BossSource, hp: '500', days: '7' });
+  const [form, setForm] = useState({ name: '', icon: 'scorpion' as string, source: 'xp' as BossSource, hp: '500', days: '7' });
   const hp = Number(form.hp);
   const days = Number(form.days);
   const valid = form.name.trim() && hp > 0 && days >= 1 && days <= 90;
-  if (!open) return <button className="ghost custom-boss-btn" onClick={() => setOpen(true)}>+ Crear un boss propio</button>;
+  if (!open) return <button className="ghost custom-boss-btn" onClick={() => setOpen(true)}><Icon name="plus" /> Crear un boss propio</button>;
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!valid) return;
@@ -675,19 +673,17 @@ function CustomBossForm({ onCreate }: { onCreate: (b: { name: string; icon: stri
   }
   return (
     <form className="boss-form" onSubmit={submit}>
-      <select value={form.icon} onChange={(e) => setForm({ ...form, icon: e.target.value })} aria-label="Icono del boss" className="attr-select">
-        {BOSS_ICONS.map((i) => <option key={i} value={i}>{i}</option>)}
-      </select>
+      <IconPicker value={form.icon} onChange={(icon) => setForm({ ...form, icon })} icons={BOSS_ICONS} label="Símbolo del boss" />
       <input id="boss-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nombre (ej. El Examen de Física)" maxLength={50} aria-label="Nombre del boss" />
       <select value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value as BossSource })} aria-label="Qué le hace daño" className="attr-select">
         {SOURCES.map((s) => <option key={s} value={s}>{SOURCE_LABEL[s].name}</option>)}
       </select>
       <input id="boss-hp" type="number" min={1} value={form.hp} onChange={(e) => setForm({ ...form, hp: e.target.value })} aria-label="Vida" title="Vida" />
       <input id="boss-days" type="number" min={1} max={90} value={form.days} onChange={(e) => setForm({ ...form, days: e.target.value })} aria-label="Días de plazo" title="Días" />
-      <span className="muted small-text">Vida en {SOURCE_LABEL[form.source].unit} · botín {valid ? bossReward(form.source, hp) : 0} 🪙</span>
+      <span className="muted small-text">Vida en {SOURCE_LABEL[form.source].unit} · botín {valid ? bossReward(form.source, hp) : 0} <Icon name="coin" className="coin-ico" /></span>
       <span className="boss-form-actions">
         <button type="button" className="ghost" onClick={() => setOpen(false)}>Cancelar</button>
-        <button type="submit" className="primary" disabled={!valid}>Invocar</button>
+        <button type="submit" className="primary" disabled={!valid}><Icon name="crossed-swords" /> Invocar</button>
       </span>
     </form>
   );

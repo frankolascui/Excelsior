@@ -4,6 +4,7 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import type { AttributeId, AttributeRewards } from './types';
 import { ATTRIBUTES, formatAttrXp } from './attributes';
 import { CUSTOM_LIMITS } from './game';
+import { Icon } from './icons';
 
 export interface CustomValue {
   xp?: number;
@@ -42,7 +43,7 @@ export function RewardEditor({
       </label>
       {ATTRIBUTES.map((a) => (
         <label key={a.id} className={value.rewards ? 're-field' : 're-field auto'} htmlFor={`${idPrefix}-${a.id}`} title={a.name}>
-          <span aria-hidden="true">{a.icon}</span>
+          <Icon name={a.icon} className={`attr-ico a-${a.id}`} />
           <span className="sr-only">{a.name}</span>
           <input
             id={`${idPrefix}-${a.id}`} type="number" min={0} max={CUSTOM_LIMITS.attribute} step="0.5" inputMode="decimal"
@@ -59,11 +60,11 @@ export function RewardEditor({
   );
 }
 
-/** Botón ⚙ que despliega el editor dentro de un formulario de alta. */
+/** Botón que despliega el editor dentro de un formulario de alta. */
 export function CustomizeToggle({ open, onToggle, custom }: { open: boolean; onToggle: () => void; custom: boolean }) {
   return (
     <button type="button" className={custom ? 'ghost small customize on' : 'ghost small customize'} aria-expanded={open} onClick={onToggle} title="Ajustar XP y atributos">
-      ⚙ {custom ? 'A medida' : 'XP y atributos'}
+      <Icon name="sliders" /> {custom ? 'A medida' : 'XP y atributos'}
     </button>
   );
 }

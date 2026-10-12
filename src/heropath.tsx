@@ -6,6 +6,7 @@ import { AvatarPortrait, initialOf } from './portrait';
 import { RitualCTA } from './ritual';
 import { DEFAULT_GUIDE } from './tutorial';
 import { Birds, Clouds, Mist, ShootingStars } from './sky-fx';
+import { Icon } from './icons';
 
 const W = 1000;
 const H = 470;
@@ -147,10 +148,10 @@ export function HeroPath({ state, now }: { state: GameState; now: number }) {
                 {(selected === i || ready) && <circle className="node-halo" cx={x} cy={y} r={size / 2 + 8} />}
                 <g className="node-float" style={{ animationDelay: `${-i * 0.37}s` }}>
                   <svg x={x - size / 2} y={y - size / 2} width={size} height={size} viewBox="0 0 200 200" overflow="visible">
-                    <AvatarPortrait tier={i} photo={s === 'current' ? state.profile?.photo : undefined} label={s === 'current' ? initialOf(state.profile?.name) : av.icon} size={200} dim={s === 'locked'} title={av.name} />
+                    <AvatarPortrait tier={i} photo={s === 'current' ? state.profile?.photo : undefined} label={s === 'current' ? initialOf(state.profile?.name) : undefined} icon={s === 'current' ? undefined : av.icon} size={200} dim={s === 'locked'} title={av.name} />
                   </svg>
                 </g>
-                {s === 'locked' && <text x={x + size / 2 - 8} y={y + size / 2 - 4} className="node-lock" textAnchor="middle">🔒</text>}
+                {s === 'locked' && <Icon name="lock" x={x + size / 2 - 17} y={y + size / 2 - 22} size={18} className="node-lock" />}
                 {i === AVATARS.length - 1
                   ? <text x={x - size / 2 - 8} y={y + 6} className="node-name" textAnchor="end">{av.name}</text>
                   : <text x={x} y={y + size / 2 + 20} className="node-name" textAnchor="middle">{av.name}</text>}
@@ -162,20 +163,20 @@ export function HeroPath({ state, now }: { state: GameState; now: number }) {
 
       <div className={`path-detail ${st}`} aria-live="polite">
         <div className="path-detail-head">
-          <span className="path-detail-icon" aria-hidden="true">{a.icon}</span>
+          <span className="path-detail-icon" aria-hidden="true"><Icon name={a.icon} /></span>
           <div>
             <h4 className="path-detail-name">{a.name}</h4>
             <p className="rung-motto">«{a.motto}»</p>
           </div>
           <span className="path-detail-state small-text">
-            {st === 'past' ? 'Superado' : st === 'current' ? 'Tu avatar actual' : st === 'next' ? (info.ready ? '🕯️ Ritual disponible' : `${reqs.filter((r) => r.met).length}/${reqs.length} requisitos`) : 'Más adelante'}
+            {st === 'past' ? 'Superado' : st === 'current' ? 'Tu avatar actual' : st === 'next' ? (info.ready ? 'Ritual disponible' : `${reqs.filter((r) => r.met).length}/${reqs.length} requisitos`) : 'Más adelante'}
           </span>
         </div>
         {reqs.length === 0 ? <p className="muted small-text">Punto de partida.</p> : (
           <ul className="path-reqs">
             {reqs.map((r, j) => (
               <li key={j} className={r.met ? 'met' : ''}>
-                <span className="path-req-label"><span aria-hidden="true">{r.met ? '✓' : '○'}</span> {r.label}</span>
+                <span className="path-req-label"><Icon name={r.met ? 'check' : 'target'} className={r.met ? 'req-ico met' : 'req-ico'} /> {r.label}</span>
                 <span className="path-req-bar" aria-hidden="true"><span style={{ width: `${Math.floor(r.progress * 100)}%` }} /></span>
               </li>
             ))}

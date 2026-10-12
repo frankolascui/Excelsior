@@ -152,7 +152,7 @@ check(db.guild_invites.length === 0 && !(await page.isVisible('#ginv-h')), 'rech
 
 // Funda su gremio.
 await page.click('.emblem-opt >> nth=2');
-const emblem = await page.locator('.emblem-opt >> nth=2').innerText();
+const emblem = await page.locator('.emblem-opt >> nth=2').getAttribute('data-emblem');
 await page.fill('#guild-name', '  Los Constantes ');
 await page.fill('#guild-motto', 'Un día más.');
 await page.click('button:has-text("Fundar gremio")');
@@ -167,7 +167,7 @@ check(await page.isVisible('#pick-h'), 'sin reto: elige el próximo');
 await page.click('section:has(#gm-h) li:has-text("Ana") button:has-text("Invitar")');
 await page.waitForTimeout(400);
 check(db.guild_invites.some((i) => i.user_id === ANA && i.guild_id === mine.id && i.invited_by === ME), 'invitar a Ana llega al servidor');
-check(await page.isVisible('section:has(#gm-h) li:has-text("Ana") :text("Invitado · cancelar")'), 'Ana queda como invitada');
+check(await page.isVisible('section:has(#gm-h) li:has-text("Ana") :text("Cancelar invitación")'), 'Ana queda como invitada');
 
 // Ana acepta desde su móvil.
 db.guild_members.push({ user_id: ANA, guild_id: mine.id, joined_at: iso(Date.now()) });
@@ -191,7 +191,7 @@ check(await page.isVisible('.challenge :text("tope por persona: 50 %")'), 'expli
 // Ana hace 80 min: solo cuentan 50 (tope del 50 % con dos miembros).
 db.guild_contributions.push({ challenge_id: ch.id, user_id: ANA, deep: 80, habits: 0, xp: 0 });
 await openGuilds(page);
-check(await page.isVisible('.ch-members li:has-text("Ana") :text("🔒")'), 'Ana llega al tope (🔒)');
+check(await page.isVisible('.ch-members li:has-text("Ana") .cap-lock'), 'Ana llega al tope (🔒)');
 check(await page.isVisible('.ch-metric :text("reales")'), 'se ven los minutos reales y los que cuentan');
 check(db.guild_contributions.some((c) => c.user_id === ME && c.challenge_id === ch.id), 'su app sube su aportación');
 

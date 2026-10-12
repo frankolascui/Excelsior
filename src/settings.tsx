@@ -19,6 +19,7 @@ import { formatMinutes } from './ui';
 import { DEFAULT_GUIDE } from './tutorial';
 import { sfx } from './sfx';
 import { APP_VERSION_LABEL } from './version';
+import { Icon } from './icons';
 
 // ---------- Ajustes ----------
 
@@ -57,7 +58,7 @@ function AdminPanel({ game, startTour }: { game: Game; startTour: (id: string) =
     return (
       <section className="panel admin-entry">
         <header className="panel-head">
-          <h3>🛠 Modo admin</h3>
+          <h3><Icon name="wrench" /> Modo admin</h3>
           <button className="ghost small" onClick={() => setOpen(!open)} aria-expanded={open}>{open ? 'Cerrar' : 'Abrir (avanzado)'}</button>
         </header>
         {open && (
@@ -81,7 +82,7 @@ function AdminPanel({ game, startTour }: { game: Game; startTour: (id: string) =
   const level = Math.floor(Number(toLevel));
   return (
     <section className="panel admin-panel">
-      <h3>🛠 Modo admin</h3>
+      <h3><Icon name="wrench" /> Modo admin</h3>
       <p className="hint">Partida de pruebas: nivel {levelInfo(totalXp(state)).level}, {totalXp(state)} XP, avatar {avatar.current.name}. Aquí no hay topes diarios de XP.</p>
       <h4 className="sub-h">XP de prueba (sube nivel, atributos y monedas)</h4>
       <div className="settings-row">
@@ -199,14 +200,14 @@ function SettingsPanel({
       <div className="settings-row">
         <label htmlFor="guide-name">Nombre de tu guía</label>
         <input id="guide-name" defaultValue={guide} maxLength={30} onBlur={(e) => setGuide(e.target.value.trim() || DEFAULT_GUIDE)} />
-        <button className="secondary" onClick={replayTutorial}>Repetir tutorial</button>
+        <button className="secondary" onClick={replayTutorial}><Icon name="rotate-ccw" /> Repetir tutorial</button>
       </div>
 
       <h4 className="sub-h">Copia de seguridad</h4>
       <p className="hint">Tu partida vive solo en este navegador. Descarga una copia de vez en cuando; con ella puedes pasarla a otro ordenador.</p>
       <div className="settings-row">
-        <button className="secondary" onClick={download}>⬇ Exportar partida</button>
-        <button className="ghost" onClick={() => file.current?.click()}>⬆ Importar copia</button>
+        <button className="secondary" onClick={download}><Icon name="download" /> Exportar partida</button>
+        <button className="ghost" onClick={() => file.current?.click()}><Icon name="upload" /> Importar copia</button>
         <input ref={file} type="file" accept="application/json,.json" hidden onChange={onFile} aria-label="Archivo de copia" />
       </div>
       {pending && !pending.ok && <p className="error-text">{pending.error}</p>}
@@ -264,7 +265,7 @@ export function WeeklyChronicle({ game, guide, now, go }: { game: Game; guide: s
           <p className="eyebrow">Crónica de {guide} · {fmt(w.from)} – {fmt(w.to)}</p>
           <h3 id="chron-h">La semana pasada ganaste <span className="mono">{w.xp}</span> XP</h3>
         </div>
-        <button className="icon-btn" onClick={close} aria-label="Cerrar crónica">×</button>
+        <button className="icon-btn" onClick={close} aria-label="Cerrar crónica" title="Cerrar"><Icon name="x" /></button>
       </header>
       <p className="muted">{verdict}</p>
       <div className="chron-stats">
@@ -275,11 +276,11 @@ export function WeeklyChronicle({ game, guide, now, go }: { game: Game; guide: s
       </div>
       <p className="chron-attrs">
         {ATTRIBUTES.map((a) => (
-          <span key={a.id} className={a.id === w.weakest.id ? 'weak' : ''}>{a.icon} +{formatAttrXp(w.gains[a.id])}</span>
+          <span key={a.id} className={a.id === w.weakest.id ? 'weak' : ''}><Icon name={a.icon} className={`attr-ico a-${a.id}`} /> +{formatAttrXp(w.gains[a.id])}</span>
         ))}
       </p>
       <p>
-        Tu punto débil fue <strong>{w.weakest.icon} {w.weakest.name}</strong>.{challenge && <> Reto: derrota a <strong>{challenge.icon} {challenge.name}</strong> esta semana.</>}
+        Tu punto débil fue <strong><Icon name={w.weakest.icon} /> {w.weakest.name}</strong>.{challenge && <> Reto: derrota a <strong><Icon name={challenge.icon} /> {challenge.name}</strong> esta semana.</>}
       </p>
       <ChronicleOath state={state} />
       <div className="settings-row">

@@ -11,6 +11,7 @@ import {
 import { relDay } from './life-ui';
 import { DatePicker, DurationChips, TimePicker, durationWords } from './pickers';
 import { sfx } from './sfx';
+import { Icon, plain } from './icons';
 import { shortDate } from './ui';
 
 export const WEEKDAY_NAMES = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
@@ -56,9 +57,9 @@ export function ReminderRow({ r, now, game }: { r: Reminder; now: number; game: 
         aria-label={r.doneAt ? `Desmarcar ${r.title}` : `Hecho: ${r.title}`} aria-pressed={!!r.doneAt}>✓</button>
       <div className="item-body">
         <span className="item-title">{r.title}</span>
-        <span className="muted small-text">🔔 {remWhen(r, now)}</span>
+        <span className="muted small-text"><Icon name="bell" /> {remWhen(r, now)}</span>
       </div>
-      <button className="icon-btn" onClick={() => { sfx.remove(); game.act((s) => deleteReminder(s, r.id)); }} aria-label={`Borrar recordatorio ${r.title}`}>×</button>
+      <button className="icon-btn" onClick={() => { sfx.remove(); game.act((s) => deleteReminder(s, r.id)); }} aria-label={`Borrar recordatorio ${r.title}`} title="Borrar"><Icon name="trash" /></button>
     </li>
   );
 }
@@ -83,7 +84,7 @@ export function ReminderForm({ game, now, day }: { game: Game; now: number; day?
       <div className="rem-when">
         {!day && <DatePicker value={date} onChange={setDate} label="Día del recordatorio" clearLabel="Sin fecha (cuando puedas)" placeholder="Cuando puedas" />}
         {date && <TimePicker value={time} onChange={setTime} label="Hora del aviso" clearLabel="Sin hora" placeholder="Sin hora" />}
-        <button type="submit" className="secondary" disabled={!title.trim()}>+ Recordar</button>
+        <button type="submit" className="secondary" disabled={!title.trim()}><Icon name="plus" /> Recordar</button>
       </div>
     </form>
   );
@@ -94,7 +95,7 @@ function NotifyButton() {
   const [perm, setPerm] = useState(() => (supported ? Notification.permission : 'denied'));
   if (!supported || perm !== 'default') return null;
   return (
-    <button className="link" onClick={() => Notification.requestPermission().then(setPerm, () => setPerm('denied'))}>🔔 Activar avisos</button>
+    <button className="link" onClick={() => Notification.requestPermission().then(setPerm, () => setPerm('denied'))}><Icon name="bell-ring" /> Activar avisos</button>
   );
 }
 
@@ -147,7 +148,7 @@ function TimeFields({ start, end, onStart, onEnd, reminder }: {
     <div className="time-fields">
       <TimePicker id="ev-time" value={start} onChange={onStart} label={reminder ? 'Hora del aviso' : 'Empieza'} clearLabel={reminder ? 'Sin hora' : 'Todo el día'} placeholder={reminder ? 'Sin hora' : 'Todo el día'} />
       {!reminder && start && <>
-        <span className="muted" aria-hidden="true">→</span>
+        <Icon name="arrow-right" className="muted" />
         <TimePicker id="ev-end" value={end} onChange={(t) => t && onEnd(t)} from={start} label="Termina" />
         <span className="dur-total mono">{durationWords(toMin(end ?? plusHour(start)) - toMin(start))}</span>
       </>}
@@ -188,8 +189,8 @@ export function AgendaForm({ game, day, time, end: initialEnd, onDone, compact }
     <form className={`ev-form${compact ? ' compact' : ''}`} onSubmit={submit} style={evStyle({ color })}>
       <div className="ev-form-top">
         <select className="freq-select" value={kind} onChange={(e) => setKind(e.target.value as Kind)} aria-label="Tipo">
-          {EVENT_KINDS.map((k) => <option key={k.id} value={k.id}>{k.icon} {k.name}</option>)}
-          <option value="recordatorio">🔔 Recordatorio</option>
+          {EVENT_KINDS.map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
+          <option value="recordatorio">Recordatorio</option>
         </select>
         <input id="ev-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={placeholder} maxLength={80} aria-label="Nombre" autoFocus={compact} />
       </div>
@@ -201,12 +202,12 @@ export function AgendaForm({ game, day, time, end: initialEnd, onDone, compact }
         <div className="ev-form-extra">
           <select className="freq-select" value={repeat} onChange={(e) => setRepeat(e.target.value as EventRepeat | '')} aria-label="Repetir">
             <option value="">No se repite</option>
-            {(Object.keys(REPEAT_NAMES) as EventRepeat[]).map((r) => <option key={r} value={r}>↻ {REPEAT_NAMES[r]}</option>)}
+            {(Object.keys(REPEAT_NAMES) as EventRepeat[]).map((r) => <option key={r} value={r}>{REPEAT_NAMES[r]}</option>)}
           </select>
           <ColorSwatches value={color} onChange={setColor} />
         </div>
       )}
-      <button type="submit" className={compact ? 'primary' : 'secondary'} disabled={!title.trim()}>+ Añadir</button>
+      <button type="submit" className={compact ? 'primary' : 'secondary'} disabled={!title.trim()}><Icon name="plus" /> Añadir</button>
     </form>
   );
 }
@@ -223,7 +224,7 @@ function Sheet({ label, onClose, children }: { label: string; onClose: () => voi
   return (
     <div className="sheet-bg" role="dialog" aria-modal="true" aria-label={label} onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="sheet panel">
-        <button className="icon-btn sheet-x" onClick={onClose} aria-label="Cerrar">×</button>
+        <button className="icon-btn sheet-x" onClick={onClose} aria-label="Cerrar" title="Cerrar"><Icon name="x" /></button>
         {children}
       </div>
     </div>
@@ -246,7 +247,6 @@ function EventSheet({ game, id, day, onClose, startFocus }: { game: Game; id: st
   useEffect(() => { if (!ev) onClose(); }, [ev]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!ev) return null;
   const set = (patch: Parameters<typeof updateEvent>[2]) => game.act((s) => updateEvent(s, id, patch));
-  const kind = EVENT_KINDS.find((k) => k.id === ev.kind);
   const saveTitle = () => { if (title.trim() && title.trim() !== ev.title) set({ title }); };
   const focusFn = ev.kind === 'bloque' ? startFocus : undefined;
   return (
@@ -254,7 +254,7 @@ function EventSheet({ game, id, day, onClose, startFocus }: { game: Game; id: st
       <div className="sheet-edit" style={evStyle(ev)}>
         <p className="eyebrow">
           <select className="kind-select" value={ev.kind} onChange={(e) => set({ kind: e.target.value as EventKind })} aria-label="Tipo">
-            {EVENT_KINDS.map((k) => <option key={k.id} value={k.id}>{k.icon} {k.name}</option>)}
+            {EVENT_KINDS.map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
           </select>
           {ev.repeat && <span className="muted"> · cambios para toda la serie</span>}
         </p>
@@ -274,17 +274,17 @@ function EventSheet({ game, id, day, onClose, startFocus }: { game: Game; id: st
         <div className="ev-form-extra">
           <select className="freq-select" value={ev.repeat ?? ''} onChange={(e) => set({ repeat: (e.target.value || undefined) as EventRepeat | undefined })} aria-label="Repetir">
             <option value="">No se repite</option>
-            {(Object.keys(REPEAT_NAMES) as EventRepeat[]).map((r) => <option key={r} value={r}>↻ {REPEAT_NAMES[r]}</option>)}
+            {(Object.keys(REPEAT_NAMES) as EventRepeat[]).map((r) => <option key={r} value={r}>{REPEAT_NAMES[r]}</option>)}
           </select>
           <ColorSwatches value={ev.color} onChange={(c) => set({ color: c })} />
         </div>
       </div>
       <div className="row sheet-actions">
-        {focusFn && <button className="primary" onClick={() => { saveTitle(); onClose(); focusFn(title.trim() || ev.title); }}>▶ Deep Work</button>}
-        {ev.repeat && <button className="ghost" onClick={() => { sfx.remove(); game.act((s) => skipEventDay(s, ev.id, onDay)); onClose(); }}>Quitar solo este día</button>}
-        <button className="ghost danger-text" onClick={() => { sfx.remove(); game.act((s) => deleteEvent(s, ev.id)); onClose(); }}>{ev.repeat ? 'Borrar la serie' : 'Borrar'}</button>
+        {focusFn && <button className="primary" onClick={() => { saveTitle(); onClose(); focusFn(title.trim() || ev.title); }}><Icon name="play" /> Empezar Deep Work</button>}
+        {ev.repeat && <button className="ghost" onClick={() => { sfx.remove(); game.act((s) => skipEventDay(s, ev.id, onDay)); onClose(); }}><Icon name="x" /> Quitar solo este día</button>}
+        <button className="ghost danger-text" onClick={() => { sfx.remove(); game.act((s) => deleteEvent(s, ev.id)); onClose(); }}><Icon name="trash" /> {ev.repeat ? 'Borrar la serie' : 'Borrar'}</button>
       </div>
-      <p className="hint sheet-hint">{kind?.icon} Consejo: en la vista Día o Semana puedes arrastrar el evento para moverlo y estirar su borde de abajo para cambiar lo que dura.</p>
+      <p className="hint sheet-hint"><Icon name="info" /> Consejo: en la vista Día o Semana puedes arrastrar el evento para moverlo y estirar su borde de abajo para cambiar lo que dura.</p>
     </Sheet>
   );
 }
@@ -300,13 +300,13 @@ export function DayAgenda({ game, day, now, startFocus }: { game: Game; day: str
         <ul className="list">
           {evs.map((e) => (
             <li key={e.id} className={`item ev-item ev-${e.kind}`} style={evStyle(e)}>
-              <span className="ev-icon" aria-hidden="true">{eventIcon(e.kind)}</span>
+              <span className="ev-icon" aria-hidden="true"><Icon name={eventIcon(e.kind)} /></span>
               <button className="item-body ev-open" onClick={() => setOpen(e.id)} aria-label={`Abrir ${e.title}`}>
                 <span className="item-title">{e.title}</span>
-                <span className="muted small-text">{EVENT_KINDS.find((k) => k.id === e.kind)?.name}{e.time ? ` · ${timeRange(e)}` : ''}{e.repeat ? ` · ↻ ${REPEAT_NAMES[e.repeat]}` : ''}</span>
+                <span className="muted small-text">{EVENT_KINDS.find((k) => k.id === e.kind)?.name}{e.time ? ` · ${timeRange(e)}` : ''}{e.repeat && <> · <Icon name="repeat" /> {REPEAT_NAMES[e.repeat]}</>}</span>
               </button>
               <button className="icon-btn" onClick={() => { sfx.remove(); game.act((s) => (e.repeat ? skipEventDay(s, e.id, day) : deleteEvent(s, e.id))); }}
-                aria-label={`Borrar evento ${e.title}${e.repeat ? ' (solo este día)' : ''}`}>×</button>
+                aria-label={`Borrar evento ${e.title}${e.repeat ? ' (solo este día)' : ''}`} title="Borrar"><Icon name="trash" /></button>
             </li>
           ))}
         </ul>
@@ -519,10 +519,10 @@ function AllDay({ state, game, day, now, onOpen }: { state: GameState; game: Gam
   const due = state.quests.filter((q) => !q.completedAt && q.deadline === day);
   return (
     <div className="tg-cell">
-      {evs.map((e) => <button key={e.id} className={`tg-chip ev-${e.kind}`} style={evStyle(e)} onClick={() => onOpen(e)}>{eventIcon(e.kind)} {e.title}</button>)}
+      {evs.map((e) => <button key={e.id} className={`tg-chip ev-${e.kind}`} style={evStyle(e)} onClick={() => onOpen(e)}><Icon name={eventIcon(e.kind)} /> {e.title}</button>)}
       {rems.map((r) => (
         <button key={r.id} className={`tg-chip tg-remchip${r.doneAt ? ' done' : ''}`} onClick={() => toggleRem(game, r)}
-          aria-label={`${r.doneAt ? 'Desmarcar' : 'Hecho'}: ${r.title}`} title={remWhen(r, now)}>{r.doneAt ? '✓' : '🔔'} {r.title}</button>
+          aria-label={`${r.doneAt ? 'Desmarcar' : 'Hecho'}: ${r.title}`} title={remWhen(r, now)}><Icon name={r.doneAt ? 'check' : 'bell'} /> {r.title}</button>
       ))}
       {due.map((q) => <span key={q.id} className={`cal-q q-${q.type}`}>{q.title}</span>)}
     </div>
@@ -551,7 +551,7 @@ function DayBlocks({ state, game, day, hour, now, drag, onOpen, onGrab }: {
         const b = Math.min(1440, a + Math.max(15, Math.round((x.endedAt - x.startedAt) / 60_000)));
         return (
           <span key={x.id} className="tg-block tg-session" style={{ top: top(a), height: top(b - a) }} title={`Deep Work: ${x.label} · ${x.minutes} min`}>
-            ⚡ {x.label} <span className="mono">{x.minutes} min</span>
+            <Icon name="zap" /> {x.label} <span className="mono">{x.minutes} min</span>
           </span>
         );
       })}
@@ -568,8 +568,8 @@ function DayBlocks({ state, game, day, hour, now, drag, onOpen, onGrab }: {
             onClick={() => onOpen(e)} onKeyDown={(ev) => (ev.key === 'Enter' || ev.key === ' ') && (ev.preventDefault(), onOpen(e))}
             aria-label={`${e.title}, ${timeRange({ time: fromMin(a), end: fromMin(Math.min(b, LAST)) })}`}
           >
-            <b>{e.kind !== 'bloque' && `${eventIcon(e.kind)} `}{e.title}</b>
-            <span className="mono">{fromMin(a)} – {fromMin(Math.min(b, LAST))}{isDragged ? ` · ${durationWords(b - a)}` : e.repeat ? ' ↻' : ''}</span>
+            <b>{e.kind !== 'bloque' && <><Icon name={eventIcon(e.kind)} /> </>}{e.title}</b>
+            <span className="mono">{fromMin(a)} – {fromMin(Math.min(b, LAST))}{isDragged ? ` · ${durationWords(b - a)}` : ''}{!isDragged && e.repeat && <> <Icon name="repeat" /></>}</span>
             <span className="tg-resize" onPointerDown={(ev) => onGrab(ev, e, 'resize')} onClick={(ev) => ev.stopPropagation()} aria-hidden="true" />
           </div>
         );
@@ -577,7 +577,7 @@ function DayBlocks({ state, game, day, hour, now, drag, onOpen, onGrab }: {
       {rems.map((r) => (
         <button key={r.id} className={`tg-rem${r.doneAt ? ' done' : ''}`} style={{ top: top(toMin(r.time!)) }}
           onClick={() => toggleRem(game, r)} aria-label={`${r.doneAt ? 'Desmarcar' : 'Hecho'}: ${r.title} a las ${r.time}`}>
-          {r.doneAt ? '✓' : '🔔'} {r.time} {r.title}
+          <Icon name={r.doneAt ? 'check' : 'bell'} /> {r.time} {r.title}
         </button>
       ))}
     </>
@@ -609,7 +609,7 @@ export function useAgendaAlerts(state: GameState, toast: (text: string, tone?: '
       for (const a of fresh) {
         toast(a.text, 'level', 9000);
         try {
-          if ('Notification' in window && Notification.permission === 'granted') new Notification('Excelsior', { body: a.text, tag: a.key });
+          if ('Notification' in window && Notification.permission === 'granted') new Notification('Excelsior', { body: plain(a.text), tag: a.key });
         } catch {
           /* algunos móviles solo notifican desde un service worker */
         }

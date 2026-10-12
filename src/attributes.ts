@@ -1,6 +1,7 @@
 // Atributos y avatar. Recompensas hardcodeadas (sin editor todavía); el XP, el nivel
 // y el historial de cada atributo se derivan de las transacciones de XP.
 import type { AttributeId, AttributeRewards, DeepWorkArea, GameState, Goal, QuestType, RitualAnswer } from './types';
+import type { IconName } from './icon-data';
 import { dayKey, habitStreakDays, totalXp, uid, xpForLevel } from './game';
 import { defeatedBosses } from './bosses';
 import { kingdomProgress } from './kingdoms';
@@ -8,7 +9,7 @@ import { kingdomProgress } from './kingdoms';
 export interface AttributeDef {
   id: AttributeId;
   name: string;
-  icon: string;
+  icon: IconName;
   /** Frase corta: qué representa. */
   tagline: string;
   desc: string;
@@ -22,35 +23,35 @@ export interface AttributeDef {
 // Definiciones de Nicolas (2026-10-06). El id 'creacion' se conserva para no romper partidas: hoy se llama Impacto.
 export const ATTRIBUTES: AttributeDef[] = [
   {
-    id: 'voluntad', name: 'Voluntad', icon: '⚔️',
+    id: 'voluntad', name: 'Voluntad', icon: 'attr-voluntad',
     tagline: 'La fuerza de hacerlo aunque no te apetezca.',
     desc: 'Disciplina pura: cumplir lo que te prometiste, hacer lo que no querías y salir de tu zona de confort. Es el atributo que sostiene a todos los demás.',
     gains: 'Toda misión y todo hábito cumplido, y cada minuto de Deep Work.',
     examples: 'Entrenar sin ganas, madrugar, cumplir la misión del día, aguantar la racha.',
   },
   {
-    id: 'sabiduria', name: 'Sabiduría', icon: '🧠',
+    id: 'sabiduria', name: 'Sabiduría', icon: 'attr-sabiduria',
     tagline: 'Lo que sabes.',
     desc: 'La teoría: entender cómo funcionan las cosas. En mates, saberte las fórmulas y saber cuándo se aplica cada una.',
     gains: 'Deep Work de estudio, lectura o repaso, y hábitos como leer o meditar.',
     examples: 'Leer, estudiar, hacer apuntes, ver un curso, Deep Work de estudio o lectura.',
   },
   {
-    id: 'maestria', name: 'Maestría', icon: '🔨',
+    id: 'maestria', name: 'Maestría', icon: 'attr-maestria',
     tagline: 'Lo que sabes hacer.',
     desc: 'La práctica: convertir lo que sabes en resultados. Usar esas fórmulas para resolver un problema concreto, programar, crear y terminar.',
     gains: 'Deep Work práctico (ejercicios, proyectos, programar) y las misiones principales.',
     examples: 'Resolver ejercicios, programar, editar, terminar un proyecto, Deep Work práctico.',
   },
   {
-    id: 'conexion', name: 'Conexión', icon: '❤️',
+    id: 'conexion', name: 'Conexión', icon: 'attr-conexion',
     tagline: 'Las personas de tu vida.',
     desc: 'Cuidar a tu familia, a tus amigos y a tu pareja, y atreverte a hablar con desconocidos. Nadie llega lejos solo.',
     gains: 'Misiones y hábitos con otras personas (llamar, quedar, conocer gente) y los encargos de gremio.',
     examples: 'Llamar a tu familia, quedar con amigos, hablar con alguien nuevo.',
   },
   {
-    id: 'creacion', name: 'Impacto', icon: '🌍', unlockLevel: 10,
+    id: 'creacion', name: 'Impacto', icon: 'attr-creacion', unlockLevel: 10,
     tagline: 'Lo que dejas en los demás.',
     desc: 'El atributo avanzado: ayudar e impactar a la gente con lo que creas, como lanzar una app que otros usan.',
     gains: 'Misiones y hábitos de crear, publicar, enseñar o ayudar.',
@@ -76,7 +77,7 @@ export function inferDeepWorkArea(text: string | undefined): DeepWorkArea {
 }
 
 export const DEEP_WORK_AREA_HINT: Record<DeepWorkArea, string> = {
-  estudio: '🧠 Sabiduría (teoría)', practica: '🔨 Maestría (práctica)', programacion: '🔨 Maestría (práctica)', edicion: '🔨 Maestría (práctica)', general: '🧠 Sabiduría y 🔨 Maestría',
+  estudio: 'Sabiduría (teoría)', practica: 'Maestría (práctica)', programacion: 'Maestría (práctica)', edicion: 'Maestría (práctica)', general: 'Sabiduría y Maestría',
 };
 
 // ---------- Recompensas ----------
@@ -217,7 +218,7 @@ export type AvatarRequirement =
 export interface AvatarDef {
   id: string;
   name: string;
-  icon: string;
+  icon: IconName;
   motto: string;
   requirements: AvatarRequirement[];
 }
@@ -236,16 +237,16 @@ const feat = {
 
 // Ids antiguos conservados (las metas personales se guardan por avatarId).
 export const AVATARS: AvatarDef[] = [
-  { id: 'aprendiz', name: 'Aprendiz', icon: '🪓', motto: 'Todo imperio empezó con una sola piedra.', requirements: [] },
-  { id: 'iniciado', name: 'Iniciado', icon: '🕯️', motto: 'Has encendido la llama.', requirements: [lvl(3), feat.days(3)] },
-  { id: 'disciplinado', name: 'Disciplinado', icon: '🛡️', motto: 'La disciplina es tu escudo.', requirements: [lvl(5), attr('voluntad', 3), feat.streak(7)] },
-  { id: 'artifice', name: 'Artífice', icon: '⚒️', motto: 'Tus manos ya crean cosas reales.', requirements: [lvl(8), attr('maestria', 5), feat.dw(10)] },
-  { id: 'arquitecto', name: 'Arquitecto', icon: '📐', motto: 'Piensas antes de construir.', requirements: [lvl(12), attr('sabiduria', 3), feat.kingdoms(1), feat.days(30)] },
-  { id: 'cazador', name: 'Cazador de Bestias', icon: '🏹', motto: 'Los monstruos ya te temen.', requirements: [lvl(16), attr('voluntad', 6), feat.bosses(3)] },
-  { id: 'forjador', name: 'Forjador', icon: '🔥', motto: 'Forjas tu carácter cada día.', requirements: [lvl(20), attr('maestria', 8), attr('conexion', 3), feat.dw(50)] },
-  { id: 'fundador', name: 'Fundador', icon: '🏰', motto: 'Has levantado reinos de la nada.', requirements: [lvl(25), ...allAttrs(4), feat.kingdoms(3), feat.streak(21)] },
-  { id: 'titan', name: 'Titán', icon: '⚡', motto: 'Caminas entre dioses.', requirements: [lvl(32), ...allAttrs(6), feat.bosses(10), feat.streak(30)] },
-  { id: 'prime', name: 'Excelsior', icon: '🌟', motto: 'Siempre más alto.', requirements: [lvl(40), ...allAttrs(8), feat.dw(200), feat.days(300)] },
+  { id: 'aprendiz', name: 'Aprendiz', icon: 'wood-axe', motto: 'Todo imperio empezó con una sola piedra.', requirements: [] },
+  { id: 'iniciado', name: 'Iniciado', icon: 'candle-light', motto: 'Has encendido la llama.', requirements: [lvl(3), feat.days(3)] },
+  { id: 'disciplinado', name: 'Disciplinado', icon: 'round-shield', motto: 'La disciplina es tu escudo.', requirements: [lvl(5), attr('voluntad', 3), feat.streak(7)] },
+  { id: 'artifice', name: 'Artífice', icon: 'anvil', motto: 'Tus manos ya crean cosas reales.', requirements: [lvl(8), attr('maestria', 5), feat.dw(10)] },
+  { id: 'arquitecto', name: 'Arquitecto', icon: 'drafting', motto: 'Piensas antes de construir.', requirements: [lvl(12), attr('sabiduria', 3), feat.kingdoms(1), feat.days(30)] },
+  { id: 'cazador', name: 'Cazador de Bestias', icon: 'bowman', motto: 'Los monstruos ya te temen.', requirements: [lvl(16), attr('voluntad', 6), feat.bosses(3)] },
+  { id: 'forjador', name: 'Forjador', icon: 'anvil-impact', motto: 'Forjas tu carácter cada día.', requirements: [lvl(20), attr('maestria', 8), attr('conexion', 3), feat.dw(50)] },
+  { id: 'fundador', name: 'Fundador', icon: 'castle', motto: 'Has levantado reinos de la nada.', requirements: [lvl(25), ...allAttrs(4), feat.kingdoms(3), feat.streak(21)] },
+  { id: 'titan', name: 'Titán', icon: 'lightning-helix', motto: 'Caminas entre dioses.', requirements: [lvl(32), ...allAttrs(6), feat.bosses(10), feat.streak(30)] },
+  { id: 'prime', name: 'Excelsior', icon: 'rising-star', motto: 'Siempre más alto.', requirements: [lvl(40), ...allAttrs(8), feat.dw(200), feat.days(300)] },
 ];
 
 /** Requisitos fijos del avatar + metas personales asignadas a él. */

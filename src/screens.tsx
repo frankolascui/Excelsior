@@ -29,6 +29,7 @@ import { DayClose, MetricsPanel, UpcomingEvents } from './life-ui';
 import { RemindersPanel } from './agenda-ui';
 import { AchievementsPanel } from './achievements-ui';
 import { latestMetric, logMetric } from './life';
+import { Icon } from './icons';
 
 export type Game = ReturnType<typeof useGame>;
 export type Tab = 'hoy' | 'misiones' | 'reinos' | 'arena' | 'gremios' | 'amigos' | 'deepwork' | 'habitos' | 'personaje' | 'ajustes';
@@ -71,7 +72,7 @@ export function Onboarding({ game, onBack }: { game: Game; onBack?: () => void }
           <button type="submit" className="primary big" disabled={!name.trim()}>Crear personaje</button>
         </form>
         {cloud.email && <p className="muted small-text">Conectado como {cloud.email}.</p>}
-        {!cloud.email && onBack && <button type="button" className="link" onClick={onBack}>← Entrar con email en vez de como invitado</button>}
+        {!cloud.email && onBack && <button type="button" className="link" onClick={onBack}><Icon name="arrow-left" /> Entrar con email en vez de como invitado</button>}
         <p className="fineprint">{cloud.email ? 'Tu partida se guarda en la nube.' : 'Tu partida se guarda solo en este navegador.'}</p>
       </div>
     </main>
@@ -109,8 +110,8 @@ export function Dashboard({
             <h2>{s.quest.title}</h2>
             <p className="now-sub">Misión {s.quest.type === 'main' ? 'principal' : s.quest.type === 'daily' ? 'diaria' : 'secundaria'} · +{XP_RULES.quest[s.quest.type]} XP al completarla, +1 XP por minuto de foco</p>
             <div className="row">
-              <button className="primary big" onClick={() => focusQuest(s.quest)}>▶ Empezar Deep Work</button>
-              <button className="secondary big" onClick={() => act((st) => completeQuest(st, s.quest.id, Date.now()), CAP_QUEST, questOpts(s.quest))}>✓ Ya la terminé</button>
+              <button className="primary big" onClick={() => focusQuest(s.quest)}><Icon name="play" /> Empezar Deep Work</button>
+              <button className="secondary big" onClick={() => act((st) => completeQuest(st, s.quest.id, Date.now()), CAP_QUEST, questOpts(s.quest))}><Icon name="check" /> Ya la terminé</button>
             </div>
           </>
         )}
@@ -119,8 +120,8 @@ export function Dashboard({
             <h2>Hábito pendiente: {s.name}</h2>
             <p className="now-sub">No tienes misiones pendientes. Marca el hábito cuando lo hagas.</p>
             <div className="row">
-              <button className="primary big" onClick={() => act((st) => toggleHabit(st, s.habitId, Date.now()), CAP_HABIT, { sound: 'habit' })}>✓ Hecho</button>
-              <button className="secondary big" onClick={() => go('misiones')}>+ Crear misión</button>
+              <button className="primary big" onClick={() => act((st) => toggleHabit(st, s.habitId, Date.now()), CAP_HABIT, { sound: 'habit' })}><Icon name="check" /> Hecho</button>
+              <button className="secondary big" onClick={() => go('misiones')}><Icon name="plus" /> Crear misión</button>
             </div>
           </>
         )}
@@ -136,8 +137,8 @@ export function Dashboard({
             <h2>Todo hecho por hoy.</h2>
             <p className="now-sub">Una sesión extra de foco sigue sumando XP. O prepara la misión de mañana.</p>
             <div className="row">
-              <button className="primary big" onClick={() => focusQuest(null)}>▶ Deep Work libre</button>
-              <button className="secondary big" onClick={() => go('misiones')}>+ Nueva misión</button>
+              <button className="primary big" onClick={() => focusQuest(null)}><Icon name="play" /> Deep Work libre</button>
+              <button className="secondary big" onClick={() => go('misiones')}><Icon name="plus" /> Nueva misión</button>
             </div>
           </>
         )}
@@ -148,7 +149,7 @@ export function Dashboard({
         <section className="panel">
           <header className="panel-head">
             <h3>Misiones pendientes</h3>
-            <button className="link" onClick={() => go('misiones')}>Ver todas</button>
+            <button className="link" onClick={() => go('misiones')}>Ver todas <Icon name="arrow-right" /></button>
           </header>
           {pending.length === 0 ? (
             <p className="empty">Sin misiones pendientes.</p>
@@ -168,7 +169,7 @@ export function Dashboard({
         <section className="panel">
           <header className="panel-head">
             <h3>Hábitos de hoy</h3>
-            <button className="link" onClick={() => go('habitos')}>Gestionar</button>
+            <button className="link" onClick={() => go('habitos')}>Gestionar <Icon name="arrow-right" /></button>
           </header>
           {state.habits.length === 0 ? (
             <p className="empty">Aún no tienes hábitos.</p>
@@ -189,7 +190,7 @@ export function Dashboard({
       <section className="panel" aria-labelledby="attrs-h">
         <header className="panel-head">
           <h3 id="attrs-h">Atributos</h3>
-          <button className="link" onClick={() => go('personaje')}>Detalle</button>
+          <button className="link" onClick={() => go('personaje')}>Ver detalle <Icon name="arrow-right" /></button>
         </header>
         <AttributeList state={state} />
       </section>
@@ -242,7 +243,7 @@ export function Quests({ game, focusQuest, startFocus }: { game: Game; focusQues
     <div className="segmented view-toggle" role="radiogroup" aria-label="Vista de misiones">
       {(['list', 'calendar'] as const).map((v) => (
         <button key={v} type="button" role="radio" aria-checked={view === v} className={view === v ? 'seg on' : 'seg'} onClick={() => pickView(v)}>
-          {v === 'list' ? '☰ Lista' : '📅 Calendario'}
+          {v === 'list' ? <><Icon name="list" /> Lista</> : <><Icon name="calendar" /> Calendario</>}
         </button>
       ))}
     </div>
@@ -450,14 +451,14 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
         <div className="row center">
           {totals.phase === 'focus' ? (
             <>
-              <button className="phase-btn rest" onClick={() => phase('break')}>☕ Descanso</button>
-              <button className="phase-btn distract" onClick={() => phase('distraction')}>⚠ Me distraje</button>
+              <button className="phase-btn rest" onClick={() => phase('break')}><Icon name="coffee" /> Descanso</button>
+              <button className="phase-btn distract" onClick={() => phase('distraction')}><Icon name="alert" /> Me distraje</button>
             </>
           ) : (
-            <button className="primary big" onClick={() => phase('focus')}>{resting ? '▶ Siguiente pomodoro' : '▶ Volver al foco'}</button>
+            <button className="primary big" onClick={() => phase('focus')}><Icon name="play" /> {resting ? 'Siguiente pomodoro' : 'Volver al foco'}</button>
           )}
         </div>
-        <button className="ghost" onClick={stop}>■ Terminar sesión</button>
+        <button className="ghost" onClick={stop}><Icon name="stop" /> Terminar sesión</button>
         <ConfirmButton label="Descartar sin guardar" confirmLabel="Sí, descartar" onConfirm={() => act(cancelTimer)} />
         <AmbientPanel />
       </div>
@@ -485,7 +486,7 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
               {linked && (
                 <div className="row">
                   <button className="primary" onClick={() => { act((s) => completeQuest(s, linked.id, Date.now()), CAP_QUEST, questOpts(linked)); setResult({ ...result, questId: null }); }}>
-                    ✓ Completar «{linked.title}» (+{XP_RULES.quest[linked.type]} XP)
+                    <Icon name="check" /> Completar «{linked.title}» (+{XP_RULES.quest[linked.type]} XP)
                   </button>
                 </div>
               )}
@@ -497,7 +498,7 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
       )}
 
       {linkedQuest && (
-        <p className="linked">Para la misión <strong>{linkedQuest.title}</strong> <button className="link" onClick={() => setQuestId(null)}>Quitar</button></p>
+        <p className="linked">Para la misión <strong>{linkedQuest.title}</strong> <button className="link" onClick={() => setQuestId(null)}>Desvincular</button></p>
       )}
 
       {!linkedQuest && (
@@ -506,16 +507,16 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
           <input id="dw-intent" value={intent} onChange={(e) => setIntent(e.target.value)} maxLength={80} placeholder="Ej. Ejercicios de derivadas, leer el tema 4…" />
         </label>
       )}
-      <p className="mono muted small-text dw-area">Sube {DEEP_WORK_AREA_HINT[inferDeepWorkArea(linkedQuest?.title ?? intent)]} y ⚔️ Voluntad</p>
+      <p className="mono muted small-text dw-area">Sube {DEEP_WORK_AREA_HINT[inferDeepWorkArea(linkedQuest?.title ?? intent)]} y Voluntad</p>
 
       <div className="modes" data-tour="modes">
         <button className="mode-card" onClick={() => start()}>
-          <span className="mode-icon" aria-hidden="true">⏱</span>
+          <span className="mode-icon" aria-hidden="true"><Icon name="timer" /></span>
           <span className="mode-title">Sesión libre</span>
           <span className="mode-sub">Cronómetro. Paras cuando quieras.</span>
         </button>
         <div className="mode-card as-div">
-          <span className="mode-icon" aria-hidden="true">🍅</span>
+          <span className="mode-icon" aria-hidden="true"><Icon name="repeat" /></span>
           <span className="mode-title">Pomodoro</span>
           <div className="segmented" role="radiogroup" aria-label="Pomodoro: foco y descanso">
             {POMODOROS.map((p, i) => (
@@ -525,7 +526,7 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
             ))}
           </div>
           <span className="mode-sub">Bloques largos para entrar en flow: {POMODOROS[pomo].focus} min de foco y {POMODOROS[pomo].rest} de descanso.</span>
-          <button className="primary wide" onClick={() => start(POMODOROS[pomo])}>▶ Empezar Pomodoro</button>
+          <button className="primary wide" onClick={() => start(POMODOROS[pomo])}><Icon name="play" /> Empezar Pomodoro</button>
         </div>
       </div>
       <AmbientPanel />
@@ -581,7 +582,7 @@ export function Habits({ game }: { game: Game }) {
             {[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n} {n === 1 ? 'vez' : 'veces'} por semana</option>)}
           </select>
           <CustomizeToggle open={open} onToggle={() => setOpen(!open)} custom={custom.xp !== undefined || custom.rewards !== undefined} />
-          <button type="submit" className="primary" disabled={!name.trim()}>Añadir</button>
+          <button type="submit" className="primary" disabled={!name.trim()}><Icon name="plus" /> Añadir</button>
         </form>
         {open && <RewardEditor autoXp={XP_RULES.habit} autoRewards={habitRewards(name)} value={custom} onChange={setCustom} maxXp={CUSTOM_LIMITS.habitXp} idPrefix="new-habit" />}
         <p className="hint">+{XP_RULES.habit} XP cada vez que lo completes. Los diarios hacen racha de días; los de «N veces por semana», racha de semanas cumplidas (de lunes a domingo). Los puntos son los últimos 7 días.</p>
@@ -591,7 +592,7 @@ export function Habits({ game }: { game: Game }) {
           <div>
             <p className="empty">Aún no tienes hábitos. Escribe uno arriba o elige alguno:</p>
             <div className="chips">
-              {STARTER_HABITS.map((h) => <button key={h} className="pick" onClick={() => act((s) => addHabit(s, h, Date.now()))}>+ {h}</button>)}
+              {STARTER_HABITS.map((h) => <button key={h} className="pick" onClick={() => act((s) => addHabit(s, h, Date.now()))}><Icon name="plus" /> {h}</button>)}
             </div>
           </div>
         ) : (
@@ -632,7 +633,7 @@ export function Character({ game }: { game: Game }) {
         </div>
         <div className="stack tight">
           <h2 className="hero-name">{state.profile?.name}</h2>
-          <p className="hero-title">{avatar.current.icon} {avatar.current.name} · Nivel global {info.level}</p>
+          <p className="hero-title"><Icon name={avatar.current.icon} /> {avatar.current.name} · Nivel global {info.level}</p>
           <p className="muted">{xp} XP global en total</p>
         </div>
         <LevelBar state={state} compact />
@@ -713,7 +714,7 @@ export function Kingdoms({ game, focusQuest }: { game: Game; focusQuest: (q: Que
       <section className="panel" data-tour="kingdom-add">
         <form className="quick-add inline" onSubmit={submit}>
           <input id="new-kingdom" value={name} onChange={(e) => setName(e.target.value)} placeholder="+ Fundar un reino (ej. Reino de la Programación)" maxLength={50} aria-label="Nombre del nuevo reino" />
-          <button type="submit" className="primary" disabled={!name.trim()}>Fundar</button>
+          <button type="submit" className="primary" disabled={!name.trim()}><Icon name="plus" /> Fundar</button>
         </form>
       </section>
       {state.kingdoms.length === 0 && <p className="empty">Aún no has fundado ningún reino.</p>}
@@ -751,8 +752,8 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
       <header className="kingdom-head">
         <div>
           <h2 id={`k-${kingdomId}`} className="kingdom-name">{kingdom.name}</h2>
-          <p className="kingdom-stage">{p.icon} {p.stage} · {p.built}/{p.total} construcciones{bonus > 0 && ` · tributo +${bonus} 🪙`}</p>
-          <p className="muted small-text">{(() => { const n = nextStage(p.built); return n ? `${n.icon} ${n.name} con ${n.missing} ${n.missing === 1 ? 'construcción' : 'construcciones'} más` : 'Tu reino ya es glorioso. Cada construcción nueva lo hace aún más grande.'; })()}</p>
+          <p className="kingdom-stage"><Icon name={p.icon} /> {p.stage} · {p.built}/{p.total} construcciones{bonus > 0 && <> · tributo +{bonus} <Icon name="coin" className="coin-ico" /></>}</p>
+          <p className="muted small-text">{(() => { const n = nextStage(p.built); return n ? `${n.name} con ${n.missing} ${n.missing === 1 ? 'construcción' : 'construcciones'} más` : 'Tu reino ya es glorioso. Cada construcción nueva lo hace aún más grande.'; })()}</p>
         </div>
         <span className="kingdom-pct mono">{Math.round(p.progress * 100)} %</span>
       </header>
@@ -788,12 +789,12 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
           <div className="segmented" role="radiogroup" aria-label="Tipo de construcción">
             {BUILDING_TYPES.map((t) => (
               <button type="button" key={t} role="radio" aria-checked={type === t} className={type === t ? 'seg on' : 'seg'} onClick={() => setType(t)}>
-                {BUILDINGS[t].icon} {BUILDINGS[t].name} <span className="mono">{XP_RULES.quest[t]}</span>
+                <Icon name={BUILDINGS[t].icon} /> {BUILDINGS[t].name} <span className="mono">{XP_RULES.quest[t]}</span>
               </button>
             ))}
           </div>
           <CustomizeToggle open={open} onToggle={() => setOpen(!open)} custom={custom.xp !== undefined || custom.rewards !== undefined} />
-          <button type="submit" className="primary" disabled={!title.trim()}>Construir</button>
+          <button type="submit" className="primary" disabled={!title.trim()}><Icon name="plus" /> Construir</button>
         </div>
         {open && <RewardEditor autoXp={XP_RULES.quest[type]} autoRewards={questRewards(type, title)} value={custom} onChange={setCustom} maxXp={CUSTOM_LIMITS.questXp} idPrefix={`b-${kingdomId}`} />}
       </form>
@@ -848,7 +849,7 @@ function GoalsPanel({ game, now }: { game: Game; now: number }) {
                   <button className="ghost small" onClick={() => act((s) => (g.metricId ? logMetric(s, g.metricId, g.current + (g.target >= g.start ? 1 : -1), Date.now()) : updateGoal(s, g.id, g.current + (g.target >= g.start ? 1 : -1))))}>
                     {g.target >= g.start ? '+1' : '−1'}
                   </button>
-                  <button className="icon-btn" onClick={() => act((s) => deleteGoal(s, g.id))} aria-label={`Borrar ${g.name}`}>×</button>
+                  <button className="icon-btn" onClick={() => act((s) => deleteGoal(s, g.id))} aria-label={`Borrar ${g.name}`} title="Borrar"><Icon name="trash" /></button>
                 </div>
               </li>
             );
@@ -860,7 +861,7 @@ function GoalsPanel({ game, now }: { game: Game; now: number }) {
           Seguir una medida de «Tu estado actual»:
           <select id="goal-metric" className="freq-select" value={form.metricId} onChange={(e) => pickMetric(e.target.value)}>
             <option value="">Ninguna (la actualizo a mano)</option>
-            {metrics.map((m) => <option key={m.id} value={m.id}>📈 {m.name}</option>)}
+            {metrics.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
         </label>
       )}
@@ -869,7 +870,7 @@ function GoalsPanel({ game, now }: { game: Game; now: number }) {
         <input id="goal-start" type="number" step="any" value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })} placeholder="Ahora" aria-label="Valor actual" />
         <input id="goal-target" type="number" step="any" value={form.target} onChange={(e) => setForm({ ...form, target: e.target.value })} placeholder="Objetivo" aria-label="Objetivo" />
         <input id="goal-unit" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="Unidad (€, kg…)" maxLength={12} aria-label="Unidad" />
-        <button type="submit" className="primary" disabled={!valid}>Añadir</button>
+        <button type="submit" className="primary" disabled={!valid}><Icon name="plus" /> Añadir</button>
       </form>
     </section>
   );

@@ -5,6 +5,7 @@ import { kingdomProgress, realmProgress } from './kingdoms';
 import { useWidth } from './charts';
 import { Birds, Clouds, Mist } from './sky-fx';
 import './city.css';
+import { Icon } from './icons';
 
 // Posiciones (fracción del mapa) pensadas para que las etiquetas no choquen. Del 13.º en adelante, espiral.
 const SLOTS: [number, number][] = [
@@ -110,7 +111,7 @@ export function RealmMap({ state, onSelect }: { state: GameState; onSelect: (kin
           })}
           <path className="pine-l" d={pines.l} />
           <path className="pine-d" d={pines.d} />
-          <text className="compass" x={W - 26} y={34} textAnchor="middle">✧</text>
+          <Icon name="compass-rose" className="compass" x={W - 38} y={22} size={24} />
           <text className="compass-n" x={W - 26} y={18} textAnchor="middle">N</text>
 
           {nodes.map(({ k, p, x, y }) => {
@@ -133,7 +134,7 @@ export function RealmMap({ state, onSelect }: { state: GameState; onSelect: (kin
             <circle r={62} fill="url(#realm-halo)" className="node-halo capital-halo" />
             <circle r={34} className="node-bg" />
             <circle r={34} className="node-ring" pathLength={1} strokeDasharray={`${realm.progress} 1`} transform="rotate(-90)" />
-            <text className="node-icon" fontSize={28} dy="0.35em" textAnchor="middle">⚜️</text>
+            <Icon name="fleur" className="node-icon" x={-15} y={-15} size={30} />
             <text className="node-name" y={52} textAnchor="middle">{clip(state.profile?.name ?? 'Tu fortaleza', nameLen)}</text>
             <text className="node-pct" y={68} textAnchor="middle">Tu fortaleza</text>
           </g>
@@ -154,9 +155,9 @@ export function RealmMap({ state, onSelect }: { state: GameState; onSelect: (kin
               <circle r={27} className="node-bg" />
               <circle r={27} className="node-track" />
               <circle r={27} className="node-ring" pathLength={1} strokeDasharray={`${p.progress} 1`} transform="rotate(-90)" />
-              <text className="node-icon" fontSize={24} dy="0.35em" textAnchor="middle">{p.icon}</text>
+              <Icon name={p.icon} className="node-icon" x={-13} y={-13} size={26} />
               <text className="node-name" y={45} textAnchor="middle">{clip(k.name, nameLen)}</text>
-              <text className="node-pct" y={61} textAnchor="middle">{p.icon} {p.built}{W < 600 ? '' : ` · ${p.stage}`}</text>
+              <text className="node-pct" y={61} textAnchor="middle">{p.built}{W < 600 ? ' constr.' : ` · ${p.stage}`}</text>
             </g>
           ))}
         </svg>

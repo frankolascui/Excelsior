@@ -7,6 +7,13 @@ import { useWidth } from './charts';
 import { Birds, Clouds, Mist, ShootingStars } from './sky-fx';
 import { BUILDINGS } from './kingdoms';
 import './city.css';
+import { Icon, iconOf } from './icons';
+
+/** Símbolo de la etapa del reino, en la esquina de la escena. */
+function StageIcon({ icon }: { icon: string }) {
+  const name = iconOf(icon);
+  return name ? <Icon name={name} x={14} y={11} size={17} className="city-stage-ico" /> : null;
+}
 
 type Hover = ({ q: Quest } | { castle: true }) & { x: number; y: number } | null;
 type SetHover = (h: Hover) => void;
@@ -759,7 +766,7 @@ function FrontCity({ quests, progress, complete, stage, icon, W, fresh, setHover
           ))}
         </g>
       )}
-      {showLabel && <text x={14} y={24} className="city-stage">{icon} {stage} · {built} {built === 1 ? 'construcción' : 'construcciones'}</text>}
+      {showLabel && <><StageIcon icon={icon} /><text x={36} y={24} className="city-stage">{stage} · {built} {built === 1 ? 'construcción' : 'construcciones'}</text></>}
       {quests.length === 0 && <EmptyText x={W / 2} y={GROUND - 50} W={W} />}
     </svg>
   );
@@ -1587,7 +1594,7 @@ function IsoCity({ quests, progress, complete, stage, icon, W, fresh, setHover, 
       <Birds W={W} y={H * 0.22} n={3} dur={30} delay={6} />
       <Clouds W={W} shadow rows={[{ y: H * 0.3, s: 1.6, dur: 70, o: 0.06 }, { y: H * 0.68, s: 2.1, dur: 100, o: 0.05 }]} />
       <rect width={W} height={H} fill={`url(#${id('vig')})`} pointerEvents="none" />
-      {W >= 560 && <text x={14} y={24} className="city-stage">{icon} {stage} · {Math.round(progress * 100)} %</text>}
+      {W >= 560 && <><StageIcon icon={icon} /><text x={36} y={24} className="city-stage">{stage} · {Math.round(progress * 100)} %</text></>}
       {n === 0 && <EmptyText x={W / 2} y={oy - (W < 480 ? 30 : 14)} W={W} />}
     </svg>
   );
@@ -1666,7 +1673,7 @@ export function CityScene({ quests, progress, complete, stage, icon }: { quests:
           className={`castle-cap${castle.upgraded ? ' up' : ''}${castle.tier >= CASTLE_MAX ? ' max' : ''}`}
           style={{ top: W >= 560 ? 36 : 48 }} title={`${castle.label} · ${castle.name}. ${castle.next}`} aria-live="polite"
         >
-          <span aria-hidden="true">🏰 </span>{castle.label}
+          <Icon name="castle" /> {castle.label}
           {W >= 640 && <span className="cap-name"> · {castle.name}</span>}
           <span className="sr-only">. {castle.next}</span>
         </p>

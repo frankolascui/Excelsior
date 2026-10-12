@@ -312,6 +312,7 @@ check(await seen('.boss:has-text("Hidra")'), 'tras importar se conserva la parti
 await page.click('.nav-item:has-text("Deep Work")');
 await page.click('.chip-btn:has-text("Lluvia")');
 check(await seen('.chip-btn[aria-pressed=true]:has-text("Lluvia")') && await seen('.ambient-dock:has-text("Lluvia")'), 'sonido de lluvia de fondo');
+await page.locator('.panel.ambient').screenshot({ path: `${out}/09-ambient.png` });
 await page.click('.ambient-dock button[aria-label="Parar sonido de fondo"]');
 await page.fill('#ambient-link', 'https://www.youtube.com/watch?v=jfKfPfyJRdk');
 check(await page.isEnabled('.ambient-link button:has-text("Reproducir")'), 'acepta un enlace de YouTube');
