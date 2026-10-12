@@ -98,15 +98,23 @@ export function stopLink() {
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 let nodes: AudioNode[] = [];
-let timers: number[] = [];
+let outNode: GainNode | null = null;
+const timers = new Set<number>();
+const buffers = new Map<string, AudioBuffer>();
 
-function noiseBuffer(ac: AudioContext, color: 'white' | 'pink' | 'brown'): AudioBuffer {
-  const len = ac.sampleRate * 6;
-  const buf = ac.createBuffer(1, len, ac.sampleRate);
-  const d = buf.getChannelData(0);
+type NoiseColor = 'white' | 'pink' | 'brown';
+
+/** Duración del bucle de ruido: larga y sin número redondo, para que no se note que se repite ni coincida con las olas. */
+const LOOP_S = 19;
+/** Fundido entre el final y el principio del bucle. */
+const SEAM_S = 1.5;
+
+/** Ruido de un color, `n` muestras. */
+export function noise(color: NoiseColor, n: number, rand: () => number = Math.random): Float32Array {
+  const d = new Float32Array(n);
   let last = 0, b0 = 0, b1 = 0, b2 = 0;
-  for (let i = 0; i < len; i++) {
-    const white = Math.random() * 2 - 1;
+  for (let i = 0; i < n; i++) {
+    const white = rand() * 2 - 1;
     if (color === 'brown') {
       last = (last + 0.02 * white) / 1.02;
       d[i] = last * 3.5;
@@ -117,13 +125,40 @@ function noiseBuffer(ac: AudioContext, color: 'white' | 'pink' | 'brown'): Audio
       d[i] = (b0 + b1 + b2 + white * 0.1848) * 0.2;
     } else d[i] = white;
   }
-  // Fundido en los bordes para que el bucle no haga «clic» al repetirse.
-  const fade = Math.floor(ac.sampleRate * 0.05);
-  for (let i = 0; i < fade; i++) { d[i] *= i / fade; d[len - 1 - i] *= i / fade; }
+  return d;
+}
+
+/**
+ * Bucle sin costura: `raw` trae `xf` muestras de más; el principio se funde con esas muestras de después del final
+ * (a potencia constante). Así la última muestra enlaza con la primera sin clic, y el volumen no baja nunca:
+ * antes se fundía a silencio en los bordes y se oía un hueco cada pocos segundos.
+ */
+export function seamless(raw: Float32Array, xf: number): Float32Array {
+  const len = raw.length - xf;
+  const d = raw.slice(0, len);
+  for (let i = 0; i < xf; i++) {
+    const t = ((i + 0.5) / xf) * (Math.PI / 2);
+    d[i] = raw[i] * Math.sin(t) + raw[len + i] * Math.cos(t);
+  }
+  return d;
+}
+
+function noiseBuffer(ac: AudioContext, color: NoiseColor): AudioBuffer {
+  const key = `${color}@${ac.sampleRate}`;
+  const cached = buffers.get(key);
+  if (cached) return cached;
+  const len = Math.floor(ac.sampleRate * LOOP_S);
+  const xf = Math.floor(ac.sampleRate * SEAM_S);
+  // Se descarta el arranque del filtro (los primeros instantes salen más flojos) generando un poco antes.
+  const warm = Math.floor(ac.sampleRate * 0.5);
+  const raw = noise(color, warm + len + xf).subarray(warm);
+  const buf = ac.createBuffer(1, len, ac.sampleRate);
+  buf.getChannelData(0).set(seamless(raw, xf));
+  buffers.set(key, buf);
   return buf;
 }
 
-function loop(ac: AudioContext, color: 'white' | 'pink' | 'brown'): AudioBufferSourceNode {
+function loop(ac: AudioContext, color: NoiseColor): AudioBufferSourceNode {
   const src = ac.createBufferSource();
   src.buffer = noiseBuffer(ac, color);
   src.loop = true;
@@ -159,13 +194,22 @@ function drift(ac: AudioContext, param: AudioParam, hz: number, depth: number) {
   nodes.push(lfo, amt);
 }
 
+/** Ejecuta `fn` dentro de `ms` (y se cancela al parar el sonido). */
+function later(ms: number, fn: () => void) {
+  const id = window.setTimeout(() => {
+    timers.delete(id);
+    fn();
+  }, ms);
+  timers.add(id);
+}
+
 /** Repite `fn` con pausas aleatorias entre `min` y `max` ms. */
 function every(min: number, max: number, fn: () => void) {
   const tick = () => {
     fn();
-    timers.push(window.setTimeout(tick, min + Math.random() * (max - min)));
+    later(min + Math.random() * (max - min), tick);
   };
-  timers.push(window.setTimeout(tick, min + Math.random() * (max - min)));
+  later(min + Math.random() * (max - min), tick);
 }
 
 /** Gota o chispa suave: ruido corto filtrado, con ataque y caída redondeados. */
@@ -214,18 +258,32 @@ const CHORDS = [
   [82.41, 123.47, 207.65, 246.94],
 ];
 
+/** Para el ambiente que suena: baja en un instante (sin clic) y después desmonta sus nodos. */
 function stopSynth() {
   timers.forEach(clearTimeout);
-  timers = [];
-  nodes.forEach((n) => {
+  timers.clear();
+  const old = nodes;
+  const oldOut = outNode;
+  nodes = [];
+  outNode = null;
+  if (!old.length || !ctx) return;
+  const t = ctx.currentTime;
+  oldOut?.gain.cancelScheduledValues(t);
+  oldOut?.gain.setTargetAtTime(0, t, 0.06);
+  old.forEach((n) => {
     try {
-      if (n instanceof AudioBufferSourceNode || n instanceof OscillatorNode) n.stop();
-      n.disconnect();
+      if (n instanceof AudioScheduledSourceNode) n.stop(t + 0.4);
     } catch {
       /* ya parado */
     }
   });
-  nodes = [];
+  window.setTimeout(() => old.forEach((n) => {
+    try {
+      n.disconnect();
+    } catch {
+      /* ya desconectado */
+    }
+  }), 600);
 }
 
 export function playAmbient(kind: AmbientKind) {
@@ -237,14 +295,17 @@ export function playAmbient(kind: AmbientKind) {
     return;
   }
   const ac = ctx;
-  master ??= ac.createGain();
-  master.connect(ac.destination);
-  // Entra poco a poco (2 s) en vez de golpe.
-  master.gain.cancelScheduledValues(ac.currentTime);
-  master.gain.setValueAtTime(0.0001, ac.currentTime);
-  master.gain.linearRampToValueAtTime(gainFor(state.volume), ac.currentTime + 2);
+  if (!master) {
+    master = ac.createGain();
+    master.gain.value = gainFor(state.volume);
+    master.connect(ac.destination);
+  }
+  // Entra poco a poco (2 s) en vez de golpe; el anterior se apaga por su lado, sin cortes.
   const out = gain(ac, 1);
+  out.gain.setValueAtTime(0.0001, ac.currentTime);
+  out.gain.linearRampToValueAtTime(1, ac.currentTime + 2);
   out.connect(master);
+  outNode = out;
 
   if (kind === 'marron') {
     const g = gain(ac, 0.8);
@@ -275,7 +336,7 @@ export function playAmbient(kind: AmbientKind) {
     sparks.connect(out);
     every(500, 2200, () => {
       const n = 1 + Math.floor(Math.random() * 3);
-      for (let i = 0; i < n; i++) timers.push(window.setTimeout(() => droplet(ac, sparks, 1300 + Math.random() * 1500, 0.04 + Math.random() * 0.06, 0.03), i * (40 + Math.random() * 90)));
+      for (let i = 0; i < n; i++) later(i * (40 + Math.random() * 90), () => droplet(ac, sparks, 1300 + Math.random() * 1500, 0.04 + Math.random() * 0.06, 0.03));
     });
   } else if (kind === 'bosque') {
     // Viento entre los árboles y algún pájaro lejano cada pocos segundos.

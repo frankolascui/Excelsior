@@ -6,6 +6,8 @@ export interface Theme {
   c1: string; // claro / principal
   c2: string; // medio
   c3: string; // profundo
+  /** Inicio del degradado de los botones principales si `c1` es demasiado pálido para ellos (si no, `c1`). */
+  b1?: string;
 }
 
 /** Texto legible sobre el degradado: oscuro si el color medio es claro. */
@@ -17,9 +19,9 @@ export function inkFor(hex: string): string {
 export const THEMES: Theme[] = [
   { id: 'excelsior', name: 'Excelsior', c1: '#ff5ccf', c2: '#c056ff', c3: '#6d3df5' },
   { id: 'olimpo', name: 'Olimpo', c1: '#ffd166', c2: '#f59e0b', c3: '#b45309' },
-  { id: 'poseidon', name: 'Poseidón', c1: '#5eead4', c2: '#38bdf8', c3: '#2563eb' },
+  { id: 'poseidon', name: 'Poseidón', c1: '#5eead4', c2: '#38bdf8', c3: '#2563eb', b1: '#38bdf8' },
   { id: 'gaia', name: 'Gaia', c1: '#bef264', c2: '#22c55e', c3: '#0f766e' },
-  { id: 'ares', name: 'Ares', c1: '#fda4af', c2: '#f43f5e', c3: '#9f1239' },
+  { id: 'ares', name: 'Ares', c1: '#fda4af', c2: '#f43f5e', c3: '#9f1239', b1: '#fb7185' },
   { id: 'hades', name: 'Hades', c1: '#f5f5f5', c2: '#a3a3a3', c3: '#525252' },
 ];
 
@@ -54,4 +56,14 @@ export function applyTheme(t: Theme) {
   root.setProperty('--c3', t.c3);
   root.setProperty('--gold', `color-mix(in srgb, ${t.c1} 40%, #ffffff)`);
   root.setProperty('--on-accent', inkFor(t.c2));
+  // Botones principales: degradado de b1 (o c1) a c3, con el texto según el color del centro del botón.
+  const b1 = t.b1 ?? t.c1;
+  root.setProperty('--btn-1', b1);
+  root.setProperty('--on-btn', inkFor(mixHex(b1, t.c3)));
+}
+
+/** Mezcla a partes iguales de dos colores #rrggbb. */
+export function mixHex(a: string, b: string): string {
+  const ch = (h: string, i: number) => parseInt(h.slice(i, i + 2), 16);
+  return '#' + [1, 3, 5].map((i) => Math.round((ch(a, i) + ch(b, i)) / 2).toString(16).padStart(2, '0')).join('');
 }
