@@ -203,6 +203,16 @@ function DayCloseForm({ game, now }: { game: Game; now: number }) {
 
 export function DayClose({ game, now }: { game: Game; now: number }) {
   const today = dayKey(now);
+  const [open, setOpen] = useState(false);
+  // antes de las 18:00 y sin cierre guardado hoy, se queda en una línea para no alargar Hoy
+  if (!open && new Date(now).getHours() < 18 && !dayLog(game.state, today)) {
+    return (
+      <section className="panel dayclose-folded" aria-label="Estado del día">
+        <p><Icon name="moon" /> El cierre del día se abre solo a partir de las 18:00.</p>
+        <button className="ghost small" onClick={() => setOpen(true)}>Hacerlo ahora</button>
+      </section>
+    );
+  }
   return (
     <section className="panel" aria-labelledby="dayclose-h">
       <header className="panel-head"><h3 id="dayclose-h">Estado del día</h3></header>

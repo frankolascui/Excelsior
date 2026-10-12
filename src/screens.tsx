@@ -15,8 +15,8 @@ import { sfx } from './sfx';
 import { XpChart } from './charts';
 import {
   addHabit, addQuest, cancelTimer, CUSTOM_LIMITS, updateHabit, updateQuest, completeQuest, createProfile, dayKey, deepWorkMinutesOnDay,
-  deleteHabit, deleteQuest, focusPercent, habitStreakDays, isHabitDone, levelInfo, pendingQuests, scheduledQuests, setQuestDeadline, setQuestRepeat, setPhase, timerTotals,
-  pomodoroStatus, pomodoroStep, startTimer, stopTimer, suggest, toggleHabit, totalXp, undoQuest, xpOnDay, XP_RULES,
+  deleteHabit, deleteQuest, focusPercent, habitStreakDays, levelInfo, pendingQuests, scheduledQuests, setQuestDeadline, setQuestRepeat, setPhase, timerTotals,
+  pomodoroStatus, pomodoroStep, startTimer, stopTimer, suggest, toggleHabit, totalXp, undoQuest, XP_RULES,
 } from './game';
 import {
   AttributeList, AvatarCard, ConfirmButton, formatClock, formatMinutes, HabitItem, LevelBar, QuestItem,
@@ -30,6 +30,7 @@ import { RemindersPanel } from './agenda-ui';
 import { AchievementsPanel } from './achievements-ui';
 import { latestMetric, logMetric } from './life';
 import { Icon } from './icons';
+import { TodayStrip } from './today';
 
 export type Game = ReturnType<typeof useGame>;
 export type Tab = 'hoy' | 'misiones' | 'reinos' | 'arena' | 'gremios' | 'amigos' | 'deepwork' | 'habitos' | 'personaje' | 'ajustes';
@@ -86,14 +87,12 @@ export function Dashboard({
 }: { game: Game; go: (t: Tab) => void; focusQuest: (q: Quest | null) => void; guide: string }) {
   const { state, act } = game;
   const now = useNow(30_000);
-  const today = dayKey(now);
   const pending = pendingQuests(state, now);
-  const doneToday = state.quests.filter((q) => q.completedAt && dayKey(q.completedAt) === today);
-  const habitsDone = state.habits.filter((h) => isHabitDone(state, h.id, today)).length;
   const s = suggest(state, now);
 
   return (
     <div className="screen">
+      <TodayStrip state={state} now={now} />
       <WeeklyChronicle game={game} guide={guide} now={now} go={go} />
       <ReviewBanner state={state} now={now} guide={guide} />
       <UpcomingEvents state={state} now={now} />
@@ -197,9 +196,6 @@ export function Dashboard({
 
       <section className="panel" aria-label="XP y nivel global">
         <LevelBar state={state} />
-        <p className="today-line">
-          Hoy: <strong className="mono">+{xpOnDay(state, today)} XP</strong> · {formatMinutes(deepWorkMinutesOnDay(state, today))} de Deep Work · {doneToday.length} misiones · {habitsDone}/{state.habits.length} hábitos
-        </p>
       </section>
     </div>
   );

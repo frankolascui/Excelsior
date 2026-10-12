@@ -51,3 +51,20 @@ describe('misiones que se repiten', () => {
     expect(repeatLabel([0, 1, 3])).toBe('L X D');
   });
 });
+
+describe('racha de días activos', () => {
+  it('cuenta días seguidos con XP y no se rompe hasta que acaba hoy', async () => {
+    const { activeDayStreak } = await import('./core');
+    const { addQuest: aq, completeQuest: cq } = await import('./game');
+    let s = emptyState();
+    for (const d of [3, 2, 1]) {
+      s = aq(s, `m${d}`, 'daily', MON - d * D);
+      s = cq(s, s.quests.at(-1)!.id, MON - d * D).state;
+    }
+    expect(activeDayStreak(s, MON)).toEqual({ days: 3, today: false });
+    s = aq(s, 'hoy', 'daily', MON);
+    s = cq(s, s.quests.at(-1)!.id, MON).state;
+    expect(activeDayStreak(s, MON)).toEqual({ days: 4, today: true });
+    expect(activeDayStreak(s, MON + 2 * D).days).toBe(0);
+  });
+});
