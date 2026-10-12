@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { GameState, XPTransaction } from './types';
 import { createProfile, emptyState, migrate, xpForLevel } from './game';
 import {
-  splitBossName,
+  splitBossName, combat,
   activeBosses, BOSS_TEMPLATES, bossLock, bossPhase, bossStatus, MAX_ACTIVE_BOSSES, nextInSaga, SAGAS, summonBoss, summonCheck, summonTemplate,
   templateOf, timesDefeated,
 } from './bosses';
@@ -176,5 +176,64 @@ describe('nombre épico', () => {
   });
   it('todos los bosses de la escalera tienen sobrenombre', () => {
     expect(BOSS_TEMPLATES.every((t) => t.epithet)).toBe(true);
+  });
+});
+
+describe('reglas de combate (habilidades, punto débil y críticos)', () => {
+  const session = (s: GameState, minutes: number, at: number): GameState => {
+    const id = `s${n++}`;
+    return {
+      ...s,
+      sessions: [...s.sessions, { id, questId: null, label: 'foco', area: 'general', startedAt: at - minutes * 60_000, endedAt: at, minutes }],
+      xp: [...s.xp, { id: `t${n++}`, at, amount: minutes, source: 'deepwork', sourceId: id, label: 'foco', attributes: { voluntad: minutes / 4 } }],
+    };
+  };
+
+  it('todos los bosses de la escalera tienen habilidad y punto débil', () => {
+    for (const t of BOSS_TEMPLATES) {
+      expect(t.ability.name).toBeTruthy();
+      expect(t.weakness.per).toBeGreaterThan(0);
+    }
+  });
+
+  it('la Hidra regenera cada día entero sin daño', () => {
+    let s = summonTemplate(base(), 'hidra', NOW);
+    const b = s.bosses[0];
+    expect(b.rules).toBe(2);
+    s = gain(s, 100, NOW + 1000);
+    expect(bossStatus(s, b, NOW + DAY / 2).hpLeft).toBe(600);
+    // 2 días y medio después: dos curaciones del 6 % (42 cada una)
+    expect(bossStatus(s, b, NOW + 1000 + 2.5 * DAY).hpLeft).toBe(684);
+    expect(combat(s, b, NOW + 1000 + 2.5 * DAY).events.filter((e) => e.kind === 'regen')).toHaveLength(2);
+  });
+
+  it('a Medusa le rebotan las sesiones cortas y las de 90 min hacen crítico', () => {
+    let s = summonTemplate(base(), 'medusa', NOW);
+    const b = s.bosses[0];
+    s = session(s, 20, NOW + 1000);
+    expect(bossStatus(s, b, NOW + 2000).damage).toBe(0);
+    s = session(s, 90, NOW + 3000);
+    const c = combat(s, b, NOW + 4000);
+    expect(c.damage).toBe(180);
+    expect(c.events.map((e) => e.kind)).toEqual(['blocked', 'hit']);
+    expect(c.events[1].crit).toBe(true);
+  });
+
+  it('Cerbero no pierde más de un tercio al día y su punto débil solo cuenta herido', () => {
+    let s = summonTemplate(base(), 'cerbero', NOW);
+    const b = s.bosses[0];
+    s = gain(s, 0, NOW + 1000, { voluntad: 150 });
+    expect(bossStatus(s, b, NOW + 2000).damage).toBe(51);
+    // Al día siguiente, 40 más: queda a 59 (herido) y el hábito ya cuenta como punto débil (+5)
+    s = gain(s, 0, NOW + DAY, { voluntad: 40 });
+    s = { ...s, xp: [...s.xp, { id: `h${n++}`, at: NOW + DAY + 1000, amount: 10, source: 'habit', sourceId: 'nada', label: 'Leer' }] };
+    expect(bossStatus(s, b, NOW + DAY + 2000).hpLeft).toBe(54);
+  });
+
+  it('los bosses antiguos (sin reglas) solo suman daño', () => {
+    let s = summonTemplate(base(), 'hidra', NOW);
+    s = { ...s, bosses: s.bosses.map(({ rules: _r, ...b }) => b) };
+    s = gain(s, 100, NOW + 1000);
+    expect(bossStatus(s, s.bosses[0], NOW + 5 * DAY).hpLeft).toBe(600);
   });
 });

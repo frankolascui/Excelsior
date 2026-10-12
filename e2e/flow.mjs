@@ -98,6 +98,13 @@ check(await seen('.cal-day:has(.cal-q:has-text("Repasar Física"))'), 'crear una
 await page.screenshot({ path: `${out}/02b-calendar.png`, fullPage: true });
 await page.click('[role=radio]:has-text("Lista")');
 for (const t of ['Entregar el trabajo de Historia', 'Repasar Física']) await page.click(`button[aria-label="Borrar ${t}"]`);
+await page.fill('#new-quest', 'Leer la prensa');
+await page.click('#new-quest-repeat');
+await page.click('.pop-repeat .pop-chip:has-text("Lunes a viernes")');
+check(await seen('#new-quest-repeat:has-text("Lunes a viernes")'), 'repetir: el botón dice los días');
+await page.click('[data-tour="quest-add"] button:has-text("Crear")');
+check(await seen('.item:has-text("Leer la prensa") .repeat-tag:has-text("Lunes a viernes")'), 'la misión muestra que se repite');
+await page.click('button[aria-label="Borrar Leer la prensa"]');
 await page.click('.nav-item:has-text("Hoy")');
 
 // 3. Completar misión → XP
@@ -438,6 +445,9 @@ check(await seen('.item:has-text("Gimnasio") .freq-tag:has-text("1/3 esta semana
 await page.click('.nav-item:has-text("Deep Work")');
 check(await seen('#dw-intent') && !(await page.$('[aria-label="Tipo de trabajo"]')), 'Deep Work pregunta qué vas a hacer (sin tipos fijos)');
 await page.click('.nav-item:has-text("Hoy")');
+check(await seen('.today-strip .today-tile'), 'Hoy empieza con la barra del día');
+check(await seen('.dayclose-folded'), 'el cierre del día va plegado antes de las 18:00');
+await page.click('.dayclose-folded button:has-text("Hacerlo ahora")');
 await page.click('[aria-label="Energía 4 de 5"]');
 await page.click('[aria-label="Ánimo 5 de 5"]');
 await page.fill('#day-sleep', '7,5');

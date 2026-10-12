@@ -28,6 +28,9 @@ export interface Quest {
   xp?: number; // XP a medida; sin él, el del tipo
   rewards?: AttributeRewards; // atributos a medida (varios); sin él, se deducen
   deadline?: string; // fecha límite (YYYY-MM-DD local)
+  repeat?: number[]; // días de la semana en que se repite (0 = domingo … 6 = sábado); al completarla aparece la siguiente
+  startsOn?: string; // repetición programada: no sale en pendientes hasta ese día (YYYY-MM-DD local)
+  spawnedId?: string; // la repetición que creó al completarse (para deshacer)
 }
 
 export interface Habit {
@@ -156,6 +159,8 @@ export interface Boss {
   reward: number; // monedas al derrotarlo
   /** Plantilla de la escalera de bosses (hidra, medusa…). Sin ella (partidas antiguas o bosses propios) se busca por nombre. */
   templateId?: string;
+  /** Reglas de combate: 2 = habilidades, puntos débiles y críticos. Sin él (bosses antiguos), solo suma daño. */
+  rules?: 2;
 }
 
 export interface GameState {

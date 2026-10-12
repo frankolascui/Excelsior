@@ -1,0 +1,40 @@
+/* Núcleo: misiones que se repiten, barra de Hoy, hábitos y reinos. */
+
+.pop-repeat { width: 252px; }
+.pop-quick.one { grid-template-columns: 1fr; }
+.pop-quick.one .pop-chip { flex-direction: row; justify-content: flex-start; }
+.pop-note { margin: 6px 2px 4px; font-size: 12px; color: var(--muted); }
+.pop-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.pop-weekdays .pop-day { font-family: var(--body); font-weight: 600; }
+
+.repeat-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--c2, var(--c1)); }
+button.repeat-tag { background: none; border: 0; padding: 0; cursor: pointer; }
+button.repeat-tag:hover { text-decoration: underline; }
+
+.scheduled-list .item { opacity: 0.72; }
+.scheduled-list .starts { font-size: 12px; color: var(--muted); }
+
+/* Barra de Hoy */
+.today-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.today-tile {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px;
+  background: var(--surface); border: 1px solid var(--line); min-width: 0;
+}
+.today-ico { font-size: 22px; color: var(--muted); flex: none; }
+.today-tile.hot .today-ico { color: var(--c1); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--c1) 55%, transparent)); }
+.today-txt { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.today-val { font-size: 18px; font-weight: 700; line-height: 1.15; }
+.today-lbl { font-size: 12px; color: var(--muted); line-height: 1.3; }
+.today-bar { display: block; height: 3px; margin-top: 5px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+.today-bar span { display: block; height: 100%; background: var(--grad); border-radius: inherit; transition: width 0.4s ease; }
+@media (min-width: 761px) { .today-strip { margin-right: 96px; } }
+@media (max-width: 560px) {
+  .today-tile:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .today-strip { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .today-tile { padding: 8px 10px; }
+  .today-val { font-size: 16px; }
+}
+
+/* Cierre del día plegado hasta la tarde */
+.dayclose-folded { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.dayclose-folded p { margin: 0; color: var(--muted); font-size: 13.5px; }
