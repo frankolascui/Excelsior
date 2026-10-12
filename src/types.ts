@@ -156,6 +156,8 @@ export interface Boss {
   reward: number; // monedas al derrotarlo
   /** Plantilla de la escalera de bosses (hidra, medusa…). Sin ella (partidas antiguas o bosses propios) se busca por nombre. */
   templateId?: string;
+  /** Reglas de combate: 2 = habilidades, puntos débiles y críticos. Sin él (bosses antiguos), solo suma daño. */
+  rules?: 2;
 }
 
 export interface GameState {

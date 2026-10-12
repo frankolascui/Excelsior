@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import type { Game } from './screens';
 import type { Boss, BossSource, GameState, Reward } from './types';
 import {
+  abilityText, combat, CRIT_RULES, weaknessText, type BossAbility, type CombatEvent,
   activeBosses, addBoss, BOSS_TEMPLATES, bossLock, bossPhase, bossReward, bossStatus, deleteBoss, MAX_ACTIVE_BOSSES, nextInSaga,
   SAGAS, sagaOf, SOURCE_LABEL, summonBoss, templateOf, TIERS, timesDefeated, isActiveTemplate, type BossTemplate, type BossTier,
 } from './bosses';
@@ -87,21 +88,79 @@ export function TierBadge({ tier }: { tier: BossTier }) {
 
 const PHASE_LABEL = { calma: null, herido: 'Herido', furioso: '¡Furioso!' } as const;
 
-function BossCard({ boss: b, st, onFlee }: { boss: Boss; st: ReturnType<typeof bossStatus>; onFlee: () => void }) {
+const ABILITY_ICON: Record<BossAbility['kind'], IconName> = { regen: 'heart', armor: 'shield', cap: 'hourglass' };
+
+/** Habilidad y punto débil de un boss de la escalera. El punto débil se revela al dejarlo a media vida. */
+function BossTraits({ boss: b, revealed }: { boss: Boss; revealed: boolean }) {
+  const t = templateOf(b);
+  if (!t || b.rules !== 2) return null;
+  return (
+    <ul className="boss-traits">
+      <li className="trait ability">
+        <Icon name={ABILITY_ICON[t.ability.kind]} />
+        <span><b>{t.ability.name}.</b> {abilityText(t.ability, b.source)}</span>
+      </li>
+      <li className={revealed ? 'trait weakness' : 'trait weakness hidden'}>
+        <Icon name={revealed ? 'evil-eye' : 'lock'} />
+        {revealed
+          ? <span><b>Punto débil: {t.weakness.name}.</b> {weaknessText(t.weakness)}</span>
+          : <span><b>Punto débil oculto.</b> Se revela cuando le dejes a media vida.</span>}
+      </li>
+    </ul>
+  );
+}
+
+const EVENT_TEXT: Record<CombatEvent['kind'], string> = { hit: '', blocked: 'Rebota', capped: 'Tope del día', regen: 'Se regenera' };
+
+/** Últimos golpes y curaciones del combate, el más reciente arriba. */
+function CombatLog({ events }: { events: CombatEvent[] }) {
+  const last = events.slice(-6).reverse();
+  if (!last.length) return <p className="combat-log empty muted small-text">Aún no le has hecho nada. Tu próximo golpe aparecerá aquí.</p>;
+  return (
+    <ol className="combat-log" aria-label="Registro del combate">
+      {last.map((e, i) => {
+        const when = new Date(e.at).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' }).replace(/\./g, '');
+        return (
+          <li key={`${e.at}-${i}`} className={`log-row ${e.kind}${e.crit ? ' crit' : ''}${e.weak ? ' weak' : ''}`}>
+            <span className="log-when mono">{when}</span>
+            <span className="log-what">
+              {e.label}
+              {e.crit && <span className="log-tag crit">¡Crítico!</span>}
+              {e.weak && <span className="log-tag weak">Punto débil</span>}
+              {EVENT_TEXT[e.kind] && <span className={`log-tag ${e.kind}`}>{EVENT_TEXT[e.kind]}</span>}
+            </span>
+            <span className="log-amount mono">{e.kind === 'regen' ? `+${fmtNum(e.amount)}` : e.amount > 0 ? `−${fmtNum(e.amount)}` : '0'}</span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function BossCard({ boss: b, st, events, onFlee }: { boss: Boss; st: ReturnType<typeof bossStatus>; events: CombatEvent[]; onFlee: () => void }) {
   const t = templateOf(b);
   const [shown, setShown] = useState(() => Math.min(loadSeen()[b.id] ?? st.damage, st.damage));
   const [hit, setHit] = useState(0);
+  const [crit, setCrit] = useState(false);
   useEffect(() => {
-    if (st.damage <= shown) return;
+    if (st.damage === shown) return;
+    if (st.damage < shown) {
+      // Se ha regenerado mientras no estabas: la barra sube sin golpe.
+      setShown(st.damage);
+      saveSeen(b.id, st.damage);
+      return;
+    }
     const dealt = st.damage - shown;
+    const lastHit = [...events].reverse().find((e) => e.kind !== 'regen' && e.amount > 0);
     const timer = setTimeout(() => {
       setHit(dealt);
+      setCrit(!!lastHit?.crit);
       setShown(st.damage);
       saveSeen(b.id, st.damage);
       sfx.hit();
     }, 450);
     return () => clearTimeout(timer);
-  }, [st.damage, shown, b.id]);
+  }, [st.damage, shown, b.id, events]);
   useEffect(() => {
     if (!hit) return;
     const timer = setTimeout(() => setHit(0), 1100);
@@ -113,7 +172,7 @@ function BossCard({ boss: b, st, onFlee }: { boss: Boss; st: ReturnType<typeof b
   const since = new Date(b.createdAt).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/\./g, '');
   return (
     <article
-      className={`boss boss-fight phase-${phase}${hit ? ' hit' : ''}`}
+      className={`boss boss-fight phase-${phase}${hit ? ' hit' : ''}${hit && crit ? ' crit' : ''}`}
       style={t ? { ['--tier' as string]: TIER_COLOR[t.tier] } : undefined}
       aria-label={`${b.name}: ${Math.round(st.hpLeft)} de ${b.hp} de vida`}
     >
@@ -130,7 +189,7 @@ function BossCard({ boss: b, st, onFlee }: { boss: Boss; st: ReturnType<typeof b
         <span className="fight-aura" />
         <span className="fight-ground" />
         <PixelBoss templateId={t?.id} icon={b.icon} phase={phase} scale={3} className="boss-art" />
-        {hit > 0 && <span className="dmg-float mono">−{fmtNum(hit)}</span>}
+        {hit > 0 && <span className="dmg-float mono">{crit && <small>¡Crítico!</small>}−{fmtNum(hit)}</span>}
         {hit > 0 && <span className="slash" />}
       </span>
       <div className="boss-body">
@@ -140,11 +199,13 @@ function BossCard({ boss: b, st, onFlee }: { boss: Boss; st: ReturnType<typeof b
           {phaseLabel && <span className={`phase-tag ${phase}`}>{phaseLabel}</span>}
         </div>
         {t && <p className="boss-lore">«{t.lore}»</p>}
+        <BossTraits boss={b} revealed={phase !== 'calma'} />
         <p className="boss-meta">
           <span><Icon name="crossed-swords" /> {SOURCE_LABEL[b.source].hint}</span>
           <span className={urgent ? 'urgent' : ''}><Icon name="hourglass" /> quedan {timeLeft(st.msLeft)}</span>
           <span className="loot"><Icon name="coin" className="coin-ico" /> botín {b.reward}</span>
         </p>
+        {b.rules === 2 && <CombatLog events={events} />}
       </div>
     </article>
   );
@@ -170,6 +231,7 @@ function TemplateCard({ t, state, now, full, onSummon }: { t: BossTemplate; stat
         ) : (
           <p className="muted small-text tpl-lore">{t.lore}</p>
         )}
+        <p className="tpl-ability small-text" title={abilityText(t.ability, t.source)}><Icon name={ABILITY_ICON[t.ability.kind]} /> {t.ability.name}</p>
         <p className="mono small-text tpl-stats">
           {t.hp} {SOURCE_LABEL[t.source].unit} · {t.days} días · <span className="loot">{t.reward} <Icon name="coin" className="coin-ico" /></span>
         </p>
@@ -220,6 +282,9 @@ function SummonIntro({ boss, onClose }: { boss: Boss; onClose: () => void }) {
       <p className="intro-cry">¡Ha aparecido!</p>
       <div className="intro-name-wrap"><EpicName name={boss.name} epithet={t?.epithet} split={!!t} as="h2" size="lg" /></div>
       {t && <p className="intro-lore">«{t.lore}»</p>}
+      {t && boss.rules === 2 && (
+        <p className="intro-ability"><Icon name={ABILITY_ICON[t.ability.kind]} /> <b>{t.ability.name}.</b> {abilityText(t.ability, boss.source)}</p>
+      )}
       <p className="intro-stats mono">
         <span><Icon name="hp" className="hp-ico" /> {boss.hp} {SOURCE_LABEL[boss.source].unit}</span>
         <span><Icon name="hourglass" /> {days} {days === 1 ? 'día' : 'días'}</span>
@@ -340,7 +405,8 @@ export function Arena({ game }: { game: Game }) {
           <h3 id="bosses-h">Bosses</h3>
           <span className="count mono">{active.length}/{MAX_ACTIVE_BOSSES} activos</span>
         </header>
-        <p className="hint">Un boss es un reto con plazo: le haces daño con lo que hagas desde que lo invocas y, si cae a tiempo, te llevas su botín. Subir de nivel y vencer a cada bestia abre las siguientes de su saga.</p>
+        <p className="hint">Un boss es un reto con plazo: le haces daño con lo que hagas desde que lo invocas y, si cae a tiempo, te llevas su botín. Subir de nivel y vencer a cada bestia abre las siguientes de su saga. Cada boss tiene una habilidad y un punto débil que se revela a media vida.</p>
+        <p className="hint crit-hint"><Icon name="sparkles" /> {CRIT_RULES}</p>
         <div className="arena-progress">
           <span><b className="mono">Nv {level}</b> nivel global</span>
           <span><b className="mono">{unlockedCount}/{BOSS_TEMPLATES.length}</b> bosses desbloqueados</span>
@@ -349,7 +415,7 @@ export function Arena({ game }: { game: Game }) {
         {active.length > 0 && (
           <div className="boss-list">
             {active.map((b) => (
-              <BossCard key={b.id} boss={b} st={bossStatus(state, b, now)} onFlee={() => act((s) => deleteBoss(s, b.id))} />
+              <BossCard key={b.id} boss={b} st={bossStatus(state, b, now)} events={combat(state, b, now).events} onFlee={() => act((s) => deleteBoss(s, b.id))} />
             ))}
           </div>
         )}
