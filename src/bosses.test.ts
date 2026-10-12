@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { GameState, XPTransaction } from './types';
 import { createProfile, emptyState, migrate, xpForLevel } from './game';
 import {
-  splitBossName, combat,
+  splitBossName, combat, bossStars,
   activeBosses, BOSS_TEMPLATES, bossLock, bossPhase, bossStatus, MAX_ACTIVE_BOSSES, nextInSaga, SAGAS, summonBoss, summonCheck, summonTemplate,
   templateOf, timesDefeated,
 } from './bosses';
@@ -235,5 +235,18 @@ describe('reglas de combate (habilidades, punto débil y críticos)', () => {
     s = { ...s, bosses: s.bosses.map(({ rules: _r, ...b }) => b) };
     s = gain(s, 100, NOW + 1000);
     expect(bossStatus(s, s.bosses[0], NOW + 5 * DAY).hpLeft).toBe(600);
+  });
+});
+
+describe('estrellas', () => {
+  it('premian la rapidez y no se dan a los bosses antiguos', () => {
+    const b = { ...summonTemplate(base(), 'hidra', NOW).bosses[0] };
+    const span = b.deadline - b.createdAt;
+    expect(bossStars(b, null)).toBe(0);
+    expect(bossStars(b, NOW + span * 0.4)).toBe(3);
+    expect(bossStars(b, NOW + span * 0.7)).toBe(2);
+    expect(bossStars(b, NOW + span * 0.95)).toBe(1);
+    const { rules: _r, ...old } = b;
+    expect(bossStars(old, NOW + 1000)).toBe(0);
   });
 });

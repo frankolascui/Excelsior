@@ -432,6 +432,33 @@ export function bossStatus(s: GameState, b: Boss, now: number) {
   };
 }
 
+/**
+ * Estrellas de una victoria (solo bosses con reglas nuevas): 3 si cae en la primera mitad del plazo,
+ * 2 si cae antes del 80 %, 1 si no. 0 si no está derrotado o es un boss antiguo.
+ */
+export function bossStars(b: Boss, defeatedAt: number | null): 0 | 1 | 2 | 3 {
+  if (defeatedAt === null || b.rules !== 2) return 0;
+  const used = (defeatedAt - b.createdAt) / Math.max(1, b.deadline - b.createdAt);
+  return used <= 0.5 ? 3 : used <= 0.8 ? 2 : 1;
+}
+
+/** Botín extra por 3 estrellas: un 25 % más. */
+export const STAR_BONUS = 0.25;
+
+/** Monedas que da un boss derrotado: su botín más el extra por 3 estrellas. 0 si no ha caído. */
+export function bossLoot(s: GameState, b: Boss, now: number): number {
+  const st = bossStatus(s, b, now);
+  if (!st.defeated) return 0;
+  return b.reward + (bossStars(b, st.defeatedAt) === 3 ? Math.round(b.reward * STAR_BONUS) : 0);
+}
+
+/** Mejor número de estrellas logrado contra un boss de la escalera (0 si nunca o solo con reglas antiguas). */
+export function bestStars(s: GameState, templateId: string, now: number): number {
+  return s.bosses
+    .filter((b) => templateOf(b)?.id === templateId)
+    .reduce((best, b) => Math.max(best, bossStars(b, bossStatus(s, b, now).defeatedAt)), 0);
+}
+
 /** Fase del combate según la vida que le queda: solo cambia el aspecto (herido por debajo del 50 %, furioso del 25 %). */
 export type BossPhase = 'calma' | 'herido' | 'furioso';
 export function bossPhase(hpLeft: number, hp: number): BossPhase {

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import type { Game } from './screens';
 import type { Boss, BossSource, GameState, Reward } from './types';
 import {
-  abilityText, combat, CRIT_RULES, weaknessText, type BossAbility, type CombatEvent,
+  abilityText, bestStars, bossLoot, bossStars, combat, CRIT_RULES, STAR_BONUS, weaknessText, type BossAbility, type CombatEvent,
   activeBosses, addBoss, BOSS_TEMPLATES, bossLock, bossPhase, bossReward, bossStatus, deleteBoss, MAX_ACTIVE_BOSSES, nextInSaga,
   SAGAS, sagaOf, SOURCE_LABEL, summonBoss, templateOf, TIERS, timesDefeated, isActiveTemplate, type BossTemplate, type BossTier,
 } from './bosses';
@@ -19,6 +19,8 @@ import { BossArt, PixelBoss, TIER_COLOR } from './boss-art';
 import { BossHpBar, EpicName } from './boss-ui';
 import type { BarTheme } from './bar-art';
 import { Glyph, Icon, tok, type IconName } from './icons';
+import { avatarInfo } from './attributes';
+import { AvatarPortrait, initialOf } from './portrait';
 import './arena.css';
 
 const BOSS_ICONS: IconName[] = ['dragon-head', 'snake', 'bull', 'wolf', 'lion', 'evil-eye', 'vortex', 'tornado', 'scorpion', 'eagle', 'spider', 'death-skull', 'ogre', 'zombie', 'shark', 'octopus'];
@@ -86,6 +88,15 @@ export function TierBadge({ tier }: { tier: BossTier }) {
   );
 }
 
+/** Fila de 3 estrellas, llenas las ganadas. */
+export function Stars({ n, size = 'sm' }: { n: number; size?: 'sm' | 'lg' }) {
+  return (
+    <span className={`stars stars-${size}`} aria-label={`${n} de 3 estrellas`}>
+      {[1, 2, 3].map((i) => <span key={i} className={i <= n ? 'star on' : 'star'} aria-hidden="true">★</span>)}
+    </span>
+  );
+}
+
 const PHASE_LABEL = { calma: null, herido: 'Herido', furioso: '¡Furioso!' } as const;
 
 const ABILITY_ICON: Record<BossAbility['kind'], IconName> = { regen: 'heart', armor: 'shield', cap: 'hourglass' };
@@ -137,7 +148,10 @@ function CombatLog({ events }: { events: CombatEvent[] }) {
   );
 }
 
-function BossCard({ boss: b, st, events, onFlee }: { boss: Boss; st: ReturnType<typeof bossStatus>; events: CombatEvent[]; onFlee: () => void }) {
+/** Tu héroe en el combate: tu aro de avatar con tu foto o inicial, frente al boss. */
+export interface Hero { tier: number; photo?: string; initial: string; name: string }
+
+function BossCard({ boss: b, st, events, hero, onFlee }: { boss: Boss; st: ReturnType<typeof bossStatus>; events: CombatEvent[]; hero: Hero; onFlee: () => void }) {
   const t = templateOf(b);
   const [shown, setShown] = useState(() => Math.min(loadSeen()[b.id] ?? st.damage, st.damage));
   const [hit, setHit] = useState(0);
@@ -185,12 +199,19 @@ function BossCard({ boss: b, st, events, onFlee }: { boss: Boss; st: ReturnType<
       <BossHpBar max={b.hp} left={b.hp - shown} trail={hit ? b.hp - shown + hit : undefined} phase={phase} theme={(t?.saga ?? 'heroe') as BarTheme}
         label={<><b>{fmtNum(st.hpLeft)}</b> / {b.hp}</>} />
       <span className="fight-since mono">En combate desde el {since}</span>
-      <span className={`boss-stage fight-stage phase-${phase}`} aria-hidden="true">
-        <span className="fight-aura" />
-        <span className="fight-ground" />
-        <PixelBoss templateId={t?.id} icon={b.icon} phase={phase} scale={3} className="boss-art" />
-        {hit > 0 && <span className="dmg-float mono">{crit && <small>¡Crítico!</small>}−{fmtNum(hit)}</span>}
-        {hit > 0 && <span className="slash" />}
+      <span className="fight-scene" aria-hidden="true">
+        <span className="fight-hero">
+          <span className="fight-hero-ground" />
+          <AvatarPortrait tier={hero.tier} photo={hero.photo} label={hero.initial} size={96} />
+          <span className="fight-hero-name">{hero.name}</span>
+        </span>
+        <span className={`boss-stage fight-stage phase-${phase}`}>
+          <span className="fight-aura" />
+          <span className="fight-ground" />
+          <PixelBoss templateId={t?.id} icon={b.icon} phase={phase} scale={3} className="boss-art" />
+          {hit > 0 && <span className="dmg-float mono">{crit && <small>¡Crítico!</small>}−{fmtNum(hit)}</span>}
+          {hit > 0 && <span className="slash" />}
+        </span>
       </span>
       <div className="boss-body">
         <div className="boss-tags">
@@ -215,6 +236,7 @@ function TemplateCard({ t, state, now, full, onSummon }: { t: BossTemplate; stat
   const lock = bossLock(state, t.id, now);
   const fighting = !lock && isActiveTemplate(state, t.id, now);
   const wins = timesDefeated(state, t.id, now);
+  const stars = bestStars(state, t.id, now);
   const cls = ['boss-template', lock ? 'locked' : fighting ? 'fighting' : 'ready', wins ? 'beaten' : ''].filter(Boolean).join(' ');
   return (
     <article className={cls} style={{ ['--tier' as string]: TIER_COLOR[t.tier] }} aria-label={lock ? `${t.name}: bloqueado, ${lock.label}` : t.name}>
@@ -225,6 +247,7 @@ function TemplateCard({ t, state, now, full, onSummon }: { t: BossTemplate; stat
       </div>
       <div className="tpl-body">
         <TierBadge tier={t.tier} />
+        {stars > 0 && <Stars n={stars} />}
         <EpicName name={t.name} epithet={t.epithet} as="h5" size="sm" />
         {lock ? (
           <p className="lock-reason"><Icon name="lock" /> {lock.label}</p>
@@ -296,9 +319,17 @@ function SummonIntro({ boss, onClose }: { boss: Boss; onClose: () => void }) {
   );
 }
 
+const STAR_NOTE: Record<number, string> = {
+  1: 'Cayó al final del plazo. Más rápido, más estrellas.',
+  2: 'Antes del 80 % del plazo. Tumbarlo en la primera mitad da 3 estrellas.',
+  3: `En la primera mitad del plazo: botín +${Math.round(STAR_BONUS * 100)} %.`,
+};
+
 function VictoryOverlay({ boss, state, now, onClose }: { boss: Boss; state: GameState; now: number; onClose: () => void }) {
   const t = templateOf(boss);
   const next = t ? nextInSaga(t.id) : [];
+  const stars = bossStars(boss, bossStatus(state, boss, now).defeatedAt);
+  const loot = bossLoot(state, boss, now);
   return (
     <Overlay className="victory" label={`Victoria sobre ${boss.name}`} onClose={onClose} autoMs={12000}>
       <div className="intro-rays gold" aria-hidden="true" />
@@ -308,7 +339,9 @@ function VictoryOverlay({ boss, state, now, onClose }: { boss: Boss; state: Game
       </div>
       <p className="victory-title">¡Victoria!</p>
       <h2 className="intro-name">Has derrotado a {t ? t.short : boss.name}</h2>
-      <p className="victory-loot mono" aria-label={`Botín: ${boss.reward} monedas`}>+{boss.reward} <Icon name="coin" className="coin-ico" /></p>
+      {stars > 0 && <Stars n={stars} size="lg" />}
+      {stars > 0 && <p className="victory-stars-note muted small-text">{STAR_NOTE[stars]}</p>}
+      <p className="victory-loot mono" aria-label={`Botín: ${loot} monedas`}>+{loot} <Icon name="coin" className="coin-ico" /></p>
       {next.map((n) => {
         const lock = bossLock(state, n.id, now);
         return (
@@ -323,6 +356,30 @@ function VictoryOverlay({ boss, state, now, onClose }: { boss: Boss; state: Game
   );
 }
 
+/** Vitrina: un trofeo por boss de la escalera, con sus mejores estrellas. Los no vencidos, en sombra. */
+function TrophyShelf({ state, now }: { state: GameState; now: number }) {
+  return (
+    <details className="trophy-shelf">
+      <summary><Icon name="trophy" /> Vitrina de trofeos</summary>
+      <ul className="trophies">
+        {BOSS_TEMPLATES.map((t) => {
+          const wins = timesDefeated(state, t.id, now);
+          const stars = bestStars(state, t.id, now);
+          return (
+            <li key={t.id} className={wins ? 'trophy won' : 'trophy'} style={{ ['--tier' as string]: TIER_COLOR[t.tier] }}
+              title={wins ? `${t.name}: derrotado ${wins} ${wins === 1 ? 'vez' : 'veces'}` : `${t.name}: aún sin vencer`}>
+              <span className="trophy-plinth"><PixelBoss templateId={t.id} icon={t.icon} scale={0.7} silhouette={!wins} className="boss-art" /></span>
+              <span className="trophy-name">{t.short.replace(/^(el|la|las|los) /i, '')}</span>
+              {wins > 0 && <Stars n={stars} />}
+            </li>
+          );
+        })}
+      </ul>
+      <p className="muted small-text">Las estrellas premian la rapidez: 3 si cae en la primera mitad del plazo (con +{Math.round(STAR_BONUS * 100)} % de botín), 2 antes del 80 %, 1 si cae al final.</p>
+    </details>
+  );
+}
+
 // ---------- Pantalla ----------
 
 export function Arena({ game }: { game: Game }) {
@@ -333,8 +390,11 @@ export function Arena({ game }: { game: Game }) {
   const active = activeBosses(state, now);
   const full = active.length >= MAX_ACTIVE_BOSSES;
   const level = levelInfo(totalXp(state)).level;
+  const avatar = avatarInfo(state, now);
+  const hero: Hero = { tier: avatar.index, photo: state.profile?.photo, initial: initialOf(state.profile?.name), name: state.profile?.name ?? 'Tú' };
   const unlockedCount = BOSS_TEMPLATES.filter((t) => !bossLock(state, t.id, now)).length;
   const beatenCount = BOSS_TEMPLATES.filter((t) => timesDefeated(state, t.id, now) > 0).length;
+  const starCount = BOSS_TEMPLATES.reduce((n, t) => n + bestStars(state, t.id, now), 0);
   const finished = state.bosses
     .map((b) => ({ b, st: bossStatus(state, b, now) }))
     .filter(({ st }) => !st.active)
@@ -411,11 +471,13 @@ export function Arena({ game }: { game: Game }) {
           <span><b className="mono">Nv {level}</b> nivel global</span>
           <span><b className="mono">{unlockedCount}/{BOSS_TEMPLATES.length}</b> bosses desbloqueados</span>
           <span><b className="mono">{beatenCount}/{BOSS_TEMPLATES.length}</b> vencidos</span>
+          <span><b className="mono">{starCount}/{BOSS_TEMPLATES.length * 3}</b> estrellas</span>
         </div>
+        <TrophyShelf state={state} now={now} />
         {active.length > 0 && (
           <div className="boss-list">
             {active.map((b) => (
-              <BossCard key={b.id} boss={b} st={bossStatus(state, b, now)} events={combat(state, b, now).events} onFlee={() => act((s) => deleteBoss(s, b.id))} />
+              <BossCard key={b.id} boss={b} st={bossStatus(state, b, now)} events={combat(state, b, now).events} hero={hero} onFlee={() => act((s) => deleteBoss(s, b.id))} />
             ))}
           </div>
         )}
@@ -456,7 +518,7 @@ export function Arena({ game }: { game: Game }) {
                   <li key={b.id} className={st.defeated ? 'combat win-row' : 'combat'}>
                     <BossArt templateId={t?.id} icon={b.icon} tier={t?.tier} size={34} defeated={st.defeated} />
                     <span className="combat-name">{b.name}</span>
-                    <span className={st.defeated ? 'mono win' : 'mono muted'}>{st.defeated ? <>Derrotado · +{b.reward} <Icon name="coin" className="coin-ico" /></> : 'Escapó'}</span>
+                    <span className={st.defeated ? 'mono win' : 'mono muted'}>{st.defeated ? <>{bossStars(b, st.defeatedAt) > 0 && <Stars n={bossStars(b, st.defeatedAt)} />} Derrotado · +{bossLoot(state, b, now)} <Icon name="coin" className="coin-ico" /></> : 'Escapó'}</span>
                   </li>
                 );
               })}

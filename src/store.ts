@@ -7,7 +7,7 @@ import { emptyState, levelInfo, migrate, totalXp } from './game';
 import { avatarInfo, ensureAscended, rebalance } from './attributes';
 import { sfx } from './sfx';
 import { confetti } from './confetti';
-import { bossStatus } from './bosses';
+import { bossLoot, bossStatus } from './bosses';
 import { kingdomBonus } from './economy';
 import { schedulePublish } from './social';
 import { scheduleGuildReport } from './guilds';
@@ -150,7 +150,7 @@ export function useGame() {
     const defeated = defeatedIds(state);
     for (const b of state.bosses) {
       if (defeated.has(b.id) && !prevDefeated.current.has(b.id)) {
-        toast(`${tok(b.icon)} ¡Has derrotado a ${b.name}! +${b.reward} {i:coin}`, 'level');
+        toast(`${tok(b.icon)} ¡Has derrotado a ${b.name}! +${bossLoot(state, b, Date.now())} {i:coin}`, 'level');
         setTimeout(() => sfx.victory(), 300);
         confetti({ big: true, count: 200 });
       }

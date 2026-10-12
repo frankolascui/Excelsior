@@ -2,7 +2,7 @@
 import type { GameState, Purchase, Reward } from './types';
 import type { IconName } from './icon-data';
 import { totalXp, uid } from './game';
-import { defeatedBosses } from './bosses';
+import { bossLoot, defeatedBosses } from './bosses';
 import { kingdomProgress } from './kingdoms';
 
 export const COIN_RULES = {
@@ -60,7 +60,7 @@ export function kingdomBonus(s: GameState, kingdomId: string): number {
 
 export function coinsEarned(s: GameState, now: number) {
   const fromXp = Math.floor(totalXp(s) / COIN_RULES.xpPerCoin);
-  const fromBosses = defeatedBosses(s, now).reduce((n, b) => n + b.reward, 0);
+  const fromBosses = defeatedBosses(s, now).reduce((n, b) => n + bossLoot(s, b, now), 0);
   const fromKingdoms = s.kingdoms.reduce((n, k) => n + kingdomBonus(s, k.id), 0);
   return { fromXp, fromBosses, fromKingdoms, total: fromXp + fromBosses + fromKingdoms };
 }

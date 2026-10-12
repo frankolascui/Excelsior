@@ -115,7 +115,8 @@ describe('bosses', () => {
     s = stopTimer(startTimer(s, null, 0, NOW + DAY), NOW + DAY + 30 * 60_000).state;
     const st = bossStatus(s, boss, NOW + 2 * DAY);
     expect(st).toMatchObject({ damage: 60, defeated: true, active: false });
-    expect(coinBalance(s, NOW + 2 * DAY)).toBe(Math.floor(70 / 5) + boss.reward);
+    // Cayó en la primera mitad del plazo: 3 estrellas y un 25 % más de botín
+    expect(coinBalance(s, NOW + 2 * DAY)).toBe(Math.floor(70 / 5) + boss.reward + Math.round(boss.reward * 0.25));
   });
 
   it('caduca si no lo derrotas a tiempo, y la XP de antes no cuenta', () => {
