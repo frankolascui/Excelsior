@@ -262,6 +262,7 @@ export interface QuestOptions {
   xp?: number;
   rewards?: AttributeRewards;
   deadline?: string;
+  repeat?: number[];
 }
 
 export function questXp(q: Quest): number {
@@ -279,7 +280,56 @@ export function addQuest(s: GameState, title: string, type: QuestType, now: numb
   if (opts.xp !== undefined) quest.xp = Math.round(clamp(opts.xp, CUSTOM_LIMITS.questXp));
   if (opts.rewards) quest.rewards = cleanRewards(opts.rewards);
   if (opts.deadline) quest.deadline = opts.deadline;
+  const repeat = cleanRepeat(opts.repeat);
+  if (repeat && !opts.kingdomId) quest.repeat = repeat;
   return { ...s, quests: [...s.quests, quest] };
+}
+
+// ---------- Misiones que se repiten ----------
+
+function cleanRepeat(days: number[] | undefined): number[] | undefined {
+  const r = [...new Set((days ?? []).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort();
+  return r.length ? r : undefined;
+}
+
+/** Primer día después de `now` que toca según los días de la semana de la repetición. */
+export function nextRepeatDay(repeat: number[], now: number): string {
+  for (let i = 1; i <= 7; i++) {
+    const t = shiftDay(now, i);
+    if (repeat.includes(new Date(t).getDay())) return dayKey(t);
+  }
+  return dayKey(shiftDay(now, 1));
+}
+
+/** «Cada día», «Lunes a viernes», «Fines de semana» o «L X V». */
+export function repeatLabel(repeat: number[]): string {
+  const k = [...repeat].sort().join('');
+  if (k === '0123456') return 'Cada día';
+  if (k === '12345') return 'Lunes a viernes';
+  if (k === '06') return 'Fines de semana';
+  const WD = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+  return [1, 2, 3, 4, 5, 6, 0].filter((d) => repeat.includes(d)).map((d) => WD[d]).join(' ');
+}
+
+/** Cambia (o quita, con null) los días en que se repite una misión pendiente. */
+export function setQuestRepeat(s: GameState, id: string, days: number[] | null): GameState {
+  const repeat = cleanRepeat(days ?? undefined);
+  return {
+    ...s,
+    quests: s.quests.map((q) => {
+      if (q.id !== id || q.kingdomId) return q;
+      const next = { ...q };
+      if (repeat) next.repeat = repeat;
+      else delete next.repeat;
+      return next;
+    }),
+  };
+}
+
+/** Repeticiones ya creadas que aún no tocan (salen en pendientes el día que empiezan). */
+export function scheduledQuests(s: GameState, now: number): Quest[] {
+  const today = dayKey(now);
+  return s.quests.filter((q) => !q.completedAt && q.startsOn && q.startsOn > today).sort((a, b) => a.startsOn!.localeCompare(b.startsOn!));
 }
 
 /** Pone o quita (null) la fecha límite de una misión. */
@@ -328,7 +378,15 @@ export function completeQuest(s: GameState, id: string, now: number): ActionResu
   if (!q || q.completedAt) return { state: s, xp: 0 };
   const base = questXp(q);
   const amount = cappedAmount(s, 'quest', base, now);
-  let state: GameState = { ...s, quests: s.quests.map((x) => (x.id === id ? { ...x, completedAt: now } : x)) };
+  let quests = s.quests.map((x) => (x.id === id ? { ...x, completedAt: now } : x));
+  if (q.repeat?.length && !q.kingdomId) {
+    // la siguiente repetición: misma misión, sin fecha límite, visible desde el próximo día que toca
+    const copy: Quest = { ...q, id: uid(), createdAt: now, completedAt: null, startsOn: nextRepeatDay(q.repeat, now) };
+    delete copy.deadline;
+    delete copy.spawnedId;
+    quests = [...quests.map((x) => (x.id === id ? { ...x, spawnedId: copy.id } : x)), copy];
+  }
+  let state: GameState = { ...s, quests };
   state = withXp(state, { at: now, amount, source: 'quest', sourceId: id, label: q.title, attributes: questAttributeRewards(q) });
   return { state, xp: amount, capped: amount < base };
 }
@@ -337,7 +395,14 @@ export function completeQuest(s: GameState, id: string, now: number): ActionResu
 export function undoQuest(s: GameState, id: string): GameState {
   return {
     ...s,
-    quests: s.quests.map((x) => (x.id === id ? { ...x, completedAt: null } : x)),
+    quests: s.quests
+      .filter((x) => !(x.completedAt === null && x.id === s.quests.find((q) => q.id === id)?.spawnedId))
+      .map((x) => {
+        if (x.id !== id) return x;
+        const next = { ...x, completedAt: null };
+        delete next.spawnedId;
+        return next;
+      }),
     xp: s.xp.filter((t) => !(t.source === 'quest' && t.sourceId === id)),
   };
 }
@@ -567,8 +632,9 @@ export function pendingQuests(s: GameState, now = Date.now()): Quest[] {
     const d = daysUntil(q.deadline, now);
     return d !== null && d <= 2 ? d : null;
   };
+  const today = dayKey(now);
   return s.quests
-    .filter((q) => !q.completedAt)
+    .filter((q) => !q.completedAt && !(q.startsOn && q.startsOn > today))
     .sort((a, b) => {
       const ua = urgent(a), ub = urgent(b);
       if (ua !== null || ub !== null) {

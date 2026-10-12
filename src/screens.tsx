@@ -15,7 +15,7 @@ import { sfx } from './sfx';
 import { XpChart } from './charts';
 import {
   addHabit, addQuest, cancelTimer, CUSTOM_LIMITS, updateHabit, updateQuest, completeQuest, createProfile, dayKey, deepWorkMinutesOnDay,
-  deleteHabit, deleteQuest, focusPercent, habitStreakDays, isHabitDone, levelInfo, pendingQuests, setQuestDeadline, setPhase, timerTotals,
+  deleteHabit, deleteQuest, focusPercent, habitStreakDays, isHabitDone, levelInfo, pendingQuests, scheduledQuests, setQuestDeadline, setQuestRepeat, setPhase, timerTotals,
   pomodoroStatus, pomodoroStep, startTimer, stopTimer, suggest, toggleHabit, totalXp, undoQuest, xpOnDay, XP_RULES,
 } from './game';
 import {
@@ -223,6 +223,8 @@ export function Quests({ game, focusQuest, startFocus }: { game: Game; focusQues
   const { state, act } = game;
   const now = useNow(60_000);
   const pending = pendingQuests(state, now);
+  const scheduled = scheduledQuests(state, now);
+  const [showScheduled, setShowScheduled] = useState(false);
   const done = state.quests.filter((q) => q.completedAt).sort((a, b) => b.completedAt! - a.completedAt!).slice(0, 15);
   const [view, setView] = useState<'list' | 'calendar'>(() => {
     try {
@@ -276,12 +278,32 @@ export function Quests({ game, focusQuest, startFocus }: { game: Game; focusQues
                 onStart={() => focusQuest(q)}
                 onEdit={(t, v) => act((st) => updateQuest(st, q.id, { title: t, ...v }))}
                 onDeadline={(d) => act((st) => setQuestDeadline(st, q.id, d))}
+                onRepeat={q.kingdomId ? undefined : (d) => act((st) => setQuestRepeat(st, q.id, d))}
                 onDelete={() => act((st) => deleteQuest(st, q.id))}
               />
             ))}
           </ul>
         )}
       </section>
+      {scheduled.length > 0 && (
+        <section className="panel">
+          <header className="panel-head">
+            <button className="link" onClick={() => setShowScheduled(!showScheduled)} aria-expanded={showScheduled}><Icon name="repeat" /> Próximas repeticiones ({scheduled.length})</button>
+          </header>
+          {showScheduled && (
+            <>
+              <p className="hint">Aparecen en pendientes el día que toca. Bórrala para dejar de repetirla.</p>
+              <ul className="list scheduled-list">
+                {scheduled.map((q) => (
+                  <QuestItem key={q.id} quest={q}
+                    onRepeat={(d) => act((st) => setQuestRepeat(st, q.id, d))}
+                    onDelete={() => act((st) => deleteQuest(st, q.id))} />
+                ))}
+              </ul>
+            </>
+          )}
+        </section>
+      )}
       {done.length > 0 && (
         <section className="panel">
           <header className="panel-head"><h3>Completadas</h3></header>

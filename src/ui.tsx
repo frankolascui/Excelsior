@@ -3,11 +3,12 @@ import { useEffect, useState, type FormEvent } from 'react';
 import type { AttributeRewards, GameState, Habit, Quest, QuestType } from './types';
 import { ATTRIBUTES, attributeHistory, attributeLevel, attributeXp, avatarInfo, formatAttrXp, habitRewards, questRewards } from './attributes';
 import {
-  daysUntil, CUSTOM_LIMITS, dayKey, habitStreak, habitWeekCount, habitXp, isHabitDone, levelInfo, QUEST_LABEL, questAttributeRewards, questXp, shiftDay, totalXp, XP_RULES,
+  daysUntil, CUSTOM_LIMITS, dayKey, habitStreak, habitWeekCount, habitXp, isHabitDone, levelInfo, QUEST_LABEL, questAttributeRewards, repeatLabel, questXp, shiftDay, totalXp, XP_RULES,
 } from './game';
 import { CustomizeToggle, InlineEdit, RewardEditor, sameRewards, type CustomValue } from './customize';
 import { RitualCTA } from './ritual';
-import { DatePicker } from './pickers';
+import { DatePicker, dayWords, RepeatPicker } from './pickers';
+import './core.css';
 import { AvatarPortrait, initialOf } from './portrait';
 import { Icon } from './icons';
 
@@ -81,7 +82,7 @@ export function deadlineLabel(day: string, now: number): { text: string; tone: '
 }
 
 export function QuestItem({
-  quest, kingdom, onComplete, onStart, onDelete, onUndo, onEdit, onDeadline,
+  quest, kingdom, onComplete, onStart, onDelete, onUndo, onEdit, onDeadline, onRepeat,
 }: {
   quest: Quest;
   kingdom?: string;
@@ -91,6 +92,7 @@ export function QuestItem({
   onUndo?: () => void;
   onEdit?: (title: string, v: CustomValue) => void;
   onDeadline?: (day: string | null) => void;
+  onRepeat?: (days: number[] | null) => void;
 }) {
   const done = !!quest.completedAt;
   const [editing, setEditing] = useState(false);
@@ -121,6 +123,10 @@ export function QuestItem({
           {due && (onDeadline
             ? <DatePicker value={quest.deadline ?? null} onChange={onDeadline} label={`Fecha límite de ${quest.title}`} clearLabel="Quitar fecha límite" className={`due due-${due.tone}`}><Icon name="calendar" /> {due.text}</DatePicker>
             : <span className={`due due-${due.tone}`}><Icon name="calendar" /> {due.text}</span>)}
+          {quest.repeat && !done && (onRepeat
+            ? <RepeatPicker value={quest.repeat} onChange={onRepeat} label={`Repetición de ${quest.title}`} describe={repeatLabel} className="repeat-tag"><Icon name="repeat" /> {repeatLabel(quest.repeat)}</RepeatPicker>
+            : <span className="repeat-tag"><Icon name="repeat" /> {repeatLabel(quest.repeat)}</span>)}
+          {quest.startsOn && !done && quest.startsOn > dayKey(Date.now()) && <span className="starts">sale {dayWords(quest.startsOn).toLowerCase()}</span>}
           {kingdom && <span className="kingdom-tag"><Icon name="castle" /> {kingdom}</span>}
           <span className="mono xp-tag">+{questXp(quest)} XP</span>
           <RewardTags rewards={questAttributeRewards(quest)} />
@@ -133,6 +139,9 @@ export function QuestItem({
         {onUndo && done && <button className="ghost small" onClick={onUndo}><Icon name="rotate-ccw" /> Deshacer</button>}
         {onDeadline && !done && !quest.deadline && (
           <DatePicker value={null} onChange={onDeadline} label={`Poner fecha límite a ${quest.title}`} className="icon-btn due-add"><Icon name="calendar-plus" /></DatePicker>
+        )}
+        {onRepeat && !done && !quest.repeat && (
+          <RepeatPicker value={null} onChange={onRepeat} label={`Repetir ${quest.title}`} describe={repeatLabel} className="icon-btn repeat-add"><Icon name="repeat" /></RepeatPicker>
         )}
         {onEdit && !done && (
           <button className="icon-btn edit-btn" onClick={() => setEditing(true)} aria-label={`Editar ${quest.title}`} title="Editar XP y atributos"><Icon name="sliders" /></button>
@@ -149,9 +158,10 @@ const TYPES: QuestType[] = ['daily', 'main', 'side'];
 
 export function QuickAddQuest({
   onAdd, autoFocus = false, fixedDeadline,
-}: { onAdd: (title: string, type: QuestType, custom: CustomValue & { deadline?: string }) => void; autoFocus?: boolean; fixedDeadline?: string }) {
+}: { onAdd: (title: string, type: QuestType, custom: CustomValue & { deadline?: string; repeat?: number[] }) => void; autoFocus?: boolean; fixedDeadline?: string }) {
   const [title, setTitle] = useState('');
   const [deadline, setDeadline] = useState('');
+  const [repeat, setRepeat] = useState<number[] | null>(null);
   const [type, setType] = useState<QuestType>('daily');
   const [custom, setCustom] = useState<CustomValue>({});
   const [open, setOpen] = useState(false);
@@ -160,9 +170,10 @@ export function QuickAddQuest({
     e.preventDefault();
     if (!title.trim()) return;
     const rewards = custom.rewards && !sameRewards(custom.rewards, questRewards(type, title)) ? custom.rewards : undefined;
-    onAdd(title, type, { xp: custom.xp, rewards, deadline: fixedDeadline ?? (deadline || undefined) });
+    onAdd(title, type, { xp: custom.xp, rewards, deadline: fixedDeadline ?? (deadline || undefined), repeat: repeat ?? undefined });
     setTitle('');
     setDeadline('');
+    setRepeat(null);
     setCustom({});
     setOpen(false);
   }
@@ -195,6 +206,7 @@ export function QuickAddQuest({
         {!fixedDeadline && (
           <DatePicker id="new-quest-deadline" value={deadline || null} onChange={(d) => setDeadline(d ?? '')} label="Fecha límite (opcional)" clearLabel="Sin fecha límite" placeholder="Fecha límite" />
         )}
+        <RepeatPicker id="new-quest-repeat" value={repeat} onChange={setRepeat} label="Repetir" describe={repeatLabel} />
         <CustomizeToggle open={open} onToggle={() => setOpen(!open)} custom={isCustom} />
         <button type="submit" className="primary" disabled={!title.trim()}><Icon name="plus" /> Crear</button>
       </div>
