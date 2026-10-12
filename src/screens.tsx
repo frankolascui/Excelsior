@@ -28,6 +28,7 @@ import { AvatarPortrait, initialOf } from './portrait';
 import { DayClose, MetricsPanel, UpcomingEvents } from './life-ui';
 import { RemindersPanel } from './agenda-ui';
 import { AchievementsPanel } from './achievements-ui';
+import { Inventory } from './inventory';
 import { latestMetric, logMetric } from './life';
 import { Icon } from './icons';
 
@@ -664,6 +665,8 @@ export function Character({ game }: { game: Game }) {
       <GoalsPanel game={game} now={now} />
 
       <HeroJournal state={state} />
+
+      <Inventory game={game} />
 
       <AchievementsPanel state={state} now={now} />
 

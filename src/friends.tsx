@@ -47,6 +47,7 @@ export function ProfileDialog({ game, p, onClose }: { game: Game; p: PublicProfi
           <div>
             <h2 id="pf-h">{p.name}</h2>
             <p className="mono tag-line">{p.tag}</p>
+            {p.stats?.title && <p className="title-tag small-text">«{p.stats.title}»</p>}
             <p className="muted small-text">Nivel {p.level} · {p.avatar_name}{p.mutual ? ` · ${p.mutual} ${p.mutual === 1 ? 'amigo' : 'amigos'} en común` : ''}</p>
           </div>
         </div>
@@ -58,6 +59,7 @@ export function ProfileDialog({ game, p, onClose }: { game: Game; p: PublicProfi
         </ul>
         <div className="profile-stats mono">
           <span><Icon name="trophy" /> {p.stats?.achievements ?? 0} logros</span>
+          {!!p.stats?.trophies && <span><Icon name="medal" /> {p.stats.trophies} {p.stats.trophies === 1 ? 'trofeo' : 'trofeos'}</span>}
           <span><Icon name="hourglass" /> {p.stats?.deepHours ?? 0} h de Deep Work</span>
           <span><Icon name="crossed-swords" /> {p.stats?.bosses ?? 0} bosses</span>
         </div>

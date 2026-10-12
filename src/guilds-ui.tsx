@@ -16,7 +16,9 @@ import {
   declineInvite, EMBLEM_NAME, EMBLEMS, GUILD_MAX, guildLevel, guildXpFrom, invite, kick, leaveGuild, memberShare, METRIC_LABEL, refreshGuild,
   byRank, canCommand, canKick, demote, makeLeader, OFFICER_MAX, promote, RANK_LABEL, rankOf, successor, type Rank,
   startChallenge, useGuild, type ChallengeRow, type ChallengeTemplate, type Contribution, type Goal, type Metric,
+  cheer, cheeredToday, cheersReceived, chronicle, mvpCoins, type GuildEvent,
 } from './guilds';
+import './guilds.css';
 import { Glyph, Icon } from './icons';
 
 const fmt = (m: Metric, n: number) => (m === 'deep' ? formatMinutes(n) : `${n}${m === 'xp' ? ' XP' : ''}`);
@@ -134,11 +136,13 @@ function ChallengeCard({ game, c, now }: { game: Game; c: ChallengeRow; now: num
   const canClaim = st === 'won' && !claimed && !!mine && (mine.deep + mine.habits + mine.xp > 0);
   const rows = g.members.map((m) => ({ m, c: contribs.find((x) => x.user_id === m.user_id) ?? { user_id: m.user_id, deep: 0, habits: 0, xp: 0 } }))
     .sort((a, b) => (b.c.deep + b.c.habits * 30 + b.c.xp / 2) - (a.c.deep + a.c.habits * 30 + a.c.xp / 2));
+  const mvp = c.mvp ? g.people[c.mvp] : undefined;
   function claim() {
-    game.act((s) => claimReward(s, c, Date.now()));
+    game.act((s) => claimReward(s, c, Date.now(), { me, guild: g.guild?.name }));
     sfx.purchase();
     confetti({ count: 140 });
-    game.toast(`+${t?.reward ?? 0} XP para ti · Conexión y Voluntad`, 'level');
+    game.toast(`+${t?.reward ?? 0} XP para ti · Conexión y Voluntad · estandarte al inventario`, 'level');
+    if (c.mvp === me && t) window.setTimeout(() => game.toast(`{i:medal} ¡Eres el MVP del encargo! +${mvpCoins(t)} {i:coin}`, 'level'), 900);
   }
   return (
     <section className={`panel challenge ${t?.kind ?? ''} st-${st}`} aria-labelledby={`ch-${c.id}`}>
@@ -181,6 +185,7 @@ function ChallengeCard({ game, c, now }: { game: Game; c: ChallengeRow; now: num
       {st === 'won' && (
         <div className="ch-win">
           <strong><Icon name="trophy" /> ¡Encargo cumplido!</strong>
+          {c.mvp && <span className="ch-mvp small-text"><Icon name="medal" /> MVP: {c.mvp === me ? 'tú' : mvp?.name ?? 'un miembro'}</span>}
           {canClaim ? <button className="primary small" onClick={claim}><Icon name="sparkles" /> Cobrar +{t?.reward} XP</button>
             : claimed ? <span className="muted small-text">Recompensa cobrada</span>
             : <span className="muted small-text">Solo cobra quien aportó algo</span>}
@@ -212,15 +217,22 @@ function ChallengeCard({ game, c, now }: { game: Game; c: ChallengeRow; now: num
   );
 }
 
-function PickChallenge({ game, members, command, leader }: { game: Game; members: number; command: boolean; leader: string }) {
+function PickChallenge({ game, members, command, leader, level }: { game: Game; members: number; command: boolean; leader: string; level: number }) {
   const [busy, act] = useAct(game);
-  const card = (t: ChallengeTemplate) => (
+  const card = (t: ChallengeTemplate) => (t.minLevel ?? 1) > level ? (
+    <li key={t.id} className={`pick-card ${t.kind} locked`}>
+      <span className="pick-icon" aria-hidden="true"><Icon name={t.icon} /></span>
+      <strong>{t.name}</strong>
+      <span className="muted small-text">{t.lore}</span>
+      <span className="pick-lock small-text"><Icon name="lock" /> Nivel de gremio {t.minLevel}{t.title && ` · da el título «${t.title}»`}</span>
+    </li>
+  ) : (
     <li key={t.id} className={`pick-card ${t.kind}`}>
       <span className="pick-icon" aria-hidden="true"><Icon name={t.icon} /></span>
       <strong>{t.name}</strong>
       <span className="muted small-text">{t.lore}</span>
       <span className="mono small-text">{goalLine(buildGoal(t, members))} · {t.days} días</span>
-      <span className="small-text">+{t.reward} XP cada uno · +{t.guildXp} XP de gremio</span>
+      <span className="small-text">+{t.reward} XP cada uno · +{t.guildXp} XP de gremio{t.title && <> · título «{t.title}»</>}</span>
       {command && (
         <button className="primary small" disabled={busy} onClick={() => act(() => startChallenge(t, game.state), `¡${t.name} en marcha!`)}>
           {t.kind === 'jefe' ? 'Invocar jefe' : 'Aceptar encargo'}
@@ -253,6 +265,7 @@ function Members({ game }: { game: Game }) {
   const mine = g.members.find((m) => m.user_id === me);
   const myRankNow: Rank | null = mine ? rankOf(owner, mine) : null;
   const officers = g.members.filter((m) => rankOf(owner, m) === 'officer').length;
+  const cheers = cheersReceived(g.events, Date.now());
   const memberIds = new Set(g.members.map((m) => m.user_id));
   const invited = new Set(g.sent.map((i) => i.user_id));
   const friends: PublicProfile[] = social.rows.filter((r) => r.status === 'accepted')
@@ -279,9 +292,17 @@ function Members({ game }: { game: Game }) {
                 {p && <Face p={p} size={44} />}
                 <span className="item-body">
                   <span className="item-title">{name}{m.user_id === me && ' (tú)'} <span className={`rank-tag ${rank}`}><Icon name={RANK_LABEL[rank].icon} /> {RANK_LABEL[rank].name}</span></span>
-                  <span className="muted small-text">{p ? `Nv ${p.level} · ${p.avatar_name}` : ''}</span>
+                  <span className="muted small-text">{p ? `Nv ${p.level} · ${p.avatar_name}` : ''}{p?.stats?.title && <> · <span className="title-tag">{p.stats.title}</span></>}
+                    {cheers[m.user_id] ? <> · <span className="cheer-count" title="Ánimos recibidos esta semana"><Icon name="heart" /> {cheers[m.user_id]}</span></> : null}</span>
                 </span>
               </span>
+              {m.user_id !== me && (
+                <button className="ghost small cheer-btn" disabled={busy || cheeredToday(g.events, me, m.user_id, serverDay())}
+                  onClick={() => act(() => cheer(m.user_id, game.state), `Has animado a ${name}`).then(() => sfx.reward())}
+                  title={cheeredToday(g.events, me, m.user_id, serverDay()) ? 'Ya le has animado hoy' : `Dar ánimos a ${name}`}>
+                  <Icon name="heart" /> {cheeredToday(g.events, me, m.user_id, serverDay()) ? 'Animado' : 'Ánimo'}
+                </button>
+              )}
               {m.user_id !== me && (isLeader || canKick(myRankNow, rank)) && (
                 <span className="item-actions">
                   {pending ? (
@@ -331,6 +352,87 @@ function Members({ game }: { game: Game }) {
   );
 }
 
+// ---------- Estandarte, crónica y ánimos ----------
+
+/** Marco del estandarte según el nivel del gremio: bronce, plata, oro. */
+const bannerTier = (level: number) => (level >= 5 ? 3 : level >= 3 ? 2 : 1);
+const BANNER: Record<number, string> = { 1: 'bronce', 2: 'plata', 3: 'oro' };
+
+/** Lo próximo que desbloquea subir de nivel: jefes nuevos y marco del estandarte. */
+function nextPerk(level: number): string {
+  for (const lv of [3, 5]) {
+    if (level >= lv) continue;
+    const bosses = CHALLENGES.filter((t) => t.minLevel === lv).map((t) => t.name);
+    return `En el nivel ${lv}: ${[...bosses, `estandarte de ${BANNER[bannerTier(lv)]}`].join(' y ')}.`;
+  }
+  return 'Estandarte de oro y todos los jefes de gremio desbloqueados.';
+}
+
+/** Día del servidor (UTC), el que cuenta para «un ánimo al día». */
+const serverDay = () => new Date().toISOString().slice(0, 10);
+
+function ago(at: string, now: number): string {
+  const m = Math.max(0, Math.floor((now - Date.parse(at)) / 60_000));
+  if (m < 1) return 'ahora';
+  if (m < 60) return `hace ${m} min`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `hace ${h} h`;
+  const d = Math.floor(h / 24);
+  return d === 1 ? 'ayer' : `hace ${d} d`;
+}
+
+const EVENT_ICON: Record<GuildEvent['kind'], string> = {
+  join: 'user-plus', leave: 'log-out', kick: 'log-out', promote: 'crossed-swords', demote: 'round-shield', leader: 'crown',
+  start: 'scroll', victory: 'trophy', cheer: 'heart',
+};
+
+/** Frase de la crónica, en segunda persona cuando eres tú («Animaste a Ana», «Leo te nombró colíder»). */
+function eventText(e: GuildEvent, me: string | null, name: (id: string | null) => string): string {
+  const t = e.data?.template ? challengeTemplate(e.data.template) : undefined;
+  const what = t?.name ?? 'un encargo';
+  const you = e.actor === me;
+  const subj = (third: string, second: string) => (you ? second : `${name(e.actor)} ${third}`);
+  const obj = e.target === me ? 'te' : null;
+  const to = (id: string | null) => (id === me ? 'a ti' : `a ${name(id)}`);
+  switch (e.kind) {
+    case 'join': return subj('se unió al gremio', 'Te uniste al gremio');
+    case 'leave': return subj('dejó el gremio', 'Dejaste el gremio');
+    case 'kick': return obj ? `${name(e.actor)} te expulsó` : subj(`expulsó ${to(e.target)}`, `Expulsaste ${to(e.target)}`);
+    case 'promote': return obj ? `${name(e.actor)} te nombró colíder` : subj(`nombró colíder ${to(e.target)}`, `Nombraste colíder ${to(e.target)}`);
+    case 'demote': return obj ? 'Dejaste de ser colíder' : `${name(e.target)} dejó de ser colíder`;
+    case 'leader': return obj ? 'Ahora eres el líder' : `${name(e.target)} es ahora el líder`;
+    case 'start': return t?.kind === 'jefe' ? subj(`invocó a ${what}`, `Invocaste a ${what}`) : subj(`aceptó «${what}»`, `Aceptaste «${what}»`);
+    case 'victory': return `¡Victoria en ${t?.kind === 'jefe' ? 'el combate contra ' : ''}${what}! MVP: ${you ? 'tú' : name(e.actor)}`;
+    case 'cheer': return obj ? `${name(e.actor)} te animó` : subj(`animó ${to(e.target)}`, `Animaste ${to(e.target)}`);
+  }
+}
+
+/** La crónica: lo que ha pasado en el gremio, lo más nuevo arriba. */
+function Chronicle({ now }: { now: number }) {
+  const g = useGuild();
+  const me = useCloud().userId;
+  const [all, setAll] = useState(false);
+  const name = (id: string | null) => (id && g.people[id]?.name) || 'Alguien';
+  const items = chronicle(g.events);
+  if (items.length === 0) return null;
+  const shown = all ? items : items.slice(0, 8);
+  return (
+    <section className="panel chronicle" aria-labelledby="gchron-h">
+      <header className="panel-head"><h3 id="gchron-h">Crónica del gremio</h3></header>
+      <ol className="chron-list">
+        {shown.map((e) => (
+          <li key={e.id} className={`chron-item k-${e.kind}`}>
+            <span className="chron-icon" aria-hidden="true"><Icon name={EVENT_ICON[e.kind] as never} /></span>
+            <span className="chron-text">{eventText(e, me, name)}</span>
+            <span className="chron-when muted small-text">{ago(e.created_at, now)}</span>
+          </li>
+        ))}
+      </ol>
+      {items.length > 8 && <button className="link" onClick={() => setAll(!all)}>{all ? 'Ver menos' : `Ver todo (${items.length})`}</button>}
+    </section>
+  );
+}
+
 function InGuild({ game, now }: { game: Game; now: number }) {
   const g = useGuild();
   const me = useCloud().userId!;
@@ -348,24 +450,27 @@ function InGuild({ game, now }: { game: Game; now: number }) {
   const ranked = g.members.map((m) => (m.user_id === me ? freshMe(me, game.state, g.people[me], now) : g.people[m.user_id])).filter(Boolean);
   return (
     <>
-      <section className="panel guild-card">
-        <span className="guild-emblem" aria-hidden="true"><Glyph icon={guild.emblem} /></span>
+      <section className={`panel guild-card tier-${bannerTier(lvl.level)}`}>
+        <span className="guild-emblem" aria-hidden="true" title={`Estandarte de ${BANNER[bannerTier(lvl.level)]}`}><Glyph icon={guild.emblem} /></span>
         <div className="guild-info">
           <h2>{guild.name}</h2>
           {guild.motto && <p className="guild-motto">«{guild.motto}»</p>}
           <p className="muted small-text">Nivel de gremio <strong className="mono">{lvl.level}</strong> · {gxp} XP de gremio · {wins} {wins === 1 ? 'encargo cumplido' : 'encargos cumplidos'} · {g.members.length}/{GUILD_MAX} miembros</p>
           <span className="g-bar level" aria-hidden="true"><span className="g-fill" style={{ width: `${Math.round(lvl.progress * 100)}%` }} /></span>
+          <p className="muted small-text guild-next">{nextPerk(lvl.level)}</p>
         </div>
       </section>
 
-      {active ? <ChallengeCard game={game} c={active} now={now} /> : <PickChallenge game={game} members={g.members.length} command={canCommand(rank)} leader={g.people[guild.owner]?.name ?? 'tu líder'} />}
+      {active ? <ChallengeCard game={game} c={active} now={now} /> : <PickChallenge game={game} members={g.members.length} command={canCommand(rank)} leader={g.people[guild.owner]?.name ?? 'tu líder'} level={lvl.level} />}
 
       <Leaderboard id="lb-guild-h" title="Ranking del gremio" people={ranked} me={me} now={now} onOpen={setOpen}
         hint={g.members.length === 1 ? 'Invita a tus amigos al gremio para competir por la corona de la semana.' : undefined} />
 
+      <Chronicle now={now} />
+
       {past.length > 0 && (
         <section className="panel" aria-labelledby="gpast-h">
-          <header className="panel-head"><h3 id="gpast-h">Crónica del gremio</h3></header>
+          <header className="panel-head"><h3 id="gpast-h">Encargos pasados</h3></header>
           <div className="guild-past">{past.slice(0, 5).map((c) => <ChallengeCard key={c.id} game={game} c={c} now={now} />)}</div>
         </section>
       )}

@@ -44,6 +44,7 @@ const db = {
   guild_invites: [{ guild_id: ALBA, user_id: ME, invited_by: LEO, created_at: iso(now) }],
   guild_challenges: [],
   guild_contributions: [],
+  guild_events: [],
 };
 
 function filter(rows, params) {
@@ -58,7 +59,27 @@ function filter(rows, params) {
     return true;
   }));
 }
-const KEYS = { guilds: ['id'], guild_members: ['user_id'], guild_invites: ['guild_id', 'user_id'], guild_challenges: ['id'], guild_contributions: ['challenge_id', 'user_id'] };
+const KEYS = { guilds: ['id'], guild_members: ['user_id'], guild_invites: ['guild_id', 'user_id'], guild_challenges: ['id'], guild_contributions: ['challenge_id', 'user_id'], guild_events: ['id'] };
+
+// Lo que hace guild_check_victory en Supabase: regla del tope, participantes mínimos y MVP.
+function checkVictory(id) {
+  const ch = db.guild_challenges.find((c) => c.id === id);
+  if (!ch) return false;
+  if (ch.completed_at) return true;
+  const rows = db.guild_contributions.filter((x) => x.challenge_id === id);
+  const metrics = ['deep', 'habits', 'xp'].filter((m) => ch.goal[m] > 0);
+  const cap = (m) => Math.ceil(ch.goal[m] * ch.goal.cap);
+  const counted = (x, m) => Math.min(x[m] ?? 0, cap(m));
+  const won = metrics.every((m) => Math.min(ch.goal[m], rows.reduce((n, x) => n + counted(x, m), 0)) >= ch.goal[m]);
+  const parts = rows.filter((x) => metrics.some((m) => (x[m] ?? 0) > 0)).length;
+  if (!won || parts < (ch.goal.minParticipants ?? 1)) return false;
+  const score = (x) => metrics.reduce((n, m) => n + counted(x, m) / ch.goal[m], 0) * 1e6 + metrics.reduce((n, m) => n + (x[m] ?? 0), 0);
+  const best = [...rows].sort((a, b) => score(b) - score(a))[0];
+  ch.completed_at = iso(Date.now());
+  ch.mvp = best?.user_id ?? null;
+  db.guild_events.push({ id: db.guild_events.length + 1, guild_id: ch.guild_id, kind: 'victory', actor: ch.mvp, target: null, data: { template: ch.template }, day: iso(Date.now()).slice(0, 10), created_at: iso(Date.now()) });
+  return true;
+}
 
 async function fake(ctx) {
   await ctx.route('https://fake.supabase.co/**', async (route) => {
@@ -87,6 +108,7 @@ async function fake(ctx) {
     }
     if (table === 'friendships') return out(db.friendships);
     if (table === 'rpc/recommended_friends') return json(200, []);
+    if (table === 'rpc/guild_check_victory') return json(200, checkVictory(r.postDataJSON().c));
     if (KEYS[table]) {
       const rows = db[table];
       if (r.method() === 'GET') return out(filter(rows, p));
@@ -94,6 +116,12 @@ async function fake(ctx) {
         const b = r.postDataJSON();
         for (const row of Array.isArray(b) ? b : [b]) {
           if (table === 'guild_members' && rows.filter((m) => m.guild_id === row.guild_id).length >= 8) return json(400, { code: 'P0001', message: 'El gremio está lleno (8 miembros)' });
+          if (table === 'guild_events') {
+            const day = iso(Date.now()).slice(0, 10);
+            if (rows.some((e) => e.kind === 'cheer' && e.actor === row.actor && e.target === row.target && e.day === day)) return json(409, { code: '23505', message: 'duplicate key value violates unique constraint "guild_events_cheer"' });
+            rows.push({ ...row, id: rows.length + 1, data: {}, day, created_at: iso(Date.now()) });
+            continue;
+          }
           const fresh = { created_at: iso(Date.now()), joined_at: iso(Date.now()), id: crypto.randomUUID(), completed_at: null, ...row };
           const at = rows.findIndex((x) => KEYS[table].every((k) => x[k] === fresh[k]));
           if (at >= 0) Object.assign(rows[at], row); // upsert
@@ -142,6 +170,8 @@ const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 await login(page);
+await page.waitForTimeout(800);
+check(await page.isVisible('.nav-item:has-text("Gremios") .nav-new:has-text("1")'), 'el menú avisa de la invitación de gremio');
 await openGuilds(page);
 
 // Invitación de Leo: se ve y se rechaza.
@@ -162,6 +192,8 @@ check(mine && mine.owner === ME && mine.emblem === emblem && mine.motto === 'Un 
 check(db.guild_members.some((m) => m.user_id === ME && m.guild_id === mine?.id), 'el fundador entra como miembro');
 check(await page.isVisible('.guild-card :text("Nivel de gremio")') && await page.isVisible('#gm-h + .count, .count:has-text("1/8")'), 'ficha del gremio: nivel y 1/8 miembros');
 check(await page.isVisible('#pick-h'), 'sin reto: elige el próximo');
+check(await page.isVisible('.pick-card.locked:has-text("El Remolino del Scroll") :text("Nivel de gremio 3")'), 'los jefes de nivel alto salen bloqueados');
+check(await page.isVisible('.guild-card.tier-1') && await page.isVisible('.guild-next:has-text("nivel 3")'), 'estandarte de bronce y lo que desbloquea el nivel 3');
 
 // Invita a Ana (amiga); Leo ya está en otro gremio pero también es amigo, así que sale.
 await page.click('section:has(#gm-h) li:has-text("Ana") button:has-text("Invitar")');
@@ -209,9 +241,13 @@ await page.waitForSelector('.guild-card', { timeout: 5000 });
 await page.waitForTimeout(600);
 const meC = db.guild_contributions.find((c) => c.user_id === ME && c.challenge_id === ch.id);
 check(meC?.deep === 50, `su aportación sube 50 min (${meC?.deep})`);
-check(!!db.guild_challenges[0].completed_at, 'al cumplir la meta el reto se marca como ganado');
+check(!!db.guild_challenges[0].completed_at, 'al cumplir la meta el servidor marca el reto como ganado');
+check(db.guild_challenges[0].mvp === ANA, 'el servidor elige al MVP: empate en lo que cuenta, gana quien hizo más (Ana)');
 await openGuilds(page);
 check(await page.isVisible('.challenge.st-won :text("¡Encargo cumplido!")'), 've la victoria');
+check(await page.isVisible('.nav-item:has-text("Gremios") .nav-new:has-text("1")'), 'el menú avisa de la recompensa por cobrar');
+check(await page.isVisible('.chronicle :text("¡Victoria en Los 100 minutos! MVP: Ana")'), 'la victoria sale en la crónica con su MVP');
+check(await page.isVisible('.challenge.st-won .ch-mvp:has-text("Ana")'), 'el encargo ganado muestra a Ana como MVP');
 await page.click('.challenge.st-won button:has-text("Cobrar +40 XP")');
 await page.waitForTimeout(400);
 check(await page.isVisible('.challenge.st-won :text("Recompensa cobrada")'), 'cobra la recompensa una vez');
@@ -219,6 +255,20 @@ const saved = JSON.parse(await page.evaluate(() => localStorage.getItem('excelsi
 check(saved.guildClaims?.includes(ch.id) && saved.xp.some((x) => x.source === 'guild' && x.amount === 40), '+40 XP de gremio en su partida');
 check(await page.isVisible('.guild-card :text("50 XP de gremio")'), 'el gremio gana 50 XP de gremio');
 check(await page.isVisible('#pick-h'), 'y puede elegir el siguiente reto');
+
+// Ánimos: uno al día a cada compañero; queda en la crónica.
+await page.click('section:has(#gm-h) li:has-text("Ana") .cheer-btn');
+await page.waitForTimeout(400);
+check(db.guild_events.some((e) => e.kind === 'cheer' && e.actor === ME && e.target === ANA), 'dar ánimos a Ana llega al servidor');
+check(await page.isVisible('section:has(#gm-h) li:has-text("Ana") .cheer-btn:disabled:has-text("Animado")'), 'el botón queda como «Animado» hasta mañana');
+check(await page.isVisible('.chronicle :text("Animaste a Ana")'), 'el ánimo sale en la crónica');
+
+// Inventario: el estandarte del encargo (sin MVP: lo fue Ana).
+await page.click('.nav-item:has-text("Personaje")');
+await page.click('.inventory button:has-text("Trofeos")');
+check(await page.isVisible('.inventory .trophy.k-guild:has-text("Los 100 minutos")') && !(await page.isVisible('.inventory .trophy.k-mvp')), 'el inventario guarda el estandarte del encargo');
+await page.click('.nav-item:has-text("Gremios")');
+await page.waitForSelector('.guild-card', { timeout: 5000 });
 await page.screenshot({ path: 'e2e/17-guild.png', fullPage: true });
 
 // Rangos: el líder nombra colíder a Ana.
