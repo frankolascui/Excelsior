@@ -68,3 +68,36 @@ describe('racha de días activos', () => {
     expect(activeDayStreak(s, MON + 2 * D).days).toBe(0);
   });
 });
+
+describe('hábitos: días pasados y escudo de racha', () => {
+  it('se puede marcar un día pasado y su XP cuenta ese día', async () => {
+    const { addHabit, toggleHabit, isHabitDone, xpOnDay } = await import('./game');
+    let s = addHabit(emptyState(), 'Leer', MON - 5 * D);
+    const id = s.habits[0].id;
+    s = toggleHabit(s, id, MON, '2026-10-10').state;
+    expect(isHabitDone(s, id, '2026-10-10')).toBe(true);
+    expect(xpOnDay(s, '2026-10-10')).toBe(10);
+    expect(xpOnDay(s, '2026-10-12')).toBe(0);
+    expect(toggleHabit(s, id, MON, '2026-10-13').state).toBe(s); // el futuro no
+  });
+
+  it('un fallo por semana no rompe la racha; dos sí', async () => {
+    const { addHabit, toggleHabit, habitStreak, dailyStreakInfo } = await import('./game');
+    let s = addHabit(emptyState(), 'Leer', MON - 20 * D);
+    const id = s.habits[0].id;
+    // hecho del lun 5 al lun 12 salvo el miércoles 7
+    for (const d of ['05', '06', '08', '09', '10', '11', '12']) s = toggleHabit(s, id, MON, `2026-10-${d}`).state;
+    expect(dailyStreakInfo(s, id, MON)).toEqual({ streak: 7, shields: ['2026-10-07'] });
+    // otro fallo la misma semana (viernes 9): el escudo salva el 9 y el 7 corta
+    s = toggleHabit(s, id, MON, '2026-10-09').state;
+    expect(habitStreak(s, id, MON)).toBe(4); // 12, 11, 10 y 8 (el 9 salvado; el 7 ya no)
+  });
+
+  it('ayer fallado con anteayer hecho: la racha sigue viva hoy', async () => {
+    const { addHabit, toggleHabit, dailyStreakInfo } = await import('./game');
+    let s = addHabit(emptyState(), 'Leer', MON - 20 * D);
+    const id = s.habits[0].id;
+    for (const d of ['08', '09', '10']) s = toggleHabit(s, id, MON, `2026-10-${d}`).state;
+    expect(dailyStreakInfo(s, id, MON)).toEqual({ streak: 3, shields: ['2026-10-11'] });
+  });
+});

@@ -193,14 +193,31 @@ export function habitStreakDays(s: GameState, habitId: string, now: number): num
 }
 
 function dailyStreak(s: GameState, habitId: string, now: number): number {
+  return dailyStreakInfo(s, habitId, now).streak;
+}
+
+/**
+ * Racha diaria con escudo: un día fallado por semana (lunes a domingo) no la rompe si el día anterior sí lo hiciste.
+ * El día salvado no suma a la racha. `shields` son los días salvados.
+ */
+export function dailyStreakInfo(s: GameState, habitId: string, now: number): { streak: number; shields: string[] } {
   const days = new Set(s.habitCompletions.filter((c) => c.habitId === habitId).map((c) => c.day));
   let cursor = days.has(dayKey(now)) ? now : shiftDay(now, -1);
   let streak = 0;
-  while (days.has(dayKey(cursor))) {
-    streak++;
+  const shields: string[] = [];
+  for (;;) {
+    if (days.has(dayKey(cursor))) {
+      streak++;
+    } else {
+      const week = weekStart(cursor);
+      const prev = shiftDay(cursor, -1);
+      if (streak === 0 && shields.length === 0 && !days.has(dayKey(prev))) break;
+      if (!days.has(dayKey(prev)) || shields.some((d) => weekStart(new Date(`${d}T12:00:00`).getTime()) === week)) break;
+      shields.push(dayKey(cursor));
+    }
     cursor = shiftDay(cursor, -1);
   }
-  return streak;
+  return { streak, shields };
 }
 
 /** Tope diario de XP: crece con el nivel con el que empezaste el día (más nivel, más margen). */
@@ -451,10 +468,11 @@ export function deleteHabit(s: GameState, id: string): GameState {
 }
 
 /** Marca el hábito como hecho hoy, o lo desmarca (retirando su XP). */
-export function toggleHabit(s: GameState, habitId: string, now: number): ActionResult {
+/** Marca o desmarca el hábito hoy, o un día pasado (`day`): el XP cuenta para ese día. */
+export function toggleHabit(s: GameState, habitId: string, now: number, day = dayKey(now)): ActionResult {
   const habit = s.habits.find((h) => h.id === habitId);
-  if (!habit) return { state: s, xp: 0 };
-  const day = dayKey(now);
+  if (!habit || day > dayKey(now)) return { state: s, xp: 0 };
+  if (day !== dayKey(now)) now = new Date(`${day}T20:00:00`).getTime();
   const existing = s.habitCompletions.find((c) => c.habitId === habitId && c.day === day);
   if (existing) {
     const removed = s.xp.find((t) => t.source === 'habit' && t.sourceId === existing.id)?.amount ?? 0;

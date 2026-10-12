@@ -38,3 +38,27 @@ button.repeat-tag:hover { text-decoration: underline; }
 /* Cierre del día plegado hasta la tarde */
 .dayclose-folded { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .dayclose-folded p { margin: 0; color: var(--muted); font-size: 13.5px; }
+
+/* Hábitos: puntos que se pueden pulsar, escudo e historial */
+button.dot { border: 0; padding: 0; cursor: pointer; }
+button.dot:hover { outline: 1px solid var(--c1); outline-offset: 1px; }
+.dot.shield { background: transparent; box-shadow: inset 0 0 0 1.5px var(--gold); }
+.habit-open { background: none; border: 0; padding: 0; color: inherit; font: inherit; cursor: pointer; text-align: left; display: inline-flex; align-items: center; gap: 6px; }
+.habit-open .ico-line { opacity: 0.5; transition: transform 0.2s; }
+.habit-open[aria-expanded='true'] .ico-line { transform: rotate(180deg); }
+.habit-open:hover .item-title { text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--c1) 50%, transparent); }
+.habit-history { width: 100%; margin-top: 10px; display: flex; flex-direction: column; gap: 10px; }
+.hh-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 34px)); gap: 4px; }
+.hh-wd { font-size: 11px; color: var(--muted); text-align: center; }
+.hh-day {
+  aspect-ratio: 1; border-radius: 7px; border: 0; background: var(--surface-2); color: var(--muted);
+  font: 500 11.5px var(--mono); display: grid; place-items: center; padding: 0;
+}
+button.hh-day { cursor: pointer; }
+button.hh-day:hover { box-shadow: inset 0 0 0 1px var(--c1); }
+.hh-day.on { background: var(--grad); color: var(--on-accent); box-shadow: 0 0 8px color-mix(in srgb, var(--c2) 45%, transparent); }
+.hh-day.shield { background: transparent; color: var(--gold); box-shadow: inset 0 0 0 1.5px var(--gold); }
+.hh-day.today { outline: 1px solid var(--c1); outline-offset: 1px; }
+.hh-day.future, .hh-day.before { opacity: 0.3; }
+.hh-stats { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); }
+.hh-stats b { color: var(--fg); }

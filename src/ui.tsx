@@ -9,6 +9,7 @@ import { CustomizeToggle, InlineEdit, RewardEditor, sameRewards, type CustomValu
 import { RitualCTA } from './ritual';
 import { DatePicker, dayWords, RepeatPicker } from './pickers';
 import './core.css';
+import { HabitHistory, habitShields } from './habits-ui';
 import { AvatarPortrait, initialOf } from './portrait';
 import { Icon } from './icons';
 
@@ -218,16 +219,19 @@ export function QuickAddQuest({
 }
 
 export function HabitItem({
-  state, habit, now, onToggle, onDelete, onEdit,
+  state, habit, now, onToggle, onDelete, onEdit, onToggleDay,
 }: {
   state: GameState;
   habit: Habit;
   now: number;
   onToggle: () => void;
+  /** Con él, los puntos de la semana se pueden pulsar y el nombre abre el historial. */
+  onToggleDay?: (day: string) => void;
   onDelete?: () => void;
   onEdit?: (name: string, v: CustomValue) => void;
 }) {
   const [editing, setEditing] = useState(false);
+  const [open, setOpen] = useState(false);
   if (editing && onEdit) {
     const auto = habitRewards(habit.name);
     return (
@@ -248,6 +252,7 @@ export function HabitItem({
   const weekCount = weekly ? habitWeekCount(state, habit.id, now) : 0;
   const weekDone = weekly && weekCount >= (habit.perWeek ?? 1);
   const week = Array.from({ length: 7 }, (_, i) => dayKey(shiftDay(now, i - 6)));
+  const shields = habitShields(state, habit, now);
   return (
     <li className={done ? 'item done' : 'item'}>
       <button
@@ -260,18 +265,26 @@ export function HabitItem({
         ✓
       </button>
       <div className="item-body">
-        <span className="item-title">{habit.name}</span>
+        {onToggleDay
+          ? <button type="button" className="habit-open" aria-expanded={open} onClick={() => setOpen(!open)} title="Ver historial"><span className="item-title">{habit.name}</span><Icon name="chevron-down" /></button>
+          : <span className="item-title">{habit.name}</span>}
         <span className="item-meta">
           {weekly && <span className={weekDone ? 'freq-tag done' : 'freq-tag'}>{weekCount}/{habit.perWeek} esta semana{weekDone && <> <Icon name="check" /></>}</span>}
           <span className="week" aria-label="Últimos 7 días">
-            {week.map((d) => (
-              <span key={d} className={isHabitDone(state, habit.id, d) ? 'dot on' : 'dot'} title={d} />
-            ))}
+            {week.map((d) => {
+              const on = isHabitDone(state, habit.id, d);
+              const cls = on ? 'dot on' : shields.includes(d) ? 'dot shield' : 'dot';
+              const tip = `${dayWords(d)}${on ? ': hecho' : shields.includes(d) ? ': salvado por el escudo' : ''}`;
+              return onToggleDay && d !== today
+                ? <button type="button" key={d} className={cls} title={tip} aria-label={`${on ? 'Desmarcar' : 'Marcar'} ${habit.name} (${dayWords(d).toLowerCase()})`} aria-pressed={on} onClick={() => onToggleDay(d)} />
+                : <span key={d} className={cls} title={tip} />;
+            })}
           </span>
           <span className="mono streak">{streak > 0 ? `racha ${streak}${weekly ? ' sem' : ''}` : 'sin racha'}</span>
           <span className="mono xp-tag">+{habitXp(habit)} XP</span>
           <RewardTags rewards={habit.rewards} />
         </span>
+        {open && onToggleDay && <HabitHistory state={state} habit={habit} now={now} onToggleDay={onToggleDay} />}
       </div>
       <div className="item-actions">
         {onEdit && <button className="icon-btn edit-btn" onClick={() => setEditing(true)} aria-label={`Editar ${habit.name}`} title="Editar XP y atributos"><Icon name="sliders" /></button>}
