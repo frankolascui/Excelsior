@@ -4,6 +4,7 @@ import type { IconName } from './icon-data';
 import { totalXp, uid } from './game';
 import { bossLoot, defeatedBosses } from './bosses';
 import { kingdomProgress } from './kingdoms';
+import { trophyCoins } from './trophies';
 
 export const COIN_RULES = {
   xpPerCoin: 5, // 1 moneda por cada 5 XP
@@ -62,7 +63,8 @@ export function coinsEarned(s: GameState, now: number) {
   const fromXp = Math.floor(totalXp(s) / COIN_RULES.xpPerCoin);
   const fromBosses = defeatedBosses(s, now).reduce((n, b) => n + bossLoot(s, b, now), 0);
   const fromKingdoms = s.kingdoms.reduce((n, k) => n + kingdomBonus(s, k.id), 0);
-  return { fromXp, fromBosses, fromKingdoms, total: fromXp + fromBosses + fromKingdoms };
+  const fromSocial = trophyCoins(s); // MVP de gremio y coronas semanales
+  return { fromXp, fromBosses, fromKingdoms, fromSocial, total: fromXp + fromBosses + fromKingdoms + fromSocial };
 }
 
 export function coinsSpent(s: GameState): number {

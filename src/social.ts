@@ -20,6 +20,9 @@ export interface PublicStats {
   /** Rankings: lo de esta semana y lo de la anterior (ranking.ts). */
   week: WeekStats;
   prev: WeekStats;
+  /** Título equipado y nº de trofeos sociales (trophies.ts). */
+  title?: string | null;
+  trophies?: number;
 }
 
 export interface PublicProfile {
@@ -55,6 +58,8 @@ export function publicFields(s: GameState, now: number) {
       deepHours: Math.floor(s.sessions.reduce((n, x) => n + x.minutes, 0) / 60),
       bosses: s.bosses.filter((b) => bossStatus(s, b, now).defeated).length,
       ...publicWeeks(s, now),
+      title: s.title ?? null,
+      trophies: (s.trophies ?? []).length,
     } satisfies PublicStats,
   };
 }
@@ -193,7 +198,14 @@ export function schedulePublish(s: GameState) {
 
 // ---------- Leer amigos ----------
 
-export async function refreshSocial(s: GameState): Promise<void> {
+let queue: Promise<void> = Promise.resolve();
+/** Carga amigos, solicitudes y recomendados. Las cargas van en fila (menú y pantalla a la vez) para no crear el perfil dos veces. */
+export function refreshSocial(s: GameState): Promise<void> {
+  queue = queue.then(() => loadSocial(s));
+  return queue;
+}
+
+async function loadSocial(s: GameState): Promise<void> {
   const userId = getUserId();
   if (!userId) return;
   set({ loading: true, error: null });

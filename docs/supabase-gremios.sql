@@ -1,4 +1,4 @@
--- V2 · Gremios. Ejecutar en Supabase → SQL Editor (después de supabase-amigos.sql).
+-- V2 · Gremios. Ejecutar en Supabase → SQL Editor (después de supabase-amigos.sql) y luego supabase-gremios-2.sql.
 -- Se puede volver a ejecutar sin perder datos: añade lo que falte y rehace las reglas.
 -- Gremio de hasta 8 amigos con rangos (líder, colíderes y miembros), invitaciones,
 -- encargos (misiones y jefes de gremio) y lo que aporta cada miembro.
@@ -48,9 +48,8 @@ create table if not exists public.guild_challenges (
   created_by uuid not null references public.profiles (user_id) on delete cascade
 );
 create index if not exists guild_challenges_guild on public.guild_challenges (guild_id, starts_at desc);
--- De un encargo empezado solo se puede marcar que se cumplió.
+-- Un encargo empezado no se toca desde la app: la victoria la declara el servidor (supabase-gremios-2.sql).
 revoke update on public.guild_challenges from authenticated;
-grant update (completed_at) on public.guild_challenges to authenticated;
 
 -- Lo que cada miembro lleva hecho en el reto (lo sube su propia app).
 create table if not exists public.guild_contributions (
@@ -166,7 +165,6 @@ create policy "borrar invitación" on public.guild_invites for delete to authent
 -- Encargos: solo el líder y los colíderes los aceptan; todos ven y aportan.
 create policy "ver retos" on public.guild_challenges for select to authenticated using (public.is_guild_member(guild_id));
 create policy "empezar reto" on public.guild_challenges for insert to authenticated with check (created_by = auth.uid() and public.is_guild_officer(guild_id));
-create policy "cerrar reto" on public.guild_challenges for update to authenticated using (public.is_guild_member(guild_id)) with check (public.is_guild_member(guild_id));
 
 create policy "ver aportaciones" on public.guild_contributions for select to authenticated using (public.is_guild_member(public.challenge_guild(challenge_id)));
 create policy "subir mi aportación" on public.guild_contributions for insert to authenticated with check (user_id = auth.uid() and public.is_guild_member(public.challenge_guild(challenge_id)));

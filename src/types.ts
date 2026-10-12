@@ -200,6 +200,27 @@ export interface GameState {
   achievements?: { id: string; at: number }[];
   /** (V2) Retos de gremio cuya recompensa ya cobraste. */
   guildClaims?: string[];
+  /** (V2) Trofeos sociales: encargos de gremio ganados, MVP y coronas semanales. Se quedan aunque dejes el gremio. */
+  trophies?: Trophy[];
+  /** (V2) Título equipado que ven tus amigos (sale de un trofeo). */
+  title?: string | null;
+}
+
+/** Trofeo ganado con otros: estandarte de un encargo de gremio, MVP del encargo o corona de la semana entre amigos. */
+export interface Trophy {
+  id: string;
+  kind: 'guild' | 'mvp' | 'crown';
+  /** Encargo o semana que lo dio (no se gana dos veces el mismo). */
+  sourceId: string;
+  name: string;
+  icon: string;
+  at: number;
+  /** «Orden del Alba», «Semana del 5 oct»… */
+  detail?: string;
+  /** Monedas extra que dio. */
+  coins?: number;
+  /** Título que desbloquea. */
+  title?: string;
 }
 
 export interface Metric {

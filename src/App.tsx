@@ -15,6 +15,7 @@ import { Character, Dashboard, DeepWork, Habits, Kingdoms, Onboarding, Quests, t
 import { useAgendaAlerts } from './agenda-ui';
 import { SettingsScreen } from './settings';
 import { Friends } from './friends';
+import { useSocialAlerts } from './social-alerts';
 import type { Quest } from './types';
 import { loadTutorial, saveTutorial, Tutorial, TOURS, type TutorialPrefs } from './tutorial';
 import { isUnlocked, unlockedBetween, unlockLevel, UNLOCKS } from './unlocks';
@@ -59,6 +60,7 @@ export default function App() {
   const [review, setReview] = useState(false);
   useEffect(() => onReviewRequest(() => setReview(true)), []);
   const avatar = avatarInfo(state, Date.now());
+  const alerts = useSocialAlerts(game);
 
   // El ritual se abre desde la tarjeta de avatar, el camino del héroe o la subida de nivel.
   useEffect(() => onRitualRequest((force) => {
@@ -173,6 +175,7 @@ export default function App() {
               {open && unlockLevel(t.id) !== null && !hasSeenTour(state, t.id) && introSeen && <span className="nav-new">nuevo</span>}
               {t.id === 'deepwork' && state.activeTimer && <span className="live-dot" aria-label="Sesión en curso" />}
               {t.id === 'personaje' && avatar.ready && <span className="nav-new">ritual</span>}
+              {open && (t.id === 'amigos' || t.id === 'gremios') && alerts[t.id] > 0 && <span className="nav-new" aria-label={`${alerts[t.id]} pendientes`}>{alerts[t.id]}</span>}
             </button>
           );
         })}

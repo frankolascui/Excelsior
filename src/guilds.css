@@ -1,0 +1,50 @@
+/* ---------- Gremios y social (V2, 2.ª parte): estandartes por nivel, crónica, ánimos, inventario y trofeos ---------- */
+
+/* Marco del estandarte: bronce (Nv 1-2), plata (Nv 3-4) y oro (Nv 5+). */
+.guild-card.tier-1 .guild-emblem { border-color: #b87333; box-shadow: 0 0 0 3px color-mix(in srgb, #b87333 25%, transparent), var(--glow); }
+.guild-card.tier-2 .guild-emblem { border-color: #d8dee9; box-shadow: 0 0 0 3px color-mix(in srgb, #d8dee9 30%, transparent), 0 0 22px color-mix(in srgb, #d8dee9 35%, transparent); }
+.guild-card.tier-3 .guild-emblem {
+  border-color: #f5c84c; box-shadow: 0 0 0 3px color-mix(in srgb, #f5c84c 35%, transparent), 0 0 28px color-mix(in srgb, #f5c84c 50%, transparent);
+  animation: banner-gold 3.2s ease-in-out infinite;
+}
+@keyframes banner-gold { 50% { box-shadow: 0 0 0 4px color-mix(in srgb, #f5c84c 45%, transparent), 0 0 38px color-mix(in srgb, #f5c84c 65%, transparent); } }
+.guild-next { margin: 2px 0 0; }
+
+/* Encargos bloqueados por nivel de gremio. */
+.pick-card.locked { opacity: 0.6; filter: saturate(0.5); }
+.pick-lock { margin-top: auto; display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+
+/* MVP de un encargo ganado. */
+.ch-mvp { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; color: #f5c84c; border: 1px solid color-mix(in srgb, #f5c84c 45%, transparent); background: color-mix(in srgb, #f5c84c 10%, transparent); }
+
+/* Crónica del gremio. */
+.chron-list { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-direction: column; }
+.chron-item { display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); min-width: 0; }
+.chron-item:last-child { border-bottom: 0; }
+.chron-icon { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: var(--surface-2); color: var(--muted); font-size: 16px; }
+.chron-text { font-size: 14px; overflow-wrap: anywhere; min-width: 0; }
+.chron-when { white-space: nowrap; }
+.chron-item.k-victory .chron-icon { color: #f5c84c; background: color-mix(in srgb, #f5c84c 14%, var(--surface-2)); }
+.chron-item.k-victory .chron-text { font-weight: 600; }
+.chron-item.k-cheer .chron-icon { color: #ff6b8b; background: color-mix(in srgb, #ff6b8b 14%, var(--surface-2)); }
+.chron-item.k-start .chron-icon, .chron-item.k-leader .chron-icon { color: var(--c1); }
+
+/* Ánimos y títulos en la lista de miembros. */
+.cheer-btn .ico { color: #ff6b8b; }
+.cheer-btn:disabled { opacity: 0.55; }
+.cheer-count { color: #ff6b8b; white-space: nowrap; }
+.title-tag { color: #f5c84c; font-style: italic; }
+
+/* ---------- Inventario (Personaje) ---------- */
+.inventory .inv-tabs { margin-bottom: 12px; }
+.trophy-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.trophy { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--line); min-width: 0; }
+.trophy-icon { flex: none; width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; font-size: 26px; }
+.trophy.k-guild .trophy-icon { color: var(--c1); background: color-mix(in srgb, var(--c1) 14%, transparent); border: 1px solid color-mix(in srgb, var(--c1) 40%, transparent); }
+.trophy.k-mvp .trophy-icon, .trophy.k-crown .trophy-icon { color: #f5c84c; background: color-mix(in srgb, #f5c84c 14%, transparent); border: 1px solid color-mix(in srgb, #f5c84c 45%, transparent); }
+.trophy-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.trophy-body strong { overflow-wrap: anywhere; }
+.title-pick { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 12px; }
+.title-opt { font-size: 13px; padding: 6px 12px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); color: var(--fg); }
+.title-opt.on { border-color: #f5c84c; color: #f5c84c; box-shadow: 0 0 0 2px color-mix(in srgb, #f5c84c 20%, transparent); }
+.hero-title-tag { color: #f5c84c; font-style: italic; margin: 0; }

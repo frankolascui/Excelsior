@@ -3,6 +3,7 @@ import { useSyncExternalStore } from 'react';
 import type { IconName } from './icon-data';
 import type { GameState, XPTransaction } from './types';
 import { uid } from './game';
+import { addTrophy, MVP_TITLE } from './trophies';
 import { cloudClient, getUserId } from './cloud';
 import type { PublicProfile } from './social';
 
@@ -35,6 +36,10 @@ export interface ChallengeTemplate {
   art?: string;
   /** Jefes: sobrenombre épico sobre su nombre. */
   epithet?: string;
+  /** Nivel de gremio necesario para aceptarlo. */
+  minLevel?: number;
+  /** Jefes: título que gana cada miembro que aportó al vencerlo. */
+  title?: string;
 }
 
 export const CHALLENGES: ChallengeTemplate[] = [
@@ -57,19 +62,31 @@ export const CHALLENGES: ChallengeTemplate[] = [
     id: 'dragon', kind: 'jefe', name: 'El Dragón de la Procrastinación', icon: 'dragon-head', days: 7,
     epithet: 'Guardián del tesoro de mañana',
     lore: 'Duerme sobre todo lo que dejáis para mañana. Solo cae con horas de foco real.',
-    per: { deep: 480 }, min: { deep: 960 }, participation: 0.5, reward: 120, guildXp: 150, art: 'tifon',
+    per: { deep: 480 }, min: { deep: 960 }, participation: 0.5, reward: 120, guildXp: 150, art: 'tifon', title: 'Matadragones',
   },
   {
     id: 'hidra-rota', kind: 'jefe', name: 'La Hidra del Hábito Roto', icon: 'hydra', days: 7,
     epithet: 'La que renace de cada excusa',
     lore: 'Cada hábito que se rompe le hace crecer otra cabeza. Foco y constancia a la vez.',
-    per: { deep: 240, habits: 6 }, min: { deep: 600, habits: 15 }, participation: 0.75, reward: 150, guildXp: 200, art: 'hidra',
+    per: { deep: 240, habits: 6 }, min: { deep: 600, habits: 15 }, participation: 0.75, reward: 150, guildXp: 200, art: 'hidra', title: 'Cazahidras',
   },
   {
     id: 'titan-olvido', kind: 'jefe', name: 'El Titán del Olvido', icon: 'rock-golem', days: 14,
     epithet: 'El asedio de las dos semanas',
     lore: 'Dos semanas de asedio. Nadie lo vence solo; nadie se queda mirando.',
-    per: { deep: 720, habits: 10, xp: 600 }, min: { deep: 1800, habits: 30, xp: 1500 }, participation: 1, reward: 300, guildXp: 400, art: 'cronos',
+    per: { deep: 720, habits: 10, xp: 600 }, min: { deep: 1800, habits: 30, xp: 1500 }, participation: 1, reward: 300, guildXp: 400, art: 'cronos', title: 'Rompetitanes',
+  },
+  {
+    id: 'remolino', kind: 'jefe', name: 'El Remolino del Scroll', icon: 'whirlpool', days: 7, minLevel: 3,
+    epithet: 'El que se traga las tardes',
+    lore: 'Gira bajo cada pantalla y arrastra al fondo las horas perdidas. Solo lo calma el foco de muchos a la vez.',
+    per: { deep: 360, xp: 200 }, min: { deep: 900, xp: 500 }, participation: 0.75, reward: 180, guildXp: 250, art: 'escila', title: 'Domador del Remolino',
+  },
+  {
+    id: 'senor-excusas', kind: 'jefe', name: 'El Señor de las Excusas', icon: 'skull', days: 14, minLevel: 5,
+    epithet: 'Rey de las sombras de mañana',
+    lore: 'Gobierna todo lo que no hiciste «por una buena razón». Dos semanas sin excusas, todos a una.',
+    per: { deep: 900, habits: 12, xp: 800 }, min: { deep: 2400, habits: 36, xp: 2000 }, participation: 1, reward: 400, guildXp: 500, art: 'hades', title: 'Sin Excusas',
   },
 ];
 
@@ -161,6 +178,8 @@ export interface ChallengeRow {
   ends_at: string;
   completed_at: string | null;
   created_by: string;
+  /** Quien más aportó a la meta (lo elige el servidor al ganar). */
+  mvp?: string | null;
 }
 
 export type ChallengeState = 'active' | 'won' | 'lost';
@@ -174,15 +193,26 @@ export function guildXpFrom(challenges: ChallengeRow[]): number {
   return challenges.filter((c) => c.completed_at).reduce((n, c) => n + (challengeTemplate(c.template)?.guildXp ?? 0), 0);
 }
 
-/** Cobra la recompensa de un reto ganado (una sola vez por reto). */
-export function claimReward(s: GameState, c: ChallengeRow, now: number): GameState {
+/** Monedas extra para el MVP de un encargo: la mitad de la recompensa en XP. */
+export const mvpCoins = (t: ChallengeTemplate) => Math.round(t.reward / 2);
+
+/**
+ * Cobra la recompensa de un reto ganado (una sola vez por reto): XP a Conexión y Voluntad, el estandarte del encargo
+ * (con título si era un jefe) y, si fuiste el MVP, su trofeo con monedas extra.
+ */
+export function claimReward(s: GameState, c: ChallengeRow, now: number, who: { me?: string | null; guild?: string } = {}): GameState {
   const t = challengeTemplate(c.template);
   if (!t || !c.completed_at || (s.guildClaims ?? []).includes(c.id)) return s;
   const tx: XPTransaction = {
     id: uid(), at: now, amount: t.reward, source: 'guild', sourceId: c.id, label: `Gremio: ${t.name}`,
     attributes: { conexion: Math.round(t.reward * 0.6 * 10) / 10, voluntad: Math.round(t.reward * 0.4 * 10) / 10 },
   };
-  return { ...s, xp: [...s.xp, tx], guildClaims: [...(s.guildClaims ?? []), c.id] };
+  let next: GameState = { ...s, xp: [...s.xp, tx], guildClaims: [...(s.guildClaims ?? []), c.id] };
+  next = addTrophy(next, { kind: 'guild', sourceId: c.id, name: t.name, icon: t.icon, at: now, detail: who.guild, title: t.title });
+  if (who.me && c.mvp === who.me) {
+    next = addTrophy(next, { kind: 'mvp', sourceId: c.id, name: `MVP · ${t.name}`, icon: 'medal', at: now, detail: who.guild, coins: mvpCoins(t), title: MVP_TITLE });
+  }
+  return next;
 }
 
 export const EMBLEMS: IconName[] = ['round-shield', 'crossed-swords', 'dragon-head', 'lion', 'eagle', 'wolf', 'flame', 'lightning-helix', 'moon-emblem', 'crown', 'bow-arrow', 'pointy-sword'];
@@ -237,6 +267,38 @@ export function byRank(owner: string | undefined, members: Member[]): Member[] {
 }
 export interface Invite { guild_id: string; user_id: string; invited_by: string; created_at: string }
 
+/** Entrada de la crónica del gremio (la escribe el servidor; la app solo escribe ánimos). */
+export type GuildEventKind = 'join' | 'leave' | 'kick' | 'promote' | 'demote' | 'leader' | 'start' | 'victory' | 'cheer';
+export interface GuildEvent {
+  id: number;
+  kind: GuildEventKind;
+  actor: string | null;
+  target: string | null;
+  data: { template?: string; challenge?: string };
+  day: string;
+  created_at: string;
+}
+
+/**
+ * Crónica lista para mostrar: sin el «deja de ser colíder» que acompaña a un cambio de líder
+ * (al heredar, el colíder pasa a líder y deja su rango en el mismo momento).
+ */
+export function chronicle(events: GuildEvent[]): GuildEvent[] {
+  const near = (a: GuildEvent, b: GuildEvent) => Math.abs(Date.parse(a.created_at) - Date.parse(b.created_at)) < 60_000;
+  return events.filter((e) => !(e.kind === 'demote' && events.some((l) => l.kind === 'leader' && l.target === e.target && near(l, e))));
+}
+
+/** ¿Has animado hoy (día del servidor) a este compañero? */
+export const cheeredToday = (events: GuildEvent[], me: string, target: string, day: string) =>
+  events.some((e) => e.kind === 'cheer' && e.actor === me && e.target === target && e.day === day);
+
+/** Ánimos recibidos por cada miembro en los últimos 7 días. */
+export function cheersReceived(events: GuildEvent[], now: number): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const e of events) if (e.kind === 'cheer' && e.target && now - Date.parse(e.created_at) < 7 * DAY) out[e.target] = (out[e.target] ?? 0) + 1;
+  return out;
+}
+
 interface GuildState {
   loaded: boolean;
   loading: boolean;
@@ -248,8 +310,9 @@ interface GuildState {
   sent: Invite[]; // las que ha hecho tu gremio
   challenges: ChallengeRow[];
   contributions: (Contribution & { challenge_id: string })[];
+  events: GuildEvent[];
 }
-const empty: GuildState = { loaded: false, loading: false, error: null, guild: null, members: [], people: {}, invites: [], sent: [], challenges: [], contributions: [] };
+const empty: GuildState = { loaded: false, loading: false, error: null, guild: null, members: [], people: {}, invites: [], sent: [], challenges: [], contributions: [], events: [] };
 let gs: GuildState = empty;
 const listeners = new Set<() => void>();
 function set(patch: Partial<GuildState>) {
@@ -267,7 +330,8 @@ function describe(e: unknown): string {
   const m = e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e);
   if (/fetch|network|load failed/i.test(m)) return 'No se pudo conectar con el servidor.';
   if (/lleno/i.test(m)) return 'El gremio está lleno (8 miembros).';
-  if (/guild|does not exist|schema cache/i.test(m)) return 'Falta preparar la base de datos de gremios (docs/supabase-gremios.sql).';
+  if (/ya hay un encargo|nivel de gremio|encargo ya termin/i.test(m)) return m.replace(/^.*?(Ya hay|Este jefe|El encargo)/, '$1') + '.';
+  if (/guild|does not exist|schema cache|function/i.test(m)) return 'Falta preparar la base de datos de gremios (docs/supabase-gremios.sql y supabase-gremios-2.sql).';
   return `Algo falló con el gremio. (${m})`;
 }
 
@@ -314,11 +378,14 @@ export async function refreshGuild(s: GameState, now = Date.now()): Promise<void
       ? await db.from('guild_contributions').select('challenge_id, user_id, deep, habits, xp').in('challenge_id', challenges.map((c) => c.id))
       : { data: [], error: null };
     if (e8) throw e8;
-    const ids = [...new Set([...(members ?? []).map((m) => m.user_id), ...(sent ?? []).map((i) => i.user_id)])];
+    // Crónica: si aún no existe la tabla (falta supabase-gremios-2.sql), el gremio funciona sin ella.
+    const { data: ev } = await db.from('guild_events').select('id, kind, actor, target, data, day, created_at').eq('guild_id', gid).order('created_at', { ascending: false }).limit(40);
+    const events = (ev ?? []) as GuildEvent[];
+    const ids = [...new Set([...(members ?? []).map((m) => m.user_id), ...(sent ?? []).map((i) => i.user_id), ...events.flatMap((e) => [e.actor, e.target]).filter((x): x is string => !!x)])];
     const people = await profiles(ids);
     set({
       loaded: true, loading: false, guild: guild as Guild, members: (members ?? []) as Member[], people, invites: [],
-      sent: (sent ?? []) as Invite[], challenges, contributions: (contribs ?? []) as GuildState['contributions'],
+      sent: (sent ?? []) as Invite[], challenges, contributions: (contribs ?? []) as GuildState['contributions'], events,
     });
     // Si con lo subido ya se ha ganado, se marca para todo el gremio.
     if (active) {
@@ -337,10 +404,13 @@ async function reportContribution(s: GameState, c: ChallengeRow) {
   await cloudClient().from('guild_contributions').upsert({ challenge_id: c.id, user_id: me, ...mine, updated_at: new Date().toISOString() });
 }
 
+/** Pide al servidor que compruebe la victoria: él recalcula la regla del 30 %, la marca y elige al MVP. */
 async function finishChallenge(id: string) {
-  const at = new Date().toISOString();
-  const { error } = await cloudClient().from('guild_challenges').update({ completed_at: at }).eq('id', id).is('completed_at', null);
-  if (!error) set({ challenges: gs.challenges.map((c) => (c.id === id && !c.completed_at ? { ...c, completed_at: at } : c)) });
+  const db = cloudClient();
+  const { data: won, error } = await db.rpc('guild_check_victory', { c: id });
+  if (error || !won) return;
+  const { data } = await db.from('guild_challenges').select('*').eq('id', id).maybeSingle();
+  if (data) set({ challenges: gs.challenges.map((c) => (c.id === id ? (data as ChallengeRow) : c)) });
 }
 
 let reportTimer: number | undefined;
@@ -414,11 +484,21 @@ export async function leaveGuild(s: GameState): Promise<string | null> {
 export async function startChallenge(t: ChallengeTemplate, s: GameState, now = Date.now()): Promise<string | null> {
   if (!canCommand(myRank())) return 'Solo el líder y los colíderes aceptan encargos.';
   if (activeChallenge(now)) return 'Ya hay un encargo en marcha.';
+  if (guildLevel(guildXpFrom(gs.challenges)).level < (t.minLevel ?? 1)) return `Este jefe pide nivel de gremio ${t.minLevel}.`;
   const goal = buildGoal(t, gs.members.length);
   return run(cloudClient().from('guild_challenges').insert({
     guild_id: gs.guild!.id, template: t.id, goal, created_by: getUserId(),
     starts_at: new Date(now).toISOString(), ends_at: new Date(now + t.days * DAY).toISOString(),
   }), s);
+}
+
+/** Da ánimos a un compañero (uno al día por persona). */
+export async function cheer(userId: string, s: GameState): Promise<string | null> {
+  const me = getUserId()!;
+  const { error } = await cloudClient().from('guild_events').insert({ guild_id: gs.guild!.id, kind: 'cheer', actor: me, target: userId });
+  if (error) return /duplicate|23505/i.test(`${(error as { code?: string }).code} ${error.message}`) ? 'Ya le has dado ánimos hoy.' : describe(error);
+  await refreshGuild(s);
+  return null;
 }
 
 /** Tu rango en tu gremio (null si no tienes). */

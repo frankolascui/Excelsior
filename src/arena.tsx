@@ -455,7 +455,7 @@ export function Arena({ game }: { game: Game }) {
           <p className="eyebrow" id="treasury-h">Tesoro</p>
           <p className="treasury-amount"><CoinBadge amount={balance} /> <span className="muted">monedas</span></p>
           <p className="muted small-text">
-            {earned.fromXp} por XP (1 cada {COIN_RULES.xpPerCoin} XP) · {earned.fromBosses} por bosses · {earned.fromKingdoms} por reinos · −{coinsSpent(state)} gastadas
+            {earned.fromXp} por XP (1 cada {COIN_RULES.xpPerCoin} XP) · {earned.fromBosses} por bosses · {earned.fromKingdoms} por reinos{earned.fromSocial > 0 && ` · ${earned.fromSocial} por trofeos`} · −{coinsSpent(state)} gastadas
           </p>
         </div>
       </section>
@@ -645,7 +645,7 @@ const fmtWhen = (t: number) =>
   `${new Date(t).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}, ${new Date(t).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`;
 
 /** El cofre: premios canjeados que aún no has usado. Usarlo es el momento de disfrutarlo. */
-function Chest({ game }: { game: Game }) {
+export function Chest({ game }: { game: Game }) {
   const { state, act, toast } = game;
   const items = unusedPurchases(state);
   if (items.length === 0) return null;
