@@ -32,8 +32,19 @@ import { Inventory } from './inventory';
 import { latestMetric, logMetric } from './life';
 import { Icon } from './icons';
 import { TodayStrip } from './today';
+import { addStep, deleteStep, toggleStep } from './core';
+import type { StepActions } from './steps-ui';
 
 export type Game = ReturnType<typeof useGame>;
+
+/** Acciones de los pasos de una misión para QuestItem. */
+function stepActions(act: Game['act'], questId: string): StepActions {
+  return {
+    add: (t) => act((st) => addStep(st, questId, t)),
+    toggle: (id) => act((st) => toggleStep(st, questId, id)),
+    remove: (id) => act((st) => deleteStep(st, questId, id)),
+  };
+}
 export type Tab = 'hoy' | 'misiones' | 'reinos' | 'arena' | 'gremios' | 'amigos' | 'deepwork' | 'habitos' | 'personaje' | 'ajustes';
 
 const CAP_QUEST = 'Tope diario de XP por misiones alcanzado: la misión cuenta igual. Sube de nivel para ampliarlo.';
@@ -156,7 +167,7 @@ export function Dashboard({
           ) : (
             <ul className="list">
               {pending.slice(0, 5).map((q) => (
-                <QuestItem key={q.id} quest={q} kingdom={kingdomName(state, q.kingdomId)} onComplete={() => act((st) => completeQuest(st, q.id, Date.now()), CAP_QUEST, questOpts(q))} onStart={() => focusQuest(q)} onDeadline={(d) => act((st) => setQuestDeadline(st, q.id, d))} />
+                <QuestItem key={q.id} quest={q} kingdom={kingdomName(state, q.kingdomId)} onComplete={() => act((st) => completeQuest(st, q.id, Date.now()), CAP_QUEST, questOpts(q))} onStart={() => focusQuest(q)} onDeadline={(d) => act((st) => setQuestDeadline(st, q.id, d))} steps={stepActions(act, q.id)} />
               ))}
             </ul>
           )}
@@ -276,6 +287,7 @@ export function Quests({ game, focusQuest, startFocus }: { game: Game; focusQues
                 onEdit={(t, v) => act((st) => updateQuest(st, q.id, { title: t, ...v }))}
                 onDeadline={(d) => act((st) => setQuestDeadline(st, q.id, d))}
                 onRepeat={q.kingdomId ? undefined : (d) => act((st) => setQuestRepeat(st, q.id, d))}
+                steps={stepActions(act, q.id)}
                 onDelete={() => act((st) => deleteQuest(st, q.id))}
               />
             ))}
@@ -788,6 +800,7 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
               onStart={() => focusQuest(q)}
               onDelete={() => act((s) => deleteQuest(s, q.id))}
               onEdit={(t, v) => act((s) => updateQuest(s, q.id, { title: t, ...v }))}
+              steps={stepActions(act, q.id)}
             />
           ))}
         </ul>

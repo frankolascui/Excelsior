@@ -62,3 +62,29 @@ button.hh-day:hover { box-shadow: inset 0 0 0 1px var(--c1); }
 .hh-day.future, .hh-day.before { opacity: 0.3; }
 .hh-stats { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); }
 .hh-stats b { color: var(--fg); }
+
+/* Pasos de una misión */
+.steps-tag {
+  display: inline-flex; align-items: center; gap: 4px; font: 500 11.5px var(--mono); color: var(--muted);
+  background: none; border: 1px solid var(--line); border-radius: 99px; padding: 1px 8px; cursor: pointer;
+}
+.steps-tag:hover, .steps-tag[aria-expanded='true'] { color: var(--fg); border-color: var(--c2); }
+.steps-tag.full { color: var(--c1); border-color: color-mix(in srgb, var(--c1) 50%, transparent); }
+.steps { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.steps-bar { height: 4px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.steps-bar span { display: block; height: 100%; background: var(--grad); transition: width 0.35s ease; }
+.steps-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.step { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.step.done .step-title { text-decoration: line-through; color: var(--muted); }
+.step-check {
+  width: 18px; height: 18px; flex: none; border-radius: 5px; padding: 0; display: grid; place-items: center;
+  border: 1.5px solid color-mix(in srgb, var(--c2) 70%, transparent); background: none; color: var(--on-accent); font-size: 12px;
+}
+.step.done .step-check { background: var(--grad); border-color: transparent; }
+.step-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.step-del { opacity: 0; }
+.step:hover .step-del, .step-del:focus-visible { opacity: 0.7; }
+@media (hover: none) { .step-del { opacity: 0.5; } }
+.step-add { display: flex; gap: 6px; }
+.step-add input { flex: 1; min-width: 0; padding: 6px 10px; font-size: 13.5px; }
+.steps-ready { margin: 0; font-size: 13px; color: var(--c1); }

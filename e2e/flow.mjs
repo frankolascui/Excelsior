@@ -104,6 +104,13 @@ await page.click('.pop-repeat .pop-chip:has-text("Lunes a viernes")');
 check(await seen('#new-quest-repeat:has-text("Lunes a viernes")'), 'repetir: el botón dice los días');
 await page.click('[data-tour="quest-add"] button:has-text("Crear")');
 check(await seen('.item:has-text("Leer la prensa") .repeat-tag:has-text("Lunes a viernes")'), 'la misión muestra que se repite');
+await page.click('button[aria-label="Partir Leer la prensa en pasos"]');
+await page.fill('[aria-label="Nuevo paso de Leer la prensa"]', 'Titulares');
+await page.press('[aria-label="Nuevo paso de Leer la prensa"]', 'Enter');
+await page.fill('[aria-label="Nuevo paso de Leer la prensa"]', 'Opinión');
+await page.press('[aria-label="Nuevo paso de Leer la prensa"]', 'Enter');
+await page.click('button[aria-label="Marcar paso Titulares"]');
+check(await seen('.item:has-text("Leer la prensa") .steps-tag:has-text("1/2 pasos")'), 'una misión se puede partir en pasos con casillas');
 await page.click('button[aria-label="Borrar Leer la prensa"]');
 await page.click('.nav-item:has-text("Hoy")');
 

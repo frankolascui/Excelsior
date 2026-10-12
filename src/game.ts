@@ -401,6 +401,7 @@ export function completeQuest(s: GameState, id: string, now: number): ActionResu
     const copy: Quest = { ...q, id: uid(), createdAt: now, completedAt: null, startsOn: nextRepeatDay(q.repeat, now) };
     delete copy.deadline;
     delete copy.spawnedId;
+    if (copy.steps) copy.steps = copy.steps.map((x) => ({ ...x, id: uid(), done: false }));
     quests = [...quests.map((x) => (x.id === id ? { ...x, spawnedId: copy.id } : x)), copy];
   }
   let state: GameState = { ...s, quests };

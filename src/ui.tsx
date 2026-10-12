@@ -10,6 +10,7 @@ import { RitualCTA } from './ritual';
 import { DatePicker, dayWords, RepeatPicker } from './pickers';
 import './core.css';
 import { HabitHistory, habitShields } from './habits-ui';
+import { QuestSteps, type StepActions } from './steps-ui';
 import { AvatarPortrait, initialOf } from './portrait';
 import { Icon } from './icons';
 
@@ -83,7 +84,7 @@ export function deadlineLabel(day: string, now: number): { text: string; tone: '
 }
 
 export function QuestItem({
-  quest, kingdom, onComplete, onStart, onDelete, onUndo, onEdit, onDeadline, onRepeat,
+  quest, kingdom, onComplete, onStart, onDelete, onUndo, onEdit, onDeadline, onRepeat, steps,
 }: {
   quest: Quest;
   kingdom?: string;
@@ -94,9 +95,13 @@ export function QuestItem({
   onEdit?: (title: string, v: CustomValue) => void;
   onDeadline?: (day: string | null) => void;
   onRepeat?: (days: number[] | null) => void;
+  /** Con él, la misión puede tener pasos (subtareas) con casillas. */
+  steps?: StepActions;
 }) {
   const done = !!quest.completedAt;
   const [editing, setEditing] = useState(false);
+  const [showSteps, setShowSteps] = useState(false);
+  const sp = { done: quest.steps?.filter((x) => x.done).length ?? 0, total: quest.steps?.length ?? 0 };
   const due = quest.deadline && !done ? deadlineLabel(quest.deadline, Date.now()) : null;
   if (editing && onEdit) {
     const initial: CustomValue = { xp: quest.xp, rewards: quest.rewards ?? (quest.focus ? questRewards(quest.type, quest.title, quest.focus) : undefined) };
@@ -124,6 +129,9 @@ export function QuestItem({
           {due && (onDeadline
             ? <DatePicker value={quest.deadline ?? null} onChange={onDeadline} label={`Fecha límite de ${quest.title}`} clearLabel="Quitar fecha límite" className={`due due-${due.tone}`}><Icon name="calendar" /> {due.text}</DatePicker>
             : <span className={`due due-${due.tone}`}><Icon name="calendar" /> {due.text}</span>)}
+          {sp.total > 0 && (steps && !done
+            ? <button type="button" className={sp.done === sp.total ? 'steps-tag full' : 'steps-tag'} aria-expanded={showSteps} onClick={() => setShowSteps(!showSteps)} title="Ver pasos"><Icon name="list" /> {sp.done}/{sp.total} pasos</button>
+            : <span className="steps-tag"><Icon name="list" /> {sp.done}/{sp.total} pasos</span>)}
           {quest.repeat && !done && (onRepeat
             ? <RepeatPicker value={quest.repeat} onChange={onRepeat} label={`Repetición de ${quest.title}`} describe={repeatLabel} className="repeat-tag"><Icon name="repeat" /> {repeatLabel(quest.repeat)}</RepeatPicker>
             : <span className="repeat-tag"><Icon name="repeat" /> {repeatLabel(quest.repeat)}</span>)}
@@ -132,6 +140,7 @@ export function QuestItem({
           <span className="mono xp-tag">+{questXp(quest)} XP</span>
           <RewardTags rewards={questAttributeRewards(quest)} />
         </span>
+        {showSteps && steps && !done && <QuestSteps quest={quest} actions={steps} />}
       </div>
       <div className="item-actions">
         {onStart && !done && (
@@ -140,6 +149,9 @@ export function QuestItem({
         {onUndo && done && <button className="ghost small" onClick={onUndo}><Icon name="rotate-ccw" /> Deshacer</button>}
         {onDeadline && !done && !quest.deadline && (
           <DatePicker value={null} onChange={onDeadline} label={`Poner fecha límite a ${quest.title}`} className="icon-btn due-add"><Icon name="calendar-plus" /></DatePicker>
+        )}
+        {steps && !done && sp.total === 0 && (
+          <button className="icon-btn steps-add" onClick={() => setShowSteps(!showSteps)} aria-expanded={showSteps} aria-label={`Partir ${quest.title} en pasos`} title="Partir en pasos"><Icon name="list" /></button>
         )}
         {onRepeat && !done && !quest.repeat && (
           <RepeatPicker value={null} onChange={onRepeat} label={`Repetir ${quest.title}`} describe={repeatLabel} className="icon-btn repeat-add"><Icon name="repeat" /></RepeatPicker>

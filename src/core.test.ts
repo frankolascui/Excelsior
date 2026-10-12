@@ -101,3 +101,28 @@ describe('hábitos: días pasados y escudo de racha', () => {
     expect(dailyStreakInfo(s, id, MON)).toEqual({ streak: 3, shields: ['2026-10-11'] });
   });
 });
+
+describe('pasos de una misión', () => {
+  it('añadir, marcar y quitar pasos', async () => {
+    const { addStep, toggleStep, deleteStep, stepProgress } = await import('./core');
+    let s = addQuest(emptyState(), 'Examen de Física', 'main', MON);
+    const id = s.quests[0].id;
+    s = addStep(addStep(addStep(s, id, 'Tema 1'), id, '  '), id, 'Tema 2');
+    expect(stepProgress(s.quests[0])).toEqual({ done: 0, total: 2 });
+    s = toggleStep(s, id, s.quests[0].steps![0].id);
+    expect(stepProgress(s.quests[0])).toEqual({ done: 1, total: 2 });
+    for (const x of s.quests[0].steps!) s = deleteStep(s, id, x.id);
+    expect(s.quests[0].steps).toBeUndefined();
+  });
+
+  it('una misión que se repite empieza con los pasos sin marcar', async () => {
+    const { addStep, toggleStep } = await import('./core');
+    let s = addQuest(emptyState(), 'Rutina', 'daily', MON, { repeat: [0, 1, 2, 3, 4, 5, 6] });
+    const id = s.quests[0].id;
+    s = toggleStep(addStep(s, id, 'Estirar'), id, '');
+    s = toggleStep(s, id, s.quests[0].steps![0].id);
+    s = completeQuest(s, id, MON).state;
+    expect(s.quests[1].steps![0].done).toBe(false);
+    expect(s.quests[1].steps![0].id).not.toBe(s.quests[0].steps![0].id);
+  });
+});

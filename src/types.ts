@@ -31,6 +31,13 @@ export interface Quest {
   repeat?: number[]; // días de la semana en que se repite (0 = domingo … 6 = sábado); al completarla aparece la siguiente
   startsOn?: string; // repetición programada: no sale en pendientes hasta ese día (YYYY-MM-DD local)
   spawnedId?: string; // la repetición que creó al completarse (para deshacer)
+  steps?: QuestStep[]; // pasos (subtareas) para partir una misión grande; no dan XP por separado
+}
+
+export interface QuestStep {
+  id: string;
+  title: string;
+  done: boolean;
 }
 
 export interface Habit {
