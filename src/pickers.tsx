@@ -207,3 +207,51 @@ export function DurationChips({ start, end, onChange }: { start: string; end: st
     </div>
   );
 }
+
+const REPEAT_PRESETS: [string, number[]][] = [['Cada día', [0, 1, 2, 3, 4, 5, 6]], ['Lunes a viernes', [1, 2, 3, 4, 5]], ['Fines de semana', [0, 6]]];
+const REPEAT_DAYS: [number, string][] = [[1, 'L'], [2, 'M'], [3, 'X'], [4, 'J'], [5, 'V'], [6, 'S'], [0, 'D']];
+
+/**
+ * Elegir los días en que se repite una misión: atajos (cada día, lunes a viernes, fines de semana) o días sueltos.
+ * `value` null = no se repite. `children` sustituye el contenido del botón.
+ */
+export function RepeatPicker({ value, onChange, label, className = '', children, id, describe }: {
+  value: number[] | null; onChange: (days: number[] | null) => void; label: string; className?: string; children?: ReactNode; id?: string;
+  describe: (days: number[]) => string;
+}) {
+  const { open, setOpen, btn, toggle } = usePop();
+  const same = (a: number[], b: number[]) => a.length === b.length && a.every((d) => b.includes(d));
+  const set = (days: number[] | null, close: boolean) => {
+    onChange(days && days.length ? days : null);
+    sfx.tick();
+    if (close) { setOpen(false); btn.current?.focus(); }
+  };
+  const flip = (d: number) => {
+    const cur = value ?? [];
+    set(cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d], false);
+  };
+  return (
+    <>
+      <button type="button" ref={btn} id={id} className={`pick-btn${value ? ' set' : ''} ${className}`} onClick={toggle} aria-label={`${label}: ${value ? describe(value) : 'no se repite'}`} aria-expanded={open}>
+        {children ?? <><Icon name="repeat" /> {value ? describe(value) : 'Repetir'}</>}
+      </button>
+      {open && (
+        <Popover anchor={btn.current} onClose={() => setOpen(false)} className="pop-repeat">
+          <div className="pop-quick one">
+            <button type="button" className={`pop-chip${!value ? ' on' : ''}`} onClick={() => set(null, true)}>No se repite</button>
+            {REPEAT_PRESETS.map(([t, days]) => (
+              <button type="button" key={t} className={`pop-chip${value && same(value, days) ? ' on' : ''}`} onClick={() => set(days, true)}>{t}</button>
+            ))}
+          </div>
+          <p className="pop-note">O elige los días:</p>
+          <div className="pop-weekdays" role="group" aria-label="Días de la semana">
+            {REPEAT_DAYS.map(([d, t]) => (
+              <button type="button" key={d} aria-pressed={!!value?.includes(d)} className={`pop-day${value?.includes(d) ? ' on' : ''}`} onClick={() => flip(d)}>{t}</button>
+            ))}
+          </div>
+          <p className="pop-note">Al completarla, la siguiente aparece sola el próximo día que toque.</p>
+        </Popover>
+      )}
+    </>
+  );
+}
