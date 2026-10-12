@@ -3,7 +3,8 @@ import type { useGame } from './store';
 import type { DeepWorkArea, FocusPhase, Quest, QuestType } from './types';
 import { addGoal, avatarInfo, DEEP_WORK_AREA_HINT, deepWorkRewards, inferDeepWorkArea, deleteGoal, formatAttrXp, goalProgress, habitRewards, questRewards, updateGoal } from './attributes';
 import { CustomizeToggle, RewardEditor, sameRewards, type CustomValue } from './customize';
-import { addKingdom, BUILDINGS, buildings, deleteKingdom, kingdomName, kingdomProgress, nextStage } from './kingdoms';
+import { addKingdom, BUILDINGS, buildings, deleteKingdom, kingdomName, kingdomProgress, nextStage, renameKingdom, setKingdomDeadline } from './kingdoms';
+import { DatePicker } from './pickers';
 import { CityScene } from './city';
 import { kingdomBonus } from './economy';
 import { RealmMap } from './realm';
@@ -19,7 +20,7 @@ import {
   pomodoroStatus, pomodoroStep, startTimer, stopTimer, suggest, toggleHabit, totalXp, undoQuest, XP_RULES,
 } from './game';
 import {
-  AttributeList, AvatarCard, ConfirmButton, formatClock, formatMinutes, HabitItem, LevelBar, QuestItem,
+  AttributeList, AvatarCard, ConfirmButton, deadlineLabel, formatClock, shortDate, formatMinutes, HabitItem, LevelBar, QuestItem,
   QuickAddQuest, RewardTags, useNow,
 } from './ui';
 import { HeroJournal, ReviewBanner, TimedGoals } from './ritual';
@@ -771,6 +772,9 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
   const [custom, setCustom] = useState<CustomValue>({});
   const [open, setOpen] = useState(false);
   const [showBuilt, setShowBuilt] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [newName, setNewName] = useState('');
+  const due = kingdom.deadline ? deadlineLabel(kingdom.deadline, Date.now()) : null;
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
@@ -783,12 +787,39 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
   return (
     <section id={`kingdom-${kingdomId}`} className={p.complete ? 'panel kingdom complete' : 'panel kingdom'} aria-labelledby={`k-${kingdomId}`}>
       <header className="kingdom-head">
-        <div>
-          <h2 id={`k-${kingdomId}`} className="kingdom-name">{kingdom.name}</h2>
-          <p className="kingdom-stage"><Icon name={p.icon} /> {p.stage} · {p.built}/{p.total} construcciones{bonus > 0 && <> · tributo +{bonus} <Icon name="coin" className="coin-ico" /></>}</p>
-          <p className="muted small-text">{(() => { const n = nextStage(p.built); return n ? `${n.name} con ${n.missing} ${n.missing === 1 ? 'construcción' : 'construcciones'} más` : 'Tu reino ya es glorioso. Cada construcción nueva lo hace aún más grande.'; })()}</p>
+        <div className="kingdom-head-main">
+          {renaming ? (
+            <form className="kingdom-rename" onSubmit={(e) => { e.preventDefault(); act((s) => renameKingdom(s, kingdomId, newName)); setRenaming(false); }}>
+              <input autoFocus value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={50} aria-label="Nuevo nombre del reino" onKeyDown={(e) => e.key === 'Escape' && setRenaming(false)} />
+              <button type="submit" className="primary small" disabled={!newName.trim()}>Guardar</button>
+              <button type="button" className="ghost small" onClick={() => setRenaming(false)}>Cancelar</button>
+            </form>
+          ) : (
+            <h2 id={`k-${kingdomId}`} className="kingdom-name">
+              {kingdom.name}
+              <button className="icon-btn kingdom-edit" onClick={() => { setNewName(kingdom.name); setRenaming(true); }} aria-label={`Renombrar ${kingdom.name}`} title="Renombrar"><Icon name="pencil" /></button>
+            </h2>
+          )}
+          <p className="kingdom-stage"><Icon name={p.icon} /> {p.stage}{bonus > 0 && <> · tributo +{bonus} <Icon name="coin" className="coin-ico" /></>}</p>
+          {(() => {
+            const n = nextStage(p.built);
+            return n ? (
+              <div className="kingdom-next">
+                <span className="kingdom-next-bar" aria-hidden="true"><span style={{ width: `${n.ratio * 100}%` }} /></span>
+                <span className="muted small-text"><Icon name={n.icon} /> {n.name} con {n.missing} {n.missing === 1 ? 'construcción' : 'construcciones'} más</span>
+              </div>
+            ) : <p className="muted small-text">Tu reino ya es glorioso. Cada construcción nueva lo hace aún más grande.</p>;
+          })()}
+          <div className="kingdom-due">
+            <DatePicker value={kingdom.deadline ?? null} onChange={(d) => act((s) => setKingdomDeadline(s, kingdomId, d))} label={`Fecha objetivo de ${kingdom.name}`} clearLabel="Quitar fecha objetivo" className={due ? `due due-${due.tone}` : 'kingdom-due-add'}>
+              <Icon name="calendar" /> {due ? (p.complete ? `objetivo: ${shortDate(kingdom.deadline!)}` : due.text.replace('vence', 'objetivo')) : 'Fecha objetivo'}
+            </DatePicker>
+          </div>
         </div>
-        <span className="kingdom-pct mono">{Math.round(p.progress * 100)} %</span>
+        <div className="kingdom-count" aria-label={`${p.built} construcciones levantadas, ${pending.length} por construir`}>
+          <span className="kingdom-pct mono">{p.built}</span>
+          <span className="muted small-text">{p.built === 1 ? 'construcción' : 'construcciones'}{pending.length > 0 && <><br />{pending.length} por construir</>}</span>
+        </div>
       </header>
       <CityScene quests={all} progress={p.progress} complete={p.complete} stage={p.stage} icon={p.icon} />
       {pending.length > 0 && (

@@ -15,6 +15,25 @@ export function addKingdom(s: GameState, name: string, now: number): GameState {
   return { ...s, kingdoms: [...s.kingdoms, { id: uid(), name: name.trim(), createdAt: now }] };
 }
 
+export function renameKingdom(s: GameState, id: string, name: string): GameState {
+  const n = name.trim().slice(0, 50);
+  return n ? { ...s, kingdoms: s.kingdoms.map((k) => (k.id === id ? { ...k, name: n } : k)) } : s;
+}
+
+/** Pone o quita (null) la fecha objetivo de un reino. */
+export function setKingdomDeadline(s: GameState, id: string, day: string | null): GameState {
+  return {
+    ...s,
+    kingdoms: s.kingdoms.map((k) => {
+      if (k.id !== id) return k;
+      const next = { ...k };
+      if (day) next.deadline = day;
+      else delete next.deadline;
+      return next;
+    }),
+  };
+}
+
 /** Borra el reino y sus construcciones pendientes; las ya construidas se conservan (su XP sigue en el historial). */
 export function deleteKingdom(s: GameState, id: string): GameState {
   return {
@@ -40,10 +59,12 @@ const STAGES: { min: number; name: string; icon: IconName }[] = [
 ];
 const WASTELAND = { name: 'Tierras baldías', icon: 'wheat' as IconName };
 
-/** Etapa siguiente y cuántas construcciones faltan para ella (null en Reino glorioso). */
+/** Etapa siguiente, cuántas construcciones faltan y cuánto llevas del tramo (0–1) (null en Reino glorioso). */
 export function nextStage(built: number) {
   const next = [...STAGES].reverse().find((x) => x.min > built);
-  return next ? { name: next.name, icon: next.icon, missing: next.min - built } : null;
+  if (!next) return null;
+  const from = STAGES.find((x) => built >= x.min)!.min;
+  return { name: next.name, icon: next.icon, missing: next.min - built, ratio: (built - from) / (next.min - from) };
 }
 
 export function kingdomProgress(s: GameState, kingdomId: string) {

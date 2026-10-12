@@ -126,3 +126,20 @@ describe('pasos de una misión', () => {
     expect(s.quests[1].steps![0].id).not.toBe(s.quests[0].steps![0].id);
   });
 });
+
+describe('reinos', () => {
+  it('renombrar, fecha objetivo y tramo hacia la siguiente etapa', async () => {
+    const { addKingdom, renameKingdom, setKingdomDeadline, nextStage } = await import('./kingdoms');
+    let s = addKingdom(emptyState(), 'Reino X', MON);
+    const id = s.kingdoms[0].id;
+    s = renameKingdom(s, id, '  Reino de la Física ');
+    expect(s.kingdoms[0].name).toBe('Reino de la Física');
+    expect(renameKingdom(s, id, '   ')).toBe(s);
+    s = setKingdomDeadline(s, id, '2026-12-01');
+    expect(s.kingdoms[0].deadline).toBe('2026-12-01');
+    expect(setKingdomDeadline(s, id, null).kingdoms[0].deadline).toBeUndefined();
+    expect(nextStage(4)).toMatchObject({ name: 'Ciudad amurallada', missing: 2 });
+    expect(nextStage(4)!.ratio).toBeCloseTo(1 / 3);
+    expect(nextStage(10)).toBeNull();
+  });
+});

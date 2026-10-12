@@ -113,6 +113,7 @@ export interface Kingdom {
   id: string;
   name: string;
   createdAt: number;
+  deadline?: string; // fecha objetivo del proyecto (YYYY-MM-DD local)
 }
 
 /** Meta personal medible (dinero, peso, personas…) que se exige para desbloquear un avatar. */
