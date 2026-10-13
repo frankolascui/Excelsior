@@ -230,6 +230,25 @@ function droplet(ac: AudioContext, out: AudioNode, freq: number, vol: number, du
   src.start();
 }
 
+/** Chasquido de madera: un golpe de ruido muy corto que se apaga enseguida (más grave y largo = un tronco). */
+function crackle(ac: AudioContext, out: AudioNode, freq: number, vol: number, dur = 0.004 + Math.random() * 0.01) {
+  const len = Math.max(8, Math.ceil(ac.sampleRate * dur));
+  const buf = ac.createBuffer(1, len, ac.sampleRate);
+  const d = buf.getChannelData(0);
+  const tau = len * 0.22;
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / tau) * Math.min(1, i / 6);
+  const src = ac.createBufferSource();
+  const f = ac.createBiquadFilter();
+  const g = ac.createGain();
+  f.type = 'bandpass';
+  f.frequency.value = freq;
+  f.Q.value = 0.9;
+  g.gain.value = vol;
+  src.buffer = buf;
+  src.connect(f).connect(g).connect(out);
+  src.start();
+}
+
 /** Pájaro lejano: dos o tres silbidos suaves. */
 function bird(ac: AudioContext, out: AudioNode) {
   const base = 2200 + Math.random() * 1200;
@@ -310,48 +329,49 @@ export function playAmbient(kind: AmbientKind) {
   if (kind === 'marron') {
     const g = gain(ac, 0.8);
     drift(ac, g.gain, 0.03, 0.12); // respira muy despacio
-    loop(ac, 'brown').connect(filter(ac, 'lowpass', 420)).connect(g).connect(out);
+    loop(ac, 'brown').connect(filter(ac, 'lowpass', 340)).connect(g).connect(out);
   } else if (kind === 'lluvia') {
     // Cortina de lluvia suave y continua + alguna gota cercana, sin prisa.
-    const bed = gain(ac, 0.28);
-    drift(ac, bed.gain, 0.05, 0.05);
-    loop(ac, 'pink').connect(filter(ac, 'highpass', 250)).connect(filter(ac, 'lowpass', 2400)).connect(bed).connect(out);
+    const bed = gain(ac, 0.26);
+    drift(ac, bed.gain, 0.03, 0.03);
+    loop(ac, 'pink').connect(filter(ac, 'highpass', 200)).connect(filter(ac, 'lowpass', 1500)).connect(bed).connect(out);
     const near = gain(ac, 1);
-    near.connect(out);
-    every(220, 900, () => droplet(ac, near, 900 + Math.random() * 1400, 0.05 + Math.random() * 0.08, 0.05 + Math.random() * 0.05));
+    near.connect(filter(ac, 'lowpass', 2200)).connect(out);
+    every(500, 1800, () => droplet(ac, near, 700 + Math.random() * 900, 0.03 + Math.random() * 0.05, 0.06 + Math.random() * 0.05));
   } else if (kind === 'oceano') {
     // Olas largas (una cada ~15 s): sube el volumen y se abre el filtro en la cresta.
     const g = gain(ac, 0.42);
-    const f = filter(ac, 'lowpass', 520);
-    drift(ac, g.gain, 0.066, 0.3);
-    drift(ac, f.frequency, 0.066, 260);
+    const f = filter(ac, 'lowpass', 420);
+    drift(ac, g.gain, 0.055, 0.26);
+    drift(ac, f.frequency, 0.055, 180);
     drift(ac, g.gain, 0.021, 0.08); // olas de distinto tamaño
     loop(ac, 'brown').connect(f).connect(g).connect(out);
   } else if (kind === 'fuego') {
-    // Brasas graves y cálidas; chispas espaciadas y suaves.
-    const g = gain(ac, 0.55);
-    drift(ac, g.gain, 0.08, 0.1);
-    loop(ac, 'brown').connect(filter(ac, 'lowpass', 260)).connect(g).connect(out);
-    const sparks = gain(ac, 1);
-    sparks.connect(out);
-    every(500, 2200, () => {
-      const n = 1 + Math.floor(Math.random() * 3);
-      for (let i = 0; i < n; i++) later(i * (40 + Math.random() * 90), () => droplet(ac, sparks, 1300 + Math.random() * 1500, 0.04 + Math.random() * 0.06, 0.03));
+    // Solo la hoguera: crepitar de la madera (chasquidos cortos y secos en pequeñas rachas) y algún «toc» grave
+    // de un tronco que se asienta. Debajo, un rescoldo muy bajo y quieto: sin ruido que suba y baje, que sonaba a viento.
+    const ember = gain(ac, 0.07);
+    loop(ac, 'brown').connect(filter(ac, 'lowpass', 140)).connect(ember).connect(out);
+    const fire = gain(ac, 1);
+    fire.connect(filter(ac, 'lowpass', 3200)).connect(out);
+    every(260, 1400, () => {
+      const n = 1 + Math.floor(Math.random() * 4);
+      for (let i = 0; i < n; i++) later(i * (25 + Math.random() * 110), () => crackle(ac, fire, 1400 + Math.random() * 2200, 0.05 + Math.random() * 0.07));
     });
+    every(3500, 9000, () => crackle(ac, fire, 260 + Math.random() * 240, 0.12, 0.05));
   } else if (kind === 'bosque') {
     // Viento entre los árboles y algún pájaro lejano cada pocos segundos.
-    const g = gain(ac, 0.4);
-    const f = filter(ac, 'bandpass', 520, 0.6);
-    drift(ac, g.gain, 0.04, 0.18);
-    drift(ac, f.frequency, 0.027, 180);
+    const g = gain(ac, 0.28);
+    const f = filter(ac, 'lowpass', 600, 0.5);
+    drift(ac, g.gain, 0.025, 0.08);
+    drift(ac, f.frequency, 0.018, 120);
     loop(ac, 'pink').connect(f).connect(g).connect(out);
-    const birds = gain(ac, 1);
-    birds.connect(filter(ac, 'lowpass', 5000)).connect(out);
-    every(5000, 14000, () => bird(ac, birds));
+    const birds = gain(ac, 0.6);
+    birds.connect(filter(ac, 'lowpass', 3800)).connect(out);
+    every(9000, 22000, () => bird(ac, birds));
   } else if (kind === 'calma') {
     // Acordes lentos y graves que cambian cada 16 s, con un velo de ruido muy bajo.
-    const pad = gain(ac, 0.11);
-    const warm = filter(ac, 'lowpass', 900);
+    const pad = gain(ac, 0.1);
+    const warm = filter(ac, 'lowpass', 650);
     pad.connect(warm).connect(out);
     const oscs = CHORDS[0].map((hz, i) => {
       const o = ac.createOscillator();
@@ -366,12 +386,12 @@ export function playAmbient(kind: AmbientKind) {
       return o;
     });
     let step = 0;
-    every(16000, 16000, () => {
+    every(22000, 22000, () => {
       step = (step + 1) % CHORDS.length;
-      oscs.forEach((o, i) => o.frequency.setTargetAtTime(CHORDS[step][i], ac.currentTime, 1.6));
+      oscs.forEach((o, i) => o.frequency.setTargetAtTime(CHORDS[step][i], ac.currentTime, 2.4));
     });
-    const air = gain(ac, 0.05);
-    loop(ac, 'pink').connect(filter(ac, 'lowpass', 700)).connect(air).connect(out);
+    const air = gain(ac, 0.03);
+    loop(ac, 'pink').connect(filter(ac, 'lowpass', 500)).connect(air).connect(out);
   }
   set({ playing: kind, linkOn: false });
 }
