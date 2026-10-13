@@ -143,3 +143,5 @@ button.tg-session { font-family: inherit; justify-content: flex-start; align-ite
 
 /* Sonido de fondo: grabación real o sintetizado */
 .ambient-source { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+/* YouTube solo como audio: el reproductor existe (para sonar) pero no se ve ni ocupa sitio */
+.ambient-dock iframe.audio-only { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; left: 0; bottom: 0; }

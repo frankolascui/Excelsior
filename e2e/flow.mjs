@@ -335,7 +335,7 @@ await page.click('.nav-item:has-text("Deep Work")');
 await page.click('.chip-btn:has-text("Lluvia")');
 check(await seen('.chip-btn[aria-pressed=true]:has-text("Lluvia")') && await seen('.ambient-dock:has-text("Lluvia")'), 'sonido de lluvia de fondo');
 await page.locator('.panel.ambient').screenshot({ path: `${out}/09-ambient.png` });
-check(await seen('.ambient-dock iframe[src*="RvdF_EB64vA"]'), 'la lluvia suena con la grabación real de YouTube');
+check(await page.$('.ambient-dock iframe.audio-only[src*="RvdF_EB64vA"]') && (await page.$eval('.ambient-dock iframe', (f) => f.getBoundingClientRect().width)) <= 1, 'la lluvia suena con la grabación real, solo audio (sin vídeo)');
 await page.click('.ambient-source [role=radio]:has-text("Sintetizado")');
 check(!(await page.$('.ambient-dock iframe')) && await seen('.ambient-dock:has-text("Lluvia")'), 'en «Sintetizado» la lluvia sigue sonando sin YouTube');
 await page.click('.ambient-source [role=radio]:has-text("Grabación real")');

@@ -90,7 +90,7 @@ export function AmbientDock() {
 
   if (!embed && !synth) return null;
   return (
-    <div className={embed && embed.kind !== 'audio' ? 'ambient-dock with-player' : 'ambient-dock'}>
+    <div className={embed?.kind === 'spotify' ? 'ambient-dock with-player' : 'ambient-dock'}>
       {synth && (
         <span className="ambient-now">
           <Icon name={synth.icon} /> {synth.name}
@@ -103,14 +103,21 @@ export function AmbientDock() {
           <button className="icon-btn" onClick={stopLink} aria-label="Parar música" title="Parar"><Icon name="stop" /></button>
         </span>
       )}
+      {embed?.kind === 'youtube' && a.linkOn && (
+        <span className="ambient-now">
+          <Icon name="music" /> Música de YouTube
+          <button className="icon-btn" onClick={stopLink} aria-label="Parar música" title="Parar"><Icon name="stop" /></button>
+        </span>
+      )}
       {embed && embed.kind !== 'audio' && (
         <>
+          {/* YouTube suena sin enseñar el vídeo: el reproductor queda oculto (solo audio) */}
           <iframe
             ref={frame} onLoad={onFrameLoad}
             title="Música de fondo" src={embed.src} allow="autoplay; encrypted-media"
-            className={embed.kind === 'spotify' ? 'spotify' : 'youtube'}
+            className={embed.kind === 'spotify' ? 'spotify' : 'youtube audio-only'} aria-hidden={embed.kind === 'youtube' || undefined} tabIndex={embed.kind === 'youtube' ? -1 : undefined}
           />
-          <button className="icon-btn dock-close" onClick={a.linkOn ? stopLink : stopAmbient} aria-label="Cerrar reproductor" title="Cerrar"><Icon name="x" /></button>
+          {embed.kind === 'spotify' && <button className="icon-btn dock-close" onClick={stopLink} aria-label="Cerrar reproductor" title="Cerrar"><Icon name="x" /></button>}
         </>
       )}
       {embed?.kind !== 'spotify' && (
