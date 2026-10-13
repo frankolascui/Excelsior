@@ -26,7 +26,7 @@ const MAP = {
   // Tipos de evento
   'ev-bloque': 'l:clock', 'ev-examen': 'l:notebook-pen', 'ev-lanzamiento': 'l:rocket', 'ev-llamada': 'l:phone', 'ev-reunion': 'l:users', 'ev-otro': 'l:pin',
   // Sonido de fondo
-  'amb-lluvia': 'l:cloud-rain', 'amb-oceano': 'l:waves', 'amb-fuego': 'l:flame', 'amb-marron': 'l:audio-waveform', 'amb-calma': 'l:moon-star', 'amb-bosque': 'l:trees',
+  'amb-lluvia': 'l:cloud-rain', 'amb-oceano': 'l:waves', 'amb-fuego': 'l:flame', 'amb-blanco': 'l:audio-waveform', 'amb-calma': 'l:moon-star', 'amb-bosque': 'l:trees',
   // Estado del día
   'energy-1': 'l:battery-warning', 'energy-2': 'l:battery-low', 'energy-3': 'l:battery-medium', 'energy-4': 'l:battery-full', 'energy-5': 'l:zap',
   'mood-1': 'l:frown', 'mood-2': 'l:annoyed', 'mood-3': 'l:meh', 'mood-4': 'l:smile', 'mood-5': 'l:laugh',
@@ -37,7 +37,7 @@ const MAP = {
   'round-shield': 'g:round-shield', 'laurel-crown': 'g:laurel-crown', 'medal': 'g:medal', 'ribbon-medal': 'g:ribbon-medal', 'star-medal': 'g:star-medal',
   'fleur': 'g:fleur-de-lys', 'compass-rose': 'g:compass',
   // Atributos
-  'attr-voluntad': 'g:fist', 'attr-sabiduria': 'g:brain', 'attr-maestria': 'g:gear-hammer', 'attr-conexion': 'g:shaking-hands', 'attr-creacion': 'g:world',
+  'attr-voluntad': 'l:flame', 'attr-sabiduria': 'l:book-open', 'attr-maestria': 'g:anvil-impact', 'attr-conexion': 'l:heart-handshake', 'attr-creacion': 'g:sun',
   // Logros
   'anvil-impact': 'g:anvil-impact', 'greek-temple': 'g:greek-temple', 'breaking-chain': 'g:breaking-chain', 'sands-of-time': 'g:sands-of-time',
   infinity: 'g:infinity', 'wave-crest': 'g:wave-crest', whale: 'g:sperm-whale', atlas: 'g:atlas', vortex: 'g:vortex', lyre: 'g:lyre',
