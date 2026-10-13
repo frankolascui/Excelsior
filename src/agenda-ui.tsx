@@ -132,10 +132,10 @@ type Kind = EventKind | 'recordatorio';
 function ColorSwatches({ value, onChange }: { value?: string; onChange: (c: string | undefined) => void }) {
   return (
     <div className="swatches" role="radiogroup" aria-label="Color">
-      <button type="button" role="radio" aria-checked={!value} className={`swatch auto${value ? '' : ' on'}`} onClick={() => { onChange(undefined); sfx.tick(); }} title="Color del tipo" aria-label="Color del tipo" />
+      <button type="button" role="radio" aria-checked={!value} className={`swatch auto${value ? '' : ' on'}`} onClick={() => onChange(undefined)} title="Color del tipo" aria-label="Color del tipo" />
       {EVENT_COLORS.map((c) => (
         <button type="button" key={c.id} role="radio" aria-checked={value === c.id} className={`swatch${value === c.id ? ' on' : ''}`}
-          style={{ '--sw': c.hex } as CSSProperties} onClick={() => { onChange(c.id); sfx.tick(); }} title={c.name} aria-label={c.name} />
+          style={{ '--sw': c.hex } as CSSProperties} onClick={() => onChange(c.id)} title={c.name} aria-label={c.name} />
       ))}
     </div>
   );
@@ -194,7 +194,7 @@ function RepeatEditor({ value, day, onChange }: { value: RepeatValue; day: strin
                 const on = rule.days!.includes(d);
                 return (
                   <button type="button" key={d} aria-pressed={on} className={on ? 'rd on' : 'rd'}
-                    onClick={() => { sfx.tick(); setRule({ days: on ? rule.days!.filter((x) => x !== d) : [...rule.days!, d] }); }}>{t}</button>
+                    onClick={() => { setRule({ days: on ? rule.days!.filter((x) => x !== d) : [...rule.days!, d] }); }}>{t}</button>
                 );
               })}
             </span>
@@ -268,7 +268,6 @@ function Sheet({ label, onClose, children }: { label: string; onClose: () => voi
   const close = useRef(onClose);
   close.current = onClose;
   useEffect(() => {
-    sfx.open();
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close.current();
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -441,7 +440,6 @@ export function TimeGrid({ game, days, now, onPickDay, startFocus }: {
       }
       if (!moved.current && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 4) return;
       if (!moved.current && initial.mode !== 'create') sfx.grab();
-      if (!moved.current && initial.mode === 'create') sfx.tick();
       moved.current = true;
       const sc = scroller.current;
       if (sc) {

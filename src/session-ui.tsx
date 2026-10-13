@@ -64,7 +64,7 @@ export function SessionEdit({ game, id, onDone }: { game: Game; id: string; onDo
         </p>
       )}
       <div className="row">
-        <button className="primary" onClick={() => { sfx.tick(); save(); }} disabled={!valid}><Icon name="check" /> Guardar</button>
+        <button className="primary" onClick={() => { sfx.confirm(); save(); }} disabled={!valid}><Icon name="check" /> Guardar</button>
         <button className="ghost" onClick={onDone}>Cancelar</button>
         <ConfirmButton label="Borrar sesión" confirmLabel="Sí, borrarla"
           onConfirm={() => { game.act((s) => ({ state: deleteSession(s, id), xp: -x.minutes * XP_RULES.deepWorkPerMinute })); onDone(); }} />

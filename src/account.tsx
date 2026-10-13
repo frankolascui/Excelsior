@@ -4,6 +4,7 @@ import { cloudEnabled, sendCode, signOut, useCloud, verifyCode, type RemoteSave 
 import { levelInfo, totalXp } from './game';
 import type { GameState } from './types';
 import { Icon, rich } from './icons';
+import { sfx } from './sfx';
 
 const STATUS = { off: '', saving: 'Guardando…', saved: '{i:cloud} Guardado en la nube', error: '{i:cloud-off} Sin conexión: se guardará al volver' };
 
@@ -21,7 +22,11 @@ export function LoginForm({ onDone }: { onDone?: () => void }) {
     setError(null);
     const err = step === 'email' ? await sendCode(email) : await verifyCode(email, code);
     setBusy(false);
-    if (err) return setError(err);
+    if (err) {
+      sfx.error();
+      return setError(err);
+    }
+    sfx.confirm();
     if (step === 'email') setStep('code');
     else onDone?.();
   }

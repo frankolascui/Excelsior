@@ -4,7 +4,6 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 're
 import { createPortal } from 'react-dom';
 import { dayKey } from './game';
 import { fromMin, toMin } from './life';
-import { sfx } from './sfx';
 import { Icon } from './icons';
 
 const WD = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
@@ -83,7 +82,7 @@ function Popover({ anchor, onClose, children, className = '' }: { anchor: HTMLEl
 function usePop() {
   const [open, setOpen] = useState(false);
   const btn = useRef<HTMLButtonElement>(null);
-  const toggle = () => { if (!open) sfx.open(); setOpen(!open); };
+  const toggle = () => setOpen(!open);
   return { open, setOpen, btn, toggle };
 }
 
@@ -100,7 +99,7 @@ export function DatePicker({ value, onChange, clearLabel, placeholder = 'Fecha',
   const base = value ?? today;
   const [month, setMonth] = useState(() => base.slice(0, 7));
   useEffect(() => { if (open) setMonth((value ?? today).slice(0, 7)); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
-  const pick = (d: string | null) => { onChange(d); setOpen(false); sfx.tick(); btn.current?.focus(); };
+  const pick = (d: string | null) => { onChange(d); setOpen(false); btn.current?.focus(); };
   const [y, m] = month.split('-').map(Number);
   const first = new Date(y, m - 1, 1, 12);
   const offset = (first.getDay() + 6) % 7;
@@ -114,7 +113,7 @@ export function DatePicker({ value, onChange, clearLabel, placeholder = 'Fecha',
     ['En una semana', addDays(today, 7)],
   ];
   const monthName = first.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-  const shift = (n: number) => { const d = new Date(y, m - 1 + n, 1, 12); setMonth(dayKey(d.getTime()).slice(0, 7)); sfx.page(); };
+  const shift = (n: number) => { const d = new Date(y, m - 1 + n, 1, 12); setMonth(dayKey(d.getTime()).slice(0, 7)); };
   return (
     <>
       <button type="button" ref={btn} id={id} className={`pick-btn${value ? ' set' : ''} ${className}`} onClick={toggle} aria-label={`${label}: ${value ? dayWords(value, today) : 'sin fecha'}`} aria-expanded={open}>
@@ -167,7 +166,7 @@ export function TimePicker({ value, onChange, from, clearLabel, placeholder = 'H
     const target = list.current.querySelector<HTMLElement>('.on') ?? list.current.querySelector<HTMLElement>(`[data-t="${fromMin(value ? toMin(value) : 9 * 60)}"]`);
     if (target) list.current.scrollTop = target.offsetTop - list.current.clientHeight / 2 + target.offsetHeight / 2;
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
-  const pick = (t: string | null) => { onChange(t); setOpen(false); sfx.tick(); btn.current?.focus(); };
+  const pick = (t: string | null) => { onChange(t); setOpen(false); btn.current?.focus(); };
   return (
     <>
       <button type="button" ref={btn} id={id} className={`pick-btn${value ? ' set' : ''}`} onClick={toggle} aria-label={`${label}: ${value ?? 'sin hora'}`} aria-expanded={open}>
@@ -202,7 +201,7 @@ export function DurationChips({ start, end, onChange }: { start: string; end: st
     <div className="dur-chips" role="radiogroup" aria-label="Duración">
       {DURATIONS.filter((d) => a + d <= 24 * 60).map((d) => (
         <button type="button" key={d} role="radio" aria-checked={cur === d} className={`pop-chip small${cur === d ? ' on' : ''}`}
-          onClick={() => { onChange(fromMin(Math.min(a + d, 23 * 60 + 59))); sfx.tick(); }}>{durationWords(d)}</button>
+          onClick={() => onChange(fromMin(Math.min(a + d, 23 * 60 + 59)))}>{durationWords(d)}</button>
       ))}
     </div>
   );
@@ -223,7 +222,6 @@ export function RepeatPicker({ value, onChange, label, className = '', children,
   const same = (a: number[], b: number[]) => a.length === b.length && a.every((d) => b.includes(d));
   const set = (days: number[] | null, close: boolean) => {
     onChange(days && days.length ? days : null);
-    sfx.tick();
     if (close) { setOpen(false); btn.current?.focus(); }
   };
   const flip = (d: number) => {

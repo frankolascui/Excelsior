@@ -334,7 +334,7 @@ export function ReviewDialog({ game, guide, onClose }: { game: Game; guide: stri
     if (allMet) {
       sfx.victory();
       confetti({ big: true });
-    } else sfx.tick();
+    } else sfx.confirm();
     onClose();
   }
 

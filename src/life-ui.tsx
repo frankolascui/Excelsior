@@ -9,6 +9,7 @@ import {
   metricHistory, saveDayLog, upcomingEvents,
 } from './life';
 import { saveFile } from './download';
+import { sfx } from './sfx';
 import { shortDate } from './ui';
 import { Icon, type IconName } from './icons';
 
@@ -148,6 +149,7 @@ function DayCloseForm({ game, now }: { game: Game; now: number }) {
     e.preventDefault();
     act(() => save());
     setValues({});
+    sfx.saved();
     toast('Día guardado', 'info');
   }
   async function copy() {
@@ -164,8 +166,8 @@ function DayCloseForm({ game, now }: { game: Game; now: number }) {
     const next = save();
     act(() => next);
     const r = await saveFile(`excelsior-${today}.md`, dailyReport(next, Date.now()), 'text/markdown');
-    if (r === 'ok') toast('Informe descargado', 'info');
-    if (r === 'error') toast('No se pudo descargar aquí', 'info');
+    if (r === 'ok') { sfx.confirm(); toast('Informe descargado', 'info'); }
+    if (r === 'error') { sfx.error(); toast('No se pudo descargar aquí', 'info'); }
   }
 
   return (

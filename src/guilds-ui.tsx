@@ -42,8 +42,8 @@ function useAct(game: Game) {
     setBusy(true);
     const err = await fn();
     setBusy(false);
-    if (err) game.toast(err, 'info');
-    else if (ok) game.toast(ok, 'info');
+    if (err) { sfx.error(); game.toast(err, 'info'); }
+    else if (ok) { sfx.confirm(); game.toast(ok, 'info'); }
   }] as const;
 }
 

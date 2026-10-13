@@ -97,7 +97,7 @@ export function useGame() {
         if (r.kind === 'adopt') adopt(r.remote.state);
         if (r.kind === 'conflict') setConflict(r.remote);
       })
-      .catch(() => toast('No se pudo leer tu partida de la nube', 'info'))
+      .catch(() => { sfx.error(); toast('No se pudo leer tu partida de la nube', 'info'); })
       .finally(() => setCloudChecked(true));
   }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {

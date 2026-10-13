@@ -139,7 +139,6 @@ function SettingsPanel({
     setTheme(t);
     applyTheme(t);
     saveTheme(t);
-    sfx.tick();
   }
 
   function setCustomColor(key: 'c1' | 'c2' | 'c3', value: string) {
@@ -151,14 +150,17 @@ function SettingsPanel({
   async function download() {
     const name = `excelsior-${new Date().toISOString().slice(0, 10)}.json`;
     const r = await saveFile(name, exportBackup(game.state, Date.now()), 'application/json');
-    if (r === 'ok') game.toast('Copia descargada', 'info');
-    if (r === 'error') game.toast('No se pudo descargar aquí', 'info');
+    if (r === 'ok') { sfx.confirm(); game.toast('Copia descargada', 'info'); }
+    if (r === 'error') { sfx.error(); game.toast('No se pudo descargar aquí', 'info'); }
   }
 
   async function onFile(e: ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     e.target.value = '';
-    if (f) setPending(parseBackup(await f.text()));
+    if (!f) return;
+    const parsed = parseBackup(await f.text());
+    if (!parsed.ok) sfx.error();
+    setPending(parsed);
   }
 
   function confirmImport() {

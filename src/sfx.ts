@@ -169,11 +169,7 @@ function thump(ac: AudioContext, at: number, dur: number, freq: number, vol = 0.
   src.start(t0);
 }
 
-/** Cuándo sonó el último efecto: el clic genérico de los botones no suena si el botón ya tiene el suyo. */
-let lastPlayed = -Infinity;
-
 function play(fn: (ac: AudioContext) => void) {
-  lastPlayed = performance.now();
   const ac = audio();
   if (ac) fn(ac);
 }
@@ -274,15 +270,26 @@ export const sfx = {
     note(ac, 1900, 0.15, 0.06, 'triangle', 0.04);
     chime(ac, G5, 0.3, 0.55, 0.09);
   }),
-  /** Pulsar cualquier botón sin sonido propio: «toc» de madera muy corto y bajito, casi no se nota. */
-  press: () => play((ac) => {
-    thump(ac, 0, 0.014, 2600, 0.05, 0);
-    note(ac, 740, 0, 0.04, 'sine', 0.022, 620, 0);
+  /*
+   * Microsonidos: unas decenas de milisegundos, senos medios (600–900 Hz) y muy bajitos, sin ruido agudo. Solo
+   * para confirmaciones pequeñas y frecuentes (un subpaso, guardar un texto), donde un sonido normal cansaría.
+   */
+  /** Subpaso hecho: «tic» de 40 ms. */
+  tick: () => play((ac) => note(ac, 660, 0, 0.04, 'sine', 0.035, undefined, 0)),
+  /** Algo pequeño guardado (biografía, foto, registro del día): dos tics que suben. */
+  saved: () => play((ac) => {
+    note(ac, 587, 0, 0.045, 'sine', 0.035, undefined, 0);
+    note(ac, 880, 0.04, 0.07, 'sine', 0.03, undefined, 0.08);
   }),
-  /** Elegir algo (opción, pestaña, paso del tutorial): «tic» suave. */
-  tick: () => play((ac) => {
-    thump(ac, 0, 0.018, 5000, 0.06, 0);
-    note(ac, 1320, 0, 0.05, 'sine', 0.04, undefined, 0);
+  /** Acción importante completada (entrar, enviar, descargar, terminar una revisión): sello con campanita. */
+  confirm: () => play((ac) => {
+    note(ac, G5, 0, 0.12, 'triangle', 0.08);
+    chime(ac, C6, 0.07, 0.5, 0.07);
+  }),
+  /** Algo ha fallado (código incorrecto, sin conexión, no se pudo descargar): dos notas graves que bajan, suaves. */
+  error: () => play((ac) => {
+    note(ac, 294, 0, 0.12, 'triangle', 0.09);
+    note(ac, 247, 0.11, 0.22, 'triangle', 0.09, 233);
   }),
   /** Tachar algo de la lista: «tic» con un brillo encima. */
   check: () => play((ac) => {
@@ -329,21 +336,3 @@ export const sfx = {
     chime(ac, C6, 0.5, 1.6, 0.1, 0.5);
   }),
 };
-
-/** Lo que cuenta como botón para el clic genérico. Para callar uno concreto: `data-sfx="off"`. */
-export const PRESS_SELECTOR = 'button, a[href], summary, select, [role="button"], [role="tab"], [role="switch"], [role="menuitem"], [role="option"], input[type="checkbox"], input[type="radio"], label:has(> input[type="checkbox"], > input[type="radio"])';
-
-/**
- * Un solo oyente para toda la app: al pulsar un botón suena `sfx.press`, salvo que el propio botón haya disparado
- * ya su efecto (recompensa, golpe, abrir…) en ese mismo clic. Se mira después de que React haya respondido al clic.
- */
-export function installPressSfx(doc: Document = document) {
-  doc.addEventListener('click', (e) => {
-    const el = (e.target as Element | null)?.closest?.(PRESS_SELECTOR);
-    if (!el || el.closest('[data-sfx="off"]') || (el as HTMLButtonElement).disabled || el.getAttribute('aria-disabled') === 'true') return;
-    const at = performance.now();
-    setTimeout(() => {
-      if (lastPlayed < at) sfx.press();
-    }, 0);
-  }, true);
-}

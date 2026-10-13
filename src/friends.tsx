@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import type { Game } from './screens';
 import { RequireAccount } from './account';
 import { useCloud } from './cloud';
+import { sfx } from './sfx';
 import { ATTRIBUTES } from './attributes';
 import { AvatarPortrait, initialOf } from './portrait';
 import { freshMe, Leaderboard } from './ranking-ui';
@@ -23,13 +24,13 @@ function RelationButton({ game, p, rel }: { game: Game; p: PublicProfile; rel: R
     setBusy(true);
     const err = await fn();
     setBusy(false);
-    if (err) game.toast(err, 'info');
+    if (err) { sfx.error(); game.toast(err, 'info'); }
   }
   if (rel === 'self') return <span className="muted small-text">Eres tú</span>;
   if (rel === 'friend') return <span className="friend-badge"><Icon name="user-check" /> Amigos</span>;
   if (rel === 'outgoing') return <button className="ghost small" disabled={busy} onClick={() => go(() => removeRelation(p.user_id, game.state))}><Icon name="x" /> Cancelar solicitud</button>;
   if (rel === 'incoming') return <button className="primary small" disabled={busy} onClick={() => go(() => acceptRequest(p.user_id, game.state))}><Icon name="check" /> Aceptar</button>;
-  return <button className="primary small" disabled={busy} onClick={() => go(async () => { const e = await sendRequest(p, game.state); if (!e) game.toast(`Solicitud enviada a ${p.name}`, 'info'); return e; })}><Icon name="user-plus" /> Añadir</button>;
+  return <button className="primary small" disabled={busy} onClick={() => go(async () => { const e = await sendRequest(p, game.state); if (!e) { sfx.confirm(); game.toast(`Solicitud enviada a ${p.name}`, 'info'); } return e; })}><Icon name="user-plus" /> Añadir</button>;
 }
 
 export function ProfileDialog({ game, p, onClose }: { game: Game; p: PublicProfile; onClose: () => void }) {
@@ -101,8 +102,10 @@ function MyProfile({ game }: { game: Game }) {
     try {
       const url = await shrinkPhoto(f);
       act((s) => setPhoto(s, url));
+      sfx.saved();
       toast('Foto de perfil actualizada', 'info');
     } catch {
+      sfx.error();
       toast('No se pudo usar esa imagen. Prueba con otra (JPG o PNG).', 'info');
     }
   }
@@ -118,6 +121,7 @@ function MyProfile({ game }: { game: Game }) {
   function save(e: FormEvent) {
     e.preventDefault();
     act((s) => setBio(s, bio));
+    sfx.saved();
     toast('Biografía guardada', 'info');
   }
   return (
@@ -163,6 +167,7 @@ function AddByTag({ game, open }: { game: Game; open: (p: PublicProfile) => void
       const r = await findByTag(q);
       setRes(r === null ? 'none' : r);
     } catch (err) {
+      sfx.error();
       game.toast((err as Error).message, 'info');
     }
     setBusy(false);

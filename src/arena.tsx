@@ -433,6 +433,7 @@ export function Arena({ game }: { game: Game }) {
   function summon(templateId: string) {
     const r = summonBoss(state, templateId, Date.now());
     if (!r.ok) {
+      sfx.error();
       if (r.reason) toast(r.reason, 'info');
       return;
     }
@@ -707,7 +708,7 @@ function IconPicker({ value, onChange, icons = REWARD_ICONS, label = 'Símbolo' 
   return (
     <div className="icon-picker" role="radiogroup" aria-label={label}>
       {icons.map((i) => (
-        <button type="button" key={i} role="radio" className={value === i ? 'icon-pick on' : 'icon-pick'} aria-checked={value === i} aria-label={i} onClick={() => { onChange(i); sfx.tick(); }}><Icon name={i} /></button>
+        <button type="button" key={i} role="radio" className={value === i ? 'icon-pick on' : 'icon-pick'} aria-checked={value === i} aria-label={i} onClick={() => onChange(i)}><Icon name={i} /></button>
       ))}
     </div>
   );

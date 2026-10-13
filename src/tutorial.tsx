@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import type { Tab } from './screens';
 import { XP_RULES } from './game';
-import { sfx } from './sfx';
 import { STARTER_HABITS } from './screens';
 
 const KEY = 'excelsior:tutorial';
@@ -154,7 +153,6 @@ export function Tutorial({
   // Cambia de pantalla y señala el elemento del paso.
   useEffect(() => {
     go(s.tab);
-    sfx.tick();
     let el: Element | null = null;
     const t = setTimeout(() => {
       el = s.target ? document.querySelector(`[data-tour="${s.target}"]`) : null;

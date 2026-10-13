@@ -5,7 +5,6 @@ import type { Quest } from './types';
 import { addQuest, completeQuest, dayKey, deleteQuest, pendingQuests, setQuestDeadline, undoQuest, updateQuest, xpOnDay } from './game';
 import { QuestItem, QuickAddQuest, shortDate } from './ui';
 import { eventColor, eventIcon, eventsOn, remindersOn } from './life';
-import { sfx } from './sfx';
 import { addDays, DayAgenda, mondayOf, TimeGrid } from './agenda-ui';
 import { Icon } from './icons';
 
@@ -47,7 +46,6 @@ export function QuestCalendar({
     }
   });
   function pickView(v: CalView) {
-    if (v !== view) sfx.tick();
     setView(v);
     try {
       localStorage.setItem(CAL_VIEW_KEY, v);
@@ -72,7 +70,6 @@ export function QuestCalendar({
   const due = (day: string) => state.quests.filter((q) => !q.completedAt && q.deadline === day);
   const doneOn = (day: string) => state.quests.filter((q) => q.completedAt && dayKey(q.completedAt) === day);
   const move = (delta: number) => {
-    sfx.page();
     if (view === 'week') return select(addDays(selected, 7 * delta));
     if (view === 'four') return select(addDays(selected, 4 * delta));
     if (view === 'day') return select(addDays(selected, delta));
