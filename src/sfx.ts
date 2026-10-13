@@ -296,8 +296,12 @@ export const sfx = {
     thump(ac, 0, 0.07, 900, 0.24);
     note(ac, 330, 0, 0.12, 'triangle', 0.07, 262);
   }),
-  /** Abrir una hoja o un desplegable. */
-  open: () => play((ac) => swish(ac, 0, 0.16, 600, 2600, 0.06)),
+  /** Abrir una ficha o un desplegable: dos notas suaves y cálidas que suben (sin soplo de aire). */
+  open: () => play((ac) => {
+    note(ac, 523.25, 0, 0.16, 'sine', 0.045, undefined, 0.2);
+    note(ac, 783.99, 0.055, 0.22, 'sine', 0.035, undefined, 0.25);
+    swish(ac, 0, 0.1, 300, 700, 0.015);
+  }),
   /** Pasar de mes, semana o día. */
   page: () => play((ac) => swish(ac, 0, 0.13, 2400, 900, 0.05)),
   /** Borrar: soplo grave que se va. */
