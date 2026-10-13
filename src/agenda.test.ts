@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createProfile, emptyState } from './game';
 import {
   addEvent, addReminder, deleteReminder, dueAlerts, eventColor, eventSpan, eventsOn, laterReminders, layoutLanes, moveEvent, occursOn, remindersOn,
-  skipEventDay, todayReminders, toggleReminder, upcomingEvents, updateEvent,
+  repeatText, skipEventDay, todayReminders, toggleReminder, upcomingEvents, updateEvent,
 } from './life';
 
 const NOW = new Date(2026, 9, 6, 10, 0).getTime(); // martes 6 de octubre, 10:00
@@ -127,5 +127,31 @@ describe('mover, alargar y colores', () => {
     s = updateEvent(s, id, { time: undefined, end: undefined, repeat: undefined });
     expect(s.events![0].time).toBeUndefined();
     expect(eventsOn(s, '2026-10-09')).toHaveLength(0);
+  });
+});
+
+describe('repetición personalizada', () => {
+  const base = { id: 'e', title: 'Clase', kind: 'otro' as const, createdAt: 0 };
+  it('cada 2 semanas los lunes y miércoles', () => {
+    const e = { ...base, day: '2026-10-05', repeat: 'custom' as const, rule: { every: 2, unit: 'week' as const, days: [1, 3] } };
+    expect(occursOn(e, '2026-10-07')).toBe(true); // mié misma semana
+    expect(occursOn(e, '2026-10-12')).toBe(false); // semana siguiente no
+    expect(occursOn(e, '2026-10-19')).toBe(true);
+    expect(occursOn(e, '2026-10-21')).toBe(true);
+    expect(occursOn(e, '2026-10-20')).toBe(false);
+  });
+  it('cada 3 días, cada mes y hasta una fecha', () => {
+    const d3 = { ...base, day: '2026-10-05', repeat: 'custom' as const, rule: { every: 3, unit: 'day' as const } };
+    expect(['2026-10-08', '2026-10-09', '2026-10-11'].map((d) => occursOn(d3, d))).toEqual([true, false, true]);
+    const m = { ...base, day: '2026-10-15', repeat: 'custom' as const, rule: { every: 1, unit: 'month' as const }, until: '2026-12-31' };
+    expect(['2026-11-15', '2026-11-16', '2026-12-15', '2027-01-15'].map((d) => occursOn(m, d))).toEqual([true, false, true, false]);
+  });
+  it('se guarda limpio y se describe en palabras', () => {
+    let s = addEvent(emptyState(), { title: 'Gym', day: '2026-10-05', kind: 'otro', repeat: 'custom', rule: { every: 2, unit: 'week', days: [5, 1] }, until: '2026-12-20' }, NOW);
+    const e = s.events![0];
+    expect(e.rule).toEqual({ every: 2, unit: 'week', days: [1, 5] });
+    expect(repeatText(e)).toBe('Cada 2 semanas: L, V · hasta el 20 dic');
+    s = updateEvent(s, e.id, { repeat: 'daily' });
+    expect(s.events![0].rule).toBeUndefined();
   });
 });

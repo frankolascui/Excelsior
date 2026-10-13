@@ -2,11 +2,11 @@
 // con eventos que se arrastran y se alargan como en Google Calendar, y los avisos cuando llega la hora.
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import type { Game } from './screens';
-import type { CalendarEvent, EventKind, EventRepeat, GameState, Reminder } from './types';
+import type { CalendarEvent, EventKind, EventRepeat, GameState, Reminder, RepeatRule } from './types';
 import { dayKey } from './game';
 import {
   addEvent, addReminder, deleteEvent, deleteReminder, dueAlerts, EVENT_COLORS, EVENT_KINDS, eventColor, eventIcon, eventSpan, eventsOn, fromMin,
-  laterReminders, layoutLanes, moveEvent, remindersOn, REPEAT_NAMES, skipEventDay, todayReminders, toggleReminder, toMin, updateEvent,
+  cleanRule, laterReminders, layoutLanes, moveEvent, remindersOn, REPEAT_NAMES, repeatText, skipEventDay, todayReminders, toggleReminder, toMin, updateEvent,
 } from './life';
 import { relDay } from './life-ui';
 import { DatePicker, DurationChips, TimePicker, durationWords } from './pickers';
@@ -157,6 +157,60 @@ function TimeFields({ start, end, onStart, onEnd, reminder }: {
   );
 }
 
+type RepeatValue = { repeat?: EventRepeat; rule?: RepeatRule; until?: string };
+const RULE_DAYS: [number, string][] = [[1, 'L'], [2, 'M'], [3, 'X'], [4, 'J'], [5, 'V'], [6, 'S'], [0, 'D']];
+
+/**
+ * Repetición de un evento: los atajos de siempre o «Personalizado…» (cada N días, semanas con sus días, o meses),
+ * y cuándo termina (nunca o un día).
+ */
+function RepeatEditor({ value, day, onChange }: { value: RepeatValue; day: string; onChange: (patch: RepeatValue) => void }) {
+  const rule = value.repeat === 'custom' ? cleanRule(value.rule, day) : null;
+  const pick = (r: string) => {
+    if (!r) return onChange({ repeat: undefined, rule: undefined, until: undefined });
+    onChange({ repeat: r as EventRepeat, rule: r === 'custom' ? cleanRule(value.rule, day) : undefined });
+  };
+  const setRule = (p: Partial<RepeatRule>) => rule && onChange({ rule: cleanRule({ ...rule, ...p }, day) });
+  return (
+    <div className="repeat-editor">
+      <select className="freq-select" value={value.repeat ?? ''} onChange={(e) => pick(e.target.value)} aria-label="Repetir">
+        <option value="">No se repite</option>
+        {(Object.keys(REPEAT_NAMES) as EventRepeat[]).map((r) => <option key={r} value={r}>{REPEAT_NAMES[r]}</option>)}
+      </select>
+      {rule && (
+        <div className="repeat-custom">
+          <span className="muted">Cada</span>
+          <input type="number" min={1} max={99} className="repeat-every" value={rule.every} aria-label="Cada cuántos"
+            onChange={(e) => e.target.value !== '' && setRule({ every: Number(e.target.value) })} />
+          <select className="freq-select" value={rule.unit} aria-label="Unidad" onChange={(e) => setRule({ unit: e.target.value as RepeatRule['unit'] })}>
+            <option value="day">{rule.every === 1 ? 'día' : 'días'}</option>
+            <option value="week">{rule.every === 1 ? 'semana' : 'semanas'}</option>
+            <option value="month">{rule.every === 1 ? 'mes' : 'meses'}</option>
+          </select>
+          {rule.unit === 'week' && (
+            <span className="repeat-days" role="group" aria-label="Días de la semana">
+              {RULE_DAYS.map(([d, t]) => {
+                const on = rule.days!.includes(d);
+                return (
+                  <button type="button" key={d} aria-pressed={on} className={on ? 'rd on' : 'rd'}
+                    onClick={() => { sfx.tick(); setRule({ days: on ? rule.days!.filter((x) => x !== d) : [...rule.days!, d] }); }}>{t}</button>
+                );
+              })}
+            </span>
+          )}
+          {rule.unit === 'month' && <span className="muted small-text">el día {Number(day.slice(8))}</span>}
+        </div>
+      )}
+      {value.repeat && (
+        <span className="repeat-until">
+          <span className="muted">Termina</span>
+          <DatePicker value={value.until ?? null} onChange={(d) => onChange({ until: d ?? undefined })} label="Último día" clearLabel="Nunca" placeholder="Nunca" />
+        </span>
+      )}
+    </div>
+  );
+}
+
 /** Formulario para añadir al calendario: un evento, un bloque de tiempo (con fin, color y repetición) o un recordatorio. */
 export function AgendaForm({ game, day, time, end: initialEnd, onDone, compact }: {
   game: Game; day: string; time?: string; end?: string; onDone?: () => void; compact?: boolean;
@@ -166,7 +220,7 @@ export function AgendaForm({ game, day, time, end: initialEnd, onDone, compact }
   const [date, setDate] = useState(day);
   const [start, setStart] = useState<string | null>(time ?? null);
   const [end, setEnd] = useState<string | null>(time ? initialEnd ?? plusHour(time) : null);
-  const [repeat, setRepeat] = useState<EventRepeat | ''>('');
+  const [rep, setRep] = useState<RepeatValue>({});
   const [color, setColor] = useState<string | undefined>();
   useEffect(() => setDate(day), [day]);
   const isRem = kind === 'recordatorio';
@@ -179,7 +233,7 @@ export function AgendaForm({ game, day, time, end: initialEnd, onDone, compact }
     e.preventDefault();
     if (!title.trim()) return;
     if (isRem) game.act((s) => addReminder(s, { title, day: date, time: start ?? undefined }, Date.now()));
-    else game.act((s) => addEvent(s, { title, day: date, kind: kind as EventKind, time: start ?? undefined, end: start ? end ?? undefined : undefined, repeat: repeat || undefined, color }, Date.now()));
+    else game.act((s) => addEvent(s, { title, day: date, kind: kind as EventKind, time: start ?? undefined, end: start ? end ?? undefined : undefined, ...rep, color }, Date.now()));
     sfx.place();
     setTitle('');
     onDone?.();
@@ -200,10 +254,7 @@ export function AgendaForm({ game, day, time, end: initialEnd, onDone, compact }
       </div>
       {!isRem && (
         <div className="ev-form-extra">
-          <select className="freq-select" value={repeat} onChange={(e) => setRepeat(e.target.value as EventRepeat | '')} aria-label="Repetir">
-            <option value="">No se repite</option>
-            {(Object.keys(REPEAT_NAMES) as EventRepeat[]).map((r) => <option key={r} value={r}>{REPEAT_NAMES[r]}</option>)}
-          </select>
+          <RepeatEditor value={rep} day={date} onChange={(p) => setRep({ ...rep, ...p })} />
           <ColorSwatches value={color} onChange={setColor} />
         </div>
       )}
@@ -246,6 +297,7 @@ function EventSheet({ game, id, day, onClose, startFocus }: { game: Game; id: st
   const [title, setTitle] = useState(ev?.title ?? '');
   useEffect(() => { if (!ev) onClose(); }, [ev]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!ev) return null;
+  const series = (game.state.events ?? []).find((e) => e.id === id) ?? ev; // ev es el de ese día; series, el guardado (con su primer día)
   const set = (patch: Parameters<typeof updateEvent>[2]) => game.act((s) => updateEvent(s, id, patch));
   const saveTitle = () => { if (title.trim() && title.trim() !== ev.title) set({ title }); };
   const focusFn = ev.kind === 'bloque' ? startFocus : undefined;
@@ -261,7 +313,7 @@ function EventSheet({ game, id, day, onClose, startFocus }: { game: Game; id: st
         <input className="sheet-title-input" value={title} onChange={(e) => setTitle(e.target.value)} onBlur={saveTitle}
           onKeyDown={(e) => e.key === 'Enter' && (e.currentTarget.blur())} maxLength={80} aria-label="Nombre del evento" />
         <div className="ev-form-when">
-          <DatePicker value={ev.repeat ? ev.day : onDay} label={ev.repeat ? 'Empieza el' : 'Día'}
+          <DatePicker value={ev.repeat ? series.day : onDay} label={ev.repeat ? 'Empieza el' : 'Día'}
             onChange={(d) => { if (!d) return; if (!ev.repeat) setOnDay(d); set({ day: d }); }} />
           <TimeFields start={ev.time ?? null} end={ev.time ? fromMin(Math.min(eventSpan(ev)![1], LAST)) : null}
             onStart={(t) => {
@@ -272,10 +324,7 @@ function EventSheet({ game, id, day, onClose, startFocus }: { game: Game; id: st
             onEnd={(t) => set({ end: t })} />
         </div>
         <div className="ev-form-extra">
-          <select className="freq-select" value={ev.repeat ?? ''} onChange={(e) => set({ repeat: (e.target.value || undefined) as EventRepeat | undefined })} aria-label="Repetir">
-            <option value="">No se repite</option>
-            {(Object.keys(REPEAT_NAMES) as EventRepeat[]).map((r) => <option key={r} value={r}>{REPEAT_NAMES[r]}</option>)}
-          </select>
+          <RepeatEditor value={series} day={series.day} onChange={(p) => set(p)} />
           <ColorSwatches value={ev.color} onChange={(c) => set({ color: c })} />
         </div>
       </div>
@@ -303,7 +352,7 @@ export function DayAgenda({ game, day, now, startFocus }: { game: Game; day: str
               <span className="ev-icon" aria-hidden="true"><Icon name={eventIcon(e.kind)} /></span>
               <button className="item-body ev-open" onClick={() => setOpen(e.id)} aria-label={`Abrir ${e.title}`}>
                 <span className="item-title">{e.title}</span>
-                <span className="muted small-text">{EVENT_KINDS.find((k) => k.id === e.kind)?.name}{e.time ? ` · ${timeRange(e)}` : ''}{e.repeat && <> · <Icon name="repeat" /> {REPEAT_NAMES[e.repeat]}</>}</span>
+                <span className="muted small-text">{EVENT_KINDS.find((k) => k.id === e.kind)?.name}{e.time ? ` · ${timeRange(e)}` : ''}{e.repeat && <> · <Icon name="repeat" /> {repeatText(e)}</>}</span>
               </button>
               <button className="icon-btn" onClick={() => { sfx.remove(); game.act((s) => (e.repeat ? skipEventDay(s, e.id, day) : deleteEvent(s, e.id))); }}
                 aria-label={`Borrar evento ${e.title}${e.repeat ? ' (solo este día)' : ''}`} title="Borrar"><Icon name="trash" /></button>

@@ -257,8 +257,15 @@ export interface DayLog {
 
 export type EventKind = 'bloque' | 'examen' | 'lanzamiento' | 'llamada' | 'reunion' | 'otro';
 
-/** Repetición de un evento: cada día, de lunes a viernes o cada semana (mismo día de la semana). */
-export type EventRepeat = 'daily' | 'weekdays' | 'weekly';
+/** Repetición de un evento: cada día, de lunes a viernes, cada semana (mismo día de la semana) o personalizada. */
+export type EventRepeat = 'daily' | 'weekdays' | 'weekly' | 'custom';
+
+/** Repetición personalizada: cada `every` días, semanas (en los días `days`, 0 = domingo) o meses (mismo número de día). */
+export interface RepeatRule {
+  every: number;
+  unit: 'day' | 'week' | 'month';
+  days?: number[];
+}
 
 export interface CalendarEvent {
   id: string;
@@ -268,6 +275,10 @@ export interface CalendarEvent {
   end?: string; // HH:MM; sin ella dura una hora
   kind: EventKind;
   repeat?: EventRepeat;
+  /** Solo con repeat 'custom'. */
+  rule?: RepeatRule;
+  /** Último día en que se repite (incluido); sin él, para siempre. */
+  until?: string;
   /** Días en que no se repite (se borró o se movió solo ese día). */
   skip?: string[];
   /** Color elegido (id de EVENT_COLORS); sin él, el del tipo. */

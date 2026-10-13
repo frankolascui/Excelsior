@@ -1,6 +1,6 @@
 // Tu vida real dentro de Excelsior: medidas (dinero, peso…), cierre del día y eventos del calendario.
 // Funciones puras sobre GameState, como el resto de reglas.
-import type { CalendarEvent, DayLog, EventKind, EventRepeat, GameState, Metric, Reminder } from './types';
+import type { CalendarEvent, DayLog, EventKind, EventRepeat, GameState, Metric, Reminder, RepeatRule } from './types';
 import type { IconName } from './icon-data';
 import { dayKey, deepWorkMinutesOnDay, isHabitDone, levelInfo, totalXp, uid, xpOnDay } from './game';
 import { formatAttrXp } from './attributes';
@@ -88,7 +88,7 @@ export const EVENT_COLORS: { id: string; name: string; hex: string }[] = [
 
 export const eventColor = (e: { color?: string }) => (e.color ? EVENT_COLORS.find((c) => c.id === e.color)?.hex : undefined);
 
-type EventFields = { title: string; day: string; time?: string; end?: string; kind: EventKind; repeat?: EventRepeat; color?: string };
+type EventFields = { title: string; day: string; time?: string; end?: string; kind: EventKind; repeat?: EventRepeat; rule?: RepeatRule; until?: string; color?: string };
 
 /** Evento limpio: sin campos vacíos, fin solo si va después del inicio. */
 function cleanEvent(ev: CalendarEvent): CalendarEvent {
@@ -96,9 +96,20 @@ function cleanEvent(ev: CalendarEvent): CalendarEvent {
   if (ev.time) out.time = ev.time;
   if (ev.time && ev.end && ev.end > ev.time) out.end = ev.end;
   if (ev.repeat) out.repeat = ev.repeat;
+  if (ev.repeat === 'custom') out.rule = cleanRule(ev.rule, ev.day);
+  if (ev.repeat && ev.until && ev.until >= ev.day) out.until = ev.until;
   if (ev.repeat && ev.skip?.length) out.skip = ev.skip;
   if (ev.color) out.color = ev.color;
   return out;
+}
+
+/** Regla personalizada válida: cada 1–99; en semanas, al menos el día de la semana en que empieza. */
+export function cleanRule(rule: RepeatRule | undefined, day: string): RepeatRule {
+  const unit = rule?.unit === 'day' || rule?.unit === 'month' ? rule.unit : 'week';
+  const every = Math.max(1, Math.min(99, Math.round(rule?.every ?? 1) || 1));
+  if (unit !== 'week') return { every, unit };
+  const days = [...new Set((rule?.days ?? []).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort();
+  return { every, unit, days: days.length ? days : [new Date(`${day}T12:00:00`).getDay()] };
 }
 
 export function addEvent(s: GameState, e: EventFields, now: number): GameState {
@@ -128,14 +139,46 @@ export function skipEventDay(s: GameState, id: string, day: string): GameState {
 /** Si el evento cae ese día (contando las repeticiones). */
 export function occursOn(e: CalendarEvent, day: string): boolean {
   if (day === e.day) return !e.skip?.includes(day);
-  if (!e.repeat || day < e.day || e.skip?.includes(day)) return false;
+  if (!e.repeat || day < e.day || e.skip?.includes(day) || (e.until && day > e.until)) return false;
   const wd = (d: string) => new Date(`${d}T12:00:00`).getDay();
   if (e.repeat === 'daily') return true;
   if (e.repeat === 'weekdays') return wd(day) >= 1 && wd(day) <= 5;
+  if (e.repeat === 'custom') {
+    const r = cleanRule(e.rule, e.day);
+    const at = (d: string) => new Date(`${d}T12:00:00`).getTime();
+    const days = Math.round((at(day) - at(e.day)) / 86_400_000);
+    if (r.unit === 'day') return days % r.every === 0;
+    if (r.unit === 'month') {
+      const [y0, m0, d0] = e.day.split('-').map(Number), [y, m, d] = day.split('-').map(Number);
+      return d === d0 && ((y - y0) * 12 + m - m0) % r.every === 0;
+    }
+    // semanas contadas de lunes a lunes desde la semana en que empieza
+    const monday = (d: string) => at(d) - ((wd(d) + 6) % 7) * 86_400_000;
+    const weeks = Math.round((monday(day) - monday(e.day)) / (7 * 86_400_000));
+    return weeks % r.every === 0 && r.days!.includes(wd(day));
+  }
   return wd(day) === wd(e.day);
 }
 
-export const REPEAT_NAMES: Record<EventRepeat, string> = { daily: 'Cada día', weekdays: 'De lunes a viernes', weekly: 'Cada semana' };
+export const REPEAT_NAMES: Record<EventRepeat, string> = { daily: 'Cada día', weekdays: 'De lunes a viernes', weekly: 'Cada semana', custom: 'Personalizado…' };
+
+const WD_SHORT = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+const UNIT_WORDS = { day: ['día', 'días'], week: ['semana', 'semanas'], month: ['mes', 'meses'] } as const;
+
+/** En palabras: «Cada 2 semanas: L, X, V · hasta el 20 dic». */
+export function repeatText(e: Pick<CalendarEvent, 'repeat' | 'rule' | 'until' | 'day'>): string {
+  if (!e.repeat) return '';
+  let txt: string = REPEAT_NAMES[e.repeat];
+  if (e.repeat === 'custom') {
+    const r = cleanRule(e.rule, e.day);
+    const [one, many] = UNIT_WORDS[r.unit];
+    txt = r.every === 1 ? `Cada ${one}` : `Cada ${r.every} ${many}`;
+    if (r.unit === 'week') txt += `: ${[1, 2, 3, 4, 5, 6, 0].filter((d) => r.days!.includes(d)).map((d) => WD_SHORT[d]).join(', ')}`;
+    if (r.unit === 'month') txt += `, el día ${Number(e.day.slice(8))}`;
+  }
+  if (e.until) txt += ` · hasta el ${new Date(`${e.until}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }).replace('.', '')}`;
+  return txt;
+}
 
 export function deleteEvent(s: GameState, id: string): GameState {
   return { ...s, events: (s.events ?? []).filter((e) => e.id !== id) };
