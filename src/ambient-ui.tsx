@@ -1,7 +1,7 @@
 // Interfaz del sonido de fondo: panel de control en Deep Work y reproductor fijo que sigue sonando entre pantallas.
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import {
-  AMBIENTS, gainFor, parseLink, playAmbient, playLink, setAmbientVolume, stopAmbient, stopLink, useAmbient,
+  AMBIENTS, ambientEmbed, gainFor, parseLink, playAmbient, playLink, setAmbientReal, setAmbientVolume, stopAmbient, stopLink, useAmbient,
 } from './ambient';
 import { Icon } from './icons';
 
@@ -38,6 +38,13 @@ export function AmbientPanel() {
         ))}
         <Volume value={a.volume} label="Volumen" className="ambient-vol" />
       </div>
+      <div className="ambient-source">
+        <div className="segmented" role="radiogroup" aria-label="Fuente del sonido">
+          <button type="button" role="radio" aria-checked={a.real} className={a.real ? 'seg on' : 'seg'} onClick={() => setAmbientReal(true)}>Grabación real</button>
+          <button type="button" role="radio" aria-checked={!a.real} className={!a.real ? 'seg on' : 'seg'} onClick={() => setAmbientReal(false)}>Sintetizado</button>
+        </div>
+        <span className="muted small-text">{a.real ? 'Suena la grabación de YouTube (necesita internet). La Calma siempre es sintetizada.' : 'Sin internet ni anuncios: lo genera la app.'}</span>
+      </div>
       <form className="ambient-link" onSubmit={submit}>
         <input id="ambient-link" value={link} onChange={(e) => setLink(e.target.value)} placeholder="O pega un enlace: YouTube, Spotify o un .mp3" aria-label="Enlace de música" />
         {a.linkOn ? (
@@ -63,7 +70,7 @@ function ytCommand(frame: HTMLIFrameElement | null, func: string, args: unknown[
 /** Reproductor del enlace (vive en App para no cortarse al cambiar de pantalla) + aviso de lo que suena. */
 export function AmbientDock() {
   const a = useAmbient();
-  const embed = a.linkOn ? parseLink(a.link) : null;
+  const embed = a.linkOn ? parseLink(a.link) : ambientEmbed(a);
   const synth = AMBIENTS.find((x) => x.id === a.playing);
   const frame = useRef<HTMLIFrameElement>(null);
   const audio = useRef<HTMLAudioElement>(null);
@@ -103,7 +110,7 @@ export function AmbientDock() {
             title="Música de fondo" src={embed.src} allow="autoplay; encrypted-media"
             className={embed.kind === 'spotify' ? 'spotify' : 'youtube'}
           />
-          <button className="icon-btn dock-close" onClick={stopLink} aria-label="Cerrar reproductor" title="Cerrar"><Icon name="x" /></button>
+          <button className="icon-btn dock-close" onClick={a.linkOn ? stopLink : stopAmbient} aria-label="Cerrar reproductor" title="Cerrar"><Icon name="x" /></button>
         </>
       )}
       {embed?.kind !== 'spotify' && (

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { noise, seamless } from './ambient';
+import { AMBIENTS, ambientEmbed, noise, parseLink, seamless } from './ambient';
 
 /** Aleatorio con semilla, para que la prueba dé siempre lo mismo. */
 function seeded(seed = 7) {
@@ -36,5 +36,19 @@ describe('bucle del sonido de fondo', () => {
       expect(rms(d, at, at + 1000) / middle).toBeGreaterThan(0.85);
     }
     expect(rms(d, len - 1000, len) / middle).toBeGreaterThan(0.85);
+  });
+});
+
+describe('grabaciones reales', () => {
+  it('un enlace con minuto de inicio empieza ahí', () => {
+    expect(parseLink('https://www.youtube.com/watch?v=APXp4PGZSiI&t=65s')?.src).toContain('&start=65');
+  });
+
+  it('cada ambiente salvo la Calma tiene su grabación; con «Sintetizado» no hay reproductor', () => {
+    expect(AMBIENTS.filter((x) => !x.yt).map((x) => x.id)).toEqual(['calma']);
+    const base = { volume: 0.5, link: '', linkOn: false };
+    expect(ambientEmbed({ ...base, playing: 'lluvia', real: true })?.src).toContain('RvdF_EB64vA');
+    expect(ambientEmbed({ ...base, playing: 'lluvia', real: false })).toBeNull();
+    expect(ambientEmbed({ ...base, playing: 'calma', real: true })).toBeNull();
   });
 });

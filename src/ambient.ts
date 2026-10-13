@@ -5,13 +5,17 @@ import type { IconName } from './icon-data';
 
 export type AmbientKind = 'lluvia' | 'blanco' | 'oceano' | 'fuego' | 'bosque' | 'calma';
 
-export const AMBIENTS: { id: AmbientKind; name: string; icon: IconName }[] = [
-  { id: 'lluvia', name: 'Lluvia', icon: 'amb-lluvia' },
-  { id: 'oceano', name: 'Océano', icon: 'amb-oceano' },
-  { id: 'fuego', name: 'Hoguera', icon: 'amb-fuego' },
-  { id: 'bosque', name: 'Bosque', icon: 'amb-bosque' },
+/**
+ * `yt`: grabación real en YouTube (la que eligió Nicolas) que suena en vez del sintetizado si hay internet;
+ * `start`: segundo en el que empieza. La Calma no tiene: es música propia, solo inspirada en los fondos de Opera GX.
+ */
+export const AMBIENTS: { id: AmbientKind; name: string; icon: IconName; yt?: string; start?: number }[] = [
+  { id: 'lluvia', name: 'Lluvia', icon: 'amb-lluvia', yt: 'RvdF_EB64vA' },
+  { id: 'oceano', name: 'Océano', icon: 'amb-oceano', yt: 'lFQY0sH1U_c' },
+  { id: 'fuego', name: 'Hoguera', icon: 'amb-fuego', yt: '4ApMS8qYWo0' },
+  { id: 'bosque', name: 'Bosque', icon: 'amb-bosque', yt: 'xNN7iTA57jM' },
   { id: 'calma', name: 'Calma', icon: 'amb-calma' },
-  { id: 'blanco', name: 'Ruido blanco', icon: 'amb-blanco' },
+  { id: 'blanco', name: 'Ruido blanco', icon: 'amb-blanco', yt: 'APXp4PGZSiI', start: 65 },
 ];
 
 export type LinkEmbed = { kind: 'youtube' | 'spotify'; src: string } | { kind: 'audio'; src: string };
@@ -22,6 +26,8 @@ interface AmbientState {
   volume: number;
   link: string;
   linkOn: boolean;
+  /** true: los ambientes con grabación suenan desde YouTube; false: sintetizados (funcionan sin internet). */
+  real: boolean;
 }
 
 const KEY = 'excelsior:ambient';
@@ -37,16 +43,16 @@ function load(): AmbientState {
     const raw = JSON.parse(localStorage.getItem(KEY) ?? 'null');
     // Antes se guardaba el volumen lineal («volume»); se traduce a la posición equivalente en la curva nueva.
     const pos = typeof raw?.pos === 'number' ? raw.pos : typeof raw?.volume === 'number' ? raw.volume ** (1 / CURVE) : 0.6;
-    return { playing: null, linkOn: false, volume: pos, link: typeof raw?.link === 'string' ? raw.link : '' };
+    return { playing: null, linkOn: false, volume: pos, link: typeof raw?.link === 'string' ? raw.link : '', real: raw?.real !== false };
   } catch {
-    return { playing: null, volume: 0.6, link: '', linkOn: false };
+    return { playing: null, volume: 0.6, link: '', linkOn: false, real: true };
   }
 }
 
 function set(patch: Partial<AmbientState>) {
   state = { ...state, ...patch };
   try {
-    localStorage.setItem(KEY, JSON.stringify({ pos: state.volume, link: state.link }));
+    localStorage.setItem(KEY, JSON.stringify({ pos: state.volume, link: state.link, real: state.real }));
   } catch {
     /* ignorado */
   }
@@ -72,7 +78,8 @@ export function parseLink(url: string): LinkEmbed | null {
   if (host === 'youtube.com' || host === 'youtu.be') {
     const list = u.searchParams.get('list');
     const id = host === 'youtu.be' ? u.pathname.slice(1) : u.searchParams.get('v') ?? u.pathname.match(/\/(?:shorts|live|embed)\/([\w-]+)/)?.[1];
-    if (id) return { kind: 'youtube', src: `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&loop=1&playlist=${id}&enablejsapi=1` };
+    const start = parseInt(u.searchParams.get('t') ?? u.searchParams.get('start') ?? '', 10);
+    if (id) return { kind: 'youtube', src: `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&loop=1&playlist=${id}&enablejsapi=1${start > 0 ? `&start=${start}` : ''}` };
     if (list) return { kind: 'youtube', src: `https://www.youtube-nocookie.com/embed/videoseries?list=${list}&autoplay=1&enablejsapi=1` };
     return null;
   }
@@ -90,6 +97,20 @@ export function playLink(link: string) {
 
 export function stopLink() {
   set({ linkOn: false });
+}
+
+/** Reproductor de la grabación real del ambiente que suena (si la tiene y está elegido «real»). */
+export function ambientEmbed(a: AmbientState): LinkEmbed | null {
+  const x = AMBIENTS.find((y) => y.id === a.playing);
+  if (!a.real || !x?.yt) return null;
+  return parseLink(`https://www.youtube.com/watch?v=${x.yt}${x.start ? `&t=${x.start}` : ''}`);
+}
+
+/** Cambia entre grabación real y sintetizado; si algo suena, sigue sonando con la otra fuente. */
+export function setAmbientReal(real: boolean) {
+  const playing = state.playing;
+  set({ real });
+  if (playing) playAmbient(playing);
 }
 
 // ---------- Ambientes sintetizados ----------
@@ -310,13 +331,16 @@ function bird(ac: AudioContext, out: AudioNode) {
   }
 }
 
-// Acordes de la «Calma» (La mayor: I – vi – IV – V), graves y abiertos.
+// Acordes de la «Calma» en La menor (Am9 – Fmaj7 – Cmaj7 – Em7): oscuros y abiertos, como los fondos de
+// Opera GX, pero propios. Primera nota = bajo; el resto, el colchón.
 const CHORDS = [
-  [110, 164.81, 220, 277.18],
-  [92.5, 138.59, 220, 277.18],
-  [73.42, 146.83, 220, 293.66],
-  [82.41, 123.47, 207.65, 246.94],
+  [55, 220, 261.63, 329.63, 493.88],
+  [43.65, 174.61, 220, 261.63, 329.63],
+  [65.41, 196, 246.94, 261.63, 329.63],
+  [41.2, 164.81, 196, 246.94, 293.66],
 ];
+/** Pulso de la Calma: 84 pulsos por minuto, el arpegio va a corcheas. */
+const BEAT_S = 60 / 84;
 
 /** Para el ambiente que suena: baja en un instante (sin clic) y después desmonta sus nodos. */
 function stopSynth() {
@@ -348,6 +372,10 @@ function stopSynth() {
 
 export function playAmbient(kind: AmbientKind) {
   stopSynth();
+  if (state.real && AMBIENTS.find((x) => x.id === kind)?.yt) {
+    set({ playing: kind, linkOn: false });
+    return;
+  }
   try {
     ctx ??= new AudioContext();
     if (ctx.state === 'suspended') void ctx.resume();
@@ -423,45 +451,66 @@ export function playAmbient(kind: AmbientKind) {
     every(4000, 11000, () => bird(ac, life));
     every(14000, 30000, () => creak(ac, life));
   } else if (kind === 'calma') {
-    // Acordes lentos y graves, con un arpegio suave con eco por encima (aire de los fondos de Opera GX, sin copiarlos)
-    // y un pulso de bajo muy tenue.
-    const pad = gain(ac, 0.09);
-    const warm = filter(ac, 'lowpass', 650);
-    pad.connect(warm).connect(out);
-    const oscs = CHORDS[0].map((hz, i) => {
-      const o = ac.createOscillator();
-      const g = gain(ac, i === 0 ? 0.9 : 0.55);
-      o.type = i === 0 ? 'sine' : 'triangle';
-      o.frequency.value = hz;
-      o.detune.value = (i - 1.5) * 3;
-      drift(ac, g.gain, 0.05 + i * 0.023, 0.18);
-      o.connect(g).connect(pad);
-      o.start();
-      nodes.push(o);
-      return o;
+    // Inspirada en los fondos de Opera GX (sin copiarlos): colchón de sintetizador que «respira» a tempo,
+    // arpegio a corcheas con eco y un filtro que se abre y se cierra muy despacio, sobre un bajo redondo.
+    const pad = gain(ac, 0.07);
+    const padTone = filter(ac, 'lowpass', 900, 0.9);
+    drift(ac, padTone.frequency, 0.03, 450); // el filtro sube y baja en ~30 s
+    const pump = gain(ac, 0.8);
+    drift(ac, pump.gain, 1 / BEAT_S, 0.18); // respiración a cada pulso, suave
+    pad.connect(padTone).connect(pump).connect(out);
+    const voices = CHORDS[0].slice(1).map((hz, i) => {
+      const g = gain(ac, 0.5);
+      drift(ac, g.gain, 0.04 + i * 0.017, 0.12);
+      g.connect(pad);
+      // dos dientes de sierra un poco desafinados por voz: el sonido ancho típico de sintetizador
+      return [-7, 7].map((cents) => {
+        const o = ac.createOscillator();
+        o.type = 'sawtooth';
+        o.frequency.value = hz;
+        o.detune.value = cents;
+        o.connect(g);
+        o.start();
+        nodes.push(o);
+        return o;
+      });
     });
-    // eco: retardo con realimentación y filtro, para que las notas se queden flotando
-    const arp = gain(ac, 0.05);
+    const sub = ac.createOscillator();
+    const subG = gain(ac, 0.07);
+    sub.type = 'sine';
+    sub.frequency.value = CHORDS[0][0];
+    sub.connect(subG).connect(out);
+    sub.start();
+    nodes.push(sub);
+    // arpegio: notas cortas con eco a tresillo de corchea y filtro que también respira
+    const arp = gain(ac, 0.045);
+    const arpTone = filter(ac, 'lowpass', 1600, 2);
+    drift(ac, arpTone.frequency, 0.021, 700);
     const echo = ac.createDelay(2);
-    echo.delayTime.value = 0.75;
-    const fb = gain(ac, 0.42);
-    const dark = filter(ac, 'lowpass', 1800);
+    echo.delayTime.value = BEAT_S * 0.75;
+    const fb = gain(ac, 0.38);
+    const dark = filter(ac, 'lowpass', 2200);
     nodes.push(echo);
-    arp.connect(dark).connect(out);
-    dark.connect(echo).connect(fb).connect(dark);
+    arp.connect(arpTone).connect(out);
+    arpTone.connect(echo).connect(dark).connect(fb).connect(echo);
+    dark.connect(out);
+    const PATTERN = [0, 1, 2, 3, 2, 1, 3, 1];
     let step = 0;
-    let note = 0;
-    every(22000, 22000, () => {
+    let beat = 0;
+    every(BEAT_S * 16 * 1000, BEAT_S * 16 * 1000, () => {
       step = (step + 1) % CHORDS.length;
-      oscs.forEach((o, i) => o.frequency.setTargetAtTime(CHORDS[step][i], ac.currentTime, 2.4));
+      const t = ac.currentTime;
+      voices.forEach((pair, i) => pair.forEach((o) => o.frequency.setTargetAtTime(CHORDS[step][i + 1], t, 0.8)));
+      sub.frequency.setTargetAtTime(CHORDS[step][0], t, 0.3);
     });
-    every(1500, 1500, () => {
-      // dos de cada tres pulsos suena una nota del acorde, una octava arriba; el resto deja respirar
-      if (Math.random() < 0.34) return;
+    every(BEAT_S * 500, BEAT_S * 500, () => {
       const ch = CHORDS[step];
-      pluck(ac, arp, ch[1 + (note++ % 3)] * 2);
+      const i = PATTERN[beat++ % PATTERN.length];
+      // cada 4 compases el arpegio descansa uno, para que no canse
+      if (Math.floor(beat / 8) % 4 === 3) return;
+      pluck(ac, arp, ch[1 + i] * 2);
     });
-    const air = gain(ac, 0.03);
+    const air = gain(ac, 0.025);
     loop(ac, 'pink').connect(filter(ac, 'lowpass', 500)).connect(air).connect(out);
   }
   set({ playing: kind, linkOn: false });

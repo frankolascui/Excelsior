@@ -140,3 +140,6 @@ button.hh-day:hover { box-shadow: inset 0 0 0 1px var(--c1); }
 .link.session-fix { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; }
 button.tg-session { font-family: inherit; justify-content: flex-start; align-items: stretch; }
 .tg-day .tg-session { pointer-events: auto; cursor: pointer; }
+
+/* Sonido de fondo: grabación real o sintetizado */
+.ambient-source { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
