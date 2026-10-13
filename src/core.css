@@ -127,3 +127,16 @@ button.hh-day:hover { box-shadow: inset 0 0 0 1px var(--c1); }
 }
 .rd:hover { border-color: var(--c2); color: var(--fg); }
 .rd.on { background: var(--grad); color: var(--on-accent); border-color: transparent; }
+
+/* Corregir una sesión de Deep Work */
+.session-row .icon-btn { margin-left: 6px; vertical-align: middle; }
+.session-row.editing { display: flex; flex-direction: column; gap: 6px; padding-bottom: 10px; }
+.session-edit { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; text-align: left; }
+.session-edit-fields { display: flex; gap: 12px; flex-wrap: wrap; }
+.session-edit-fields label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.session-edit-fields input { width: 140px; }
+.session-edit-diff { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.session-edit .row { flex-wrap: wrap; align-items: center; }
+.link.session-fix { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; }
+button.tg-session { font-family: inherit; justify-content: flex-start; align-items: stretch; }
+.tg-day .tg-session { pointer-events: auto; cursor: pointer; }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { addQuest, completeQuest, emptyState, nextRepeatDay, pendingQuests, repeatLabel, scheduledQuests, setQuestRepeat, undoQuest } from './game';
+import { addQuest, completeQuest, dayKey, emptyState, nextRepeatDay, pendingQuests, repeatLabel, scheduledQuests, setQuestRepeat, startTimer, stopTimer, totalXp, undoQuest } from './game';
+import { deleteSession, editSession, focusForEnd, sessionEndAt } from './core';
 
 const MON = new Date('2026-10-12T10:00:00').getTime(); // lunes
 const D = 86_400_000;
@@ -141,5 +142,62 @@ describe('reinos', () => {
     expect(nextStage(4)).toMatchObject({ name: 'Ciudad amurallada', missing: 2 });
     expect(nextStage(4)!.ratio).toBeCloseTo(1 / 3);
     expect(nextStage(10)).toBeNull();
+  });
+});
+
+describe('corregir una sesión de Deep Work', () => {
+  // empezó el lunes a las 22:00 y se quedó encendida hasta las 9:00 del martes
+  const start = new Date('2026-10-12T22:00:00').getTime();
+  const forgotten = () => stopTimer(startTimer(emptyState(), null, 0, start, { intent: 'Leer el tema 4' }), start + 11 * 60 * 60_000).state;
+
+  it('la hora de fin se busca desde el inicio (puede ser al día siguiente)', () => {
+    const x = forgotten().sessions[0];
+    expect(dayKey(sessionEndAt(x, '23:30'))).toBe('2026-10-12');
+    expect(dayKey(sessionEndAt(x, '01:15'))).toBe('2026-10-13');
+  });
+
+  it('al poner la hora real rehace los minutos y el XP, fechado al nuevo fin', () => {
+    let s = forgotten();
+    const x = s.sessions[0];
+    expect(x.minutes).toBe(240); // el tope de una sesión
+    const end = sessionEndAt(x, '23:30');
+    expect(focusForEnd(x, end)).toBe(90);
+    s = editSession(s, x.id, { endedAt: end, minutes: focusForEnd(x, end) });
+    expect(s.sessions[0].minutes).toBe(90);
+    expect(s.sessions[0].measured).toEqual({ minutes: 240, endedAt: x.endedAt });
+    const tx = s.xp.find((t) => t.sourceId === x.id)!;
+    expect(tx.amount).toBe(90);
+    expect(dayKey(tx.at)).toBe('2026-10-12');
+    expect(totalXp(s)).toBe(90);
+  });
+
+  it('solo quita tiempo: no pasa de lo medido ni del rato entre inicio y fin', () => {
+    let s = forgotten();
+    const x = s.sessions[0];
+    s = editSession(s, x.id, { endedAt: x.endedAt + 60 * 60_000, minutes: 500 });
+    expect(s.sessions[0].minutes).toBe(240);
+    expect(s.sessions[0].endedAt).toBe(x.endedAt);
+    s = editSession(s, x.id, { endedAt: sessionEndAt(x, '22:30'), minutes: 200 });
+    expect(s.sessions[0].minutes).toBe(30);
+    // se puede volver a subir hasta lo medido
+    s = editSession(s, x.id, { endedAt: x.endedAt, minutes: 240 });
+    expect(s.sessions[0].minutes).toBe(240);
+  });
+
+  it('borrar la sesión quita también su XP', () => {
+    let s = forgotten();
+    s = deleteSession(s, s.sessions[0].id);
+    expect(s.sessions).toHaveLength(0);
+    expect(totalXp(s)).toBe(0);
+  });
+});
+
+describe('corregir sin tocar nada', () => {
+  it('la hora de fin tal cual no recorta un minuto por los segundos', () => {
+    const start = new Date('2026-10-12T09:50:10').getTime();
+    const s = stopTimer(startTimer(emptyState(), null, 0, start), start + 180 * 60_000).state;
+    const x = s.sessions[0];
+    expect(sessionEndAt(x, '12:50')).toBe(x.endedAt);
+    expect(editSession(s, x.id, { endedAt: sessionEndAt(x, '12:50'), minutes: 180 })).toBe(s);
   });
 });

@@ -13,6 +13,7 @@ import { DatePicker, DurationChips, TimePicker, durationWords } from './pickers'
 import { sfx } from './sfx';
 import { Icon, plain } from './icons';
 import { shortDate } from './ui';
+import { SessionEdit } from './session-ui';
 
 export const WEEKDAY_NAMES = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
 
@@ -394,6 +395,7 @@ export function TimeGrid({ game, days, now, onPickDay, startFocus }: {
   const cols = useRef(new Map<string, HTMLDivElement>());
   const [draft, setDraft] = useState<{ day: string; time?: string; end?: string } | null>(null);
   const [open, setOpen] = useState<{ id: string; day: string } | null>(null);
+  const [session, setSession] = useState<string | null>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
   const dragRef = useRef<Drag | null>(null);
   const moved = useRef(false);
@@ -539,7 +541,7 @@ export function TimeGrid({ game, days, now, onPickDay, startFocus }: {
             <div key={d} ref={(el) => { if (el) cols.current.set(d, el); else cols.current.delete(d); }}
               className={`tg-col${d === today ? ' today' : ''}`} onPointerDown={(e) => startEmpty(e, d)} onClick={(e) => clickEmpty(e, d)} aria-label={`Horas del ${shortDate(d)}`}>
               <DayBlocks state={state} game={game} day={d} hour={hour} now={now} drag={drag}
-                onOpen={(e) => !moved.current && setOpen({ id: e.id, day: d })} onGrab={startBlock} />
+                onOpen={(e) => !moved.current && setOpen({ id: e.id, day: d })} onGrab={startBlock} onSession={setSession} />
               {drag?.mode === 'create' && drag.day === d && (
                 <span className="tg-block tg-ghost" style={{ top: (drag.start / 60) * hour, height: ((drag.end - drag.start) / 60) * hour - 2 }}>
                   <b>Nuevo</b><span className="mono">{fromMin(drag.start)} – {fromMin(Math.min(drag.end, LAST))}</span>
@@ -558,6 +560,12 @@ export function TimeGrid({ game, days, now, onPickDay, startFocus }: {
         </Sheet>
       )}
       {open && <EventSheet key={open.id} game={game} id={open.id} day={open.day} onClose={() => setOpen(null)} startFocus={startFocus} />}
+      {session && (
+        <Sheet label="Corregir sesión de Deep Work" onClose={() => setSession(null)}>
+          <p className="eyebrow"><Icon name="zap" /> Deep Work · {state.sessions.find((x) => x.id === session)?.label}</p>
+          <SessionEdit game={game} id={session} onDone={() => setSession(null)} />
+        </Sheet>
+      )}
     </div>
   );
 }
@@ -578,9 +586,10 @@ function AllDay({ state, game, day, now, onOpen }: { state: GameState; game: Gam
   );
 }
 
-function DayBlocks({ state, game, day, hour, now, drag, onOpen, onGrab }: {
+function DayBlocks({ state, game, day, hour, now, drag, onOpen, onGrab, onSession }: {
   state: GameState; game: Game; day: string; hour: number; now: number; drag: Drag | null;
   onOpen: (e: CalendarEvent) => void; onGrab: (e: ReactPointerEvent, ev: CalendarEvent, mode: 'move' | 'resize') => void;
+  onSession?: (id: string) => void;
 }) {
   const dragged = drag && drag.mode !== 'create' ? drag : null;
   // el evento que se arrastra sale donde va a quedar, aunque sea otro día
@@ -599,9 +608,10 @@ function DayBlocks({ state, game, day, hour, now, drag, onOpen, onGrab }: {
         const a = d.getHours() * 60 + d.getMinutes();
         const b = Math.min(1440, a + Math.max(15, Math.round((x.endedAt - x.startedAt) / 60_000)));
         return (
-          <span key={x.id} className="tg-block tg-session" style={{ top: top(a), height: top(b - a) }} title={`Deep Work: ${x.label} · ${x.minutes} min`}>
+          <button key={x.id} type="button" className="tg-block tg-session" style={{ top: top(a), height: top(b - a) }} title={`Deep Work: ${x.label} · ${x.minutes} min`}
+            onClick={() => onSession?.(x.id)} aria-label={`Deep Work: ${x.label}, ${x.minutes} min. Corregir`}>
             <Icon name="zap" /> {x.label} <span className="mono">{x.minutes} min</span>
-          </span>
+          </button>
         );
       })}
       {evs.map((e, i) => {

@@ -70,6 +70,8 @@ export interface DeepWorkSession {
   distractions?: number; // veces que se marcó «Me distraje»
   focusPct?: number; // foco / (foco + distracción) × 100
   pomodoros?: number; // pomodoros completados en la sesión
+  /** Lo que midió el reloj antes de corregir la sesión a mano: tope de lo que se puede poner. */
+  measured?: { minutes: number; endedAt: number };
 }
 
 export type XPSource = 'quest' | 'habit' | 'deepwork' | 'admin' | 'guild';

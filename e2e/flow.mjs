@@ -356,6 +356,34 @@ await page.click('text=Terminar sesión');
 check(await seen('text=50 min de foco · +50 XP'), 'Pomodoro: el descanso no da XP (50 min, +50 XP)');
 check(await seen('.result:has-text("Ejercicios de derivadas")'), 'la sesión se llama como lo que ibas a hacer');
 
+// 7b2. Corregir una sesión que se quedó encendida: solo se puede quitar tiempo
+await page.click('button.session-fix');
+const realEnd = await page.inputValue('#session-end');
+const [eh, em] = realEnd.split(':').map(Number);
+const later = (eh * 60 + em + 1) % 1440;
+await page.fill('#session-end', `${String(Math.floor(later / 60)).padStart(2, '0')}:${String(later % 60).padStart(2, '0')}`);
+check(await seen('.session-edit .error-text'), 'no deja poner un fin después de que se parase el reloj');
+await page.fill('#session-end', realEnd);
+await page.fill('#session-minutes', '20');
+check(await seen('.session-edit-diff:has-text("+20 XP")'), 'la corrección enseña el XP que quedará');
+await page.screenshot({ path: `${out}/09-session-edit.png` });
+await page.click('.session-edit button:has-text("Guardar")');
+check(await seen('text=20 min de foco · +20 XP') && await seen('.toast:has-text("-30 XP")'), 'corregir la sesión rehace el XP (50 → 20 min, −30 XP)');
+await page.click('.session-row:has-text("Ejercicios de derivadas") button[aria-label^="Corregir"]');
+await page.fill('#session-minutes', '50');
+await page.click('.session-edit button:has-text("Guardar")');
+check(await seen('text=50 min de foco · +50 XP') && await seen('.session-row:has-text("corregida")'), 'se puede volver a subir hasta lo medido');
+await page.click('.nav-item:has-text("Misiones")');
+if (!(await page.isVisible('.calendar'))) await page.click('[role=radio]:has-text("Calendario")');
+await page.click('.cal-views [role=radio]:text-is("Día")');
+await page.click('.cal-head button:has-text("Hoy")');
+for (let i = 0; i < 3 && !(await page.$('.tg-day .tg-session')); i++) await page.click('.cal-head button[aria-label$="anterior"]');
+await page.click('.tg-day .tg-session >> nth=0');
+check(await seen('.sheet #session-minutes'), 'una sesión de Deep Work del calendario se puede corregir');
+await page.screenshot({ path: `${out}/17b-calendar-session.png` });
+await page.keyboard.press('Escape');
+await page.click('.cal-views [role=radio]:has-text("Mes")');
+
 // 7c. Modo admin: con contraseña, partida de pruebas con todo desbloqueado, sin tocar la real
 const realLevel = (await page.textContent('.nav-level')).match(/Nv \d+/)[0];
 await page.click('button[aria-label="Ajustes"]');

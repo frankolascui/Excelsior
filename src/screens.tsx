@@ -35,6 +35,7 @@ import { Icon } from './icons';
 import { TodayStrip } from './today';
 import { addStep, deleteStep, toggleStep } from './core';
 import type { StepActions } from './steps-ui';
+import { SessionEdit } from './session-ui';
 
 export type Game = ReturnType<typeof useGame>;
 
@@ -330,6 +331,7 @@ export function Quests({ game, focusQuest, startFocus }: { game: Game; focusQues
 
 
 interface SessionResult {
+  id?: string;
   minutes: number;
   xp: number;
   questId: string | null;
@@ -351,6 +353,7 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
   const now = useNow(250);
   const [questId, setQuestId] = useState<string | null>(preselect);
   const [result, setResult] = useState<SessionResult | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
   const [intent, setIntent] = useState(presetIntent);
   const [pomo, setPomo] = useState(() => {
     try {
@@ -388,7 +391,7 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
       const x = r.session;
       setResult(x
         ? {
-          minutes: x.minutes, xp: r.xp, questId: x.questId, label: x.label, breakMinutes: x.breakMinutes ?? 0,
+          id: x.id, minutes: x.minutes, xp: r.xp, questId: x.questId, label: x.label, breakMinutes: x.breakMinutes ?? 0,
           distractionMinutes: x.distractionMinutes ?? 0, distractions: x.distractions ?? 0, focusPct: x.focusPct ?? 100, area: x.area,
         }
         : { minutes: 0, xp: 0, questId: null, label: '', breakMinutes: 0, distractionMinutes: 0, distractions: 0, focusPct: 100, area: 'general' });
@@ -498,23 +501,29 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
   }
 
   const linked = result?.questId ? state.quests.find((q) => q.id === result.questId && !q.completedAt) : null;
+  // si corriges o borras la sesión recién guardada, la tarjeta lo refleja
+  const live = result?.id ? state.sessions.find((x) => x.id === result.id) : undefined;
+  const shown = result && result.id && !live ? null : result && live ? { ...result, minutes: live.minutes, xp: live.minutes * XP_RULES.deepWorkPerMinute } : result;
 
   return (
     <div className="screen">
       <h1 className="screen-title">Deep Work</h1>
 
-      {result && (
+      {result && shown && (
         <section className="panel result" aria-live="polite">
           {result.minutes > 0 ? (
             <>
               <p className="eyebrow">Sesión registrada</p>
-              <h2>{formatMinutes(result.minutes)} de foco · +{result.xp} XP</h2>
+              <h2>{formatMinutes(shown.minutes)} de foco · +{shown.xp} XP</h2>
               <div className="focus-stats left">
                 <div className={result.focusPct >= 80 ? 'good' : result.focusPct >= 60 ? 'mid' : 'bad'}><span className="mono">{result.focusPct} %</span><span>Foco real</span></div>
                 <div><span className="mono">{formatMinutes(result.breakMinutes)}</span><span>Descanso</span></div>
                 <div><span className="mono">{formatMinutes(result.distractionMinutes)}</span><span>Distracción{result.distractions ? ` ×${result.distractions}` : ''}</span></div>
               </div>
-              <p className="now-sub">{result.label} <RewardTags rewards={deepWorkRewards(result.minutes, result.area)} /></p>
+              <p className="now-sub">{result.label} <RewardTags rewards={deepWorkRewards(shown.minutes, result.area)} /></p>
+              {result.id && (editing === result.id
+                ? <SessionEdit game={game} id={result.id} onDone={() => setEditing(null)} />
+                : <button className="link session-fix" onClick={() => setEditing(result.id!)}><Icon name="clock" /> ¿Se te olvidó pararlo? Corregir la hora de fin</button>)}
               {linked && (
                 <div className="row">
                   <button className="primary" onClick={() => { act((s) => completeQuest(s, linked.id, Date.now()), CAP_QUEST, questOpts(linked)); setResult({ ...result, questId: null }); }}>
@@ -569,12 +578,15 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
         {sessionsToday.length === 0 ? <p className="empty">Todavía ninguna.</p> : (
           <ul className="list plain">
             {sessionsToday.map((x) => (
-              <li key={x.id} className="row-between">
+              <li key={x.id} className={editing === x.id ? 'session-row editing' : 'row-between session-row'}>
                 <span>{x.label}</span>
                 <span className="mono muted">
                   {new Date(x.startedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })} · {formatMinutes(x.minutes)}
                   {x.focusPct !== undefined && ` · ${x.focusPct} % foco`}
+                  {x.measured && ' · corregida'}
+                  {editing !== x.id && <button className="icon-btn" onClick={() => setEditing(x.id)} aria-label={`Corregir ${x.label}`} title="Corregir hora de fin"><Icon name="pencil" /></button>}
                 </span>
+                {editing === x.id && <SessionEdit game={game} id={x.id} onDone={() => setEditing(null)} />}
               </li>
             ))}
           </ul>
