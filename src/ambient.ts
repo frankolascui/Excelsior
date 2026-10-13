@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from 'react';
 import type { IconName } from './icon-data';
 
-export type AmbientKind = 'lluvia' | 'marron' | 'oceano' | 'fuego' | 'bosque' | 'calma';
+export type AmbientKind = 'lluvia' | 'blanco' | 'oceano' | 'fuego' | 'bosque' | 'calma';
 
 export const AMBIENTS: { id: AmbientKind; name: string; icon: IconName }[] = [
   { id: 'lluvia', name: 'Lluvia', icon: 'amb-lluvia' },
@@ -11,7 +11,7 @@ export const AMBIENTS: { id: AmbientKind; name: string; icon: IconName }[] = [
   { id: 'fuego', name: 'Hoguera', icon: 'amb-fuego' },
   { id: 'bosque', name: 'Bosque', icon: 'amb-bosque' },
   { id: 'calma', name: 'Calma', icon: 'amb-calma' },
-  { id: 'marron', name: 'Ruido marrón', icon: 'amb-marron' },
+  { id: 'blanco', name: 'Ruido blanco', icon: 'amb-blanco' },
 ];
 
 export type LinkEmbed = { kind: 'youtube' | 'spotify'; src: string } | { kind: 'audio'; src: string };
@@ -212,24 +212,6 @@ function every(min: number, max: number, fn: () => void) {
   later(min + Math.random() * (max - min), tick);
 }
 
-/** Gota o chispa suave: ruido corto filtrado, con ataque y caída redondeados. */
-function droplet(ac: AudioContext, out: AudioNode, freq: number, vol: number, dur = 0.07) {
-  const len = Math.ceil(ac.sampleRate * dur);
-  const buf = ac.createBuffer(1, len, ac.sampleRate);
-  const d = buf.getChannelData(0);
-  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.sin((Math.PI * i) / len) ** 2;
-  const src = ac.createBufferSource();
-  const f = ac.createBiquadFilter();
-  const g = ac.createGain();
-  f.type = 'bandpass';
-  f.frequency.value = freq;
-  f.Q.value = 2.5;
-  g.gain.value = vol;
-  src.buffer = buf;
-  src.connect(f).connect(g).connect(out);
-  src.start();
-}
-
 /** Chasquido de madera: un golpe de ruido muy corto que se apaga enseguida (más grave y largo = un tronco). */
 function crackle(ac: AudioContext, out: AudioNode, freq: number, vol: number, dur = 0.004 + Math.random() * 0.01) {
   const len = Math.max(8, Math.ceil(ac.sampleRate * dur));
@@ -247,6 +229,65 @@ function crackle(ac: AudioContext, out: AudioNode, freq: number, vol: number, du
   src.buffer = buf;
   src.connect(f).connect(g).connect(out);
   src.start();
+}
+
+/** Gota contra el cristal: «tic» muy corto con un poco de resonancia (vidrio), con altura y fuerza al azar. */
+function windowDrop(ac: AudioContext, out: AudioNode, vol = 1) {
+  const f = 1800 + Math.random() * 2600;
+  crackle(ac, out, f, (0.035 + Math.random() * 0.05) * vol, 0.003);
+  const t0 = ac.currentTime;
+  const o = ac.createOscillator();
+  const g = ac.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(f * 0.9, t0);
+  o.frequency.exponentialRampToValueAtTime(f * 0.8, t0 + 0.09);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(0.006 * vol, t0 + 0.004);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.1);
+  o.connect(g).connect(out);
+  o.start(t0);
+  o.stop(t0 + 0.12);
+}
+
+/** Crujido de rama: tono grave que se dobla despacio, muy flojo. */
+function creak(ac: AudioContext, out: AudioNode) {
+  const t0 = ac.currentTime;
+  const base = 140 + Math.random() * 120;
+  const o = ac.createOscillator();
+  const f = ac.createBiquadFilter();
+  const g = ac.createGain();
+  o.type = 'sawtooth';
+  o.frequency.setValueAtTime(base, t0);
+  o.frequency.linearRampToValueAtTime(base * (0.85 + Math.random() * 0.3), t0 + 0.9);
+  f.type = 'bandpass';
+  f.frequency.value = 600;
+  f.Q.value = 3;
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(0.012, t0 + 0.25);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.1);
+  o.connect(f).connect(g).connect(out);
+  o.start(t0);
+  o.stop(t0 + 1.2);
+}
+
+/** Nota pulsada suave (seno con algo de triángulo), para el arpegio de la Calma. */
+function pluck(ac: AudioContext, out: AudioNode, hz: number) {
+  const t0 = ac.currentTime;
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(0.5, t0 + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.6);
+  g.connect(out);
+  for (const [type, mul, v] of [['sine', 1, 1], ['triangle', 2, 0.15]] as const) {
+    const o = ac.createOscillator();
+    const og = ac.createGain();
+    o.type = type;
+    o.frequency.value = hz * mul;
+    og.gain.value = v;
+    o.connect(og).connect(g);
+    o.start(t0);
+    o.stop(t0 + 1.7);
+  }
 }
 
 /** Pájaro lejano: dos o tres silbidos suaves. */
@@ -326,51 +367,65 @@ export function playAmbient(kind: AmbientKind) {
   out.connect(master);
   outNode = out;
 
-  if (kind === 'marron') {
-    const g = gain(ac, 0.8);
-    drift(ac, g.gain, 0.03, 0.12); // respira muy despacio
-    loop(ac, 'brown').connect(filter(ac, 'lowpass', 340)).connect(g).connect(out);
+  if (kind === 'blanco') {
+    // Ruido blanco suavizado: sin los agudos que cansan y con una respiración muy lenta.
+    const g = gain(ac, 0.22);
+    drift(ac, g.gain, 0.02, 0.04);
+    const shelf = filter(ac, 'highshelf', 2500);
+    shelf.gain.value = -9;
+    loop(ac, 'white').connect(filter(ac, 'lowpass', 5200, 0.5)).connect(shelf).connect(g).connect(out);
   } else if (kind === 'lluvia') {
-    // Cortina de lluvia suave y continua + alguna gota cercana, sin prisa.
-    const bed = gain(ac, 0.26);
-    drift(ac, bed.gain, 0.03, 0.03);
-    loop(ac, 'pink').connect(filter(ac, 'highpass', 200)).connect(filter(ac, 'lowpass', 1500)).connect(bed).connect(out);
-    const near = gain(ac, 1);
-    near.connect(filter(ac, 'lowpass', 2200)).connect(out);
-    every(500, 1800, () => droplet(ac, near, 700 + Math.random() * 900, 0.03 + Math.random() * 0.05, 0.06 + Math.random() * 0.05));
+    // Lluvia vista desde dentro, junto a una ventana: el aguacero de fuera llega apagado por el cristal
+    // y, de vez en cuando, una gota choca contra el vidrio (un «tic» limpio con un poco de resonancia).
+    const outside = gain(ac, 0.3);
+    drift(ac, outside.gain, 0.018, 0.04);
+    loop(ac, 'pink').connect(filter(ac, 'highpass', 120)).connect(filter(ac, 'lowpass', 900, 0.5)).connect(outside).connect(out);
+    const glass = gain(ac, 4);
+    glass.connect(filter(ac, 'lowpass', 4200)).connect(out);
+    every(700, 2600, () => windowDrop(ac, glass));
+    // a veces dos o tres gotas casi juntas, como cuando resbala un hilo de agua
+    every(6000, 15000, () => { for (let i = 0; i < 2 + Math.floor(Math.random() * 2); i++) later(i * (120 + Math.random() * 200), () => windowDrop(ac, glass, 0.6)); });
   } else if (kind === 'oceano') {
-    // Olas largas (una cada ~15 s): sube el volumen y se abre el filtro en la cresta.
-    const g = gain(ac, 0.42);
-    const f = filter(ac, 'lowpass', 420);
-    drift(ac, g.gain, 0.055, 0.26);
-    drift(ac, f.frequency, 0.055, 180);
-    drift(ac, g.gain, 0.021, 0.08); // olas de distinto tamaño
+    // Olas muy lentas (una cada ~25 s): sube, rompe abriendo el filtro y se retira despacio.
+    const g = gain(ac, 0.3);
+    const f = filter(ac, 'lowpass', 380);
+    drift(ac, g.gain, 0.04, 0.28);
+    drift(ac, f.frequency, 0.04, 200);
+    drift(ac, g.gain, 0.013, 0.08); // olas de distinto tamaño
     loop(ac, 'brown').connect(f).connect(g).connect(out);
+    const foam = gain(ac, 0.05); // espuma al romper, muy al fondo
+    drift(ac, foam.gain, 0.04, 0.05);
+    loop(ac, 'pink').connect(filter(ac, 'bandpass', 1400, 0.6)).connect(foam).connect(out);
   } else if (kind === 'fuego') {
-    // Solo la hoguera: crepitar de la madera (chasquidos cortos y secos en pequeñas rachas) y algún «toc» grave
-    // de un tronco que se asienta. Debajo, un rescoldo muy bajo y quieto: sin ruido que suba y baje, que sonaba a viento.
-    const ember = gain(ac, 0.07);
-    loop(ac, 'brown').connect(filter(ac, 'lowpass', 140)).connect(ember).connect(out);
-    const fire = gain(ac, 1);
-    fire.connect(filter(ac, 'lowpass', 3200)).connect(out);
-    every(260, 1400, () => {
-      const n = 1 + Math.floor(Math.random() * 4);
-      for (let i = 0; i < n; i++) later(i * (25 + Math.random() * 110), () => crackle(ac, fire, 1400 + Math.random() * 2200, 0.05 + Math.random() * 0.07));
+    // Solo la hoguera: crepitar de la madera en rachas, algún «toc» grave de un tronco y un rescoldo bajo y quieto
+    // (sin ruido que suba y baje: sonaba a viento).
+    const ember = gain(ac, 0.1);
+    loop(ac, 'brown').connect(filter(ac, 'lowpass', 150)).connect(ember).connect(out);
+    const fire = gain(ac, 6);
+    fire.connect(filter(ac, 'lowpass', 3400)).connect(out);
+    every(200, 1100, () => {
+      const n = 1 + Math.floor(Math.random() * 5);
+      for (let i = 0; i < n; i++) later(i * (20 + Math.random() * 100), () => crackle(ac, fire, 1200 + Math.random() * 2400, 0.05 + Math.random() * 0.08));
     });
-    every(3500, 9000, () => crackle(ac, fire, 260 + Math.random() * 240, 0.12, 0.05));
+    every(2500, 7000, () => crackle(ac, fire, 240 + Math.random() * 260, 0.14, 0.05));
   } else if (kind === 'bosque') {
-    // Viento entre los árboles y algún pájaro lejano cada pocos segundos.
-    const g = gain(ac, 0.28);
-    const f = filter(ac, 'lowpass', 600, 0.5);
-    drift(ac, g.gain, 0.025, 0.08);
-    drift(ac, f.frequency, 0.018, 120);
-    loop(ac, 'pink').connect(f).connect(g).connect(out);
-    const birds = gain(ac, 0.6);
-    birds.connect(filter(ac, 'lowpass', 3800)).connect(out);
-    every(9000, 22000, () => bird(ac, birds));
+    // Brisa entre las hojas (rachas lentas de susurro), algún crujido de rama y pájaros a lo lejos.
+    const breeze = gain(ac, 0.2);
+    const f = filter(ac, 'lowpass', 650, 0.5);
+    drift(ac, breeze.gain, 0.022, 0.08);
+    drift(ac, f.frequency, 0.016, 150);
+    loop(ac, 'pink').connect(f).connect(breeze).connect(out);
+    const leaves = gain(ac, 0.05);
+    drift(ac, leaves.gain, 0.022, 0.04); // las hojas se oyen cuando sube la brisa
+    loop(ac, 'white').connect(filter(ac, 'bandpass', 3200, 0.7)).connect(filter(ac, 'lowpass', 6000)).connect(leaves).connect(out);
+    const life = gain(ac, 0.8);
+    life.connect(filter(ac, 'lowpass', 4200)).connect(out);
+    every(4000, 11000, () => bird(ac, life));
+    every(14000, 30000, () => creak(ac, life));
   } else if (kind === 'calma') {
-    // Acordes lentos y graves que cambian cada 16 s, con un velo de ruido muy bajo.
-    const pad = gain(ac, 0.1);
+    // Acordes lentos y graves, con un arpegio suave con eco por encima (aire de los fondos de Opera GX, sin copiarlos)
+    // y un pulso de bajo muy tenue.
+    const pad = gain(ac, 0.09);
     const warm = filter(ac, 'lowpass', 650);
     pad.connect(warm).connect(out);
     const oscs = CHORDS[0].map((hz, i) => {
@@ -385,10 +440,26 @@ export function playAmbient(kind: AmbientKind) {
       nodes.push(o);
       return o;
     });
+    // eco: retardo con realimentación y filtro, para que las notas se queden flotando
+    const arp = gain(ac, 0.05);
+    const echo = ac.createDelay(2);
+    echo.delayTime.value = 0.75;
+    const fb = gain(ac, 0.42);
+    const dark = filter(ac, 'lowpass', 1800);
+    nodes.push(echo);
+    arp.connect(dark).connect(out);
+    dark.connect(echo).connect(fb).connect(dark);
     let step = 0;
+    let note = 0;
     every(22000, 22000, () => {
       step = (step + 1) % CHORDS.length;
       oscs.forEach((o, i) => o.frequency.setTargetAtTime(CHORDS[step][i], ac.currentTime, 2.4));
+    });
+    every(1500, 1500, () => {
+      // dos de cada tres pulsos suena una nota del acorde, una octava arriba; el resto deja respirar
+      if (Math.random() < 0.34) return;
+      const ch = CHORDS[step];
+      pluck(ac, arp, ch[1 + (note++ % 3)] * 2);
     });
     const air = gain(ac, 0.03);
     loop(ac, 'pink').connect(filter(ac, 'lowpass', 500)).connect(air).connect(out);
