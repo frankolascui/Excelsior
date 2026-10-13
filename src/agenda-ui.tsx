@@ -462,7 +462,7 @@ export function TimeGrid({ game, days, now, onPickDay, startFocus }: {
   }
 
   return (
-    <div className={`tg ${single ? 'tg-day' : 'tg-week'}${drag ? ' dragging' : ''}`} style={{ '--hour': `${hour}px`, '--cols': days.length } as CSSProperties}>
+    <div className={`tg ${single ? 'tg-day' : 'tg-week'}${days.length > 1 && days.length <= 4 ? ' tg-few' : ''}${drag ? ' dragging' : ''}`} style={{ '--hour': `${hour}px`, '--cols': days.length } as CSSProperties}>
       <div className="tg-row tg-head">
         <span className="tg-gutter" />
         {days.map((d, i) => {

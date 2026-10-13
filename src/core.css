@@ -105,3 +105,13 @@ button.hh-day:hover { box-shadow: inset 0 0 0 1px var(--c1); }
 .kingdom-due-add { opacity: 0.75; }
 .kingdom-count { display: flex; flex-direction: column; align-items: flex-end; text-align: right; line-height: 1.2; }
 .kingdom-count .kingdom-pct { font-size: 34px; line-height: 1; }
+
+/* Calendario: vista de 4 días (más ancha que la semana, así que enseña las horas como la de un día) */
+.tg.tg-few .tg-block { font-size: 12.5px; padding: 3px 6px; }
+.tg.tg-few .tg-block .mono { display: block; }
+@media (max-width: 760px) {
+  .tg-few .tg-dayhead { font-size: 11px; }
+  .tg-few .tg-dayhead b { font-size: 17px; }
+  .tg.tg-few .tg-block { font-size: 11px; padding: 2px 4px; }
+  .tg.tg-few .tg-block .mono { display: none; }
+}

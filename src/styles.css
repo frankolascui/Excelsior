@@ -1174,7 +1174,7 @@ i.q-side { background: var(--side); }
 .cal-views .seg { padding: 5px 10px; font-size: 14px; }
 @media (max-width: 640px) {
   .cal-head .cal-month { font-size: 18px; }
-  .cal-views { order: 9; width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); margin: 4px 0 0; }
+  .cal-views { order: 9; width: 100%; display: grid; grid-template-columns: repeat(4, 1fr); margin: 4px 0 0; }
 }
 
 /* Vista por horas (día y semana) */

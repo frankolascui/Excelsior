@@ -9,9 +9,9 @@ import { sfx } from './sfx';
 import { addDays, DayAgenda, mondayOf, TimeGrid } from './agenda-ui';
 import { Icon } from './icons';
 
-type CalView = 'month' | 'week' | 'day';
+type CalView = 'month' | 'week' | 'four' | 'day';
 const CAL_VIEW_KEY = 'excelsior:cal-view';
-const VIEW_NAMES: Record<CalView, string> = { month: 'Mes', week: 'Semana', day: 'Día' };
+const VIEW_NAMES: Record<CalView, string> = { month: 'Mes', week: 'Semana', four: '4 días', day: 'Día' };
 
 const WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 const MAX_IN_CELL = 3;
@@ -41,7 +41,7 @@ export function QuestCalendar({
   const [view, setView] = useState<CalView>(() => {
     try {
       const v = localStorage.getItem(CAL_VIEW_KEY);
-      return v === 'week' || v === 'day' ? v : 'month';
+      return v === 'week' || v === 'four' || v === 'day' ? v : 'month';
     } catch {
       return 'month';
     }
@@ -63,8 +63,10 @@ export function QuestCalendar({
   const days = monthGrid(cursor.y, cursor.m);
   const monthName = cap(new Date(cursor.y, cursor.m, 1).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }));
   const week = Array.from({ length: 7 }, (_, i) => addDays(mondayOf(selected), i));
+  const four = Array.from({ length: 4 }, (_, i) => addDays(selected, i)); // como en Google: empieza en el día elegido
   const title = view === 'month' ? monthName
     : view === 'week' ? `${shortDate(week[0])} – ${shortDate(week[6])}`
+      : view === 'four' ? `${shortDate(four[0])} – ${shortDate(four[3])}`
       : cap(new Date(`${selected}T12:00:00`).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }));
 
   const due = (day: string) => state.quests.filter((q) => !q.completedAt && q.deadline === day);
@@ -72,12 +74,13 @@ export function QuestCalendar({
   const move = (delta: number) => {
     sfx.page();
     if (view === 'week') return select(addDays(selected, 7 * delta));
+    if (view === 'four') return select(addDays(selected, 4 * delta));
     if (view === 'day') return select(addDays(selected, delta));
     const d = new Date(cursor.y, cursor.m + delta, 1);
     setCursor({ y: d.getFullYear(), m: d.getMonth() });
   };
   const goToday = () => select(today);
-  const unit = view === 'month' ? 'Mes' : view === 'week' ? 'Semana' : 'Día';
+  const unit = view === 'month' ? 'Mes' : view === 'week' ? 'Semana' : view === 'four' ? 'Bloque de 4 días' : 'Día';
 
   const selDue = pendingQuests(state, now).filter((q) => q.deadline === selected);
   const selDone = doneOn(selected);
@@ -98,6 +101,7 @@ export function QuestCalendar({
           </div>
         </header>
         {view === 'week' && <TimeGrid game={game} days={week} now={now} startFocus={startFocus} onPickDay={(d) => { select(d); pickView('day'); }} />}
+        {view === 'four' && <TimeGrid game={game} days={four} now={now} startFocus={startFocus} onPickDay={(d) => { select(d); pickView('day'); }} />}
         {view === 'day' && <TimeGrid game={game} days={[selected]} now={now} startFocus={startFocus} />}
         {view === 'month' && <>
         <div className="cal-grid" role="grid" aria-label={`Calendario de ${monthName}`}>

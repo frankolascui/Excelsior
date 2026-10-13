@@ -509,7 +509,7 @@ check(await seen('.toast:has-text("Llamar a casa")'), 'avisa cuando llega la hor
 await page.screenshot({ path: `${out}/16-today-life.png`, fullPage: true });
 
 await page.click('.nav-item:has-text("Misiones")');
-await page.click('.cal-views [role=radio]:has-text("Día")');
+await page.click('.cal-views [role=radio]:text-is("Día")');
 check(await seen('.tg-day .tg-block:has-text("Examen de cálculo")'), 'la vista del día pone el evento en su hora');
 await page.evaluate(() => { document.querySelector('.tg-scroll').scrollTop = 14 * 52; });
 await page.click('.tg-day .tg-col', { position: { x: 60, y: 16 * 52 + 10 } });
@@ -543,6 +543,9 @@ await page.click('.cal-views [role=radio]:has-text("Semana")');
 check((await page.$$('.tg-week .tg-dayhead')).length === 7, 'la semana tiene 7 días');
 check((await page.$$('.tg-week .tg-block:has-text("Estudiar física")')).length >= 1, 'el bloque diario se repite en la semana');
 await page.screenshot({ path: `${out}/18-calendar-week.png` });
+await page.click('.cal-views [role=radio]:has-text("4 días")');
+check((await page.$$('.tg-few .tg-dayhead')).length === 4 && (await page.$$('.tg-few .tg-block:has-text("Estudiar física")')).length === 4, 'vista de 4 días: 4 columnas con el bloque diario');
+await page.click('.cal-views [role=radio]:has-text("Semana")');
 await page.click('.tg-week .tg-block:has-text("Estudiar física") >> nth=0');
 await page.click('.sheet button:has-text("Deep Work")');
 check(await page.inputValue('#dw-intent') === 'Estudiar física', 'un bloque abre Deep Work con su nombre');
