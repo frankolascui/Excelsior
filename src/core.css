@@ -166,3 +166,11 @@ button.tg-session { font-family: inherit; justify-content: flex-start; align-ite
 @media (hover: none) { .pick-btn.step-due.empty { opacity: 0.5; } }
 .step.done .step-due { opacity: 0.5; }
 .steps-tag .step-next.due-later { color: inherit; }
+
+/* Calendario: misiones y recordatorios del día en un panel plegable */
+.cal-tasks-head { display: flex; align-items: center; gap: 12px; width: 100%; background: none; border: 0; padding: 0; color: inherit; text-align: left; cursor: pointer; }
+.cal-tasks-head h3 { flex: 1; margin: 0; }
+.cal-tasks-count { display: inline-flex; gap: 10px; font-size: 13px; color: var(--muted); }
+.cal-tasks-count span { display: inline-flex; align-items: center; gap: 4px; }
+.cal-tasks-body { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+.cal-undated h4 { margin: 4px 0; display: flex; align-items: center; gap: 8px; font-size: 15px; }

@@ -6,7 +6,7 @@ import type { CalendarEvent, EventKind, EventRepeat, GameState, Reminder, Repeat
 import { dayKey } from './game';
 import {
   addEvent, addReminder, deleteEvent, deleteReminder, dueAlerts, EVENT_COLORS, EVENT_KINDS, eventColor, eventIcon, eventSpan, eventsOn, fromMin,
-  cleanRule, laterReminders, layoutLanes, moveEvent, remindersOn, REPEAT_NAMES, repeatText, skipEventDay, todayReminders, toggleReminder, toMin, updateEvent,
+  cleanRule, laterReminders, layoutLanes, moveEvent, REPEAT_NAMES, repeatText, skipEventDay, todayReminders, toggleReminder, toMin, updateEvent,
 } from './life';
 import { relDay } from './life-ui';
 import { DatePicker, DurationChips, TimePicker, durationWords } from './pickers';
@@ -339,9 +339,8 @@ function EventSheet({ game, id, day, onClose, startFocus }: { game: Game; id: st
 }
 
 /** Lista de un día (debajo del mes o del día): eventos con su hora, recordatorios y el formulario para añadir. */
-export function DayAgenda({ game, day, now, startFocus }: { game: Game; day: string; now: number; startFocus?: (label: string) => void }) {
+export function DayAgenda({ game, day, startFocus }: { game: Game; day: string; startFocus?: (label: string) => void }) {
   const evs = eventsOn(game.state, day);
-  const rems = remindersOn(game.state, day);
   const [open, setOpen] = useState<string | null>(null);
   return (
     <div className="day-events">
@@ -360,7 +359,6 @@ export function DayAgenda({ game, day, now, startFocus }: { game: Game; day: str
           ))}
         </ul>
       )}
-      {rems.length > 0 && <ul className="list">{rems.map((r) => <ReminderRow key={r.id} r={r} now={now} game={game} />)}</ul>}
       <AgendaForm game={game} day={day} />
       {open && <EventSheet game={game} id={open} day={day} onClose={() => setOpen(null)} startFocus={startFocus} />}
     </div>
@@ -527,7 +525,7 @@ export function TimeGrid({ game, days, now, onPickDay, startFocus }: {
 
       <div className="tg-row tg-allday">
         <span className="tg-gutter muted">todo el día</span>
-        {days.map((d) => <AllDay key={d} state={state} game={game} day={d} now={now} onOpen={(e) => setOpen({ id: e.id, day: d })} />)}
+        {days.map((d) => <AllDay key={d} state={state} day={d} onOpen={(e) => setOpen({ id: e.id, day: d })} />)}
       </div>
 
       <div className="tg-scroll" ref={scroller}>
@@ -568,23 +566,17 @@ export function TimeGrid({ game, days, now, onPickDay, startFocus }: {
   );
 }
 
-function AllDay({ state, game, day, now, onOpen }: { state: GameState; game: Game; day: string; now: number; onOpen: (e: CalendarEvent) => void }) {
+/** Fila de «todo el día»: solo eventos sin hora (misiones y recordatorios van en su panel, debajo del calendario). */
+function AllDay({ state, day, onOpen }: { state: GameState; day: string; onOpen: (e: CalendarEvent) => void }) {
   const evs = eventsOn(state, day).filter((e) => !e.time);
-  const rems = remindersOn(state, day).filter((r) => !r.time);
-  const due = state.quests.filter((q) => !q.completedAt && q.deadline === day);
   return (
     <div className="tg-cell">
       {evs.map((e) => <button key={e.id} className={`tg-chip ev-${e.kind}`} style={evStyle(e)} onClick={() => onOpen(e)}><Icon name={eventIcon(e.kind)} /> {e.title}</button>)}
-      {rems.map((r) => (
-        <button key={r.id} className={`tg-chip tg-remchip${r.doneAt ? ' done' : ''}`} onClick={() => toggleRem(game, r)}
-          aria-label={`${r.doneAt ? 'Desmarcar' : 'Hecho'}: ${r.title}`} title={remWhen(r, now)}><Icon name={r.doneAt ? 'check' : 'bell'} /> {r.title}</button>
-      ))}
-      {due.map((q) => <span key={q.id} className={`cal-q q-${q.type}`}>{q.title}</span>)}
     </div>
   );
 }
 
-function DayBlocks({ state, game, day, hour, now, drag, onOpen, onGrab, onSession }: {
+function DayBlocks({ state, day, hour, now, drag, onOpen, onGrab, onSession }: {
   state: GameState; game: Game; day: string; hour: number; now: number; drag: Drag | null;
   onOpen: (e: CalendarEvent) => void; onGrab: (e: ReactPointerEvent, ev: CalendarEvent, mode: 'move' | 'resize') => void;
   onSession?: (id: string) => void;
@@ -596,7 +588,6 @@ function DayBlocks({ state, game, day, hour, now, drag, onOpen, onGrab, onSessio
   const spans = evs.map((e) => (dragged && e.id === dragged.ev.id && e.day === dragged.day ? [dragged.start, dragged.end] as [number, number] : eventSpan(e)!));
   const lanes = layoutLanes(spans);
   const sessions = state.sessions.filter((x) => dayKey(x.startedAt) === day);
-  const rems = remindersOn(state, day).filter((r) => r.time);
   const top = (m: number) => (m / 60) * hour;
   const past = (end: number) => day < dayKey(now) || (day === dayKey(now) && end <= minutesNow(now));
   return (
@@ -631,12 +622,6 @@ function DayBlocks({ state, game, day, hour, now, drag, onOpen, onGrab, onSessio
           </div>
         );
       })}
-      {rems.map((r) => (
-        <button key={r.id} className={`tg-rem${r.doneAt ? ' done' : ''}`} style={{ top: top(toMin(r.time!)) }}
-          onClick={() => toggleRem(game, r)} aria-label={`${r.doneAt ? 'Desmarcar' : 'Hecho'}: ${r.title} a las ${r.time}`}>
-          <Icon name={r.doneAt ? 'check' : 'bell'} /> {r.time} {r.title}
-        </button>
-      ))}
     </>
   );
 }
