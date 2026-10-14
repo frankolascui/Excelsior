@@ -28,6 +28,8 @@ interface AmbientState {
   linkOn: boolean;
   /** true: los ambientes con grabación suenan desde YouTube; false: sintetizados (funcionan sin internet). */
   real: boolean;
+  /** Suena el sintetizado mientras la grabación de YouTube carga; al arrancar esta, le pasa el relevo. */
+  loadingReal: boolean;
 }
 
 const KEY = 'excelsior:ambient';
@@ -43,9 +45,9 @@ function load(): AmbientState {
     const raw = JSON.parse(localStorage.getItem(KEY) ?? 'null');
     // Antes se guardaba el volumen lineal («volume»); se traduce a la posición equivalente en la curva nueva.
     const pos = typeof raw?.pos === 'number' ? raw.pos : typeof raw?.volume === 'number' ? raw.volume ** (1 / CURVE) : 0.6;
-    return { playing: null, linkOn: false, volume: pos, link: typeof raw?.link === 'string' ? raw.link : '', real: raw?.real !== false };
+    return { playing: null, linkOn: false, loadingReal: false, volume: pos, link: typeof raw?.link === 'string' ? raw.link : '', real: raw?.real !== false };
   } catch {
-    return { playing: null, volume: 0.6, link: '', linkOn: false, real: true };
+    return { playing: null, volume: 0.6, link: '', linkOn: false, real: true, loadingReal: false };
   }
 }
 
@@ -92,7 +94,7 @@ export function parseLink(url: string): LinkEmbed | null {
 
 export function playLink(link: string) {
   stopSynth();
-  set({ link: link.trim(), linkOn: true, playing: null });
+  set({ link: link.trim(), linkOn: true, playing: null, loadingReal: false });
 }
 
 export function stopLink() {
@@ -103,14 +105,31 @@ export function stopLink() {
 export function ambientEmbed(a: AmbientState): LinkEmbed | null {
   const x = AMBIENTS.find((y) => y.id === a.playing);
   if (!a.real || !x?.yt) return null;
-  return parseLink(`https://www.youtube.com/watch?v=${x.yt}${x.start ? `&t=${x.start}` : ''}`);
+  const e = parseLink(`https://www.youtube.com/watch?v=${x.yt}${x.start ? `&t=${x.start}` : ''}`);
+  // Arranca en silencio: el sintetizado suena mientras carga y la grabación entra con un fundido al relevo.
+  return e && { ...e, src: `${e.src}&mute=1` };
 }
 
 /** Cambia entre grabación real y sintetizado; si algo suena, sigue sonando con la otra fuente. */
 export function setAmbientReal(real: boolean) {
   const playing = state.playing;
+  // Si el sintetizado ya suena (o sigue haciendo de puente mientras carga YouTube), se queda sin reiniciarse.
+  if (playing && nodes.length) {
+    set({ real, loadingReal: real && !!AMBIENTS.find((x) => x.id === playing)?.yt });
+    return;
+  }
   set({ real });
   if (playing) playAmbient(playing);
+}
+
+/**
+ * La grabación de YouTube ya suena: el sintetizado que hacía de puente se apaga despacio (unos 3 s)
+ * mientras el reproductor sube su volumen, así no hay silencio ni golpe al cambiar.
+ */
+export function realStarted() {
+  if (!state.loadingReal) return;
+  stopSynth(1);
+  set({ loadingReal: false });
 }
 
 // ---------- Ambientes sintetizados ----------
@@ -162,6 +181,123 @@ export function seamless(raw: Float32Array, xf: number): Float32Array {
     d[i] = raw[i] * Math.sin(t) + raw[len + i] * Math.cos(t);
   }
   return d;
+}
+
+/** Escala los canales para que su volumen medio (RMS) sea `target`: así cada textura suena igual de fuerte. */
+function normalize(chs: Float32Array[], target: number) {
+  let sum = 0, n = 0;
+  for (const d of chs) for (let i = 0; i < d.length; i++) (sum += d[i] * d[i]), n++;
+  const k = target / Math.sqrt(sum / n || 1);
+  for (const d of chs) for (let i = 0; i < d.length; i++) d[i] *= k;
+}
+
+/**
+ * Lluvia de verdad: miles de gotas diminutas por segundo (un golpe de ruido de menos de 1 ms cada una, casi
+ * todas flojas y alguna más fuerte), distintas en cada oído. Las que caen al final dan la vuelta al principio,
+ * así el bucle no tiene costura. Devuelve dos canales (estéreo).
+ */
+export function rainTexture(sr: number, seconds: number, rand: () => number = Math.random): Float32Array[] {
+  const len = Math.floor(sr * seconds);
+  const chs = [0, 1].map(() => {
+    const d = new Float32Array(len);
+    const drops = Math.floor(seconds * 2600);
+    for (let k = 0; k < drops; k++) {
+      const at = Math.floor(rand() * len);
+      const amp = 0.04 + rand() ** 4 * 0.9;
+      const tau = sr * (0.00015 + rand() * 0.0006);
+      const n = Math.ceil(tau * 5);
+      for (let i = 0; i < n; i++) d[(at + i) % len] += (rand() * 2 - 1) * amp * Math.exp(-i / tau);
+    }
+    return d;
+  });
+  normalize(chs, 0.25);
+  return chs;
+}
+
+/** Ola de una textura: dónde empieza (en muestras), cuánto tarda en subir y en retirarse, y su tamaño. */
+interface Wave { at: number; rise: number; fall: number; size: number }
+
+/**
+ * Orilla del mar: olas cada 9-15 s, de distinto tamaño. Cada una crece despacio (ruido grave que se va abriendo),
+ * rompe (se abre a agudos) y deja espuma que se retira siseando. Debajo, un fondo grave continuo.
+ * Todo da la vuelta al bucle, que no tiene costura. Devuelve dos canales.
+ */
+export function oceanTexture(sr: number, seconds: number, rand: () => number = Math.random): Float32Array[] {
+  const len = Math.floor(sr * seconds);
+  const waves: Wave[] = [];
+  for (let t = rand() * 3; t < seconds - 4; t += 9 + rand() * 6) {
+    waves.push({ at: Math.floor(t * sr), rise: (3 + rand() * 2.5) * sr, fall: (5 + rand() * 4) * sr, size: 0.55 + rand() * 0.45 });
+  }
+  // Envolventes: fuerza de la ola (también abre el filtro) y espuma.
+  const body = new Float32Array(len);
+  const foam = new Float32Array(len);
+  for (const w of waves) {
+    const n = Math.floor(w.rise + w.fall * 2.5);
+    for (let i = 0; i < n; i++) {
+      const j = (w.at + i) % len;
+      const up = i < w.rise ? (i / w.rise) ** 2 : Math.exp(-(i - w.rise) / (w.fall / 2.2));
+      body[j] = Math.max(body[j], up * w.size);
+      if (i >= w.rise) {
+        const k = i - w.rise;
+        foam[j] = Math.max(foam[j], Math.min(1, k / (0.25 * sr)) * Math.exp(-k / (w.fall / 1.6)) * w.size);
+      }
+    }
+  }
+  // Cuánto se abre el filtro en cada momento (se calcula cada 32 muestras: cambia despacio y así va rápido).
+  const coef = new Float32Array(Math.ceil(len / 32));
+  for (let b = 0; b < coef.length; b++) coef[b] = 1 - Math.exp((-2 * Math.PI * (140 + body[b * 32] ** 1.6 * 2200)) / sr);
+  const kRumble = 1 - Math.exp((-2 * Math.PI * 30) / sr);
+  const kHiss = 1 - Math.exp((-2 * Math.PI * 2000) / sr);
+  const warm = Math.min(len, sr);
+  const chs = [0, 1].map(() => {
+    const d = new Float32Array(len);
+    // Primero se calientan los filtros con el último segundo del bucle, así el final enlaza con el principio.
+    let lp = 0, rumble = 0, hissLp = 0;
+    for (let n = len - warm; n < len + len; n++) {
+      const i = n % len;
+      const w = rand() * 2 - 1;
+      lp += coef[i >> 5] * (w - lp);
+      rumble += kRumble * (w - rumble);
+      hissLp += kHiss * (w - hissLp);
+      const hiss = w - hissLp; // agudos: el siseo de la espuma
+      if (n >= len) d[i] = lp * (0.12 + body[i] * 1.1) + rumble * 2.2 + hiss * foam[i] * 0.09;
+    }
+    return d;
+  });
+  normalize(chs, 0.22);
+  return chs;
+}
+
+const textures = new Map<'rain' | 'ocean', Float32Array[]>();
+/** Las texturas se calculan a 22 kHz (sobra: se filtran por debajo de 7 kHz) y el navegador las adapta; así tardan la mitad. */
+const TEXTURE_SR = 22050;
+
+function textureData(name: 'rain' | 'ocean'): Float32Array[] {
+  let chs = textures.get(name);
+  if (!chs) textures.set(name, (chs = name === 'rain' ? rainTexture(TEXTURE_SR, 23) : oceanTexture(TEXTURE_SR, 61)));
+  return chs;
+}
+
+/** Calcula las texturas en un rato libre (al abrir el Deep Work), para que luego suenen sin esperar nada. */
+export function warmAmbient() {
+  const idle = (fn: () => void) => (typeof window.requestIdleCallback === 'function' ? window.requestIdleCallback(fn, { timeout: 4000 }) : window.setTimeout(fn, 800));
+  idle(() => {
+    textureData('rain');
+    idle(() => textureData('ocean'));
+  });
+}
+
+/** Reproduce en bucle una textura estéreo. */
+function texture(ac: AudioContext, name: 'rain' | 'ocean'): AudioBufferSourceNode {
+  const chs = textureData(name);
+  const buf = ac.createBuffer(2, chs[0].length, TEXTURE_SR);
+  for (let i = 0; i < 2; i++) buf.getChannelData(i).set(chs[i]);
+  const src = ac.createBufferSource();
+  src.buffer = buf;
+  src.loop = true;
+  src.start();
+  nodes.push(src);
+  return src;
 }
 
 function noiseBuffer(ac: AudioContext, color: NoiseColor): AudioBuffer {
@@ -342,8 +478,8 @@ const CHORDS = [
 /** Pulso de la Calma: 84 pulsos por minuto, el arpegio va a corcheas. */
 const BEAT_S = 60 / 84;
 
-/** Para el ambiente que suena: baja en un instante (sin clic) y después desmonta sus nodos. */
-function stopSynth() {
+/** Para el ambiente que suena: baja en `fade` s (por defecto un instante, sin clic) y después desmonta sus nodos. */
+function stopSynth(fade = 0.06) {
   timers.forEach(clearTimeout);
   timers.clear();
   const old = nodes;
@@ -353,10 +489,10 @@ function stopSynth() {
   if (!old.length || !ctx) return;
   const t = ctx.currentTime;
   oldOut?.gain.cancelScheduledValues(t);
-  oldOut?.gain.setTargetAtTime(0, t, 0.06);
+  oldOut?.gain.setTargetAtTime(0, t, fade);
   old.forEach((n) => {
     try {
-      if (n instanceof AudioScheduledSourceNode) n.stop(t + 0.4);
+      if (n instanceof AudioScheduledSourceNode) n.stop(t + fade * 7);
     } catch {
       /* ya parado */
     }
@@ -367,19 +503,19 @@ function stopSynth() {
     } catch {
       /* ya desconectado */
     }
-  }), 600);
+  }), fade * 7000 + 200);
 }
 
 export function playAmbient(kind: AmbientKind) {
   stopSynth();
-  if (state.real && AMBIENTS.find((x) => x.id === kind)?.yt) {
-    set({ playing: kind, linkOn: false });
-    return;
-  }
+  // Siempre arranca el sintetizado al momento; con «Grabación real», hace de puente hasta que YouTube suene.
+  const loadingReal = state.real && !!AMBIENTS.find((x) => x.id === kind)?.yt;
   try {
     ctx ??= new AudioContext();
     if (ctx.state === 'suspended') void ctx.resume();
   } catch {
+    // Sin audio en el navegador: si hay grabación, que suene al menos esa.
+    if (loadingReal) set({ playing: kind, linkOn: false, loadingReal: false });
     return;
   }
   const ac = ctx;
@@ -403,39 +539,49 @@ export function playAmbient(kind: AmbientKind) {
     shelf.gain.value = -9;
     loop(ac, 'white').connect(filter(ac, 'lowpass', 5200, 0.5)).connect(shelf).connect(g).connect(out);
   } else if (kind === 'lluvia') {
-    // Lluvia vista desde dentro, junto a una ventana: el aguacero de fuera llega apagado por el cristal
-    // y, de vez en cuando, una gota choca contra el vidrio (un «tic» limpio con un poco de resonancia).
-    const outside = gain(ac, 0.3);
+    // Lluvia vista desde dentro, junto a una ventana: miles de gotas finas (la textura, en estéreo) un poco apagadas
+    // por el cristal, un fondo grave del aguacero y, de vez en cuando, una gota que choca contra el vidrio.
+    const drops = gain(ac, 0.55);
+    const shelf = filter(ac, 'highshelf', 3500);
+    shelf.gain.value = -8;
+    texture(ac, 'rain').connect(filter(ac, 'highpass', 350)).connect(filter(ac, 'lowpass', 6500, 0.5)).connect(shelf).connect(drops).connect(out);
+    const outside = gain(ac, 0.22);
     drift(ac, outside.gain, 0.018, 0.04);
-    loop(ac, 'pink').connect(filter(ac, 'highpass', 120)).connect(filter(ac, 'lowpass', 900, 0.5)).connect(outside).connect(out);
-    const glass = gain(ac, 4);
+    loop(ac, 'pink').connect(filter(ac, 'highpass', 90)).connect(filter(ac, 'lowpass', 700, 0.5)).connect(outside).connect(out);
+    const glass = gain(ac, 3);
     glass.connect(filter(ac, 'lowpass', 4200)).connect(out);
-    every(700, 2600, () => windowDrop(ac, glass));
+    every(900, 3200, () => windowDrop(ac, glass));
     // a veces dos o tres gotas casi juntas, como cuando resbala un hilo de agua
     every(6000, 15000, () => { for (let i = 0; i < 2 + Math.floor(Math.random() * 2); i++) later(i * (120 + Math.random() * 200), () => windowDrop(ac, glass, 0.6)); });
   } else if (kind === 'oceano') {
-    // Olas muy lentas (una cada ~25 s): sube, rompe abriendo el filtro y se retira despacio.
-    const g = gain(ac, 0.3);
-    const f = filter(ac, 'lowpass', 380);
-    drift(ac, g.gain, 0.04, 0.28);
-    drift(ac, f.frequency, 0.04, 200);
-    drift(ac, g.gain, 0.013, 0.08); // olas de distinto tamaño
-    loop(ac, 'brown').connect(f).connect(g).connect(out);
-    const foam = gain(ac, 0.05); // espuma al romper, muy al fondo
-    drift(ac, foam.gain, 0.04, 0.05);
-    loop(ac, 'pink').connect(filter(ac, 'bandpass', 1400, 0.6)).connect(foam).connect(out);
+    // Orilla: olas que crecen, rompen y se retiran con espuma (textura de un minuto, en estéreo y sin costura).
+    const g = gain(ac, 0.9);
+    texture(ac, 'ocean').connect(filter(ac, 'lowpass', 7000, 0.5)).connect(g).connect(out);
   } else if (kind === 'fuego') {
-    // Solo la hoguera: crepitar de la madera en rachas, algún «toc» grave de un tronco y un rescoldo bajo y quieto
+    // Solo la hoguera: crepitar seco de la madera en rachas (cada chasquido en un lado distinto), algún «toc»
+    // grave de un tronco, un siseo corto de savia muy de vez en cuando y un rescoldo bajo y quieto
     // (sin ruido que suba y baje: sonaba a viento).
     const ember = gain(ac, 0.1);
     loop(ac, 'brown').connect(filter(ac, 'lowpass', 150)).connect(ember).connect(out);
+    const flame = gain(ac, 0.035); // el aire de la llama, quieto y muy flojo
+    loop(ac, 'pink').connect(filter(ac, 'bandpass', 500, 0.6)).connect(flame).connect(out);
     const fire = gain(ac, 6);
-    fire.connect(filter(ac, 'lowpass', 3400)).connect(out);
-    every(200, 1100, () => {
-      const n = 1 + Math.floor(Math.random() * 5);
-      for (let i = 0; i < n; i++) later(i * (20 + Math.random() * 100), () => crackle(ac, fire, 1200 + Math.random() * 2400, 0.05 + Math.random() * 0.08));
+    fire.connect(filter(ac, 'lowpass', 5200)).connect(out);
+    const sides = [-0.6, -0.25, 0.1, 0.45, 0.7].map((p) => {
+      const pan = ac.createStereoPanner();
+      pan.pan.value = p;
+      pan.connect(fire);
+      nodes.push(pan);
+      return pan;
     });
-    every(2500, 7000, () => crackle(ac, fire, 240 + Math.random() * 260, 0.14, 0.05));
+    const side = () => sides[Math.floor(Math.random() * sides.length)];
+    every(180, 1000, () => {
+      const n = 1 + Math.floor(Math.random() * 6);
+      const at = side();
+      for (let i = 0; i < n; i++) later(i * (15 + Math.random() * 90), () => crackle(ac, at, 1500 + Math.random() * 3000, 0.04 + Math.random() * 0.09, 0.002 + Math.random() * 0.006));
+    });
+    every(2500, 7000, () => crackle(ac, side(), 240 + Math.random() * 260, 0.14, 0.05));
+    every(20000, 45000, () => crackle(ac, side(), 4500, 0.006, 0.35 + Math.random() * 0.4));
   } else if (kind === 'bosque') {
     // Brisa entre las hojas (rachas lentas de susurro), algún crujido de rama y pájaros a lo lejos.
     const breeze = gain(ac, 0.2);
@@ -513,12 +659,12 @@ export function playAmbient(kind: AmbientKind) {
     const air = gain(ac, 0.025);
     loop(ac, 'pink').connect(filter(ac, 'lowpass', 500)).connect(air).connect(out);
   }
-  set({ playing: kind, linkOn: false });
+  set({ playing: kind, linkOn: false, loadingReal });
 }
 
 export function stopAmbient() {
   stopSynth();
-  set({ playing: null });
+  set({ playing: null, loadingReal: false });
 }
 
 /** `pos` es la posición del deslizador (0..1); el volumen real sigue la curva de `gainFor`. */

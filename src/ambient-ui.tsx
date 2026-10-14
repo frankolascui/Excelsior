@@ -1,7 +1,7 @@
 // Interfaz del sonido de fondo: panel de control en Deep Work y reproductor fijo que sigue sonando entre pantallas.
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import {
-  AMBIENTS, ambientEmbed, gainFor, parseLink, playAmbient, playLink, setAmbientReal, setAmbientVolume, stopAmbient, stopLink, useAmbient,
+  AMBIENTS, ambientEmbed, gainFor, parseLink, playAmbient, playLink, realStarted, setAmbientReal, setAmbientVolume, stopAmbient, stopLink, useAmbient, warmAmbient,
 } from './ambient';
 import { Icon } from './icons';
 
@@ -20,6 +20,7 @@ export function AmbientPanel() {
   const a = useAmbient();
   const [link, setLink] = useState(a.link);
   const parsed = link.trim() ? parseLink(link) : null;
+  useEffect(warmAmbient, []);
   function submit(e: FormEvent) {
     e.preventDefault();
     if (parsed) playLink(link);
@@ -43,7 +44,11 @@ export function AmbientPanel() {
           <button type="button" role="radio" aria-checked={a.real} className={a.real ? 'seg on' : 'seg'} onClick={() => setAmbientReal(true)}>Grabación real</button>
           <button type="button" role="radio" aria-checked={!a.real} className={!a.real ? 'seg on' : 'seg'} onClick={() => setAmbientReal(false)}>Sintetizado</button>
         </div>
-        <span className="muted small-text">{a.real ? 'Suena la grabación de YouTube (necesita internet). La Calma siempre es sintetizada.' : 'Sin internet ni anuncios: lo genera la app.'}</span>
+        <span className="muted small-text">
+          {!a.real ? 'Sin internet ni anuncios: lo genera la app y suena al instante.'
+            : a.loadingReal ? 'Cargando la grabación… mientras, suena el sintetizado.'
+            : 'Suena la grabación de YouTube (necesita internet); hasta que carga, suena el sintetizado. La Calma siempre es sintetizada.'}
+        </span>
       </div>
       <form className="ambient-link" onSubmit={submit}>
         <input id="ambient-link" value={link} onChange={(e) => setLink(e.target.value)} placeholder="O pega un enlace: YouTube, Spotify o un .mp3" aria-label="Enlace de música" />
@@ -75,17 +80,55 @@ export function AmbientDock() {
   const frame = useRef<HTMLIFrameElement>(null);
   const audio = useRef<HTMLAudioElement>(null);
 
+  const ambientYt = embed?.kind === 'youtube' && !a.linkOn;
+  const volume = useRef(a.volume);
+  volume.current = a.volume;
+  /** La grabación del ambiente ya se oye (antes de eso está en silencio y suena el sintetizado). */
+  const live = useRef(false);
+
   // El mismo control de volumen manda en todo lo que suena.
   useEffect(() => {
     if (audio.current) audio.current.volume = gainFor(a.volume);
-    if (embed?.kind === 'youtube') ytCommand(frame.current, 'setVolume', [ytVolume(a.volume)]);
+    if (embed?.kind === 'youtube' && (!ambientYt || live.current)) ytCommand(frame.current, 'setVolume', [ytVolume(a.volume)]);
   }, [a.volume, embed?.kind, embed?.src]);
+
+  // Cuando la grabación empieza a sonar de verdad, se quita el silencio, sube poco a poco y el sintetizado se retira.
+  useEffect(() => {
+    live.current = false;
+    if (!ambientYt) return;
+    const timers: number[] = [];
+    function onMessage(e: MessageEvent) {
+      if (e.source !== frame.current?.contentWindow || typeof e.data !== 'string') return;
+      let msg: { event?: string; info?: unknown };
+      try {
+        msg = JSON.parse(e.data);
+      } catch {
+        return;
+      }
+      const info = msg.info as { playerState?: number } | number | undefined;
+      const playing = (msg.event === 'onStateChange' && info === 1) || ((msg.event === 'infoDelivery' || msg.event === 'initialDelivery') && typeof info === 'object' && info?.playerState === 1);
+      if (!playing) return;
+      window.removeEventListener('message', onMessage);
+      ytCommand(frame.current, 'setVolume', [Math.max(1, Math.round(ytVolume(volume.current) / 10))]);
+      ytCommand(frame.current, 'unMute');
+      for (let i = 2; i <= 10; i++) timers.push(window.setTimeout(() => ytCommand(frame.current, 'setVolume', [Math.round((ytVolume(volume.current) * i) / 10)]), (i - 1) * 300));
+      timers.push(window.setTimeout(() => (live.current = true), 3000));
+      realStarted();
+    }
+    window.addEventListener('message', onMessage);
+    return () => {
+      window.removeEventListener('message', onMessage);
+      timers.forEach(clearTimeout);
+    };
+  }, [ambientYt, embed?.src]);
 
   function onFrameLoad() {
     if (embed?.kind !== 'youtube') return;
-    // YouTube solo escucha órdenes cuando el reproductor está listo: se reintenta unas veces.
-    frame.current?.contentWindow?.postMessage(JSON.stringify({ event: 'listening' }), '*');
-    [300, 1000, 2500].forEach((ms) => setTimeout(() => ytCommand(frame.current, 'setVolume', [ytVolume(a.volume)]), ms));
+    // YouTube solo escucha órdenes (y avisa de cuándo suena) cuando el reproductor está listo: se reintenta unas veces.
+    [0, 300, 1000, 2500].forEach((ms) => setTimeout(() => {
+      frame.current?.contentWindow?.postMessage(JSON.stringify({ event: 'listening', id: 'ambient', channel: 'widget' }), '*');
+      if (!ambientYt) ytCommand(frame.current, 'setVolume', [ytVolume(volume.current)]);
+    }, ms));
   }
 
   if (!embed && !synth) return null;
