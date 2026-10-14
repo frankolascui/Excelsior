@@ -7,6 +7,15 @@ export type AttributeId = 'voluntad' | 'sabiduria' | 'maestria' | 'conexion' | '
 /** XP que una acción da a cada atributo (los que no aparecen reciben 0). */
 export type AttributeRewards = Partial<Record<AttributeId, number>>;
 
+/** Misión lista para añadir con un toque: nombre, tipo, XP y atributos ya pensados. */
+export interface QuestTemplate {
+  id: string;
+  title: string;
+  type: QuestType;
+  rewards: AttributeRewards;
+  xp?: number;
+}
+
 /** Tipo de sesión: se deduce de lo que vas a hacer. 'programacion' y 'edicion' vienen de versiones anteriores (= práctica). */
 export type DeepWorkArea = 'estudio' | 'practica' | 'general' | 'programacion' | 'edicion';
 
@@ -184,6 +193,8 @@ export interface GameState {
   activeTimer: ActiveTimer | null;
   kingdoms: Kingdom[];
   goals: Goal[];
+  /** Plantillas de misión propias (las prehechas viven en el código). */
+  questTemplates?: QuestTemplate[];
   rewards: Reward[];
   purchases: Purchase[];
   bosses: Boss[];

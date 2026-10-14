@@ -36,6 +36,7 @@ import { TodayStrip } from './today';
 import { addStep, deleteStep, toggleStep } from './core';
 import type { StepActions } from './steps-ui';
 import { SessionEdit } from './session-ui';
+import { QuestTemplates } from './templates-ui';
 
 export type Game = ReturnType<typeof useGame>;
 
@@ -273,7 +274,8 @@ export function Quests({ game, focusQuest, startFocus }: { game: Game; focusQues
       <div className="title-row"><h1 className="screen-title">Misiones</h1>{toggle}</div>
       <section className="panel" data-tour="quest-add">
         <QuickAddQuest autoFocus onAdd={(t, ty, c) => act((st) => addQuest(st, t, ty, Date.now(), c))} />
-        <p className="hint">Principal = lo importante. Diaria = para hoy. Secundaria = si sobra tiempo.</p>
+        <QuestTemplates game={game} />
+        <p className="hint">Principal = lo importante. Diaria = para hoy. Secundaria = si sobra tiempo. Con «Misiones prehechas» las añades ya listas, con su XP y atributos.</p>
       </section>
       <section className="panel">
         <header className="panel-head"><h3>Pendientes</h3><span className="count mono">{pending.length}</span></header>

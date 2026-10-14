@@ -112,6 +112,19 @@ await page.press('[aria-label="Nuevo paso de Leer la prensa"]', 'Enter');
 await page.click('button[aria-label="Marcar paso Titulares"]');
 check(await seen('.item:has-text("Leer la prensa") .steps-tag:has-text("1/2 pasos")'), 'una misión se puede partir en pasos con casillas');
 await page.click('button[aria-label="Borrar Leer la prensa"]');
+// Misiones prehechas: añadir una con un toque y guardar una propia
+await page.click('button.templates-open');
+await page.click('.templates-tabs [role=tab]:has-text("Personas")');
+await page.click('button[aria-label="Añadir Hablar con alguien nuevo"]');
+check(await seen('.item:has-text("Hablar con alguien nuevo")') && await seen('.template-row:has-text("Hablar con alguien nuevo") button:has-text("Otra")'), 'una misión prehecha se añade con un toque');
+await page.click('.templates-tabs [role=tab]:has-text("Mías")');
+await page.fill('#new-template', 'Clase de violín');
+await page.click('.template-new button:has-text("Guardar plantilla")');
+check(await seen('.templates-list .template-row:has-text("Clase de violín")') && await seen('[role=tab]:has-text("Mías · 1")'), 'se puede guardar una plantilla propia');
+await page.screenshot({ path: `${out}/02c-templates.png`, fullPage: true });
+await page.click('button[aria-label="Borrar plantilla Clase de violín"]');
+await page.click('button[aria-label="Borrar Hablar con alguien nuevo"]');
+await page.click('button.templates-open');
 await page.click('.nav-item:has-text("Hoy")');
 
 // 3. Completar misión → XP

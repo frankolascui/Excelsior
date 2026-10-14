@@ -201,3 +201,29 @@ describe('corregir sin tocar nada', () => {
     expect(editSession(s, x.id, { endedAt: sessionEndAt(x, '12:50'), minutes: 180 })).toBe(s);
   });
 });
+
+describe('misiones prehechas', () => {
+  it('se añaden con su tipo y atributos, y las propias se guardan y borran', async () => {
+    const { TEMPLATE_GROUPS, addFromTemplate, saveTemplate, deleteTemplate, hasPending } = await import('./quest-templates');
+    const { questAttributeRewards } = await import('./game');
+    const tpl = TEMPLATE_GROUPS.find((g) => g.id === 'personas')!.items.find((x) => x.id === 'per-nuevo')!;
+    let s = addFromTemplate(emptyState(), tpl, MON);
+    expect(s.quests[0]).toMatchObject({ title: 'Hablar con alguien nuevo', type: 'daily', rewards: { conexion: 4, voluntad: 2 } });
+    expect(questAttributeRewards(s.quests[0]).conexion).toBe(4);
+    expect(hasPending(s, ' hablar con alguien NUEVO')).toBe(true);
+    s = saveTemplate(s, { title: 'Clase de violín', type: 'side', rewards: { maestria: 3 }, xp: 999 });
+    expect(s.questTemplates![0]).toMatchObject({ title: 'Clase de violín', xp: 100 });
+    s = deleteTemplate(s, s.questTemplates![0].id);
+    expect(s.questTemplates).toEqual([]);
+  });
+
+  it('ninguna plantilla se pasa de los límites de lo personalizable', async () => {
+    const { TEMPLATE_GROUPS } = await import('./quest-templates');
+    const ids = new Set<string>();
+    for (const tpl of TEMPLATE_GROUPS.flatMap((g) => g.items)) {
+      expect(ids.has(tpl.id)).toBe(false);
+      ids.add(tpl.id);
+      for (const v of Object.values(tpl.rewards)) expect(v).toBeLessThanOrEqual(20);
+    }
+  });
+});
