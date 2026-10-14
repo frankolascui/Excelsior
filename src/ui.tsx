@@ -11,6 +11,7 @@ import { DatePicker, dayWords, RepeatPicker } from './pickers';
 import './core.css';
 import { HabitHistory, habitShields } from './habits-ui';
 import { QuestSteps, type StepActions } from './steps-ui';
+import { nextStepDue } from './core';
 import { AvatarPortrait, initialOf } from './portrait';
 import { Icon } from './icons';
 
@@ -103,6 +104,8 @@ export function QuestItem({
   const [showSteps, setShowSteps] = useState(false);
   const sp = { done: quest.steps?.filter((x) => x.done).length ?? 0, total: quest.steps?.length ?? 0 };
   const due = quest.deadline && !done ? deadlineLabel(quest.deadline, Date.now()) : null;
+  const nextStep = done ? undefined : nextStepDue(quest);
+  const stepDue = nextStep ? deadlineLabel(nextStep.deadline!, Date.now()) : null;
   if (editing && onEdit) {
     const initial: CustomValue = { xp: quest.xp, rewards: quest.rewards ?? (quest.focus ? questRewards(quest.type, quest.title, quest.focus) : undefined) };
     return (
@@ -130,7 +133,7 @@ export function QuestItem({
             ? <DatePicker value={quest.deadline ?? null} onChange={onDeadline} label={`Fecha límite de ${quest.title}`} clearLabel="Quitar fecha límite" className={`due due-${due.tone}`}><Icon name="calendar" /> {due.text}</DatePicker>
             : <span className={`due due-${due.tone}`}><Icon name="calendar" /> {due.text}</span>)}
           {sp.total > 0 && (steps && !done
-            ? <button type="button" className={sp.done === sp.total ? 'steps-tag full' : 'steps-tag'} aria-expanded={showSteps} onClick={() => setShowSteps(!showSteps)} title="Ver pasos"><Icon name="list" /> {sp.done}/{sp.total} pasos</button>
+            ? <button type="button" className={sp.done === sp.total ? 'steps-tag full' : 'steps-tag'} aria-expanded={showSteps} onClick={() => setShowSteps(!showSteps)} title="Ver pasos"><Icon name="list" /> {sp.done}/{sp.total} pasos{stepDue && <span className={`step-next due-${stepDue.tone}`}> · paso {stepDue.text}</span>}</button>
             : <span className="steps-tag"><Icon name="list" /> {sp.done}/{sp.total} pasos</span>)}
           {quest.repeat && !done && (onRepeat
             ? <RepeatPicker value={quest.repeat} onChange={onRepeat} label={`Repetición de ${quest.title}`} describe={repeatLabel} className="repeat-tag"><Icon name="repeat" /> {repeatLabel(quest.repeat)}</RepeatPicker>

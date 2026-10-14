@@ -158,3 +158,11 @@ button.tg-session { font-family: inherit; justify-content: flex-start; align-ite
 .template-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12.5px; }
 .template-row .small { white-space: nowrap; }
 .template-new { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; }
+
+/* Fecha límite de los pasos */
+.pick-btn.step-due { flex: none; white-space: nowrap; }
+.pick-btn.step-due.empty { border: 0; background: none; padding: 2px 4px; color: var(--muted); opacity: 0; }
+.step:hover .step-due.empty, .step-due.empty:focus-visible, .step-due.empty[aria-expanded='true'] { opacity: 0.8; }
+@media (hover: none) { .pick-btn.step-due.empty { opacity: 0.5; } }
+.step.done .step-due { opacity: 0.5; }
+.steps-tag .step-next.due-later { color: inherit; }

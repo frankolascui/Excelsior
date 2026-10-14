@@ -648,7 +648,9 @@ const QUEST_PRIORITY: Record<QuestType, number> = { main: 0, daily: 1, side: 2 }
  */
 export function pendingQuests(s: GameState, now = Date.now()): Quest[] {
   const urgent = (q: Quest) => {
-    const d = daysUntil(q.deadline, now);
+    // cuenta la fecha de la misión o la del paso pendiente que vence antes
+    const step = q.steps?.filter((x) => !x.done && x.deadline).map((x) => x.deadline!).sort()[0];
+    const d = daysUntil(step && (!q.deadline || step < q.deadline) ? step : q.deadline, now);
     return d !== null && d <= 2 ? d : null;
   };
   const today = dayKey(now);

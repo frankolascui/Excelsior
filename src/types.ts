@@ -47,6 +47,7 @@ export interface QuestStep {
   id: string;
   title: string;
   done: boolean;
+  deadline?: string; // YYYY-MM-DD, opcional
 }
 
 export interface Habit {

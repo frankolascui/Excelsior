@@ -33,7 +33,7 @@ import { Inventory } from './inventory';
 import { latestMetric, logMetric } from './life';
 import { Icon } from './icons';
 import { TodayStrip } from './today';
-import { addStep, deleteStep, toggleStep } from './core';
+import { addStep, deleteStep, setStepDeadline, toggleStep } from './core';
 import type { StepActions } from './steps-ui';
 import { SessionEdit } from './session-ui';
 import { QuestTemplates } from './templates-ui';
@@ -46,6 +46,7 @@ function stepActions(act: Game['act'], questId: string): StepActions {
     add: (t) => act((st) => addStep(st, questId, t)),
     toggle: (id) => act((st) => toggleStep(st, questId, id)),
     remove: (id) => act((st) => deleteStep(st, questId, id)),
+    deadline: (id, day) => act((st) => setStepDeadline(st, questId, id, day)),
   };
 }
 export type Tab = 'hoy' | 'misiones' | 'reinos' | 'arena' | 'gremios' | 'amigos' | 'deepwork' | 'habitos' | 'personaje' | 'ajustes';

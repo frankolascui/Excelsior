@@ -1,5 +1,5 @@
 // Reglas pequeñas del núcleo (Hoy, hábitos, reinos) que no encajan en game.ts.
-import type { DeepWorkSession, GameState, Quest } from './types';
+import type { DeepWorkSession, GameState, Quest, QuestStep } from './types';
 import { dayKey, shiftDay, uid, XP_RULES } from './game';
 import { deepWorkRewards } from './attributes';
 
@@ -38,6 +38,29 @@ export function deleteStep(s: GameState, questId: string, stepId: string): GameS
     if (!steps.length) delete next.steps;
     return next;
   });
+}
+
+/** Pone (o quita, con null) la fecha límite de un paso. */
+export function setStepDeadline(s: GameState, questId: string, stepId: string, day: string | null): GameState {
+  return mapQuest(s, questId, (q) => ({
+    ...q,
+    steps: (q.steps ?? []).map((x) => {
+      if (x.id !== stepId) return x;
+      const next: QuestStep = { ...x, deadline: day ?? undefined };
+      if (!day) delete next.deadline;
+      return next;
+    }),
+  }));
+}
+
+/** El paso pendiente que vence antes (para avisar en la tarjeta de la misión). */
+export function nextStepDue(q: Quest): QuestStep | undefined {
+  return (q.steps ?? []).filter((x) => !x.done && x.deadline).sort((a, b) => a.deadline!.localeCompare(b.deadline!))[0];
+}
+
+/** Pasos pendientes con fecha límite ese día, de misiones pendientes. */
+export function stepsDueOn(s: GameState, day: string): { quest: Quest; step: QuestStep }[] {
+  return s.quests.filter((q) => !q.completedAt).flatMap((q) => (q.steps ?? []).filter((x) => !x.done && x.deadline === day).map((step) => ({ quest: q, step })));
 }
 
 export function stepProgress(q: Quest): { done: number; total: number } {

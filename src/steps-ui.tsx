@@ -3,11 +3,26 @@ import { useState, type FormEvent } from 'react';
 import type { Quest } from './types';
 import { Icon } from './icons';
 import { sfx } from './sfx';
+import { DatePicker } from './pickers';
+import { deadlineLabel } from './ui';
 
 export interface StepActions {
   add: (title: string) => void;
   toggle: (stepId: string) => void;
   remove: (stepId: string) => void;
+  /** Fecha límite de un paso (null la quita). */
+  deadline: (stepId: string, day: string | null) => void;
+}
+
+/** Fecha límite del paso: un icono si no tiene; si tiene, «vence mañana» con su color de urgencia. */
+function StepDue({ title, day, done, onChange }: { title: string; day?: string; done: boolean; onChange: (d: string | null) => void }) {
+  const due = day ? deadlineLabel(day, Date.now()) : null;
+  return (
+    <DatePicker value={day ?? null} onChange={onChange} label={`Fecha límite del paso ${title}`} clearLabel="Quitar fecha límite"
+      className={due ? `step-due due due-${done ? 'later' : due.tone}` : 'step-due empty'}>
+      <Icon name={due ? 'calendar' : 'calendar-plus'} />{due && ` ${due.text}`}
+    </DatePicker>
+  );
 }
 
 export function QuestSteps({ quest, actions }: { quest: Quest; actions: StepActions }) {
@@ -32,6 +47,7 @@ export function QuestSteps({ quest, actions }: { quest: Quest; actions: StepActi
                   {x.done && <Icon name="check" />}
                 </button>
                 <span className="step-title">{x.title}</span>
+                <StepDue title={x.title} day={x.deadline} done={x.done} onChange={(d) => actions.deadline(x.id, d)} />
                 <button type="button" className="icon-btn step-del" aria-label={`Quitar paso ${x.title}`} title="Quitar paso" onClick={() => actions.remove(x.id)}><Icon name="x" /></button>
               </li>
             ))}

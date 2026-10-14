@@ -227,3 +227,26 @@ describe('misiones prehechas', () => {
     }
   });
 });
+
+describe('fecha límite de los pasos', () => {
+  it('se pone y se quita, y la misión sube en pendientes si un paso vence pronto', async () => {
+    const { addStep, setStepDeadline, nextStepDue, stepsDueOn, toggleStep } = await import('./core');
+    let s = addQuest(emptyState(), 'Examen de Física', 'main', MON - 10);
+    s = addQuest(s, 'Responder emails', 'daily', MON - 5);
+    s = addStep(s, s.quests[0].id, 'Tema 1');
+    const q = s.quests[0];
+    const step = q.steps![0];
+    // sin fechas manda el tipo: Principal primero
+    expect(pendingQuests(s, MON)[0].title).toBe('Examen de Física');
+    s = addQuest(s, 'Entregar trabajo', 'side', MON, { deadline: '2026-10-14' });
+    expect(pendingQuests(s, MON)[0].title).toBe('Entregar trabajo');
+    s = setStepDeadline(s, q.id, step.id, '2026-10-13');
+    expect(pendingQuests(s, MON)[0].title).toBe('Examen de Física');
+    expect(nextStepDue(s.quests[0])?.deadline).toBe('2026-10-13');
+    expect(stepsDueOn(s, '2026-10-13').map((x) => x.step.title)).toEqual(['Tema 1']);
+    s = toggleStep(s, q.id, step.id);
+    expect(nextStepDue(s.quests[0])).toBeUndefined();
+    s = setStepDeadline(s, q.id, step.id, null);
+    expect(s.quests[0].steps![0].deadline).toBeUndefined();
+  });
+});

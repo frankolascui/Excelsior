@@ -111,6 +111,10 @@ await page.fill('[aria-label="Nuevo paso de Leer la prensa"]', 'Opinión');
 await page.press('[aria-label="Nuevo paso de Leer la prensa"]', 'Enter');
 await page.click('button[aria-label="Marcar paso Titulares"]');
 check(await seen('.item:has-text("Leer la prensa") .steps-tag:has-text("1/2 pasos")'), 'una misión se puede partir en pasos con casillas');
+await page.click('button[aria-label^="Fecha límite del paso Opinión"]', { force: true });
+await page.click('.pop-date .pop-chip:has-text("Mañana")');
+check(await seen('.step:has-text("Opinión") .step-due:has-text("vence mañana")') && await seen('.item:has-text("Leer la prensa") .steps-tag:has-text("paso vence mañana")'), 'un paso puede tener fecha límite y la misión lo avisa');
+await page.screenshot({ path: `${out}/02d-step-due.png` });
 await page.click('button[aria-label="Borrar Leer la prensa"]');
 // Misiones prehechas: añadir una con un toque y guardar una propia
 await page.click('button.templates-open');
