@@ -194,3 +194,18 @@ button.tg-session { font-family: inherit; justify-content: flex-start; align-ite
   .mob-sheet-foot { margin-top: 12px; color: var(--muted); font-size: 12px; text-align: center; }
 }
 @keyframes mob-sheet-up { from { transform: translateY(24px); opacity: 0; } }
+
+/* Novedades */
+.news-dialog {
+  width: min(520px, 100%); max-height: calc(100dvh - 32px); display: flex; flex-direction: column; gap: 10px;
+  padding: 22px; border-radius: 20px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow);
+}
+.news-dialog h2 { font-family: var(--display); font-size: 28px; }
+.news-scroll { overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 4px; }
+.news-group h4 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--c2); }
+.news-group ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 14.5px; }
+.news-dialog .primary { align-self: stretch; margin-top: 6px; }
+.news-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.news-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); color: inherit; text-align: left; }
+.news-row .small-text { margin-left: auto; }
+.news-detail { display: flex; flex-direction: column; gap: 10px; padding: 10px 12px 4px; }

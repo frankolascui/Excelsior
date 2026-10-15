@@ -336,6 +336,12 @@ await page.setViewportSize({ width: 1280, height: 860 });
 // 7a5. Tema y copia de seguridad, en la rueda de ajustes
 await page.click('button[aria-label="Ajustes"]');
 check(await seen('h1:has-text("Ajustes")'), 'la rueda abre Ajustes');
+await page.click('.news-row:has-text("v2.0")');
+check(await seen('.news-detail:has-text("Amigos")') && await seen('.news-row:has-text("Llega el 3 de noviembre")'), 'Ajustes tiene el historial de novedades (la V2 sale el 3 de noviembre)');
+await page.click('.news-detail button:has-text("Ver el aviso")');
+check(await seen('.news-dialog h2:has-text("La era social")'), 'el aviso de novedades se puede ver');
+await page.screenshot({ path: `${out}/20-news.png` });
+await page.click('.news-dialog button.primary');
 await page.click('.theme-swatch:has-text("Olimpo")');
 check((await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--c1').trim())) === '#ffd166', 'el tema Olimpo cambia los colores');
 await page.screenshot({ path: `${out}/10-theme.png`, fullPage: true });

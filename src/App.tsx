@@ -7,6 +7,7 @@ import { avatarInfo } from './attributes';
 import { isMuted, setMuted, sfx } from './sfx';
 import { Arena, CoinBadge } from './arena';
 import { AmbientDock } from './ambient-ui';
+import { NewsGate } from './news-ui';
 import { ConflictDialog, loadGuest, saveGuest, Welcome } from './account';
 import { Guilds } from './guilds-ui';
 import { cloudEnabled, useCloud } from './cloud';
@@ -268,6 +269,8 @@ export default function App() {
 
       {ritual && !tour && <RitualDialog game={game} guide={tutorial.guide} onClose={() => setRitual(false)} />}
       {review && !tour && !ritual && <ReviewDialog game={game} guide={tutorial.guide} onClose={() => setReview(false)} />}
+
+      <NewsGate createdAt={state.profile.createdAt} blocked={!!tour || ritual || review || !!game.levelUp || !!game.conflict} />
 
       {game.conflict && <ConflictDialog local={state} remote={game.conflict} onChoose={game.resolveConflict} />}
 
