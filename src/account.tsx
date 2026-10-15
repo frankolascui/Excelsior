@@ -1,5 +1,6 @@
 // Cuenta: entrar con email + código del correo (Supabase envía 6–10 dígitos según su configuración), estado del guardado y conflicto de partidas.
 import { useState, type FormEvent, type ReactNode } from 'react';
+import { pendingInvite } from './invite';
 import { cloudEnabled, sendCode, signOut, useCloud, verifyCode, type RemoteSave } from './cloud';
 import { levelInfo, totalXp } from './game';
 import type { GameState } from './types';
@@ -125,12 +126,14 @@ export function saveGuest(on: boolean) {
 
 /** Primera pantalla: entrar con email es lo principal; invitado, la alternativa. */
 export function Welcome({ onGuest }: { onGuest: () => void }) {
+  const invitedBy = pendingInvite();
   return (
     <main className="onboarding">
       <div className="onboarding-card">
         <p className="eyebrow">Life RPG</p>
         <h1 className="brand">Excelsior</h1>
         <p className="lede">Un RPG construido alrededor de tu vida real. Entra con tu email: te mandamos un código, sin contraseñas.</p>
+        {invitedBy && <p className="invite-banner"><Icon name="user-plus" /> <span><strong>{invitedBy.split('#')[0]}</strong> te ha invitado. Crea tu cuenta y seréis amigos al entrar.</span></p>}
         <LoginForm />
         <div className="or-divider" aria-hidden="true"><span>o</span></div>
         <button className="ghost" onClick={onGuest}>Entrar como invitado</button>

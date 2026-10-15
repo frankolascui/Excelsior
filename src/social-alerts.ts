@@ -7,6 +7,10 @@ import { refreshSocial, useSocial } from './social';
 import { challengeState, refreshGuild, useGuild } from './guilds';
 import { freshMe } from './ranking-ui';
 import { crownCheck } from './trophies';
+import { captureInvite, redeemInvite } from './invite';
+
+// Si se abrió un enlace de invitación, el tag queda guardado hasta que haya cuenta.
+captureInvite();
 
 const EVERY = 10 * 60_000;
 
@@ -23,6 +27,12 @@ export function useSocialAlerts(game: Game): { amigos: number; gremios: number }
     const t = window.setInterval(load, EVERY);
     return () => clearInterval(t);
   }, [me, online]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Enlace de invitación: en cuanto hay perfil publicado, solicitud a quien te invitó.
+  useEffect(() => {
+    if (!social.me || social.loading) return;
+    void redeemInvite(social.me, social.rows, game.state).then((msg) => { if (msg) game.toast(msg, 'info'); });
+  }, [social.me?.user_id, social.loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Corona: si ganaste la semana pasada entre tus amigos, va al inventario (una vez por semana).
   const friendIds = social.rows.filter((r) => r.status === 'accepted').map((r) => (r.requester === me ? r.addressee : r.requester));

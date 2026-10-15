@@ -48,3 +48,16 @@
 .title-opt { font-size: 13px; padding: 6px 12px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); color: var(--fg); }
 .title-opt.on { border-color: #f5c84c; color: #f5c84c; box-shadow: 0 0 0 2px color-mix(in srgb, #f5c84c 20%, transparent); }
 .hero-title-tag { color: #f5c84c; font-style: italic; margin: 0; }
+
+/* Invitaciones por enlace */
+.invite-btn { margin: 4px 0 6px; }
+.invite-banner { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--c1) 45%, var(--line)); background: color-mix(in srgb, var(--c1) 12%, var(--surface)); text-align: left; }
+.found-lock { display: flex; gap: 8px; align-items: flex-start; }
+
+/* Borrar cuenta (Ajustes) */
+.delete-account { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.delete-box { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--danger) 50%, var(--line)); background: color-mix(in srgb, var(--danger) 8%, var(--surface)); }
+.delete-box h4 { margin: 0; display: flex; gap: 8px; align-items: center; }
+.delete-box ul { margin: 0; padding-left: 18px; }
+.delete-box input { max-width: 220px; }
+.delete-box > button.ghost { align-self: flex-start; }
