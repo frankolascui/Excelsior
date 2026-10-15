@@ -19,6 +19,7 @@ import {
   cheer, cheeredToday, cheersReceived, chronicle, mvpCoins, type GuildEvent,
 } from './guilds';
 import './guilds.css';
+import { canFoundGuild, GUILD_FOUND_LEVEL } from './unlocks';
 import { Glyph, Icon } from './icons';
 
 const fmt = (m: Metric, n: number) => (m === 'deep' ? formatMinutes(n) : `${n}${m === 'xp' ? ' XP' : ''}`);
@@ -83,6 +84,9 @@ function NoGuild({ game }: { game: Game }) {
       <section className="panel" aria-labelledby="gnew-h">
         <header className="panel-head"><h3 id="gnew-h">Funda tu gremio</h3></header>
         <p className="hint">Hasta {GUILD_MAX} amigos. Juntos os enfrentáis a misiones y jefes con lo que hacéis de verdad: Deep Work, hábitos y XP.</p>
+        {!canFoundGuild(game.state) ? (
+          <p className="hint rank-note found-lock"><Icon name="lock" /> Fundar un gremio se desbloquea en el nivel {GUILD_FOUND_LEVEL}. Mientras tanto, pide a un amigo que te invite al suyo: las invitaciones aparecen aquí.</p>
+        ) : (
         <form className="guild-form" onSubmit={submit}>
           <div className="emblem-pick" role="radiogroup" aria-label="Emblema">
             {EMBLEMS.map((e) => (
@@ -93,6 +97,7 @@ function NoGuild({ game }: { game: Game }) {
           <input id="guild-motto" value={form.motto} onChange={(e) => setForm({ ...form, motto: e.target.value })} placeholder="Lema (opcional)" maxLength={80} aria-label="Lema" />
           <button className="primary" disabled={busy || form.name.trim().length < 2}><Icon name="plus" /> Fundar gremio</button>
         </form>
+        )}
       </section>
       <RuleCard />
     </>

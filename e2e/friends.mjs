@@ -103,6 +103,14 @@ async function fake(ctx) {
         return route.fulfill({ status: 204, headers: cors });
       }
     }
+    if (u.pathname === '/auth/v1/logout') return route.fulfill({ status: 204, headers: cors });
+    if (u.pathname === '/rest/v1/rpc/delete_my_account') {
+      db.deleted = true;
+      db.saves = null;
+      db.profiles = db.profiles.filter((x) => x.user_id !== ME);
+      db.friendships = db.friendships.filter((f) => f.requester !== ME && f.addressee !== ME);
+      return route.fulfill({ status: 204, headers: cors });
+    }
     if (u.pathname === '/rest/v1/rpc/recommended_friends') {
       const related = new Set(db.friendships.flatMap((f) => [f.requester, f.addressee]));
       return json(200, db.profiles.filter((x) => x.user_id !== ME && !related.has(x.user_id)).map((x) => ({ ...x, mutual: 0 })));
@@ -211,6 +219,45 @@ await page.screenshot({ path: 'e2e/12-friends.png', fullPage: true });
 // La foto también sale en Personaje.
 await page.click('.nav-item:has-text("Personaje")');
 check(await page.locator('svg image').count() > 0, 'la foto de perfil se ve en Personaje');
+
+// Invitar con enlace: comparte la dirección con su tag.
+await page.click('.nav-item:has-text("Amigos")');
+await page.evaluate(() => { window.__shared = null; navigator.share = async (d) => { window.__shared = d; }; });
+await page.click('button:has-text("Invitar a un amigo")');
+const shared = await page.evaluate(() => window.__shared);
+const myTag = db.profiles.find((x) => x.user_id === ME).tag;
+check(shared?.url?.includes(`?amigo=${encodeURIComponent(myTag)}`), `el enlace de invitación lleva su tag (${shared?.url?.split('?')[1]})`);
+check(await page.evaluate(() => document.querySelector('meta[property="og:title"]')?.content) === 'Únete a mí en Excelsior RPG', 'el enlace tiene vista previa (Open Graph)');
+
+// Abrir un enlace de Leo: al entrar le llega la solicitud.
+const inv = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+await fake(inv);
+const ip = await inv.newPage();
+ip.on('pageerror', (e) => errors.push(e.message));
+await ip.goto(url + '?amigo=Leo%230002');
+check(await ip.isVisible('.invite-banner:has-text("Leo te ha invitado")'), 'quien abre el enlace ve quién le invita');
+check(!ip.url().includes('amigo='), 'la dirección se limpia');
+await ip.fill('#login-email', 'nico@test.com');
+await ip.click('text=Enviarme un código');
+await ip.fill('#login-code', '123456');
+await ip.click('button:has-text("Entrar")');
+await ip.waitForSelector('text=¿Qué hago ahora?', { timeout: 5000 });
+await ip.waitForTimeout(1500);
+check(db.friendships.some((f) => f.requester === ME && f.addressee === LEO && f.status === 'pending'), 'al entrar, la solicitud a Leo se manda sola');
+check(await ip.isVisible('text=Solicitud de amistad enviada a Leo'), 'y se le avisa');
+
+// Borrar la cuenta: pide escribir BORRAR, borra en el servidor y vuelve a la bienvenida.
+const keep = structuredClone({ saves: db.saves, profiles: db.profiles, friendships: db.friendships });
+await ip.click('button[aria-label="Ajustes"]');
+await ip.click('button:has-text("Borrar mi cuenta")');
+check(await ip.isDisabled('.delete-box button.danger-solid'), 'sin escribir BORRAR no deja borrar');
+await ip.fill('#del-word', 'borrar');
+await ip.click('.delete-box button.danger-solid');
+await ip.waitForSelector('text=Entrar como invitado', { timeout: 5000 });
+check(db.deleted && !db.saves && !db.profiles.some((x) => x.user_id === ME), 'la cuenta se borra en el servidor y vuelve a la bienvenida');
+check(await ip.evaluate(() => !JSON.parse(localStorage.getItem('excelsior:v1') ?? 'null')?.profile), 'y la partida de este dispositivo también');
+await inv.close();
+Object.assign(db, keep); // para la prueba del móvil
 
 // Móvil: sin scroll horizontal.
 const m = await browser.newContext({ viewport: { width: 390, height: 800 } });

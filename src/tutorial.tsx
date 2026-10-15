@@ -80,7 +80,7 @@ export const TOURS: Record<string, Step[]> = {
       tab: 'hoy',
       title: 'Tu primera misión',
       text: ({ guide }) =>
-        `Eso es todo por ahora. Al subir de nivel se abrirán los Reinos (nivel 3), la Arena (nivel 5) y los Gremios (nivel 7), y te los enseñaré entonces. Ahora crea tu misión principal de hoy. — ${guide}`,
+        `Eso es todo por ahora. Al subir de nivel se abrirán los Reinos (nivel 3), la Arena y los Gremios (nivel 5), y te los enseñaré entonces. Ahora crea tu misión principal de hoy. — ${guide}`,
     },
   ],
   reinos: [
@@ -118,7 +118,7 @@ export const TOURS: Record<string, Step[]> = {
     {
       tab: 'gremios',
       title: 'Los Gremios',
-      text: () => 'Has llegado lejos. Pronto podrás formar un gremio con tus amigos y enfrentaros juntos a las bestias. Para eso necesitarás una cuenta.',
+      text: () => 'Has llegado lejos. Ya puedes unirte al gremio de un amigo si te invita, y en el nivel 10 podrás fundar el tuyo. Juntos os enfrentaréis a las bestias. Para eso necesitarás una cuenta.',
     },
   ],
 };

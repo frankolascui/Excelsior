@@ -12,6 +12,7 @@ import {
   type PublicProfile, type Relation,
 } from './social';
 import { Icon } from './icons';
+import { inviteLink } from './invite';
 
 export function Face({ p, size = 56 }: { p: Pick<PublicProfile, 'name' | 'photo' | 'avatar_index' | 'avatar_name'>; size?: number }) {
   return <AvatarPortrait tier={p.avatar_index} label={initialOf(p.name)} photo={p.photo ?? undefined} size={size} title={p.avatar_name} />;
@@ -118,6 +119,26 @@ function MyProfile({ game }: { game: Game }) {
       toast(`Tu tag es ${me.tag}`, 'info');
     }
   }
+  /** Comparte un enlace con tu tag: quien lo abre y entra te manda solicitud solo. */
+  async function shareInvite() {
+    if (!me) return;
+    const url = inviteLink(me.tag);
+    const text = `Únete a mí en Excelsior RPG: convierte tu vida en un RPG. Al entrar seremos amigos (mi tag: ${me.tag}).`;
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title: 'Excelsior RPG', text, url });
+        return;
+      } catch (e) {
+        if ((e as Error)?.name === 'AbortError') return; // cerró el menú de compartir
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(`${text}\n${url}`);
+      toast('Enlace de invitación copiado: pégalo en WhatsApp o donde quieras', 'info');
+    } catch {
+      toast(`Tu enlace: ${url}`, 'info');
+    }
+  }
   function save(e: FormEvent) {
     e.preventDefault();
     act((s) => setBio(s, bio));
@@ -138,7 +159,8 @@ function MyProfile({ game }: { game: Game }) {
           {me ? (
             <button className="tag-chip mono" onClick={copyTag} title="Copiar tag">{me.tag} <Icon name="copy" /></button>
           ) : <p className="muted small-text">Creando tu tag…</p>}
-          <p className="hint">Tus amigos te añaden con este tag.</p>
+          <p className="hint">Tus amigos te añaden con este tag, o mándales tu enlace: al entrar con él te llega su solicitud sola.</p>
+          {me && <button className="primary small invite-btn" onClick={() => void shareInvite()}><Icon name="send" /> Invitar a un amigo</button>}
           {state.profile?.photo && <button className="link" onClick={() => act((s) => setPhoto(s, null))}>Quitar foto</button>}
         </div>
       </div>
