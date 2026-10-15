@@ -1,4 +1,5 @@
 // Ajustes (tema, guía, tutorial, copia de seguridad), escalera de avatares y crónica semanal.
+import { NewsHistory } from './news-ui';
 import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import type { Game, Tab } from './screens';
 import { avatarInfo, ATTRIBUTES, formatAttrXp } from './attributes';
@@ -32,6 +33,7 @@ export function SettingsScreen({
       <h1 className="screen-title">Ajustes</h1>
       <AccountPanel />
       <SettingsPanel game={game} guide={guide} setGuide={setGuide} replayTutorial={() => startTour('intro')} />
+      <NewsHistory />
       <AdminPanel game={game} startTour={startTour} />
       <section className="panel quiet">
         <h3>Zona peligrosa</h3>
