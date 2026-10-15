@@ -174,3 +174,23 @@ button.tg-session { font-family: inherit; justify-content: flex-start; align-ite
 .cal-tasks-count span { display: inline-flex; align-items: center; gap: 4px; }
 .cal-tasks-body { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
 .cal-undated h4 { margin: 4px 0; display: flex; align-items: center; gap: 8px; font-size: 15px; }
+
+/* Menú del móvil: 5 abajo (Hoy, Misiones, Deep Work, Social, Más); el resto en una hoja */
+.nav-item.mob-only { display: none; }
+.overlay.mob-sheet-overlay { display: none; }
+@media (max-width: 760px) {
+  .nav-item.mob-hide { display: none; }
+  .nav-item.mob-only { display: flex; position: relative; }
+  .overlay.mob-sheet-overlay { display: flex; align-items: flex-end; justify-content: stretch; padding: 0; z-index: 9; }
+  .mob-sheet {
+    width: 100%; padding: 14px 16px calc(84px + env(safe-area-inset-bottom, 0px));
+    background: var(--surface); border-top: 1px solid var(--line); border-radius: 18px 18px 0 0; box-shadow: var(--shadow);
+    animation: mob-sheet-up 0.18s ease-out;
+  }
+  .mob-sheet-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+  .mob-sheet .nav-item.in-sheet { position: relative; flex-direction: column; gap: 6px; padding: 14px 6px; font-size: 13px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); }
+  .mob-sheet .nav-item.in-sheet .nav-glyph { font-size: 22px; }
+  .mob-sheet .nav-lock { display: inline; margin: 0; }
+  .mob-sheet-foot { margin-top: 12px; color: var(--muted); font-size: 12px; text-align: center; }
+}
+@keyframes mob-sheet-up { from { transform: translateY(24px); opacity: 0; } }
