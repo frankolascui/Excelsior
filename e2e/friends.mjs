@@ -56,9 +56,17 @@ async function fake(ctx) {
     if (u.pathname === '/auth/v1/verify') return json(200, { access_token: 'at', token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, refresh_token: 'rt', user: USER });
     if (u.pathname === '/rest/v1/saves') {
       if (r.method() === 'GET') return json(200, db.saves ? [db.saves] : []);
+      // Escritura condicional (PATCH … updated_at=eq.X) o alta (POST), como hace cloud.ts.
       const b = r.postDataJSON();
-      db.saves = Array.isArray(b) ? b[0] : b;
-      return route.fulfill({ status: 201, headers: cors });
+      const row = Array.isArray(b) ? b[0] : b;
+      if (r.method() === 'PATCH') {
+        if (!db.saves || db.saves.updated_at !== u.searchParams.get('updated_at')?.replace(/^eq\./, '')) return json(200, []);
+        db.saves = { ...db.saves, ...row };
+        return json(200, [{ updated_at: db.saves.updated_at }]);
+      }
+      if (db.saves) return json(409, { code: '23505', message: 'duplicate key value' });
+      db.saves = row;
+      return json(201, [{ updated_at: row.updated_at }]);
     }
     const p = u.searchParams;
     if (u.pathname === '/rest/v1/profiles') {

@@ -82,17 +82,17 @@ function describe(s: GameState) {
   return `${s.profile?.name ?? 'Sin personaje'} · nivel ${levelInfo(totalXp(s)).level} · ${s.quests.length} misiones`;
 }
 
-/** Primer login en un dispositivo que ya tenía partida: el jugador elige cuál se queda. */
+/** La partida de aquí y la de la nube cambiaron por separado (primer login o dos dispositivos a la vez): el jugador elige. */
 export function ConflictDialog({ local, remote, onChoose }: { local: GameState; remote: RemoteSave; onChoose: (useRemote: boolean) => void }) {
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="conflict-h">
       <div className="overlay-card">
         <h2 id="conflict-h">Tienes dos partidas</h2>
-        <p>¿Con cuál te quedas? La otra se sustituirá.</p>
+        <p>Esta partida y la de la nube cambiaron por separado. ¿Con cuál te quedas? La otra se sustituirá.</p>
         <div className="conflict-options">
           <button className="secondary" onClick={() => onChoose(true)}>
             <strong><Icon name="cloud" /> La de la nube</strong>
-            <span className="muted small-text">{describe(remote.state)}</span>
+            <span className="muted small-text">{describe(remote.state)} · guardada {new Date(remote.updatedAt).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}</span>
           </button>
           <button className="secondary" onClick={() => onChoose(false)}>
             <strong><Icon name="laptop" /> La de este dispositivo</strong>
