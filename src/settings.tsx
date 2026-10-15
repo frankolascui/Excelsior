@@ -10,6 +10,7 @@ import { adminToLevel, grantAdminXp, levelInfo, simulatePastDays, totalXp } from
 import { ADMIN, checkAdminPassword, setAdmin } from './admin';
 import { ChronicleOath, openRitual } from './ritual';
 import { AccountPanel } from './account';
+import { DeleteAccount } from './account-delete';
 import { ConfirmButton } from './ui';
 import { TOURS } from './tutorial';
 import { isUnlocked } from './unlocks';
@@ -36,6 +37,7 @@ export function SettingsScreen({
         <h3>Zona peligrosa</h3>
         <p className="muted">Borrar el personaje elimina misiones, hábitos e historial de este dispositivo.</p>
         <ConfirmButton label="Borrar personaje" confirmLabel="Sí, borrar todo" onConfirm={game.reset} />
+        <DeleteAccount game={game} />
       </section>
       <p className="app-version mono">{APP_VERSION_LABEL}</p>
     </div>
