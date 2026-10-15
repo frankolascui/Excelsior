@@ -76,6 +76,8 @@ await page.fill('#new-quest', 'Terminar el tema 3 de Física');
 await page.click('[role=radio]:has-text("Principal")');
 await page.click('button:has-text("Crear")');
 check(await seen('h2:has-text("Terminar el tema 3 de Física")'), '¿Qué hago ahora? sugiere la misión principal');
+check(!(await page.$('.today-strip')) && !(await page.$('#attrs-h')), 'Hoy de una partida nueva esconde lo que aún estaría vacío');
+await page.click('button.now-add');
 await page.fill('#new-quest', 'Responder emails');
 await page.click('button:has-text("Crear")');
 
@@ -546,6 +548,8 @@ await page.click('.nav-item:has-text("Hoy")');
 check(await seen('.upcoming:has-text("Examen de cálculo")'), 'Hoy muestra los próximos eventos');
 
 // 7g. Recordatorios y calendario por horas
+check(await seen('.reminders-folded'), 'sin recordatorios, el panel de Hoy ocupa una línea');
+await page.click('.reminders-folded button:has-text("Recordatorio")');
 await page.fill('.rem-form .rem-title', 'Comprar la cena');
 await page.click('.rem-form button:has-text("Recordar")');
 await page.fill('.rem-form .rem-title', 'Llevarme el cuaderno a casa');

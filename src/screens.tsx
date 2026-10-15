@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { useGame } from './store';
 import type { DeepWorkArea, FocusPhase, Quest, QuestType } from './types';
-import { addGoal, avatarInfo, DEEP_WORK_AREA_HINT, deepWorkRewards, inferDeepWorkArea, deleteGoal, formatAttrXp, goalProgress, habitRewards, questRewards, updateGoal } from './attributes';
+import { addGoal, attributeXp, avatarInfo, DEEP_WORK_AREA_HINT, deepWorkRewards, inferDeepWorkArea, deleteGoal, formatAttrXp, goalProgress, habitRewards, questRewards, updateGoal } from './attributes';
 import { CustomizeToggle, RewardEditor, sameRewards, type CustomValue } from './customize';
 import { addKingdom, BUILDINGS, buildings, deleteKingdom, kingdomName, kingdomProgress, nextStage, renameKingdom, setKingdomDeadline } from './kingdoms';
 import { DatePicker } from './pickers';
@@ -105,10 +105,15 @@ export function Dashboard({
   const now = useNow(30_000);
   const pending = pendingQuests(state, now);
   const s = suggest(state, now);
+  // la misión de «¿Qué hago ahora?» no se repite en la lista de debajo
+  const others = s.kind === 'quest' ? pending.filter((q) => q.id !== s.quest.id) : pending;
+  const [adding, setAdding] = useState(false);
+  const fresh = totalXp(state) === 0; // partida nueva: se esconde lo que aún estaría vacío
+  const anyAttr = Object.values(attributeXp(state)).some((v) => v > 0);
 
   return (
     <div className="screen">
-      <TodayStrip state={state} now={now} />
+      {!fresh && <TodayStrip state={state} now={now} />}
       <WeeklyChronicle game={game} guide={guide} now={now} go={go} />
       <ReviewBanner state={state} now={now} guide={guide} />
       <UpcomingEvents state={state} now={now} />
@@ -128,6 +133,9 @@ export function Dashboard({
               <button className="primary big" onClick={() => focusQuest(s.quest)}><Icon name="play" /> Empezar Deep Work</button>
               <button className="secondary big" onClick={() => act((st) => completeQuest(st, s.quest.id, Date.now()), CAP_QUEST, questOpts(s.quest))}><Icon name="check" /> Ya la terminé</button>
             </div>
+            {others.length === 0 && (adding
+              ? <QuickAddQuest autoFocus onAdd={(t, ty, c) => { act((st) => addQuest(st, t, ty, Date.now(), c)); setAdding(false); }} />
+              : <button className="link now-add" onClick={() => setAdding(true)}><Icon name="plus" /> Añadir otra misión</button>)}
           </>
         )}
         {s.kind === 'habit' && (
@@ -159,29 +167,29 @@ export function Dashboard({
         )}
       </section>
 
-      <div className="columns">
+      <div className={state.habits.length > 0 ? 'columns' : 'columns one'}>
         <div className="col-stack">
-        <section className="panel">
+        {(others.length > 0 || (s.kind !== 'create' && s.kind !== 'quest')) && <section className="panel">
           <header className="panel-head">
-            <h3>Misiones pendientes</h3>
+            <h3>{s.kind === 'quest' ? 'Más misiones' : 'Misiones pendientes'}</h3>
             <button className="link" onClick={() => go('misiones')}>Ver todas <Icon name="arrow-right" /></button>
           </header>
-          {pending.length === 0 ? (
+          {others.length === 0 ? (
             <p className="empty">Sin misiones pendientes.</p>
           ) : (
             <ul className="list">
-              {pending.slice(0, 5).map((q) => (
+              {others.slice(0, 5).map((q) => (
                 <QuestItem key={q.id} quest={q} kingdom={kingdomName(state, q.kingdomId)} onComplete={() => act((st) => completeQuest(st, q.id, Date.now()), CAP_QUEST, questOpts(q))} onStart={() => focusQuest(q)} onDeadline={(d) => act((st) => setQuestDeadline(st, q.id, d))} steps={stepActions(act, q.id)} />
               ))}
             </ul>
           )}
           {s.kind !== 'create' && <QuickAddQuest onAdd={(t, ty, c) => act((st) => addQuest(st, t, ty, Date.now(), c))} />}
-        </section>
+        </section>}
 
         <RemindersPanel game={game} now={now} />
         </div>
 
-        <section className="panel">
+        {state.habits.length > 0 && <section className="panel">
           <header className="panel-head">
             <h3>Hábitos de hoy</h3>
             <button className="link" onClick={() => go('habitos')}>Gestionar <Icon name="arrow-right" /></button>
@@ -195,20 +203,20 @@ export function Dashboard({
               ))}
             </ul>
           )}
-        </section>
+        </section>}
       </div>
 
-      <DayClose game={game} now={now} />
+      {!fresh && <DayClose game={game} now={now} />}
 
       <AvatarCard state={state} now={now} />
 
-      <section className="panel" aria-labelledby="attrs-h">
+      {anyAttr && <section className="panel" aria-labelledby="attrs-h">
         <header className="panel-head">
           <h3 id="attrs-h">Atributos</h3>
           <button className="link" onClick={() => go('personaje')}>Ver detalle <Icon name="arrow-right" /></button>
         </header>
         <AttributeList state={state} />
-      </section>
+      </section>}
 
       <section className="panel" aria-label="XP y nivel global">
         <LevelBar state={state} />

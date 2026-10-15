@@ -209,3 +209,10 @@ button.tg-session { font-family: inherit; justify-content: flex-start; align-ite
 .news-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); color: inherit; text-align: left; }
 .news-row .small-text { margin-left: auto; }
 .news-detail { display: flex; flex-direction: column; gap: 10px; padding: 10px 12px 4px; }
+
+/* Hoy más corto: lo vacío se pliega en una línea */
+.columns.one { grid-template-columns: 1fr; }
+.reminders-folded { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 12px; }
+.reminders-folded p { margin: 0; display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.now .now-add { margin-top: 10px; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; }
+.now .quick-add { margin-top: 12px; }

@@ -105,6 +105,16 @@ export function RemindersPanel({ game, now }: { game: Game; now: number }) {
   const list = todayReminders(game.state, now);
   const later = laterReminders(game.state, now);
   const open = list.filter((r) => !r.doneAt).length;
+  const [adding, setAdding] = useState(false);
+  // sin recordatorios, el panel se queda en una línea para no alargar Hoy
+  if (list.length === 0 && later.length === 0 && !adding) {
+    return (
+      <section className="panel reminders reminders-folded" aria-label="Recordatorios">
+        <p><Icon name="bell" /> Sin recordatorios.</p>
+        <button className="ghost small" onClick={() => setAdding(true)}><Icon name="plus" /> Recordatorio</button>
+      </section>
+    );
+  }
   return (
     <section className="panel reminders" aria-labelledby="rem-h">
       <header className="panel-head">
