@@ -156,8 +156,9 @@ async function login(page) {
   await page.waitForSelector('text=¿Qué hago ahora?', { timeout: 5000 });
 }
 async function openGuilds(page) {
-  await page.click('.nav-item:has-text("Personaje")');
-  await page.click('.nav-item:has-text("Gremios")');
+  // Por la dirección: en el móvil algunas secciones van en el menú «Más».
+  await page.evaluate(() => { location.hash = '#personaje'; });
+  await page.evaluate(() => { location.hash = '#gremios'; });
   const tour = page.locator('.tour button:has-text("Saltar")');
   if (await tour.isVisible().catch(() => false)) await tour.click();
   await page.waitForSelector('.guild-card, #gnew-h', { timeout: 5000 });
