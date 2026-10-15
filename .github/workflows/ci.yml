@@ -1,9 +1,9 @@
-# Comprueba tipos, tests y build en cada push. La web se publica en Netlify.
+# Comprueba tipos, tests y build en cada push a main y a v2-social. La web se publica en Netlify.
 name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, v2-social]
   pull_request:
 
 jobs:

@@ -174,3 +174,38 @@ button.tg-session { font-family: inherit; justify-content: flex-start; align-ite
 .cal-tasks-count span { display: inline-flex; align-items: center; gap: 4px; }
 .cal-tasks-body { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
 .cal-undated h4 { margin: 4px 0; display: flex; align-items: center; gap: 8px; font-size: 15px; }
+
+/* Menú del móvil: 5 abajo (Hoy, Misiones, Deep Work, Social, Más); el resto en una hoja */
+.nav-item.mob-only { display: none; }
+.overlay.mob-sheet-overlay { display: none; }
+@media (max-width: 760px) {
+  .nav-item.mob-hide { display: none; }
+  .nav-item.mob-only { display: flex; position: relative; }
+  .overlay.mob-sheet-overlay { display: flex; align-items: flex-end; justify-content: stretch; padding: 0; z-index: 9; }
+  .mob-sheet {
+    width: 100%; padding: 14px 16px calc(84px + env(safe-area-inset-bottom, 0px));
+    background: var(--surface); border-top: 1px solid var(--line); border-radius: 18px 18px 0 0; box-shadow: var(--shadow);
+    animation: mob-sheet-up 0.18s ease-out;
+  }
+  .mob-sheet-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+  .mob-sheet .nav-item.in-sheet { position: relative; flex-direction: column; gap: 6px; padding: 14px 6px; font-size: 13px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); }
+  .mob-sheet .nav-item.in-sheet .nav-glyph { font-size: 22px; }
+  .mob-sheet .nav-lock { display: inline; margin: 0; }
+  .mob-sheet-foot { margin-top: 12px; color: var(--muted); font-size: 12px; text-align: center; }
+}
+@keyframes mob-sheet-up { from { transform: translateY(24px); opacity: 0; } }
+
+/* Novedades */
+.news-dialog {
+  width: min(520px, 100%); max-height: calc(100dvh - 32px); display: flex; flex-direction: column; gap: 10px;
+  padding: 22px; border-radius: 20px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow);
+}
+.news-dialog h2 { font-family: var(--display); font-size: 28px; }
+.news-scroll { overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 4px; }
+.news-group h4 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--c2); }
+.news-group ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 14.5px; }
+.news-dialog .primary { align-self: stretch; margin-top: 6px; }
+.news-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.news-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); color: inherit; text-align: left; }
+.news-row .small-text { margin-left: auto; }
+.news-detail { display: flex; flex-direction: column; gap: 10px; padding: 10px 12px 4px; }

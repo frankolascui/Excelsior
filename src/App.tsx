@@ -7,6 +7,7 @@ import { avatarInfo } from './attributes';
 import { isMuted, setMuted, sfx } from './sfx';
 import { Arena, CoinBadge } from './arena';
 import { AmbientDock } from './ambient-ui';
+import { NewsGate } from './news-ui';
 import { ConflictDialog, loadGuest, saveGuest, Welcome } from './account';
 import { Guilds } from './guilds-ui';
 import { cloudEnabled, useCloud } from './cloud';
@@ -35,6 +36,10 @@ const TABS: { id: Tab; label: string; glyph: IconName }[] = [
   { id: 'personaje', label: 'Personaje', glyph: 'nav-personaje' },
 ];
 
+/** Móvil: abajo solo caben 5. Estas 3 van fijas; el resto se abre desde «Social» y «Más». */
+const MOBILE_MAIN: Tab[] = ['hoy', 'misiones', 'deepwork'];
+const MOBILE_SOCIAL: Tab[] = ['amigos', 'gremios'];
+
 function tabFromHash(): Tab {
   const h = location.hash.slice(1);
   if (h === 'ajustes') return 'ajustes';
@@ -57,6 +62,7 @@ export default function App() {
   const level = levelInfo(totalXp(state)).level;
   const introSeen = hasSeenTour(state, 'intro');
   const [ritual, setRitual] = useState(false);
+  const [sheet, setSheet] = useState<'social' | 'more' | null>(null);
   const [review, setReview] = useState(false);
   useEffect(() => onReviewRequest(() => setReview(true)), []);
   const avatar = avatarInfo(state, Date.now());
@@ -153,6 +159,25 @@ export default function App() {
   const locked = !isUnlocked(state, tab);
   const newlyUnlocked = game.levelUp ? unlockedBetween(game.levelUpFrom, game.levelUp) : [];
 
+  /** Botón de una sección (en la barra lateral, en la barra del móvil o en la hoja «Social» / «Más»). */
+  function navButton(t: (typeof TABS)[number], extra: string) {
+    const open = isUnlocked(state, t.id);
+    return (
+      <button
+        key={t.id} className={`nav-item${extra}${tab === t.id ? ' on' : ''}${open ? '' : ' locked'}`} aria-current={tab === t.id ? 'page' : undefined}
+        onClick={() => { go(t.id); setSheet(null); }} title={open ? undefined : `Se desbloquea en el nivel ${unlockLevel(t.id)}`}
+      >
+        <span className="nav-glyph" aria-hidden="true"><Icon name={open ? t.glyph : 'lock'} /></span>
+        <span className="nav-label">{t.label}</span>
+        {!open && <span className="nav-lock mono">Nv {unlockLevel(t.id)}</span>}
+        {open && unlockLevel(t.id) !== null && !hasSeenTour(state, t.id) && introSeen && <span className="nav-new">nuevo</span>}
+        {t.id === 'deepwork' && state.activeTimer && <span className="live-dot" aria-label="Sesión en curso" />}
+        {t.id === 'personaje' && avatar.ready && <span className="nav-new">ritual</span>}
+        {open && (t.id === 'amigos' || t.id === 'gremios') && alerts[t.id] > 0 && <span className="nav-new" aria-label={`${alerts[t.id]} pendientes`}>{alerts[t.id]}</span>}
+      </button>
+    );
+  }
+
   return (
     <div className={ADMIN ? 'app admin' : 'app'}>
       {ADMIN && (
@@ -162,26 +187,38 @@ export default function App() {
       )}
       <nav className="nav" aria-label="Secciones">
         <div className="nav-brand">Excelsior</div>
-        {TABS.map((t) => {
-          const open = isUnlocked(state, t.id);
-          return (
-            <button
-              key={t.id} className={`nav-item${tab === t.id ? ' on' : ''}${open ? '' : ' locked'}`} aria-current={tab === t.id ? 'page' : undefined}
-              onClick={() => go(t.id)} title={open ? undefined : `Se desbloquea en el nivel ${unlockLevel(t.id)}`}
-            >
-              <span className="nav-glyph" aria-hidden="true"><Icon name={open ? t.glyph : 'lock'} /></span>
-              <span className="nav-label">{t.label}</span>
-              {!open && <span className="nav-lock mono">Nv {unlockLevel(t.id)}</span>}
-              {open && unlockLevel(t.id) !== null && !hasSeenTour(state, t.id) && introSeen && <span className="nav-new">nuevo</span>}
-              {t.id === 'deepwork' && state.activeTimer && <span className="live-dot" aria-label="Sesión en curso" />}
-              {t.id === 'personaje' && avatar.ready && <span className="nav-new">ritual</span>}
-              {open && (t.id === 'amigos' || t.id === 'gremios') && alerts[t.id] > 0 && <span className="nav-new" aria-label={`${alerts[t.id]} pendientes`}>{alerts[t.id]}</span>}
-            </button>
-          );
-        })}
+        {TABS.map((t) => navButton(t, MOBILE_MAIN.includes(t.id) ? '' : ' mob-hide'))}
+        <button className={`nav-item mob-only${MOBILE_SOCIAL.includes(tab) ? ' on' : ''}`} onClick={() => setSheet('social')} aria-haspopup="dialog">
+          <span className="nav-glyph" aria-hidden="true"><Icon name="nav-amigos" /></span>
+          <span className="nav-label">Social</span>
+          {MOBILE_SOCIAL.some((id) => isUnlocked(state, id) && (alerts[id as 'amigos' | 'gremios'] ?? 0) > 0) && <span className="nav-new" aria-label="Hay novedades" />}
+        </button>
+        <button className={`nav-item mob-only${!MOBILE_MAIN.includes(tab) && !MOBILE_SOCIAL.includes(tab) ? ' on' : ''}`} onClick={() => setSheet('more')} aria-haspopup="dialog">
+          <span className="nav-glyph" aria-hidden="true"><Icon name="list" /></span>
+          <span className="nav-label">Más</span>
+          {avatar.ready && <span className="nav-new" aria-label="Ritual disponible" />}
+        </button>
         <div className="nav-level mono">Nv {level} · <CoinBadge amount={coinBalance(state, Date.now())} /></div>
         <div className="nav-version mono">{APP_VERSION_LABEL}</div>
       </nav>
+
+      {sheet && (
+        <div className="overlay mob-sheet-overlay" role="dialog" aria-modal="true" aria-label={sheet === 'social' ? 'Social' : 'Más secciones'} onClick={() => setSheet(null)}>
+          <div className="mob-sheet" onClick={(e) => e.stopPropagation()}>
+            <p className="eyebrow">{sheet === 'social' ? 'Social' : 'Más'}</p>
+            <div className="mob-sheet-grid">
+              {TABS.filter((t) => (sheet === 'social' ? MOBILE_SOCIAL.includes(t.id) : !MOBILE_MAIN.includes(t.id) && !MOBILE_SOCIAL.includes(t.id))).map((t) => navButton(t, ' in-sheet'))}
+              {sheet === 'more' && (
+                <button className={`nav-item in-sheet${tab === 'ajustes' ? ' on' : ''}`} onClick={() => { go('ajustes'); setSheet(null); }}>
+                  <span className="nav-glyph" aria-hidden="true"><Icon name="settings" /></span>
+                  <span className="nav-label">Ajustes</span>
+                </button>
+              )}
+            </div>
+            <p className="mob-sheet-foot mono">Nv {level} · <CoinBadge amount={coinBalance(state, Date.now())} /> · {APP_VERSION_LABEL}</p>
+          </div>
+        </div>
+      )}
 
       <div className="top-actions">
         <button className={tab === 'ajustes' ? 'icon-round on' : 'icon-round'} onClick={() => go('ajustes')} aria-label="Ajustes" title="Ajustes"><Icon name="settings" /></button>
@@ -232,6 +269,8 @@ export default function App() {
 
       {ritual && !tour && <RitualDialog game={game} guide={tutorial.guide} onClose={() => setRitual(false)} />}
       {review && !tour && !ritual && <ReviewDialog game={game} guide={tutorial.guide} onClose={() => setReview(false)} />}
+
+      <NewsGate createdAt={state.profile.createdAt} blocked={!!tour || ritual || review || !!game.levelUp || !!game.conflict} />
 
       {game.conflict && <ConflictDialog local={state} remote={game.conflict} onChoose={game.resolveConflict} />}
 
