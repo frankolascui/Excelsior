@@ -622,8 +622,12 @@ check((await page.$$eval('.nav .nav-item', (els) => els.filter((e) => getCompute
 await page.click('.nav-item.mob-only:has-text("Más")');
 await page.click('.mob-sheet .nav-item:has-text("Hábitos")');
 check(await seen('h1:has-text("Hábitos")') && !(await page.$('.mob-sheet')), '«Más» abre el resto de secciones y se cierra al elegir una');
+await page.click('.nav-item:has-text("Misiones")');
+await page.waitForSelector('.list .item .item-title');
+check(await page.$$eval('.list .item .item-title', (els) => els.every((e) => e.getBoundingClientRect().width > 120)),
+  'en móvil los títulos de las misiones no se quedan en una columna estrecha');
 await page.click('.nav-item:has-text("Hoy")');
-const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+const overflow =await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
 check(!overflow, 'sin scroll horizontal en móvil');
 await page.screenshot({ path: `${out}/06-mobile.png`, fullPage: true });
 await page.emulateMedia({ colorScheme: 'light' });

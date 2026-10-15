@@ -33,6 +33,10 @@ button.repeat-tag:hover { text-decoration: underline; }
   .today-strip { grid-template-columns: repeat(2, 1fr); gap: 8px; }
   .today-tile { padding: 8px 10px; }
   .today-val { font-size: 16px; }
+  /* En móvil los botones de una fila bajan a otra línea si no caben, en vez de dejar el título a una letra por línea. */
+  .item { flex-wrap: wrap; row-gap: 6px; }
+  .item > .item-body { min-width: 50%; }
+  .item > .item-actions { margin-left: auto; flex-wrap: wrap; justify-content: flex-end; max-width: 100%; }
 }
 
 /* Cierre del día plegado hasta la tarde */
