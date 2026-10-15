@@ -17,7 +17,7 @@ const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers
 const DAY = 86_400_000;
 const iso = (t) => new Date(t).toISOString();
 
-// Partida en la nube de nivel 7+ (Gremios se abre en el 7). El XP viejo no cuenta para los retos.
+// Partida en la nube de nivel 10+ (Gremios se abre en el 5 y se funda en el 10). El XP viejo no cuenta para los retos.
 const backup = JSON.parse(readFileSync('e2e/backup.json', 'utf8')).state;
 const now = Date.now();
 const state = {

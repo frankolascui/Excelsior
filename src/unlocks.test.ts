@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { createProfile, dailyCap, emptyState, grantAdminXp, hasSeenTour, markTour } from './game';
-import { isUnlocked, unlockedBetween } from './unlocks';
+import { canFoundGuild, isUnlocked, unlockedBetween } from './unlocks';
 
 const base = () => createProfile(emptyState(), 'Nico', [], 0);
 
 describe('secciones por nivel', () => {
-  it('Reinos en nivel 3, Arena en 5 y Gremios en 7', () => {
+  it('Reinos en nivel 3, Arena y Gremios en 5; fundar gremio en 10', () => {
     const s = base();
     expect(isUnlocked(s, 'hoy')).toBe(true);
     expect(isUnlocked(s, 'reinos')).toBe(false);
@@ -13,8 +13,10 @@ describe('secciones por nivel', () => {
     expect(isUnlocked(l3, 'reinos')).toBe(true);
     expect(isUnlocked(l3, 'arena')).toBe(false);
     expect(isUnlocked(grantAdminXp(s, 1000, 1), 'arena')).toBe(true);
-    expect(isUnlocked(grantAdminXp(s, 2000, 1), 'gremios')).toBe(false);
-    expect(isUnlocked(grantAdminXp(s, 2100, 1), 'gremios')).toBe(true);
+    expect(isUnlocked(grantAdminXp(s, 900, 1), 'gremios')).toBe(false);
+    expect(isUnlocked(grantAdminXp(s, 1000, 1), 'gremios')).toBe(true);
+    expect(canFoundGuild(grantAdminXp(s, 4400, 1))).toBe(false);
+    expect(canFoundGuild(grantAdminXp(s, 4500, 1))).toBe(true);
   });
 
   it('el tope diario crece con el nivel con el que empiezas el día', () => {
@@ -27,7 +29,7 @@ describe('secciones por nivel', () => {
   });
 
   it('anuncia lo que se abre al subir varios niveles de golpe', () => {
-    expect(unlockedBetween(1, 5).map((u) => u.tab)).toEqual(['reinos', 'arena']);
+    expect(unlockedBetween(1, 5).map((u) => u.tab)).toEqual(['reinos', 'arena', 'gremios']);
     expect(unlockedBetween(5, 6)).toEqual([]);
   });
 });

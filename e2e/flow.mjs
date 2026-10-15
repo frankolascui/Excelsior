@@ -58,7 +58,7 @@ await page.reload();
 await page.waitForSelector('.nav');
 check(!(await seen('.tour')), 'el tutorial no vuelve a salir al recargar');
 await page.click('.nav-item:has-text("Gremios")');
-check(await seen('text=Se desbloquea en el nivel 7'), 'las secciones avanzadas están bloqueadas por nivel (Gremios, 7)');
+check(await seen('text=Se desbloquea en el nivel 5'), 'las secciones avanzadas están bloqueadas por nivel (Gremios, 5)');
 await page.click('.nav-item:has-text("Reinos")');
 check(await seen('text=Se desbloquea en el nivel 3'), 'Reinos se abre en el nivel 3');
 await page.click('.nav-item:has-text("Hoy")');

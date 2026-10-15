@@ -4,6 +4,7 @@ import type { IconName } from './icon-data';
 import type { GameState, XPTransaction } from './types';
 import { uid } from './game';
 import { addTrophy, MVP_TITLE } from './trophies';
+import { canFoundGuild, GUILD_FOUND_LEVEL } from './unlocks';
 import { cloudClient, getUserId } from './cloud';
 import type { PublicProfile } from './social';
 
@@ -433,6 +434,7 @@ async function run(op: PromiseLike<{ error: unknown }>, s: GameState): Promise<s
 }
 
 export async function createGuild(input: { name: string; emblem: string; motto: string }, s: GameState): Promise<string | null> {
+  if (!canFoundGuild(s)) return `Fundar un gremio pide nivel ${GUILD_FOUND_LEVEL}.`;
   const me = getUserId()!;
   const db = cloudClient();
   const id = crypto.randomUUID();
