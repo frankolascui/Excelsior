@@ -11,7 +11,7 @@ import { bossLoot, bossStatus } from './bosses';
 import { kingdomBonus } from './economy';
 import { schedulePublish } from './social';
 import { scheduleGuildReport } from './guilds';
-import { markLocalChange, markSynced, reconcile, scheduleSave, useCloud, type RemoteSave } from './cloud';
+import { markLocalChange, resolveConflict as resolveCloudConflict, scheduleSave, startSync, useCloud, type RemoteSave } from './cloud';
 
 import { ADMIN } from './admin';
 import { pendingAchievements, recordAchievements, type AchievementDef } from './achievements';
@@ -83,47 +83,66 @@ export function useGame() {
 
   useEffect(() => save(state), [state]);
 
-  // Nube: al entrar (o al abrir con sesión) se decide qué partida manda; después, cada cambio se sube.
+  // Nube: al entrar (o al abrir con sesión) se decide qué partida manda; después, cada cambio se sube
+  // y se vuelve a mirar la nube al volver a la app o cuando otro dispositivo avisa de que guardó.
   const cloudUser = useCloud().userId;
   const userId = ADMIN ? null : cloudUser; // la partida de pruebas nunca se sube
   const [conflict, setConflict] = useState<RemoteSave | null>(null);
   const [cloudChecked, setCloudChecked] = useState(ADMIN);
   const reconciled = useRef<string | null>(null);
   useEffect(() => {
-    if (!userId || reconciled.current === userId) return;
+    if (!userId) return;
     reconciled.current = userId;
-    reconcile(state)
-      .then((r) => {
-        if (r.kind === 'adopt') adopt(r.remote.state);
-        if (r.kind === 'conflict') setConflict(r.remote);
-      })
+    const sync = startSync({ get: () => latest.current, adopt: (remote) => adopt(remote), conflict: setConflict });
+    sync.ready
       .catch(() => { sfx.error(); toast('No se pudo leer tu partida de la nube', 'info'); })
       .finally(() => setCloudChecked(true));
+    return () => {
+      sync.stop();
+      reconciled.current = null;
+    };
   }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const fromOtherTab = useRef<GameState | null>(null); // esa pestaña ya se encarga de subirla
   useEffect(() => {
+    if (fromOtherTab.current === state) return;
     if (userId && reconciled.current === userId && !conflict) {
-      scheduleSave(state);
+      scheduleSave();
       schedulePublish(state);
       scheduleGuildReport(state);
     }
   }, [state, userId, conflict]);
 
-  function adopt(remote: GameState) {
-    const next = rebalance(ensureAscended(migrate(remote as unknown as Parameters<typeof migrate>[0]), Date.now()));
+  /** Sustituye la partida en pantalla por otra (de la nube o de otra pestaña) sin celebrar lo que ya pasó. */
+  function adopt(remote: GameState, normalize = true): GameState {
+    const next = normalize ? rebalance(ensureAscended(migrate(remote as unknown as Parameters<typeof migrate>[0]), Date.now())) : remote;
     prevLevel.current = levelInfo(totalXp(next)).level;
     prevReady.current = readyFor(next);
     prevDefeated.current = defeatedIds(next);
     prevKingdoms.current = completedKingdoms(next);
     latest.current = next; // si no, la siguiente acción partiría de la partida anterior
     setState(next);
-    markSynced();
+    return next;
   }
 
-  /** Resuelve el primer login en un dispositivo que ya tenía partida. */
+  // Otra pestaña de este navegador guardó: se carga aquí para que ninguna pise a la otra.
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== KEY || !e.newValue || e.newValue === JSON.stringify(latest.current)) return;
+      try {
+        const parsed = JSON.parse(e.newValue);
+        if (parsed?.version >= 1 && parsed?.version <= emptyState().version) fromOtherTab.current = adopt(parsed, false);
+      } catch {
+        /* ignorado */
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Resuelve el conflicto entre la partida de aquí y la de la nube. */
   function resolveConflict(useRemote: boolean) {
     if (!conflict) return;
-    if (useRemote) adopt(conflict.state);
-    else markSynced();
+    resolveCloudConflict(conflict, useRemote);
     setConflict(null);
   }
 

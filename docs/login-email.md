@@ -32,8 +32,12 @@ Regla de seguridad: `user_id = auth.uid()` para leer y escribir.
 
 ## Sincronización
 - localStorage sigue siendo la caché: la app funciona igual de rápido y sin conexión.
-- Cada cambio se sube a la nube con un pequeño retraso (agrupando cambios).
-- Al entrar, se descarga la copia más reciente. Si hay conflicto, gana la más nueva (suficiente para un solo jugador en dos dispositivos).
+- Cada cambio se sube a la nube con un pequeño retraso (agrupando cambios), y en el acto al cambiar de app o cerrar la pestaña. Si la partida no cambió de verdad, no se sube nada.
+- `updated_at` hace de versión: cada dispositivo solo escribe si la nube sigue en la versión que vio (update condicional). Si otro dispositivo se adelantó, primero lee lo nuevo; si allí no había cambios lo carga sin preguntar, y si había cambios en los dos lados pregunta «Tienes dos partidas».
+- Tiempo real: al guardar, el dispositivo manda un aviso diminuto por un canal Broadcast de Realtime (nombre derivado del id y el email, sin SQL ni carga en la base de datos). Los demás dispositivos con la app a la vista comprueban la versión y cargan lo nuevo. El canal se cierra cuando la app queda en segundo plano.
+- Además se comprueba la versión (una lectura de unos bytes) al volver a la app, al recuperar el foco o la conexión. Varias pestañas del mismo navegador se pasan los cambios por el evento `storage`.
+- Si en Supabase se desactiva el acceso público a los canales de Realtime, todo sigue funcionando salvo el aviso al instante: los cambios llegan al volver a la app.
+- Prueba: `e2e/sync.mjs` (dos dispositivos, sin tiempo real, dos pestañas).
 
 ## Lo que necesito de ti
 1. **Aprobar Supabase** (o elegir otra opción).

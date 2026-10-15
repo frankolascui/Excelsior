@@ -30,10 +30,18 @@ async function fake(ctx) {
       const rows = remote ? [{ state: remote.state, updated_at: remote.updated_at }] : [];
       return json(200, rows);
     }
-    if (u.pathname === '/rest/v1/saves' && r.method() === 'POST') {
+    if (u.pathname === '/rest/v1/saves') {
+      // Escritura condicional (PATCH … updated_at=eq.X) o alta (POST), como hace cloud.ts.
       const body = r.postDataJSON();
-      remote = Array.isArray(body) ? body[0] : body;
-      return route.fulfill({ status: 201, headers: cors });
+      const row = Array.isArray(body) ? body[0] : body;
+      if (r.method() === 'PATCH') {
+        if (!remote || remote.updated_at !== u.searchParams.get('updated_at')?.replace(/^eq\./, '')) return json(200, []);
+        remote = { ...remote, ...row };
+        return json(200, [{ updated_at: remote.updated_at }]);
+      }
+      if (remote) return json(409, { code: '23505', message: 'duplicate key value' });
+      remote = row;
+      return json(201, [{ updated_at: row.updated_at }]);
     }
     return json(404, {});
   });
