@@ -3,10 +3,10 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import type { Game } from './screens';
 import type { CalendarEvent, EventKind, EventRepeat, GameState, Reminder, RepeatRule } from './types';
-import { dayKey } from './game';
+import { dayKey, uid } from './game';
 import {
   addEvent, addReminder, deleteEvent, deleteReminder, dueAlerts, EVENT_COLORS, EVENT_KINDS, eventColor, eventIcon, eventSpan, eventsOn, fromMin,
-  cleanRule, laterReminders, layoutLanes, moveEvent, REPEAT_NAMES, repeatText, skipEventDay, todayReminders, toggleReminder, toMin, updateEvent,
+  cleanRule, laterReminders, layoutLanes, editOccurrence, moveEvent, REPEAT_NAMES, repeatText, skipEventDay, todayReminders, toggleReminder, toMin, updateEvent,
 } from './life';
 import { relDay } from './life-ui';
 import { DatePicker, DurationChips, TimePicker, durationWords } from './pickers';
@@ -301,14 +301,26 @@ function timeRange(e: { time?: string; end?: string }): string {
  * Lo que sale al pulsar un evento: se edita ahí mismo (nombre, color, día, horas, repetición), Deep Work para los bloques
  * y borrar. En un evento que se repite, los cambios valen para toda la serie.
  */
-function EventSheet({ game, id, day, onClose, startFocus }: { game: Game; id: string; day: string; onClose: () => void; startFocus?: (label: string) => void }) {
+function EventSheet({ game, id: firstId, day, onClose, startFocus }: { game: Game; id: string; day: string; onClose: () => void; startFocus?: (label: string) => void }) {
   const [onDay, setOnDay] = useState(day);
+  const [id, setId] = useState(firstId);
+  const [scope, setScope] = useState<'one' | 'all'>('one');
+  const [detachedFrom, setDetachedFrom] = useState<string | null>(null);
   const ev = eventsOn(game.state, onDay).find((e) => e.id === id) ?? (game.state.events ?? []).find((e) => e.id === id);
   const [title, setTitle] = useState(ev?.title ?? '');
   useEffect(() => { if (!ev) onClose(); }, [ev]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!ev) return null;
   const series = (game.state.events ?? []).find((e) => e.id === id) ?? ev; // ev es el de ese día; series, el guardado (con su primer día)
-  const set = (patch: Parameters<typeof updateEvent>[2]) => game.act((s) => updateEvent(s, id, patch));
+  const one = !!ev.repeat && scope === 'one';
+  const set = (patch: Parameters<typeof updateEvent>[2]) => {
+    if (!one) return game.act((s) => updateEvent(s, id, patch));
+    // Solo este día: sale de la serie como evento suelto y la ficha sigue con ese.
+    const newId = uid();
+    game.act((s) => editOccurrence(s, id, onDay, patch, newId, Date.now()));
+    setDetachedFrom(ev.title);
+    setId(newId);
+    if (patch.day) setOnDay(patch.day);
+  };
   const saveTitle = () => { if (title.trim() && title.trim() !== ev.title) set({ title }); };
   const focusFn = ev.kind === 'bloque' ? startFocus : undefined;
   return (
@@ -318,12 +330,18 @@ function EventSheet({ game, id, day, onClose, startFocus }: { game: Game; id: st
           <select className="kind-select" value={ev.kind} onChange={(e) => set({ kind: e.target.value as EventKind })} aria-label="Tipo">
             {EVENT_KINDS.map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
           </select>
-          {ev.repeat && <span className="muted"> · cambios para toda la serie</span>}
         </p>
+        {ev.repeat && (
+          <div className="segmented ev-scope" role="radiogroup" aria-label="Qué cambiar">
+            <button type="button" role="radio" aria-checked={scope === 'one'} className={scope === 'one' ? 'seg on' : 'seg'} onClick={() => setScope('one')}>Solo este día</button>
+            <button type="button" role="radio" aria-checked={scope === 'all'} className={scope === 'all' ? 'seg on' : 'seg'} onClick={() => setScope('all')}>Todos los días</button>
+          </div>
+        )}
+        {detachedFrom && !ev.repeat && <p className="muted small-text ev-detached"><Icon name="info" /> Solo este día: los demás siguen como «{detachedFrom}».</p>}
         <input className="sheet-title-input" value={title} onChange={(e) => setTitle(e.target.value)} onBlur={saveTitle}
           onKeyDown={(e) => e.key === 'Enter' && (e.currentTarget.blur())} maxLength={80} aria-label="Nombre del evento" />
         <div className="ev-form-when">
-          <DatePicker value={ev.repeat ? series.day : onDay} label={ev.repeat ? 'Empieza el' : 'Día'}
+          <DatePicker value={ev.repeat && !one ? series.day : onDay} label={ev.repeat && !one ? 'Empieza el' : 'Día'}
             onChange={(d) => { if (!d) return; if (!ev.repeat) setOnDay(d); set({ day: d }); }} />
           <TimeFields start={ev.time ?? null} end={ev.time ? fromMin(Math.min(eventSpan(ev)![1], LAST)) : null}
             onStart={(t) => {
@@ -334,7 +352,7 @@ function EventSheet({ game, id, day, onClose, startFocus }: { game: Game; id: st
             onEnd={(t) => set({ end: t })} />
         </div>
         <div className="ev-form-extra">
-          <RepeatEditor value={series} day={series.day} onChange={(p) => set(p)} />
+          {!one && <RepeatEditor value={series} day={series.day} onChange={(p) => set(p)} />}
           <ColorSwatches value={ev.color} onChange={(c) => set({ color: c })} />
         </div>
       </div>

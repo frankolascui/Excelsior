@@ -607,6 +607,22 @@ check((await page.$$('.tg-week .tg-block:has-text("Estudiar física")')).length 
 await page.screenshot({ path: `${out}/18-calendar-week.png` });
 await page.click('.cal-views [role=radio]:has-text("4 días")');
 check((await page.$$('.tg-few .tg-dayhead')).length === 4 && (await page.$$('.tg-few .tg-block:has-text("Estudiar física")')).length === 4, 'vista de 4 días: 4 columnas con el bloque diario');
+// Editar un evento que se repite: solo ese día (lo concreto) o todos (lo general).
+await page.click('.tg-few .tg-col >> nth=1 >> .tg-block');
+check(await seen('.sheet .ev-scope [aria-checked=true]:has-text("Solo este día")'), 'un evento que se repite pregunta si cambiar solo ese día o todos');
+await page.fill('.sheet .sheet-title-input', 'Estudiar química');
+await page.press('.sheet .sheet-title-input', 'Enter');
+check(await seen('.sheet .ev-detached:has-text("Estudiar física")'), 'al cambiar solo ese día avisa de que los demás siguen igual');
+await page.keyboard.press('Escape');
+const fewTitles = async () => page.$$eval('.tg-few .tg-col', (cols) => cols.map((c) => c.querySelector('.tg-block')?.textContent ?? ''));
+let ft = await fewTitles();
+check(ft[1].includes('Estudiar química') && ft[2].includes('Estudiar física') && ft[3].includes('Estudiar física'), 'solo ese día cambia de nombre');
+await page.click('.tg-few .tg-col >> nth=2 >> .tg-block');
+await page.click('.sheet .ev-scope button:has-text("Todos los días")');
+await page.click('.sheet .swatch[aria-label="Uva"]');
+await page.keyboard.press('Escape');
+const fewColors = await page.$$eval('.tg-few .tg-col', (cols) => cols.map((c) => c.querySelector('.tg-block')?.style.getPropertyValue('--ev') ?? ''));
+check(fewColors[2] === '#8e4ec6' && fewColors[3] === '#8e4ec6' && fewColors[1] !== '#8e4ec6', '«Todos los días» cambia la serie y respeta el día cambiado aparte');
 await page.click('.cal-views [role=radio]:has-text("Semana")');
 await page.click('.tg-week .tg-block:has-text("Estudiar física") >> nth=0');
 await page.click('.sheet button:has-text("Deep Work")');

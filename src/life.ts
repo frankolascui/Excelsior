@@ -131,6 +131,20 @@ export function moveEvent(s: GameState, occ: CalendarEvent, to: { day: string; t
   return addEvent(moved, { title: occ.title, kind: occ.kind, color: occ.color, ...to }, now);
 }
 
+/**
+ * Cambiar solo un día de un evento que se repite: ese día sale de la serie y queda como evento suelto (con id `newId`)
+ * con los cambios. Así la serie guarda lo general («Deep Work») y ese día lo concreto («Estudiar Física»).
+ */
+export function editOccurrence(s: GameState, id: string, day: string, patch: Partial<EventFields>, newId: string, now: number): GameState {
+  const e = (s.events ?? []).find((x) => x.id === id);
+  if (!e) return s;
+  if (!e.repeat) return updateEvent(s, id, patch);
+  const one: CalendarEvent = { id: newId, title: e.title, day, time: e.time, end: e.end, kind: e.kind, color: e.color, createdAt: now };
+  const { repeat: _r, rule: _u, until: _t, ...fields } = patch;
+  const skipped = skipEventDay(s, id, day);
+  return { ...skipped, events: [...skipped.events!, cleanEvent({ ...one, ...fields })] };
+}
+
 /** Quita un solo día de un evento que se repite (el resto de la serie sigue). */
 export function skipEventDay(s: GameState, id: string, day: string): GameState {
   return { ...s, events: (s.events ?? []).map((e) => (e.id === id ? { ...e, skip: [...(e.skip ?? []), day] } : e)) };

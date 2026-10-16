@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createProfile, emptyState } from './game';
 import {
-  addEvent, addReminder, deleteReminder, dueAlerts, eventColor, eventSpan, eventsOn, laterReminders, layoutLanes, moveEvent, occursOn, remindersOn,
+  addEvent, addReminder, deleteReminder, dueAlerts, editOccurrence, eventColor, eventSpan, eventsOn, laterReminders, layoutLanes, moveEvent, occursOn, remindersOn,
   repeatText, skipEventDay, todayReminders, toggleReminder, upcomingEvents, updateEvent,
 } from './life';
 
@@ -116,6 +116,18 @@ describe('mover, alargar y colores', () => {
     s = moveEvent(s, occ, { day: '2026-10-07', time: '11:00', end: '12:30' }, NOW);
     expect(eventsOn(s, '2026-10-07').map((e) => [e.time, e.end, e.repeat, e.color])).toEqual([['11:00', '12:30', undefined, 'uva']]);
     expect(eventsOn(s, '2026-10-08')[0]).toMatchObject({ time: '09:00', repeat: 'daily' });
+  });
+
+  it('editar solo un día lo saca de la serie con sus cambios y el resto sigue igual', () => {
+    let s = addEvent(base(), { title: 'Deep Work', day: '2026-10-05', time: '09:00', end: '11:00', kind: 'bloque', repeat: 'daily', color: 'uva' }, NOW);
+    const id = s.events![0].id;
+    s = editOccurrence(s, id, '2026-10-07', { title: 'Estudiar física', repeat: 'weekly' }, 'solo', NOW);
+    expect(eventsOn(s, '2026-10-07').map((e) => [e.id, e.title, e.time, e.end, e.repeat, e.color])).toEqual([['solo', 'Estudiar física', '09:00', '11:00', undefined, 'uva']]);
+    expect(eventsOn(s, '2026-10-08')[0]).toMatchObject({ id, title: 'Deep Work', repeat: 'daily' });
+    // Un evento suelto se cambia sin más.
+    s = editOccurrence(s, 'solo', '2026-10-07', { end: '12:00' }, 'otro', NOW);
+    expect(s.events!.map((e) => e.id)).toEqual([id, 'solo']);
+    expect(eventsOn(s, '2026-10-07')[0]).toMatchObject({ id: 'solo', end: '12:00' });
   });
 
   it('editar cambia la serie entera y quitar un campo lo borra', () => {
