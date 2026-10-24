@@ -26,11 +26,10 @@ import {
 import { HeroJournal, ReviewBanner, TimedGoals } from './ritual';
 import { QuestCalendar } from './calendar';
 import { AvatarPortrait, initialOf } from './portrait';
-import { DayClose, MetricsPanel, UpcomingEvents } from './life-ui';
+import { DayClose, UpcomingEvents } from './life-ui';
 import { RemindersPanel } from './agenda-ui';
 import { AchievementsPanel } from './achievements-ui';
 import { Inventory } from './inventory';
-import { latestMetric, logMetric } from './life';
 import { Icon } from './icons';
 import { TodayStrip } from './today';
 import { addStep, deleteStep, setStepDeadline, toggleStep } from './core';
@@ -712,8 +711,6 @@ export function Character({ game }: { game: Game }) {
         <Stat label="Días con progreso" value={`${activeDays}`} />
       </section>
 
-      <MetricsPanel game={game} />
-
       <TimedGoals game={game} />
 
       <GoalsPanel game={game} now={now} />
@@ -896,27 +893,20 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
 function GoalsPanel({ game, now }: { game: Game; now: number }) {
   const { state, act } = game;
   const next = avatarInfo(state, now).next;
-  const [form, setForm] = useState({ name: '', unit: '', start: '', target: '', metricId: '' });
-  const metrics = state.metrics ?? [];
-  const pickMetric = (id: string) => {
-    const m = metrics.find((x) => x.id === id);
-    if (!m) return setForm({ ...form, metricId: '' });
-    const last = latestMetric(state, id);
-    setForm({ ...form, metricId: id, name: form.name || m.name, unit: m.unit, start: last !== null ? String(last) : form.start });
-  };
+  const [form, setForm] = useState({ name: '', unit: '', start: '', target: '' });
   if (!next) return null;
   const goals = state.goals.filter((g) => g.avatarId === next.id && !g.deadline); // los de 3 meses tienen su panel
   const valid = form.name.trim() && form.start !== '' && form.target !== '' && !Number.isNaN(Number(form.start)) && !Number.isNaN(Number(form.target));
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!valid || !next) return;
-    act((s) => addGoal(s, { name: form.name, unit: form.unit, start: Number(form.start), target: Number(form.target), avatarId: next.id, metricId: form.metricId || undefined }, Date.now()));
-    setForm({ name: '', unit: '', start: '', target: '', metricId: '' });
+    act((s) => addGoal(s, { name: form.name, unit: form.unit, start: Number(form.start), target: Number(form.target), avatarId: next.id }, Date.now()));
+    setForm({ name: '', unit: '', start: '', target: '' });
   }
   return (
     <section className="panel" aria-labelledby="goals-h">
       <header className="panel-head"><h3 id="goals-h">Metas para {next.name}</h3></header>
-      <p className="hint">Metas de tu vida real que también exiges para subir de avatar: dinero, peso, personas nuevas…</p>
+      <p className="hint">Metas de tu vida real que también exiges para subir de avatar: personas nuevas, libros leídos, proyectos acabados…</p>
       {goals.length > 0 && (
         <ul className="list">
           {goals.map((g) => {
@@ -926,15 +916,15 @@ function GoalsPanel({ game, now }: { game: Game; now: number }) {
                 <div className="item-body">
                   <span className="item-title">{g.name}</span>
                   <div className="attr-bar"><div style={{ width: `${p * 100}%` }} /></div>
-                  <span className="mono muted small-text">{formatAttrXp(g.current)} / {formatAttrXp(g.target)} {g.unit} · {Math.floor(p * 100)} %{g.metricId ? ' · sigue tu medida' : ''}</span>
+                  <span className="mono muted small-text">{formatAttrXp(g.current)} / {formatAttrXp(g.target)} {g.unit} · {Math.floor(p * 100)} %</span>
                 </div>
                 <div className="item-actions goal-actions">
                   <input
                     type="number" step="any" className="goal-input" aria-label={`Valor actual de ${g.name}`}
                     value={g.current}
-                    onChange={(e) => e.target.value !== '' && act((s) => (g.metricId ? logMetric(s, g.metricId, Number(e.target.value), Date.now()) : updateGoal(s, g.id, Number(e.target.value))))}
+                    onChange={(e) => e.target.value !== '' && act((s) => updateGoal(s, g.id, Number(e.target.value)))}
                   />
-                  <button className="ghost small" onClick={() => act((s) => (g.metricId ? logMetric(s, g.metricId, g.current + (g.target >= g.start ? 1 : -1), Date.now()) : updateGoal(s, g.id, g.current + (g.target >= g.start ? 1 : -1))))}>
+                  <button className="ghost small" onClick={() => act((s) => updateGoal(s, g.id, g.current + (g.target >= g.start ? 1 : -1)))}>
                     {g.target >= g.start ? '+1' : '−1'}
                   </button>
                   <button className="icon-btn" onClick={() => act((s) => deleteGoal(s, g.id))} aria-label={`Borrar ${g.name}`} title="Borrar"><Icon name="trash" /></button>
@@ -944,20 +934,11 @@ function GoalsPanel({ game, now }: { game: Game; now: number }) {
           })}
         </ul>
       )}
-      {metrics.length > 0 && (
-        <label className="goal-metric small-text muted">
-          Seguir una medida de «Tu estado actual»:
-          <select id="goal-metric" className="freq-select" value={form.metricId} onChange={(e) => pickMetric(e.target.value)}>
-            <option value="">Ninguna (la actualizo a mano)</option>
-            {metrics.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-          </select>
-        </label>
-      )}
       <form className="goal-form" onSubmit={submit}>
         <input id="goal-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Meta (ej. Hablar con desconocidos)" maxLength={60} aria-label="Nombre de la meta" />
         <input id="goal-start" type="number" step="any" value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })} placeholder="Ahora" aria-label="Valor actual" />
         <input id="goal-target" type="number" step="any" value={form.target} onChange={(e) => setForm({ ...form, target: e.target.value })} placeholder="Objetivo" aria-label="Objetivo" />
-        <input id="goal-unit" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="Unidad (€, kg…)" maxLength={12} aria-label="Unidad" />
+        <input id="goal-unit" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="Unidad (libros, personas…)" maxLength={12} aria-label="Unidad" />
         <button type="submit" className="primary" disabled={!valid}><Icon name="plus" /> Añadir</button>
       </form>
     </section>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { addHabit, createProfile, emptyState, habitSatisfied, habitStreak, habitStreakDays, habitWeekCount, pomodoroStatus, pomodoroStep, setPhase, startTimer, stopTimer, toggleHabit, weekStart } from './game';
-import { addGoal, attributeDef, attributeXp, inferDeepWorkArea, rebalance } from './attributes';
-import { addEvent, addMetric, dailyReport, deleteEvent, deleteMetric, eventsOn, latestMetric, logMetric, metricHistory, saveDayLog, upcomingEvents } from './life';
+import { attributeDef, attributeXp, inferDeepWorkArea, rebalance } from './attributes';
+import { addEvent, dailyReport, deleteEvent, eventsOn, saveDayLog, upcomingEvents } from './life';
 
 const NOW = new Date(2026, 9, 6, 10, 0).getTime(); // martes
 const DAY = 86_400_000;
@@ -89,23 +89,6 @@ describe('hábitos semanales', () => {
   });
 });
 
-describe('medidas', () => {
-  it('apunta un valor por día y mueve las metas que la siguen', () => {
-    let s = addMetric(base(), 'Dinero', '€', NOW);
-    const id = s.metrics![0].id;
-    s = addGoal(s, { name: 'Ahorro', unit: '€', start: 100, target: 1000, avatarId: 'artifice', metricId: id }, NOW);
-    s = logMetric(s, id, 200, NOW - DAY);
-    s = logMetric(s, id, 250, NOW);
-    s = logMetric(s, id, 300, NOW + 60 * MIN); // mismo día: sustituye
-    expect(metricHistory(s, id).map((e) => e.value)).toEqual([200, 300]);
-    expect(latestMetric(s, id)).toBe(300);
-    expect(s.goals[0].current).toBe(300);
-    s = deleteMetric(s, id);
-    expect(s.metrics).toEqual([]);
-    expect(s.goals[0].metricId).toBeUndefined();
-  });
-});
-
 describe('eventos y cierre del día', () => {
   it('eventos ordenados por día y hora; se pueden borrar', () => {
     let s = addEvent(base(), { title: 'Examen de cálculo', day: '2026-10-08', time: '10:00', kind: 'examen' }, NOW);
@@ -117,17 +100,25 @@ describe('eventos y cierre del día', () => {
     expect(eventsOn(s, '2026-10-08')).toHaveLength(1);
   });
 
-  it('el informe del día resume estado, medidas, nota y lo que viene', () => {
-    let s = addMetric(base(), 'Peso', 'kg', NOW);
-    s = logMetric(s, s.metrics![0].id, 72.5, NOW);
-    s = saveDayLog(s, { energy: 4, mood: 3, sleep: 7.5, note: 'Buen día' }, NOW);
+  it('el informe del día resume estado, nota y lo que viene', () => {
+    let s = saveDayLog(base(), { energy: 4, mood: 3, note: 'Buen día' }, NOW);
     s = saveDayLog(s, { energy: 5 }, NOW + MIN); // mezcla con lo guardado
     s = addEvent(s, { title: 'Examen', day: '2026-10-08', kind: 'examen' }, NOW);
     const md = dailyReport(s, NOW + 2 * MIN);
     expect(md).toContain('# 2026-10-06 · Excelsior');
-    expect(md).toContain('Energía: 5/5 · Ánimo: 3/5 · Sueño: 7,5 h');
-    expect(md).toContain('- Peso: 72,5 kg');
+    expect(md).toContain('Energía: 5/5 · Ánimo: 3/5');
     expect(md).toContain('Buen día');
     expect(md).toContain('2026-10-08 · Examen: Examen');
+  });
+
+  it('una partida antigua con medidas y sueño sigue valiendo, pero el informe ya no los saca', () => {
+    const old = {
+      ...saveDayLog(base(), { energy: 4, mood: 3, sleep: 7.5 }, NOW),
+      metrics: [{ id: 'm', name: 'Peso', unit: 'kg', createdAt: NOW }],
+      metricEntries: [{ id: 'x', metricId: 'm', day: '2026-10-06', value: 72.5, at: NOW }],
+    };
+    const md = dailyReport(old, NOW);
+    expect(md).toContain('Energía: 4/5 · Ánimo: 3/5');
+    expect(md).not.toMatch(/Peso|Sueño/);
   });
 });

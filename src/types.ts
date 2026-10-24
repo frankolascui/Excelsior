@@ -139,7 +139,7 @@ export interface Goal {
   avatarId: string;
   createdAt: number;
   deadline?: number; // objetivos con fecha (p. ej. los de 3 meses del Ritual del Iniciado)
-  metricId?: string; // si sigue una medida (peso, dinero…), su valor actual sale de ella
+  metricId?: string; // ya no se usa (se quitaron las medidas el 2026-10-24); queda en partidas antiguas
 }
 
 /** Recompensa de la tienda: algo que te das a ti mismo pagando monedas. */
@@ -209,10 +209,10 @@ export interface GameState {
   reviews?: GoalReview[];
   /** Versión del equilibrio de atributos con que se calcularon (ver rebalance). */
   balance?: number;
-  /** Medidas de tu vida real (dinero, peso…) y sus valores por día. */
+  /** Medidas de tu vida real (dinero, peso…): ya no salen en la app (2026-10-24); se conservan en partidas antiguas sin usarse. */
   metrics?: Metric[];
   metricEntries?: MetricEntry[];
-  /** Cierre del día: energía, ánimo, sueño y nota. */
+  /** Cierre del día: energía, ánimo y nota. */
   dayLogs?: DayLog[];
   /** Eventos del calendario: exámenes, lanzamientos, llamadas, bloques de tiempo… */
   events?: CalendarEvent[];
@@ -265,7 +265,7 @@ export interface DayLog {
   at: number;
   energy?: number; // 1–5
   mood?: number; // 1–5
-  sleep?: number; // horas
+  sleep?: number; // horas; ya no se pide (2026-10-24), queda en partidas antiguas
   note?: string;
 }
 

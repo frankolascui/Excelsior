@@ -365,10 +365,9 @@ export function completeRitual(
 // ---------- Metas ----------
 
 export function addGoal(
-  s: GameState, g: { name: string; unit: string; start: number; target: number; avatarId: string; deadline?: number; metricId?: string }, now: number,
+  s: GameState, g: { name: string; unit: string; start: number; target: number; avatarId: string; deadline?: number }, now: number,
 ): GameState {
   const goal: Goal = { ...g, name: g.name.trim(), unit: g.unit.trim(), current: g.start, id: uid(), createdAt: now };
-  if (!goal.metricId) delete goal.metricId;
   return { ...s, goals: [...s.goals, goal] };
 }
 

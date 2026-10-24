@@ -1037,21 +1037,6 @@ i.q-side { background: var(--side); }
 .freq-tag { font-size: 12.5px; color: var(--c3); border: 1px solid color-mix(in srgb, var(--c3) 50%, transparent); border-radius: 99px; padding: 1px 8px; }
 .freq-tag.done { color: var(--c1); border-color: var(--c1); }
 
-/* Tu estado actual (medidas) */
-.item.metric { align-items: center; }
-.metric-value { font-size: 20px; font-weight: 600; }
-.metric .item-body { gap: 2px; }
-.spark { flex: none; opacity: 0.9; }
-.metric-log { display: flex; align-items: center; gap: 6px; }
-.metric-presets { margin: 10px 0; }
-.metric-form { display: grid; grid-template-columns: 2fr 1fr auto; gap: 8px; }
-.goal-metric { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-@media (max-width: 640px) {
-  .item.metric { flex-wrap: wrap; }
-  .metric .spark { display: none; }
-  .metric-form { grid-template-columns: 1fr 1fr; }
-}
-
 /* Estado del día */
 .day-close { display: grid; gap: 12px; }
 .scales, .day-metrics { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: flex-end; }

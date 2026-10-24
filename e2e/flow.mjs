@@ -501,12 +501,20 @@ await page.click('.admin-panel button:has-text("Salir del modo admin")');
 await page.waitForSelector('.nav');
 check(!(await page.$('.admin-bar')) && (await page.textContent('.nav-level')).includes(realLevel), `al salir vuelve la partida real intacta (${realLevel})`);
 
-// 7f. Tu vida real: medidas, hábitos semanales, Deep Work por tipo, estado del día y eventos
+// 7f. Tu vida real: hábitos semanales, Deep Work por tipo, estado del día y eventos
+// Una partida antigua con medidas (peso, dinero) y horas de sueño sigue cargando; esas secciones ya no salen.
+await page.evaluate(() => {
+  const s = JSON.parse(localStorage.getItem('excelsior:v1'));
+  const day = new Date().toISOString().slice(0, 10);
+  s.metrics = [{ id: 'm1', name: 'Peso', unit: 'kg', createdAt: Date.now() }];
+  s.metricEntries = [{ id: 'x1', metricId: 'm1', day, value: 72.5, at: Date.now() }];
+  s.dayLogs = [...(s.dayLogs ?? []), { day: '2026-01-01', at: Date.now(), sleep: 7.5 }];
+  localStorage.setItem('excelsior:v1', JSON.stringify(s));
+});
+await page.reload();
+await page.waitForSelector('.nav');
 await page.click('.nav-item:has-text("Personaje")');
-await page.click('.metric-presets button:has-text("Dinero")');
-await page.fill('[aria-label="Valor de hoy de Dinero"]', '500');
-await page.click('.metric:has-text("Dinero") button:has-text("Apuntar")');
-check(await seen('.metric:has-text("Dinero") .metric-value:has-text("500 €")'), 'medida: Dinero 500 €');
+check(await seen('.attr:has-text("Impacto")') && !(await page.$('#metrics-h')) && !(await page.$('text=Tu estado actual')), 'una partida con medidas antiguas carga y ya no sale «Tu estado actual»');
 check(await seen('.attr:has-text("Impacto")'), 'el quinto atributo se llama Impacto');
 check(await seen('.achievements .achv.got:has-text("Primer Juramento")'), 'Personaje muestra los logros conseguidos');
 check(await seen('.attr-desc:has-text("disciplina")'), 'los atributos tienen descripción');
@@ -530,7 +538,7 @@ check(await seen('.dayclose-folded'), 'el cierre del día va plegado antes de la
 await page.click('.dayclose-folded button:has-text("Hacerlo ahora")');
 await page.click('[aria-label="Energía 4 de 5"]');
 await page.click('[aria-label="Ánimo 5 de 5"]');
-await page.fill('#day-sleep', '7,5');
+check(!(await page.$('#day-sleep')), 'el cierre del día ya no pide horas de sueño');
 await page.fill('#day-note', 'Mañana empiezo antes.');
 await page.click('.day-close button:has-text("Guardar el día")');
 check(await seen('.day-close >> text=Guardado a las'), 'estado del día guardado');

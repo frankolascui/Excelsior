@@ -1,6 +1,6 @@
 # Progresión de avatares
 
-Diez avatares, de **Aprendiz** a **Excelsior**. Los requisitos fijos son iguales para todo el mundo (están en `AVATARS`, `src/attributes.ts`). Además, cada persona puede añadir metas reales (dinero, peso, personas…) a su siguiente avatar.
+Diez avatares, de **Aprendiz** a **Excelsior**. Los requisitos fijos son iguales para todo el mundo (están en `AVATARS`, `src/attributes.ts`). Además, cada persona puede añadir metas reales (personas nuevas, libros leídos, proyectos…) a su siguiente avatar.
 
 ## Principios
 1. **Tres tipos de prueba en cada avatar:** constancia (nivel global, días activos, rachas), equilibrio (niveles de atributo) y hazañas (horas de Deep Work, reinos completados, bosses derrotados).

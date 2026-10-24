@@ -1,49 +1,8 @@
-// Tu vida real dentro de Excelsior: medidas (dinero, peso…), cierre del día y eventos del calendario.
+// Tu vida real dentro de Excelsior: cierre del día y eventos del calendario.
 // Funciones puras sobre GameState, como el resto de reglas.
-import type { CalendarEvent, DayLog, EventKind, EventRepeat, GameState, Metric, Reminder, RepeatRule } from './types';
+import type { CalendarEvent, DayLog, EventKind, EventRepeat, GameState, Reminder, RepeatRule } from './types';
 import type { IconName } from './icon-data';
 import { dayKey, deepWorkMinutesOnDay, isHabitDone, levelInfo, totalXp, uid, xpOnDay } from './game';
-import { formatAttrXp } from './attributes';
-
-// ---------- Medidas ----------
-
-export const METRIC_PRESETS: { name: string; unit: string }[] = [
-  { name: 'Dinero', unit: '€' },
-  { name: 'Peso', unit: 'kg' },
-];
-
-export function addMetric(s: GameState, name: string, unit: string, now: number): GameState {
-  const metric: Metric = { id: uid(), name: name.trim(), unit: unit.trim(), createdAt: now };
-  return { ...s, metrics: [...(s.metrics ?? []), metric] };
-}
-
-export function deleteMetric(s: GameState, id: string): GameState {
-  return {
-    ...s,
-    metrics: (s.metrics ?? []).filter((m) => m.id !== id),
-    metricEntries: (s.metricEntries ?? []).filter((e) => e.metricId !== id),
-    goals: s.goals.map((g) => (g.metricId === id ? { ...g, metricId: undefined } : g)),
-  };
-}
-
-/** Apunta el valor de hoy (sustituye el de hoy si ya había) y mueve los objetivos que siguen esta medida. */
-export function logMetric(s: GameState, id: string, value: number, now: number): GameState {
-  const day = dayKey(now);
-  const entries = (s.metricEntries ?? []).filter((e) => !(e.metricId === id && e.day === day));
-  return {
-    ...s,
-    metricEntries: [...entries, { id: uid(), metricId: id, day, value, at: now }],
-    goals: s.goals.map((g) => (g.metricId === id ? { ...g, current: value } : g)),
-  };
-}
-
-export function metricHistory(s: GameState, id: string) {
-  return (s.metricEntries ?? []).filter((e) => e.metricId === id).sort((a, b) => a.day.localeCompare(b.day));
-}
-
-export function latestMetric(s: GameState, id: string): number | null {
-  return metricHistory(s, id).at(-1)?.value ?? null;
-}
 
 // ---------- Cierre del día ----------
 
@@ -312,10 +271,6 @@ export function dailyReport(s: GameState, now: number): string {
   const quests = s.quests.filter((q) => q.completedAt && dayKey(q.completedAt) === day);
   const habits = s.habits.map((h) => `${isHabitDone(s, h.id, day) ? '[x]' : '[ ]'} ${h.name}`);
   const sessions = s.sessions.filter((x) => dayKey(x.endedAt) === day);
-  const metrics = (s.metrics ?? []).map((m) => {
-    const today = (s.metricEntries ?? []).find((e) => e.metricId === m.id && e.day === day);
-    return today ? `- ${m.name}: ${formatAttrXp(today.value)} ${m.unit}` : null;
-  }).filter(Boolean);
   const soon = upcomingEvents(s, now + 86_400_000, 6).map((e) => `- ${e.day}${e.time ? ` ${e.time}` : ''} · ${EVENT_KINDS.find((k) => k.id === e.kind)?.name ?? 'Evento'}: ${e.title}`);
   const due = s.quests.filter((q) => !q.completedAt && q.deadline && q.deadline <= dayKey(now + 7 * 86_400_000))
     .map((q) => `- ${q.deadline} · ${q.title}`);
@@ -331,8 +286,7 @@ export function dailyReport(s: GameState, now: number): string {
     ...(habits.length ? habits.map((h) => `- ${h}`) : ['- (sin hábitos)']),
     '',
     '## Estado',
-    `- Energía: ${stars(log?.energy)} · Ánimo: ${stars(log?.mood)} · Sueño: ${log?.sleep !== undefined ? `${formatAttrXp(log.sleep)} h` : '—'}`,
-    ...metrics,
+    `- Energía: ${stars(log?.energy)} · Ánimo: ${stars(log?.mood)}`,
     '',
     '## Nota',
     log?.note?.trim() || '(sin nota)',
