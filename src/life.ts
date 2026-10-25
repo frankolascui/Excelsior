@@ -28,6 +28,12 @@ export const EVENT_KINDS: { id: EventKind; name: string; icon: IconName }[] = [
   { id: 'otro', name: 'Otro', icon: 'ev-otro' },
 ];
 
+/** Eventos que mandan: salen primero y destacados en el calendario y en Hoy. */
+export const KEY_KINDS: EventKind[] = ['examen', 'lanzamiento'];
+export const isKeyEvent = (e: { kind: EventKind }) => KEY_KINDS.includes(e.kind);
+/** Los importantes primero; dentro de cada grupo, el orden que traían. */
+export const byPriority = <T extends { kind: EventKind }>(evs: T[]): T[] => [...evs.filter(isKeyEvent), ...evs.filter((e) => !isKeyEvent(e))];
+
 export const eventIcon = (k: EventKind): IconName => EVENT_KINDS.find((x) => x.id === k)?.icon ?? 'ev-otro';
 
 /** Colores para los eventos, como los de Google Calendar. */
@@ -175,6 +181,12 @@ export function upcomingEvents(s: GameState, now: number, days: number): Calenda
     for (const e of eventsOn(s, day)) if (e.kind !== 'bloque' && !seen.has(e.id)) { seen.add(e.id); out.push(e); }
   }
   return out;
+}
+
+/** Para Hoy: los exámenes y lanzamientos del próximo mes primero, luego el resto de la semana. */
+export function priorityEvents(s: GameState, now: number): CalendarEvent[] {
+  const key = upcomingEvents(s, now, 30).filter(isKeyEvent);
+  return [...key, ...upcomingEvents(s, now, 7).filter((e) => !isKeyEvent(e))];
 }
 
 // ---------- Recordatorios ----------

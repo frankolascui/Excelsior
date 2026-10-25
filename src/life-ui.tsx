@@ -3,11 +3,17 @@ import { useState, type CSSProperties, type FormEvent } from 'react';
 import type { Game } from './screens';
 import type { GameState } from './types';
 import { dayKey, daysUntil } from './game';
-import { dailyReport, dayLog, eventColor, eventIcon, saveDayLog, upcomingEvents } from './life';
+import { dailyReport, dayLog, eventColor, eventIcon, isKeyEvent, priorityEvents, saveDayLog } from './life';
 import { saveFile } from './download';
 import { sfx } from './sfx';
 import { shortDate } from './ui';
 import { Icon, type IconName } from './icons';
+
+/** Cuenta atrás para lo importante: «hoy», «mañana», «en 12 días». */
+export function countdown(day: string, now: number): string {
+  const d = daysUntil(day, now)!;
+  return d === 0 ? 'hoy' : d === 1 ? 'mañana' : `en ${d} días`;
+}
 
 /** «hoy», «mañana», «en 3 días» o la fecha. */
 export function relDay(day: string, now: number): string {
@@ -114,16 +120,16 @@ export function DayClose({ game, now }: { game: Game; now: number }) {
 // ---------- Eventos ----------
 
 export function UpcomingEvents({ state, now }: { state: GameState; now: number }) {
-  const list = upcomingEvents(state, now, 7);
+  const list = priorityEvents(state, now);
   if (list.length === 0) return null;
   return (
     <section className="panel quiet upcoming" aria-labelledby="upcoming-h">
       <header className="panel-head"><h3 id="upcoming-h">Próximos eventos</h3><span className="count mono">{list.length}</span></header>
       <ul className="ev-strip">
         {list.slice(0, 6).map((e) => (
-          <li key={e.id} className={`ev-chip ev-${e.kind}${e.day === dayKey(now) ? ' today' : ''}`} style={eventColor(e) ? ({ '--ev': eventColor(e) } as CSSProperties) : undefined}>
+          <li key={e.id} className={`ev-chip ev-${e.kind}${e.day === dayKey(now) ? ' today' : ''}${isKeyEvent(e) ? ' key' : ''}`} style={eventColor(e) ? ({ '--ev': eventColor(e) } as CSSProperties) : undefined}>
             <Icon name={eventIcon(e.kind)} /> <strong>{e.title}</strong>
-            <span className="muted"> · {relDay(e.day, now)}{e.time ? ` ${e.time}` : ''}</span>
+            <span className="muted"> · {isKeyEvent(e) ? countdown(e.day, now) : relDay(e.day, now)}{e.time ? ` ${e.time}` : ''}</span>
           </li>
         ))}
       </ul>

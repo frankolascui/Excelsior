@@ -198,7 +198,8 @@ export function Dashboard({
           ) : (
             <ul className="list">
               {state.habits.map((h) => (
-                <HabitItem key={h.id} state={state} habit={h} now={now} onToggle={() => act((st) => toggleHabit(st, h.id, Date.now()), CAP_HABIT, { sound: 'habit' })} />
+                <HabitItem key={h.id} state={state} habit={h} now={now} onToggle={() => act((st) => toggleHabit(st, h.id, Date.now()), CAP_HABIT, { sound: 'habit' })}
+                  onToggleDay={(d) => act((st) => toggleHabit(st, h.id, Date.now(), d), CAP_HABIT, { sound: 'habit' })} />
               ))}
             </ul>
           )}

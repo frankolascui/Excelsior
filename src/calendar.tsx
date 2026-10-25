@@ -4,7 +4,8 @@ import type { Game } from './screens';
 import type { Quest } from './types';
 import { addQuest, completeQuest, dayKey, deleteQuest, pendingQuests, setQuestDeadline, undoQuest, updateQuest, xpOnDay } from './game';
 import { QuestItem, QuickAddQuest, shortDate } from './ui';
-import { eventColor, eventIcon, eventsOn, remindersOn } from './life';
+import { byPriority, eventColor, eventIcon, eventsOn, isKeyEvent, priorityEvents, remindersOn } from './life';
+import { countdown } from './life-ui';
 import { addDays, DayAgenda, mondayOf, ReminderRow, TimeGrid } from './agenda-ui';
 
 /** Si el panel de misiones y recordatorios del calendario está abierto (se recuerda). */
@@ -116,6 +117,7 @@ export function QuestCalendar({
             ))}
           </div>
         </header>
+        <KeyEvents game={game} now={now} onPick={select} />
         {view === 'week' && <TimeGrid game={game} days={week} now={now} startFocus={startFocus} onPickDay={(d) => { select(d); pickView('day'); }} />}
         {view === 'four' && <TimeGrid game={game} days={four} now={now} startFocus={startFocus} onPickDay={(d) => { select(d); pickView('day'); }} />}
         {view === 'day' && <TimeGrid game={game} days={[selected]} now={now} startFocus={startFocus} />}
@@ -124,10 +126,10 @@ export function QuestCalendar({
           {WEEKDAYS.map((w) => <span key={w} className="cal-wd" aria-hidden="true">{w}</span>)}
           {days.map((day) => {
             // en la cuadrícula solo van los eventos; misiones y recordatorios se ven en su panel al elegir el día
-            const evs = eventsOn(state, day);
+            const evs = byPriority(eventsOn(state, day));
             const xp = xpOnDay(state, day);
             const outside = Number(day.slice(5, 7)) - 1 !== cursor.m;
-            const cls = ['cal-day', outside && 'out', day === today && 'today', day === selected && 'sel', xp > 0 && 'active'].filter(Boolean).join(' ');
+            const cls = ['cal-day', outside && 'out', day === today && 'today', day === selected && 'sel', xp > 0 && 'active', evs.some(isKeyEvent) && 'has-key'].filter(Boolean).join(' ');
             return (
               <button
                 key={day} role="gridcell" className={cls} onClick={() => select(day)} aria-selected={day === selected}
@@ -135,7 +137,7 @@ export function QuestCalendar({
               >
                 <span className="cal-num mono">{Number(day.slice(8))}</span>
                 <span className="cal-items" aria-hidden="true">
-                  {evs.slice(0, 2).map((e) => <span key={e.id} className={`cal-ev ev-${e.kind}`} style={eventColor(e) ? ({ '--ev': eventColor(e) } as CSSProperties) : undefined}><Icon name={eventIcon(e.kind)} /> {e.time ? `${e.time} ` : ''}{e.title}</span>)}
+                  {evs.slice(0, 2).map((e) => <span key={e.id} className={`cal-ev ev-${e.kind}${isKeyEvent(e) ? ' key' : ''}`} style={eventColor(e) ? ({ '--ev': eventColor(e) } as CSSProperties) : undefined}><Icon name={eventIcon(e.kind)} /> {e.time ? `${e.time} ` : ''}{e.title}</span>)}
                   {evs.length > 2 && <span className="cal-more">+{evs.length - 2} eventos</span>}
                 </span>
                 <span className="cal-dots" aria-hidden="true">
@@ -225,5 +227,21 @@ export function QuestCalendar({
         )}
       </section>
     </>
+  );
+}
+
+/** Arriba del calendario: exámenes y lanzamientos del próximo mes, con la cuenta atrás. Pulsar uno lleva a su día. */
+function KeyEvents({ game, now, onPick }: { game: Game; now: number; onPick: (day: string) => void }) {
+  const list = priorityEvents(game.state, now).filter(isKeyEvent);
+  if (list.length === 0) return null;
+  return (
+    <div className="key-events" aria-label="Lo importante del próximo mes">
+      {list.slice(0, 4).map((e) => (
+        <button key={e.id} type="button" className={`key-ev ev-${e.kind}`} style={eventColor(e) ? ({ '--ev': eventColor(e) } as CSSProperties) : undefined} onClick={() => onPick(e.day)}>
+          <Icon name={eventIcon(e.kind)} /> <strong>{e.title}</strong>
+          <span className="key-when">{countdown(e.day, now)}{e.time ? ` · ${e.time}` : ''}</span>
+        </button>
+      ))}
+    </div>
   );
 }

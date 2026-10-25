@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { addHabit, createProfile, emptyState, habitSatisfied, habitStreak, habitStreakDays, habitWeekCount, pomodoroStatus, pomodoroStep, setPhase, startTimer, stopTimer, toggleHabit, weekStart } from './game';
 import { attributeDef, attributeXp, inferDeepWorkArea, rebalance } from './attributes';
-import { addEvent, dailyReport, deleteEvent, eventsOn, saveDayLog, upcomingEvents } from './life';
+import { addEvent, byPriority, dailyReport, deleteEvent, eventsOn, priorityEvents, saveDayLog, upcomingEvents } from './life';
 
 const NOW = new Date(2026, 9, 6, 10, 0).getTime(); // martes
 const DAY = 86_400_000;
@@ -120,5 +120,16 @@ describe('eventos y cierre del día', () => {
     const md = dailyReport(old, NOW);
     expect(md).toContain('Energía: 4/5 · Ánimo: 3/5');
     expect(md).not.toMatch(/Peso|Sueño/);
+  });
+});
+
+describe('lo importante primero', () => {
+  it('exámenes y lanzamientos del mes van delante del resto de la semana', () => {
+    let s = addEvent(base(), { title: 'Llamada', day: '2026-10-07', kind: 'llamada' }, NOW);
+    s = addEvent(s, { title: 'Examen final', day: '2026-10-30', kind: 'examen' }, NOW);
+    s = addEvent(s, { title: 'Reunión lejana', day: '2026-10-30', kind: 'reunion' }, NOW);
+    s = addEvent(s, { title: 'Lanzamiento', day: '2026-10-08', kind: 'lanzamiento' }, NOW);
+    expect(priorityEvents(s, NOW).map((e) => e.title)).toEqual(['Lanzamiento', 'Examen final', 'Llamada']);
+    expect(byPriority(eventsOn(s, '2026-10-30')).map((e) => e.title)).toEqual(['Examen final', 'Reunión lejana']);
   });
 });

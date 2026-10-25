@@ -542,6 +542,8 @@ check(!(await page.$('#day-sleep')), 'el cierre del día ya no pide horas de sue
 await page.fill('#day-note', 'Mañana empiezo antes.');
 await page.click('.day-close button:has-text("Guardar el día")');
 check(await seen('.day-close >> text=Guardado a las'), 'estado del día guardado');
+await page.click('section:has(h3:text("Hábitos de hoy")) button.dot[aria-label^="Marcar Leer (ayer)"]');
+check(await seen('section:has(h3:text("Hábitos de hoy")) button.dot[aria-label^="Desmarcar Leer (ayer)"]'), 'en Hoy se puede marcar un hábito de un día anterior');
 await page.click('.nav-item:has-text("Misiones")');
 if (!(await page.isVisible('.calendar'))) await page.click('[role=radio]:has-text("Calendario")');
 await page.selectOption('.ev-form select', 'examen');
@@ -551,6 +553,8 @@ await page.click('.pop-time .pop-t[data-t="10:00"]');
 check(await seen('.ev-form #ev-end:has-text("11:00")') && await seen('.dur-chips [aria-checked=true]:has-text("1 h")'), 'al poner la hora, el fin queda una hora después');
 await page.click('.ev-form button:has-text("Añadir")');
 check(await seen('.cal-day.sel .cal-ev:has-text("Examen de cálculo")'), 'el evento aparece en el calendario');
+check(await seen('.cal-day.sel.has-key .cal-ev.key:has-text("Examen de cálculo")'), 'el examen destaca en el mes');
+check(await seen('.key-events .key-ev:has-text("Examen de cálculo") .key-when:has-text("hoy")'), 'arriba del calendario sale el examen con su cuenta atrás');
 await page.screenshot({ path: `${out}/15-calendar-events.png`, fullPage: true });
 await page.click('.nav-item:has-text("Hoy")');
 check(await seen('.upcoming:has-text("Examen de cálculo")'), 'Hoy muestra los próximos eventos');
@@ -576,6 +580,7 @@ await page.click(`.pop-time .pop-t[data-t="${hhmm}"]`);
 await page.click('.rem-form button:has-text("Recordar")');
 await page.clock.fastForward(21_000);
 check(await seen('.toast:has-text("Llamar a casa")'), 'avisa cuando llega la hora del recordatorio');
+check(await seen('.upcoming .ev-chip.key:has-text("Examen de cálculo")'), 'en Hoy el examen sale destacado en Próximos eventos');
 await page.screenshot({ path: `${out}/16-today-life.png`, fullPage: true });
 
 await page.click('.nav-item:has-text("Misiones")');

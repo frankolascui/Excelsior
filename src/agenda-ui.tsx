@@ -6,7 +6,7 @@ import type { CalendarEvent, EventKind, EventRepeat, GameState, Reminder, Repeat
 import { dayKey, uid } from './game';
 import {
   addEvent, addReminder, deleteEvent, deleteReminder, dueAlerts, EVENT_COLORS, EVENT_KINDS, eventColor, eventIcon, eventSpan, eventsOn, fromMin,
-  cleanRule, laterReminders, layoutLanes, editOccurrence, moveEvent, REPEAT_NAMES, repeatText, skipEventDay, todayReminders, toggleReminder, toMin, updateEvent,
+  cleanRule, laterReminders, layoutLanes, editOccurrence, isKeyEvent, moveEvent, REPEAT_NAMES, repeatText, skipEventDay, todayReminders, toggleReminder, toMin, updateEvent,
 } from './life';
 import { relDay } from './life-ui';
 import { DatePicker, DurationChips, TimePicker, durationWords } from './pickers';
@@ -638,7 +638,7 @@ function DayBlocks({ state, day, hour, now, drag, onOpen, onGrab, onSession }: {
         return (
           <div
             key={e.id} role="button" tabIndex={0}
-            className={`tg-block ev-${e.kind}${past(b) && !isDragged ? ' past' : ''}${b - a <= 30 ? ' short' : ''}${isDragged ? ' lifted' : ''}`}
+            className={`tg-block ev-${e.kind}${isKeyEvent(e) ? ' key' : ''}${past(b) && !isDragged ? ' past' : ''}${b - a <= 30 ? ' short' : ''}${isDragged ? ' lifted' : ''}`}
             style={{ ...evStyle(e), top: top(a), height: Math.max(16, top(b - a) - 2), left: `calc(${(lane / n) * 100}% + 2px)`, width: `calc(${100 / n}% - 4px)` }}
             onPointerDown={(ev) => onGrab(ev, e, 'move')}
             onClick={() => onOpen(e)} onKeyDown={(ev) => (ev.key === 'Enter' || ev.key === ' ') && (ev.preventDefault(), onOpen(e))}
