@@ -223,8 +223,8 @@ function RepeatEditor({ value, day, onChange }: { value: RepeatValue; day: strin
 }
 
 /** Formulario para añadir al calendario: un evento, un bloque de tiempo (con fin, color y repetición) o un recordatorio. */
-export function AgendaForm({ game, day, time, end: initialEnd, onDone, compact }: {
-  game: Game; day: string; time?: string; end?: string; onDone?: () => void; compact?: boolean;
+export function AgendaForm({ game, day, time, end: initialEnd, onDone, compact, onlyKey }: {
+  game: Game; day: string; time?: string; end?: string; onDone?: () => void; compact?: boolean; onlyKey?: boolean;
 }) {
   const [kind, setKind] = useState<Kind>(time ? 'bloque' : 'examen');
   const [title, setTitle] = useState('');
@@ -254,8 +254,8 @@ export function AgendaForm({ game, day, time, end: initialEnd, onDone, compact }
     <form className={`ev-form${compact ? ' compact' : ''}`} onSubmit={submit} style={evStyle({ color })}>
       <div className="ev-form-top">
         <select className="freq-select" value={kind} onChange={(e) => setKind(e.target.value as Kind)} aria-label="Tipo">
-          {EVENT_KINDS.map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
-          <option value="recordatorio">Recordatorio</option>
+          {EVENT_KINDS.filter((k) => !onlyKey || isKeyEvent({ kind: k.id })).map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
+          {!onlyKey && <option value="recordatorio">Recordatorio</option>}
         </select>
         <input id="ev-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={placeholder} maxLength={80} aria-label="Nombre" autoFocus={compact} />
       </div>
@@ -367,8 +367,8 @@ function EventSheet({ game, id: firstId, day, onClose, startFocus }: { game: Gam
 }
 
 /** Lista de un día (debajo del mes o del día): eventos con su hora, recordatorios y el formulario para añadir. */
-export function DayAgenda({ game, day, startFocus }: { game: Game; day: string; startFocus?: (label: string) => void }) {
-  const evs = eventsOn(game.state, day);
+export function DayAgenda({ game, day, startFocus, onlyKey }: { game: Game; day: string; startFocus?: (label: string) => void; onlyKey?: boolean }) {
+  const evs = eventsOn(game.state, day).filter((e) => !onlyKey || isKeyEvent(e));
   const [open, setOpen] = useState<string | null>(null);
   return (
     <div className="day-events">
@@ -387,7 +387,7 @@ export function DayAgenda({ game, day, startFocus }: { game: Game; day: string; 
           ))}
         </ul>
       )}
-      <AgendaForm game={game} day={day} />
+      <AgendaForm game={game} day={day} onlyKey={onlyKey} />
       {open && <EventSheet game={game} id={open} day={day} onClose={() => setOpen(null)} startFocus={startFocus} />}
     </div>
   );

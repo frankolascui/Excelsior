@@ -642,6 +642,7 @@ await page.click('.sheet button:has-text("Deep Work")');
 check(await page.inputValue('#dw-intent') === 'Estudiar física', 'un bloque abre Deep Work con su nombre');
 await page.click('.nav-item:has-text("Misiones")');
 await page.click('.cal-views [role=radio]:has-text("Mes")');
+check(await seen('.cal-day .cal-ev:has-text("Examen de cálculo")') && !(await page.$('.cal-day .cal-ev:has-text("Estudiar")')) && !(await page.$('section:has(#cal-day-h) .ev-item:has-text("Estudiar")')), 'el mes solo enseña exámenes y lanzamientos, no los bloques de tiempo');
 await page.click('.nav-item:has-text("Hoy")');
 
 // 8. Móvil

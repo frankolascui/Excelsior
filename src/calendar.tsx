@@ -4,7 +4,7 @@ import type { Game } from './screens';
 import type { Quest } from './types';
 import { addQuest, completeQuest, dayKey, deleteQuest, pendingQuests, setQuestDeadline, undoQuest, updateQuest, xpOnDay } from './game';
 import { QuestItem, QuickAddQuest, shortDate } from './ui';
-import { byPriority, eventColor, eventIcon, eventsOn, isKeyEvent, priorityEvents, remindersOn } from './life';
+import { eventColor, eventIcon, eventsOn, isKeyEvent, priorityEvents, remindersOn } from './life';
 import { countdown } from './life-ui';
 import { addDays, DayAgenda, mondayOf, ReminderRow, TimeGrid } from './agenda-ui';
 
@@ -126,7 +126,8 @@ export function QuestCalendar({
           {WEEKDAYS.map((w) => <span key={w} className="cal-wd" aria-hidden="true">{w}</span>)}
           {days.map((day) => {
             // en la cuadrícula solo van los eventos; misiones y recordatorios se ven en su panel al elegir el día
-            const evs = byPriority(eventsOn(state, day));
+            // en el mes solo lo importante (exámenes, lanzamientos); los bloques y el resto, en Semana, 4 días y Día
+            const evs = eventsOn(state, day).filter(isKeyEvent);
             const xp = xpOnDay(state, day);
             const outside = Number(day.slice(5, 7)) - 1 !== cursor.m;
             const cls = ['cal-day', outside && 'out', day === today && 'today', day === selected && 'sel', xp > 0 && 'active', evs.some(isKeyEvent) && 'has-key'].filter(Boolean).join(' ');
@@ -148,7 +149,7 @@ export function QuestCalendar({
           })}
         </div>
         <p className="hint cal-legend">
-          <span><Icon name="ev-otro" /> Aquí solo van los eventos. Las misiones y los recordatorios de cada día están en su panel, debajo.</span>
+          <span><Icon name="ev-examen" /> En el mes solo salen los exámenes y lanzamientos. Los bloques de tiempo y el resto de eventos, en Semana o Día.</span>
         </p>
         </>}
         {view !== 'month' && <p className="hint cal-legend">Pulsa una hora libre para añadir algo a esa hora. <Icon name="zap" /> = tus sesiones de Deep Work. <Icon name="repeat" /> = se repite.</p>}
@@ -156,9 +157,9 @@ export function QuestCalendar({
 
       <section className="panel" aria-labelledby="cal-day-h">
         <header className="panel-head">
-          <h3 id="cal-day-h">Eventos · {selected === today ? 'hoy' : shortDate(selected)}</h3>
+          <h3 id="cal-day-h">{view === 'month' ? 'Exámenes y lanzamientos' : 'Eventos'} · {selected === today ? 'hoy' : shortDate(selected)}</h3>
         </header>
-        <DayAgenda key={selected} game={game} day={selected} startFocus={startFocus} />
+        <DayAgenda key={`${selected}-${view === 'month'}`} game={game} day={selected} startFocus={startFocus} onlyKey={view === 'month'} />
         {view === 'month' && <button className="link cal-open-day" onClick={() => pickView('day')}>Ver el día por horas <Icon name="arrow-right" /></button>}
       </section>
 
