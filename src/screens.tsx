@@ -17,7 +17,7 @@ import { XpChart } from './charts';
 import {
   addHabit, addQuest, cancelTimer, CUSTOM_LIMITS, updateHabit, updateQuest, completeQuest, createProfile, dayKey, deepWorkMinutesOnDay,
   deleteHabit, deleteQuest, focusPercent, habitStreakDays, levelInfo, pendingQuests, scheduledQuests, setQuestDeadline, setQuestRepeat, setPhase, timerTotals,
-  pomodoroStatus, pomodoroStep, startTimer, stopTimer, suggest, toggleHabit, habitCleared, habitsInOrder, moveHabit, totalXp, undoQuest, XP_RULES,
+  pomodoroStatus, pomodoroStep, startTimer, stopTimer, suggest, toggleHabit, habitCleared, habitsInOrder, reorderHabits, totalXp, undoQuest, XP_RULES,
 } from './game';
 import {
   AttributeList, AvatarCard, ConfirmButton, deadlineLabel, formatClock, shortDate, formatMinutes, HabitItem, LevelBar, QuestItem,
@@ -36,6 +36,7 @@ import { addStep, deleteStep, setStepDeadline, toggleStep } from './core';
 import type { StepActions } from './steps-ui';
 import { SessionEdit } from './session-ui';
 import { QuestTemplates } from './templates-ui';
+import { DragHandle } from './habits-ui';
 
 export type Game = ReturnType<typeof useGame>;
 
@@ -654,13 +655,12 @@ export function Habits({ game }: { game: Game }) {
           </div>
         ) : (
           <ul className="list">
-            {ordered.map((h, i) => {
-              // solo se mueve entre los del mismo grupo (pendientes o ya hechos)
-              const same = (j: number) => ordered[j] && doneIds.has(ordered[j].id) === doneIds.has(h.id);
-              const move = (dir: -1 | 1) => () => act((s) => moveHabit(s, h.id, dir, ordered.map((x) => x.id)));
+            {ordered.map((h) => {
+              // solo se ordena entre los del mismo grupo (pendientes o ya hechos)
+              const group = ordered.filter((x) => doneIds.has(x.id) === doneIds.has(h.id)).map((x) => x.id);
               return (
                 <HabitItem key={h.id} state={state} habit={h} now={now} onToggle={() => act((s) => toggleHabit(s, h.id, Date.now()), CAP_HABIT, { sound: 'habit' })} onToggleDay={(d) => act((s) => toggleHabit(s, h.id, Date.now(), d), CAP_HABIT, { sound: 'habit' })} onDelete={() => act((s) => deleteHabit(s, h.id))} onEdit={(n, v) => act((s) => updateHabit(s, h.id, { name: n, ...v }))}
-                  onMove={{ up: same(i - 1) ? move(-1) : undefined, down: same(i + 1) ? move(1) : undefined }} />
+                  handle={<DragHandle name={h.name} group={group} onDrop={(order) => act((s) => reorderHabits(s, order))} />} />
               );
             })}
           </ul>

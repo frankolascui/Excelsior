@@ -473,14 +473,15 @@ export function habitsInOrder(s: GameState, now: number): Habit[] {
   return [...s.habits.filter((h) => !done(h)), ...s.habits.filter(done)];
 }
 
-/** Sube (−1) o baja (+1) un hábito un puesto respecto al que tiene al lado en `visible` (la lista tal como se ve). */
-export function moveHabit(s: GameState, id: string, dir: -1 | 1, visible: string[]): GameState {
-  const other = visible[visible.indexOf(id) + dir];
-  if (!visible.includes(id) || !other) return s;
-  const i = s.habits.findIndex((h) => h.id === id), j = s.habits.findIndex((h) => h.id === other);
-  if (i < 0 || j < 0) return s;
+/**
+ * Nuevo orden para un grupo de hábitos (los que se ven juntos, p. ej. los pendientes): ocupan los mismos huecos
+ * de la lista guardada, así los ya hechos no se quedan abajo para siempre al día siguiente.
+ */
+export function reorderHabits(s: GameState, order: string[]): GameState {
+  const slots = order.map((id) => s.habits.findIndex((h) => h.id === id)).filter((i) => i >= 0).sort((a, b) => a - b);
+  if (slots.length !== order.length) return s;
   const habits = [...s.habits];
-  [habits[i], habits[j]] = [habits[j], habits[i]];
+  slots.forEach((slot, k) => { habits[slot] = s.habits.find((h) => h.id === order[k])!; });
   return { ...s, habits };
 }
 

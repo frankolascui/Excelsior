@@ -1,5 +1,5 @@
 // Piezas de interfaz compartidas entre pantallas.
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import type { AttributeRewards, GameState, Habit, Quest, QuestType } from './types';
 import { ATTRIBUTES, attributeHistory, attributeLevel, attributeXp, avatarInfo, formatAttrXp, habitRewards, questRewards } from './attributes';
 import {
@@ -234,7 +234,7 @@ export function QuickAddQuest({
 }
 
 export function HabitItem({
-  state, habit, now, onToggle, onDelete, onEdit, onToggleDay, onMove,
+  state, habit, now, onToggle, onDelete, onEdit, onToggleDay, handle,
 }: {
   state: GameState;
   habit: Habit;
@@ -244,8 +244,8 @@ export function HabitItem({
   onToggleDay?: (day: string) => void;
   onDelete?: () => void;
   onEdit?: (name: string, v: CustomValue) => void;
-  /** Subir o bajar en la lista; sin función en un sentido, ese botón sale apagado. */
-  onMove?: { up?: () => void; down?: () => void };
+  /** Asa para ordenar arrastrando (la pone la lista). */
+  handle?: ReactNode;
 }) {
   const [editing, setEditing] = useState(false);
   const [open, setOpen] = useState(false);
@@ -271,7 +271,7 @@ export function HabitItem({
   const week = Array.from({ length: 7 }, (_, i) => dayKey(shiftDay(now, i - 6)));
   const shields = habitShields(state, habit, now);
   return (
-    <li className={done ? 'item done' : 'item'}>
+    <li className={done ? 'item done' : 'item'} data-habit={habit.id}>
       <button
         className={done ? 'check checked' : 'check'}
         onClick={onToggle}
@@ -304,12 +304,7 @@ export function HabitItem({
         {open && onToggleDay && <HabitHistory state={state} habit={habit} now={now} onToggleDay={onToggleDay} />}
       </div>
       <div className="item-actions">
-        {onMove && (
-          <span className="move-btns">
-            <button className="icon-btn" onClick={onMove.up} disabled={!onMove.up} aria-label={`Subir ${habit.name}`} title="Subir"><Icon name="chevron-up" /></button>
-            <button className="icon-btn" onClick={onMove.down} disabled={!onMove.down} aria-label={`Bajar ${habit.name}`} title="Bajar"><Icon name="chevron-down" /></button>
-          </span>
-        )}
+        {handle}
         {onEdit && <button className="icon-btn edit-btn" onClick={() => setEditing(true)} aria-label={`Editar ${habit.name}`} title="Editar XP y atributos"><Icon name="sliders" /></button>}
         {onDelete && <button className="icon-btn" onClick={onDelete} aria-label={`Borrar ${habit.name}`} title="Borrar"><Icon name="trash" /></button>}
       </div>

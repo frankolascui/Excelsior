@@ -238,6 +238,8 @@ button.tg-session { font-family: inherit; justify-content: flex-start; align-ite
 .ev-chip.key { border-color: color-mix(in srgb, var(--ev) 60%, transparent); border-left-width: 4px; background: color-mix(in srgb, var(--ev) 16%, transparent); }
 .tg-block.key b { font-weight: 800; }
 
-/* Subir / bajar hábitos */
-.move-btns { display: inline-flex; gap: 2px; }
-.move-btns .icon-btn:disabled { opacity: 0.25; cursor: default; }
+/* Ordenar hábitos arrastrando el asa */
+.drag-handle { cursor: grab; touch-action: none; color: var(--muted); }
+.drag-handle:active { cursor: grabbing; }
+.drag-active > li { transition: transform 0.15s ease; }
+.drag-active > li.dragging { transition: none; position: relative; z-index: 5; box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45), 0 0 0 1px var(--c1); }

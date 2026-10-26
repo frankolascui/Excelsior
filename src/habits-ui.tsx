@@ -47,3 +47,69 @@ export function HabitHistory({ state, habit, now, onToggleDay }: { state: GameSt
     </div>
   );
 }
+
+/**
+ * Asa para ordenar arrastrando, con ratón o con el dedo (en móvil no hace scroll al tocarla).
+ * Solo se mueve entre los de su grupo (`group`, ids en el orden que se ven). Con el teclado: flechas arriba y abajo.
+ */
+export function DragHandle({ name, group, onDrop }: { name: string; group: string[]; onDrop: (order: string[]) => void }) {
+  function down(e: React.PointerEvent<HTMLButtonElement>) {
+    if (e.button !== 0 || group.length < 2) return;
+    e.preventDefault();
+    const btn = e.currentTarget;
+    const li = btn.closest('li') as HTMLElement;
+    const list = li.parentElement!;
+    const items = group.map((id) => list.querySelector<HTMLElement>(`li[data-habit="${id}"]`)).filter((x): x is HTMLElement => !!x);
+    const from = items.indexOf(li);
+    if (from < 0) return;
+    const rects = items.map((x) => x.getBoundingClientRect());
+    const step = rects.length > 1 ? rects[1].top - rects[0].top : rects[0].height + 8;
+    const y0 = e.clientY;
+    let to = from;
+    btn.setPointerCapture(e.pointerId);
+    list.classList.add('drag-active');
+    li.classList.add('dragging');
+    const move = (ev: PointerEvent) => {
+      const dy = Math.max(rects[0].top - rects[from].top, Math.min(rects.at(-1)!.top - rects[from].top, ev.clientY - y0));
+      li.style.transform = `translateY(${dy}px)`;
+      to = Math.max(0, Math.min(items.length - 1, from + Math.round(dy / step)));
+      items.forEach((x, i) => {
+        if (i === from) return;
+        const shift = from < to && i > from && i <= to ? -step : to < from && i >= to && i < from ? step : 0;
+        x.style.transform = shift ? `translateY(${shift}px)` : '';
+      });
+    };
+    const up = () => {
+      btn.removeEventListener('pointermove', move);
+      btn.removeEventListener('pointerup', up);
+      btn.removeEventListener('pointercancel', up);
+      items.forEach((x) => { x.style.transform = ''; });
+      li.classList.remove('dragging');
+      list.classList.remove('drag-active');
+      if (to !== from) {
+        const order = [...group];
+        order.splice(to, 0, ...order.splice(from, 1));
+        onDrop(order);
+      }
+    };
+    btn.addEventListener('pointermove', move);
+    btn.addEventListener('pointerup', up);
+    btn.addEventListener('pointercancel', up);
+  }
+  function key(e: React.KeyboardEvent) {
+    const dir = e.key === 'ArrowUp' ? -1 : e.key === 'ArrowDown' ? 1 : 0;
+    const i = group.indexOf(li(e));
+    if (!dir || i < 0 || !group[i + dir]) return;
+    e.preventDefault();
+    const order = [...group];
+    [order[i], order[i + dir]] = [order[i + dir], order[i]];
+    onDrop(order);
+  }
+  const li = (e: React.SyntheticEvent) => (e.currentTarget.closest('li') as HTMLElement | null)?.dataset.habit ?? '';
+  return (
+    <button type="button" className="icon-btn drag-handle" onPointerDown={down} onKeyDown={key}
+      aria-label={`Mover ${name} (arrastra, o usa las flechas arriba y abajo)`} title="Arrastra para ordenar">
+      <Icon name="grip" />
+    </button>
+  );
+}

@@ -3,7 +3,7 @@ import {
   focusPercent, setPhase, timerTotals,
   addHabit, addQuest, completeQuest, createProfile, dayKey, emptyState, habitStreak,
   levelInfo, shiftDay, startTimer, stopTimer, suggest, toggleHabit, totalXp, undoQuest,
-  XP_RULES, habitsInOrder, moveHabit,
+  XP_RULES, habitsInOrder, reorderHabits,
 } from './game';
 
 const NOW = new Date(2026, 9, 4, 10, 0).getTime();
@@ -145,15 +145,14 @@ describe('orden de los hábitos', () => {
     expect(names(s)).toEqual(['Leer', 'Meditar', 'Correr']);
   });
 
-  it('subir y bajar cambia el orden respecto al vecino que se ve', () => {
+  it('arrastrar reordena solo su grupo y respeta los huecos de los ya hechos', () => {
     let s = three();
     const id = (n: string) => s.habits.find((h) => h.name === n)!.id;
-    const visible = () => habitsInOrder(s, NOW).map((h) => h.id);
-    s = moveHabit(s, id('Correr'), -1, visible());
+    s = toggleHabit(s, id('Meditar'), NOW).state; // Meditar hecho: va abajo
     expect(names(s)).toEqual(['Leer', 'Correr', 'Meditar']);
-    s = toggleHabit(s, id('Correr'), NOW).state; // Correr hecho: al final
-    s = moveHabit(s, id('Leer'), 1, visible()); // Leer baja por debajo de Meditar
-    expect(names(s)).toEqual(['Meditar', 'Leer', 'Correr']);
-    expect(moveHabit(s, id('Meditar'), -1, visible())).toBe(s); // ya es el primero
+    s = reorderHabits(s, [id('Correr'), id('Leer')]); // Correr arriba del todo
+    expect(names(s)).toEqual(['Correr', 'Leer', 'Meditar']);
+    expect(s.habits.map((h) => h.name)).toEqual(['Correr', 'Meditar', 'Leer']); // Meditar sigue en su hueco
+    expect(reorderHabits(s, ['no-existe'])).toBe(s);
   });
 });
