@@ -243,3 +243,6 @@ button.tg-session { font-family: inherit; justify-content: flex-start; align-ite
 .drag-handle:active { cursor: grabbing; }
 .drag-active > li { transition: transform 0.15s ease; }
 .drag-active > li.dragging { transition: none; position: relative; z-index: 5; box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45), 0 0 0 1px var(--c1); }
+
+/* Personaje: los logros van detrás de un botón */
+.achv-open { align-self: flex-start; justify-self: start; display: inline-flex; align-items: center; gap: 8px; }

@@ -37,6 +37,7 @@ import type { StepActions } from './steps-ui';
 import { SessionEdit } from './session-ui';
 import { QuestTemplates } from './templates-ui';
 import { DragHandle } from './habits-ui';
+import { ACHIEVEMENTS } from './achievements';
 
 export type Game = ReturnType<typeof useGame>;
 
@@ -683,8 +684,7 @@ export function Character({ game }: { game: Game }) {
   const questsDone = state.quests.filter((q) => q.completedAt).length;
   const bestStreak = state.habits.reduce((m, h) => Math.max(m, habitStreakDays(state, h.id, now)), 0);
   const activeDays = new Set(state.xp.map((t) => dayKey(t.at))).size;
-  const history = [...state.xp].reverse().slice(0, 15);
-  const SOURCE = { quest: 'Misión', habit: 'Hábito', deepwork: 'Deep Work', admin: 'Admin', guild: 'Gremio' } as const;
+  const [showAchv, setShowAchv] = useState(false);
 
   return (
     <div className="screen">
@@ -720,6 +720,11 @@ export function Character({ game }: { game: Game }) {
         <Stat label="Días con progreso" value={`${activeDays}`} />
       </section>
 
+      <button type="button" className="secondary achv-open" aria-expanded={showAchv} onClick={() => setShowAchv(!showAchv)}>
+        <Icon name="trophy" /> Logros <span className="mono">{(state.achievements ?? []).length}/{ACHIEVEMENTS.length}</span> <Icon name={showAchv ? 'chevron-down' : 'chevron-right'} />
+      </button>
+      {showAchv && <AchievementsPanel state={state} now={now} />}
+
       <TimedGoals game={game} />
 
       <GoalsPanel game={game} now={now} />
@@ -728,21 +733,6 @@ export function Character({ game }: { game: Game }) {
 
       <Inventory game={game} />
 
-      <AchievementsPanel state={state} now={now} />
-
-      <section className="panel">
-        <header className="panel-head"><h3>Historial</h3></header>
-        {history.length === 0 ? <p className="empty">Aquí aparecerá cada XP que ganes.</p> : (
-          <ul className="list plain">
-            {history.map((t) => (
-              <li key={t.id} className="row-between">
-                <span><span className="muted">{SOURCE[t.source]} · </span>{t.label}</span>
-                <span className="mono"><RewardTags rewards={t.attributes ?? {}} /> +{t.amount} <span className="muted">{new Date(t.at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</span></span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
 
     </div>
   );
