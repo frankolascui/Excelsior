@@ -1,0 +1,78 @@
+/* ---------- Movimiento: entrada de pantallas, feedback al cumplir, XP y subida de nivel ----------
+   Solo transform y opacity (baratos en móvil). Con «reducir movimiento» todo se apaga por la regla
+   global de styles.css y por el bloque del final. Las entradas usan `backwards`: al terminar no dejan
+   transform puesto, así los overlays fijos que vivan dentro de un panel no cambian de referencia. */
+
+/* Al cambiar de pestaña la pantalla nueva entra y sus bloques aparecen escalonados. */
+.main > .screen > * { animation: mo-in 0.34s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+.main > .screen > :nth-child(2) { animation-delay: 0.04s; }
+.main > .screen > :nth-child(3) { animation-delay: 0.08s; }
+.main > .screen > :nth-child(4) { animation-delay: 0.12s; }
+.main > .screen > :nth-child(5) { animation-delay: 0.16s; }
+.main > .screen > :nth-child(n + 6) { animation-delay: 0.2s; }
+@keyframes mo-in { from { opacity: 0; transform: translateY(12px); } }
+
+/* Pestaña elegida: el símbolo da un pequeño salto al activarse. */
+.nav-item.on .nav-glyph { animation: mo-nav 0.38s cubic-bezier(0.3, 1.6, 0.5, 1); }
+@keyframes mo-nav { 0% { transform: scale(0.75); } 60% { transform: scale(1.15); } 100% { transform: none; } }
+
+/* Hojas y diálogos: el fondo se funde y la tarjeta sube. */
+.overlay { animation: mo-fade 0.2s ease-out; }
+.overlay-card { animation: mo-card 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.1); }
+@keyframes mo-fade { from { opacity: 0; } }
+@keyframes mo-card { from { opacity: 0; transform: translateY(16px) scale(0.97); } }
+
+/* Hábito o misión cumplidos (motion.ts pone .mo-done): la fila destella y una luz la cruza. */
+.item.mo-done { animation: mo-row 0.7s ease-out; }
+.item.mo-done::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 1;
+  background: linear-gradient(100deg, transparent 20%, color-mix(in srgb, var(--c1) 28%, transparent) 50%, transparent 80%);
+  transform: translateX(-100%); animation: mo-sweep 0.7s ease-out forwards;
+}
+@keyframes mo-row { 30% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--c1) 60%, transparent), 0 0 26px color-mix(in srgb, var(--c1) 30%, transparent); } }
+@keyframes mo-sweep { to { transform: translateX(100%); } }
+
+/* Chispas que salen del botón de hecho (las crea motion.ts en el body, por si la fila desaparece). */
+.mo-spark {
+  position: fixed; z-index: 60; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%;
+  pointer-events: none; background: var(--c1); box-shadow: 0 0 8px var(--c1);
+  animation: mo-spark 0.6s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+.mo-spark:nth-child(odd) { background: var(--c2); box-shadow: 0 0 8px var(--c2); }
+@keyframes mo-spark { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; } }
+
+/* Barra de XP: al ganar XP la barra brilla y el número del nivel late. */
+.levelbar.gain .xpbar { animation: mo-bar 0.9s ease-out; }
+.levelbar.gain .levelbar-foot { animation: mo-foot 0.9s ease-out; }
+@keyframes mo-bar { 25% { box-shadow: 0 0 0 1px var(--c1), 0 0 18px color-mix(in srgb, var(--c1) 60%, transparent); } }
+@keyframes mo-foot { 25% { color: var(--c1); } }
+.levelbar.lvl .level-badge { animation: mo-badge 0.8s cubic-bezier(0.3, 1.6, 0.5, 1); }
+@keyframes mo-badge { 0% { transform: scale(1); } 35% { transform: scale(1.25) rotate(-6deg); } 100% { transform: none; } }
+
+/* Subida de nivel: el emblema gira al entrar, unos rayos giran detrás y las líneas aparecen una a una. */
+.levelup .emblem.big { position: relative; animation: mo-emblem 0.75s cubic-bezier(0.3, 1.5, 0.5, 1) 0.1s backwards; }
+@keyframes mo-emblem { 0% { opacity: 0; transform: scale(0.2) rotate(-200deg); } 100% { opacity: 1; transform: none; } }
+.levelup .emblem.big .mono { animation: mo-in 0.4s ease-out 0.55s backwards; }
+.levelup::after {
+  content: ''; position: absolute; left: 50%; top: 123px; width: 260px; height: 260px; margin: -130px 0 0 -130px;
+  z-index: 0; pointer-events: none; border-radius: 50%; opacity: 0.3;
+  background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--c1) 70%, transparent) 0 7deg, transparent 7deg 22deg);
+  -webkit-mask: radial-gradient(closest-side, #000 30%, transparent); mask: radial-gradient(closest-side, #000 30%, transparent);
+  animation: mo-rays 14s linear infinite, mo-fade 0.8s ease-out;
+}
+@keyframes mo-rays { to { transform: rotate(360deg); } }
+.levelup > * { position: relative; z-index: 1; }
+.levelup > :is(h2, .muted, .unlock-line, button) { animation: mo-in 0.4s ease-out 0.35s backwards; }
+.levelup > .unlock-line { animation-delay: 0.5s; }
+.levelup > button { animation-delay: 0.65s; }
+
+/* Toasts: además de entrar, el de XP brilla un instante. */
+.toast-xp { animation: xp-pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1), mo-glow 1.2s ease-out 0.3s; }
+@keyframes mo-glow { 30% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--c2) 60%, transparent), 0 8px 40px color-mix(in srgb, var(--c1) 70%, transparent); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .main > .screen > *, .nav-item.on .nav-glyph, .overlay, .overlay-card, .item.mo-done, .item.mo-done::after,
+  .levelbar.gain .xpbar, .levelbar.gain .levelbar-foot, .levelbar.lvl .level-badge, .levelup .emblem.big, .levelup .emblem.big .mono,
+  .levelup::after, .levelup > *, .toast-xp { animation: none; }
+  .mo-spark { display: none; }
+}

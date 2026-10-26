@@ -1,5 +1,5 @@
 // Piezas de interfaz compartidas entre pantallas.
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import type { AttributeRewards, GameState, Habit, Quest, QuestType } from './types';
 import { ATTRIBUTES, attributeHistory, attributeLevel, attributeXp, avatarInfo, formatAttrXp, habitRewards, questRewards } from './attributes';
 import {
@@ -41,10 +41,27 @@ export function formatMinutes(min: number): string {
   return m ? `${h} h ${m} min` : `${h} h`;
 }
 
+/** Al ganar XP la barra brilla un momento ('gain') y, si cambia el nivel, la insignia late ('lvl'). Ver motion.css. */
+function useXpPulse(xp: number, level: number): string {
+  const prev = useRef({ xp, level });
+  const [pulse, setPulse] = useState('');
+  useEffect(() => {
+    const p = prev.current;
+    prev.current = { xp, level };
+    if (xp <= p.xp) return;
+    setPulse(level > p.level ? ' gain lvl' : ' gain');
+    const t = setTimeout(() => setPulse(''), 950);
+    return () => clearTimeout(t);
+  }, [xp, level]);
+  return pulse;
+}
+
 export function LevelBar({ state, compact = false }: { state: GameState; compact?: boolean }) {
-  const info = levelInfo(totalXp(state));
+  const xp = totalXp(state);
+  const info = levelInfo(xp);
+  const pulse = useXpPulse(xp, info.level);
   return (
-    <div className={compact ? 'levelbar compact' : 'levelbar'}>
+    <div className={`${compact ? 'levelbar compact' : 'levelbar'}${pulse}`}>
       <div className="level-badge" aria-label={`Nivel ${info.level}`}>
         <span className="level-badge-label">Nv</span>
         <span className="level-badge-num">{info.level}</span>
