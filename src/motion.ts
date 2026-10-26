@@ -27,7 +27,22 @@ export function sparkBurst(x: number, y: number, doc: Document = document) {
   setTimeout(() => box.remove(), 700);
 }
 
+/**
+ * Desmarcar no anima nada: al pulsar un «hecho» ya marcado se pone data-quiet en la fila (o el botón) un momento.
+ * Va en un atributo y no en una clase porque React reescribe className al repintar. Fase de captura: antes que React.
+ */
+function quietUncheck(e: Event) {
+  const btn = (e.target as Element | null)?.closest?.('button.check.checked') as HTMLElement | null;
+  if (!btn) return;
+  const el = (btn.closest('.item') as HTMLElement | null) ?? btn;
+  el.setAttribute('data-quiet', '');
+  setTimeout(() => el.removeAttribute('data-quiet'), 500);
+}
+
 export function installDoneFeedback(doc: Document = document) {
+  doc.addEventListener('pointerdown', quietUncheck, true);
+  doc.addEventListener('click', quietUncheck, true);
+  // Captura: se mira si estaba marcado antes de que React repinte el botón.
   doc.addEventListener('click', (e) => {
     const btn = (e.target as Element | null)?.closest?.('button.check') as HTMLElement | null;
     if (!btn || btn.classList.contains('checked') || (btn as HTMLButtonElement).disabled) return;
@@ -43,5 +58,5 @@ export function installDoneFeedback(doc: Document = document) {
       row.classList.add('mo-done');
       setTimeout(() => row.classList.remove('mo-done'), 800);
     }));
-  });
+  }, true);
 }
