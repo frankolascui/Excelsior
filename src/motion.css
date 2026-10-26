@@ -28,10 +28,11 @@
 .item.mo-done::after {
   content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 1;
   background: linear-gradient(100deg, transparent 20%, color-mix(in srgb, var(--c1) 28%, transparent) 50%, transparent 80%);
-  transform: translateX(-100%); animation: mo-sweep 0.7s ease-out forwards;
+  background-size: 300% 100%; background-repeat: no-repeat; background-position: 100% 0; animation: mo-sweep 0.7s ease-out forwards;
 }
 @keyframes mo-row { 30% { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c1) 60%, transparent), inset 0 0 22px color-mix(in srgb, var(--c1) 22%, transparent); } }
-@keyframes mo-sweep { to { transform: translateX(100%); } }
+/* La luz se mueve con background-position: así nunca sale del rectángulo de la fila. */
+@keyframes mo-sweep { to { background-position: 0% 0; } }
 
 /* Desmarcar: sin animación ni transición (motion.ts pone data-quiet). */
 [data-quiet], [data-quiet] *, [data-quiet]::before, [data-quiet]::after, [data-quiet] *::before, [data-quiet] *::after { transition: none !important; animation: none !important; }
