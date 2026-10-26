@@ -4,17 +4,18 @@
    transform puesto, así los overlays fijos que vivan dentro de un panel no cambian de referencia. */
 
 /* Al cambiar de pestaña la pantalla nueva entra y sus bloques aparecen escalonados. */
-.main > .screen > * { animation: mo-in 0.34s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
-.main > .screen > :nth-child(2) { animation-delay: 0.04s; }
-.main > .screen > :nth-child(3) { animation-delay: 0.08s; }
-.main > .screen > :nth-child(4) { animation-delay: 0.12s; }
-.main > .screen > :nth-child(5) { animation-delay: 0.16s; }
-.main > .screen > :nth-child(n + 6) { animation-delay: 0.2s; }
+.main > .screen > * { animation: mo-screen 0.7s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+.main > .screen > :nth-child(2) { animation-delay: 0.08s; }
+.main > .screen > :nth-child(3) { animation-delay: 0.16s; }
+.main > .screen > :nth-child(4) { animation-delay: 0.24s; }
+.main > .screen > :nth-child(5) { animation-delay: 0.32s; }
+.main > .screen > :nth-child(n + 6) { animation-delay: 0.4s; }
+@keyframes mo-screen { from { opacity: 0; transform: translateY(18px); } }
 @keyframes mo-in { from { opacity: 0; transform: translateY(12px); } }
 
-/* Pestaña elegida: el símbolo da un pequeño salto al activarse. */
-.nav-item.on .nav-glyph { animation: mo-nav 0.38s cubic-bezier(0.3, 1.6, 0.5, 1); }
-@keyframes mo-nav { 0% { transform: scale(0.75); } 60% { transform: scale(1.15); } 100% { transform: none; } }
+/* Pestaña elegida: el símbolo crece suave al activarse, sin rebote. */
+.nav-item.on .nav-glyph { animation: mo-nav 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
+@keyframes mo-nav { 0% { transform: scale(0.82); opacity: 0.6; } 55% { transform: scale(1.08); opacity: 1; } 100% { transform: none; } }
 
 /* Hojas y diálogos: el fondo se funde y la tarjeta sube. */
 .overlay { animation: mo-fade 0.2s ease-out; }
