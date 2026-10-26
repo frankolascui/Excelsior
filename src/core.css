@@ -246,3 +246,18 @@ button.tg-session { font-family: inherit; justify-content: flex-start; align-ite
 
 /* Personaje: los logros van detrás de un botón */
 .achv-open { align-self: flex-start; justify-self: start; display: inline-flex; align-items: center; gap: 8px; }
+
+/* Hábitos: racha en peligro, mínimo para un día malo, compartir la semana, escudo de la tienda */
+.item.at-risk { box-shadow: inset 3px 0 0 var(--danger); }
+.habit-risk { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; margin: 6px 0 0; color: var(--danger); }
+.habit-risk .ico { vertical-align: -2px; }
+.habit-risk b { color: var(--fg); }
+.habit-risk .link { font-size: inherit; }
+.minimum-input { display: grid; gap: 4px; margin: 8px 0; }
+.minimum-input input { width: 100%; }
+.share-week { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-bottom: 12px; }
+.share-week .hint { margin: 0; }
+.shop-shield { display: flex; align-items: center; gap: 12px; padding: 12px; margin: 12px 0; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
+.shop-shield .shop-next-body { flex: 1; min-width: 0; }
+.shop-shield .shop-next-body p { margin: 0; }
+.shop-shield .nowrap { white-space: nowrap; }

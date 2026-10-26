@@ -8,7 +8,7 @@ import {
   SAGAS, sagaOf, SOURCE_LABEL, summonBoss, templateOf, TIERS, timesDefeated, isActiveTemplate, type BossTemplate, type BossTier,
 } from './bosses';
 import {
-  addReward, buyReward, coinBalance, coinsEarned, coinsSpent, COIN_RULES, deleteReward, nextReward, purchaseCounts, refundPurchase, consumePurchase, unusedPurchases,
+  addReward, buyReward, coinBalance, coinsEarned, coinsSpent, COIN_RULES, deleteReward, nextReward, purchaseCounts, refundPurchase, consumePurchase, unusedPurchases, buyShield, SHIELD, shieldsLeft,
   REWARD_CATEGORIES, REWARD_ICONS, rewardCategory, updateReward, type RewardCategory,
 } from './economy';
 import { dayKey, levelInfo, totalXp } from './game';
@@ -607,6 +607,8 @@ function Shop({ game, balance, now }: { game: Game; balance: number; now: number
         ))}
       </div>
 
+      <ShieldCard game={game} balance={balance} />
+
       <RewardForm onCreate={(r) => { act((s) => addReward(s, r, Date.now())); sfx.place(); }} />
 
       {history.length > 0 && (
@@ -639,6 +641,32 @@ function Shop({ game, balance, now }: { game: Game; balance: number; now: number
         </>
       )}
     </section>
+  );
+}
+
+/** Escudo de racha: objeto fijo de la tienda. Se gasta desde Hábitos, en el día fallado que salva. */
+function ShieldCard({ game, balance }: { game: Game; balance: number }) {
+  const { state, act, toast } = game;
+  const left = shieldsLeft(state);
+  const missing = SHIELD.cost - balance;
+  function buy() {
+    const r = buyShield(state, Date.now());
+    if (!r.ok) return;
+    act(() => r.state);
+    sfx.purchase();
+    toast(`{i:shield} Escudo de racha guardado (${left + 1}). −${SHIELD.cost} {i:coin}`, 'level');
+  }
+  return (
+    <div className="shop-shield">
+      <span className="shop-next-icon" aria-hidden="true"><Icon name="shield" /></span>
+      <div className="shop-next-body">
+        <p><strong>{SHIELD.name}</strong> {left > 0 && <span className="muted small-text nowrap">· tienes {left}</span>}</p>
+        <p className="muted small-text">Salva un día fallado de un hábito diario si el anterior lo hiciste. Nunca dos días seguidos. Se usa desde Hábitos.</p>
+      </div>
+      <button className="primary" disabled={missing > 0} onClick={buy} aria-label={`Comprar escudo de racha por ${SHIELD.cost} monedas`} title={missing > 0 ? `Te faltan ${missing} monedas` : undefined}>
+        <Icon name="coin" /> {SHIELD.cost}
+      </button>
+    </div>
   );
 }
 

@@ -1,6 +1,7 @@
 // Historial de un hábito: las últimas 5 semanas en cuadrícula (lunes a domingo), escudos y números del mes.
 import type { GameState, Habit } from './types';
-import { dailyStreakInfo, dayKey, habitStreakDays, isHabitDone, shiftDay, weekStart } from './game';
+import { dailyStreakInfo, dayKey, habitStreakDays, isHabitDone, MINIMUM_MAX, shiftDay, weekStart } from './game';
+import { SHIELD } from './economy';
 import { Icon } from './icons';
 
 const WD = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
@@ -43,9 +44,40 @@ export function HabitHistory({ state, habit, now, onToggleDay }: { state: GameSt
         <span><b className="mono">{total}</b> en total</span>
         {habitStreakDays(state, habit.id, now) > 0 && shields.size > 0 && <span><Icon name="shield" /> Escudo usado esta racha</span>}
       </div>
-      <p className="hint">Puedes marcar o desmarcar los últimos 7 días si se te olvidó. {!weekly && 'Escudo: un día fallado por semana no rompe la racha si el día anterior lo hiciste (ese día no suma).'}</p>
+      {habit.minimum && <p className="small-text"><b>Mínimo para un día malo:</b> {habit.minimum}</p>}
+      <p className="hint">Puedes marcar o desmarcar los últimos 7 días si se te olvidó. {!weekly && `Nunca falles dos días seguidos. Un día fallado se puede salvar con un escudo de racha (Tienda, ${SHIELD.cost} monedas) si el anterior lo hiciste; ese día no suma.`}</p>
     </div>
   );
+}
+
+/** Campo del mínimo: lo que vale en un día malo. Solo se enseña cuando la racha peligra, para no quedarse siempre en él. */
+export function MinimumInput({ id, value, onChange }: { id: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <label className="minimum-input" htmlFor={id}>
+      <span className="small-text">Mínimo para un día malo (opcional)</span>
+      <input id={id} value={value} onChange={(e) => onChange(e.target.value)} maxLength={MINIMUM_MAX} placeholder="ej. 5 minutos, 1 página, 10 flexiones" />
+    </label>
+  );
+}
+
+/** Texto de «Compartir mi semana»: % de cada hábito de lunes a hoy, para mandarlo a un amigo. */
+export function weekShareText(state: GameState, now: number): string {
+  const start = new Date(`${weekStart(now)}T12:00:00`).getTime();
+  const days = Array.from({ length: 7 }, (_, i) => dayKey(shiftDay(start, i))).filter((d) => d <= dayKey(now));
+  const fmt = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }).replace('.', '');
+  const lines = state.habits.map((h) => {
+    const counted = days.filter((d) => d >= dayKey(h.createdAt));
+    const done = counted.filter((d) => isHabitDone(state, h.id, d)).length;
+    const need = h.frequency === 'weekly' ? (h.perWeek ?? 1) : counted.length;
+    const pct = need ? Math.min(100, Math.round((done / need) * 100)) : 0;
+    return { pct, text: `- ${h.name}: ${done}/${need} (${pct} %)${pct < 80 ? ' · por debajo del 80 %' : ''}` };
+  });
+  const avg = lines.length ? Math.round(lines.reduce((n, l) => n + l.pct, 0) / lines.length) : 0;
+  return [
+    `Mi semana en Excelsior (${fmt(days[0])} – ${fmt(days.at(-1)!)})`,
+    ...lines.map((l) => l.text),
+    `Media: ${avg} %`,
+  ].join('\n');
 }
 
 /**

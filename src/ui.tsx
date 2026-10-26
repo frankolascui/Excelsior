@@ -3,13 +3,14 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import type { AttributeRewards, GameState, Habit, Quest, QuestType } from './types';
 import { ATTRIBUTES, attributeHistory, attributeLevel, attributeXp, avatarInfo, formatAttrXp, habitRewards, questRewards } from './attributes';
 import {
-  daysUntil, CUSTOM_LIMITS, dayKey, habitStreak, habitWeekCount, habitXp, isHabitDone, levelInfo, QUEST_LABEL, questAttributeRewards, repeatLabel, questXp, shiftDay, totalXp, XP_RULES,
+  daysUntil, CUSTOM_LIMITS, dayKey, habitAtRisk, habitStreak, habitWeekCount, habitXp, isHabitDone, levelInfo, QUEST_LABEL, questAttributeRewards, repeatLabel, questXp, shiftDay, totalXp, XP_RULES,
 } from './game';
 import { CustomizeToggle, InlineEdit, RewardEditor, sameRewards, type CustomValue } from './customize';
 import { RitualCTA } from './ritual';
 import { DatePicker, dayWords, RepeatPicker } from './pickers';
 import './core.css';
-import { HabitHistory, habitShields } from './habits-ui';
+import { HabitHistory, habitShields, MinimumInput } from './habits-ui';
+import { shieldableDay, shieldsLeft } from './economy';
 import { QuestSteps, type StepActions } from './steps-ui';
 import { nextStepDue } from './core';
 import { AvatarPortrait, initialOf } from './portrait';
@@ -251,7 +252,7 @@ export function QuickAddQuest({
 }
 
 export function HabitItem({
-  state, habit, now, onToggle, onDelete, onEdit, onToggleDay, handle,
+  state, habit, now, onToggle, onDelete, onEdit, onToggleDay, onShield, handle,
 }: {
   state: GameState;
   habit: Habit;
@@ -260,12 +261,15 @@ export function HabitItem({
   /** Con él, los puntos de la semana se pueden pulsar y el nombre abre el historial. */
   onToggleDay?: (day: string) => void;
   onDelete?: () => void;
-  onEdit?: (name: string, v: CustomValue) => void;
+  onEdit?: (name: string, v: CustomValue, minimum: string) => void;
+  /** Usa un escudo de racha del cofre en ese día fallado. */
+  onShield?: (day: string) => void;
   /** Asa para ordenar arrastrando (la pone la lista). */
   handle?: ReactNode;
 }) {
   const [editing, setEditing] = useState(false);
   const [open, setOpen] = useState(false);
+  const [minimum, setMinimum] = useState(habit.minimum ?? '');
   if (editing && onEdit) {
     const auto = habitRewards(habit.name);
     return (
@@ -274,7 +278,8 @@ export function HabitItem({
           name={habit.name} label="Nombre del hábito" autoXp={XP_RULES.habit} autoRewards={(n) => habitRewards(n)}
           initial={{ xp: habit.xp, rewards: sameRewards(habit.rewards, auto) ? undefined : habit.rewards }}
           maxXp={CUSTOM_LIMITS.habitXp} idPrefix={`edit-${habit.id}`}
-          onSave={(n, v) => { onEdit(n, v); setEditing(false); }} onCancel={() => setEditing(false)}
+          extra={<MinimumInput id={`edit-${habit.id}-min`} value={minimum} onChange={setMinimum} />}
+          onSave={(n, v) => { onEdit(n, v, minimum); setEditing(false); }} onCancel={() => { setMinimum(habit.minimum ?? ''); setEditing(false); }}
         />
       </li>
     );
@@ -287,8 +292,11 @@ export function HabitItem({
   const weekDone = weekly && weekCount >= (habit.perWeek ?? 1);
   const week = Array.from({ length: 7 }, (_, i) => dayKey(shiftDay(now, i - 6)));
   const shields = habitShields(state, habit, now);
+  const risk = habitAtRisk(state, habit, now);
+  const savable = onShield ? shieldableDay(state, habit.id, now) : null;
+  const stock = shieldsLeft(state);
   return (
-    <li className={done ? 'item done' : 'item'} data-habit={habit.id}>
+    <li className={done ? 'item done' : risk ? 'item at-risk' : 'item'} data-habit={habit.id}>
       <button
         className={done ? 'check checked' : 'check'}
         onClick={onToggle}
@@ -318,6 +326,14 @@ export function HabitItem({
           <span className="mono xp-tag">+{habitXp(habit)} XP</span>
           <RewardTags rewards={habit.rewards} />
         </span>
+        {(risk || (savable && stock > 0)) && (
+          <p className="habit-risk small-text">
+            {risk && <span><Icon name="alert" /> Ayer fallaste: nunca dos días seguidos. {habit.minimum ? <>Si hoy es un día malo, vale con lo mínimo: <b>{habit.minimum}</b>.</> : 'Hoy cuenta aunque sea poco.'}</span>}
+            {savable && (stock > 0
+              ? <button type="button" className="link" onClick={() => onShield!(savable)}><Icon name="shield" /> Salvar {dayWords(savable) === 'Ayer' ? 'ayer' : `el ${dayWords(savable)}`} con un escudo (tienes {stock})</button>
+              : risk && <span className="muted"> O compra un escudo de racha en la Tienda de la Arena.</span>)}
+          </p>
+        )}
         {open && onToggleDay && <HabitHistory state={state} habit={habit} now={now} onToggleDay={onToggleDay} />}
       </div>
       <div className="item-actions">

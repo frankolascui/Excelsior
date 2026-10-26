@@ -196,28 +196,56 @@ function dailyStreak(s: GameState, habitId: string, now: number): number {
   return dailyStreakInfo(s, habitId, now).streak;
 }
 
+/** Hasta este día (incluido) seguía el escudo gratis de 1 fallo por semana; desde entonces los escudos se compran. */
+export const FREE_SHIELD_UNTIL = '2026-10-26';
+
+/** Días de un hábito salvados con escudos comprados en la tienda. */
+export function shieldedDays(s: GameState, habitId: string): Set<string> {
+  return new Set(s.purchases.filter((p) => p.shield?.habitId === habitId).map((p) => p.shield!.day));
+}
+
 /**
- * Racha diaria con escudo: un día fallado por semana (lunes a domingo) no la rompe si el día anterior sí lo hiciste.
- * El día salvado no suma a la racha. `shields` son los días salvados.
+ * Racha diaria con escudos: un día fallado no la rompe si tiene un escudo de la tienda y el día anterior sí lo hiciste
+ * (nunca dos días seguidos). El día salvado no suma. `shields` son los días salvados.
+ * Las rachas antiguas conservan el escudo gratis (1 por semana) hasta FREE_SHIELD_UNTIL.
  */
 export function dailyStreakInfo(s: GameState, habitId: string, now: number): { streak: number; shields: string[] } {
   const days = new Set(s.habitCompletions.filter((c) => c.habitId === habitId).map((c) => c.day));
+  const bought = shieldedDays(s, habitId);
   let cursor = days.has(dayKey(now)) ? now : shiftDay(now, -1);
   let streak = 0;
   const shields: string[] = [];
   for (;;) {
-    if (days.has(dayKey(cursor))) {
+    const day = dayKey(cursor);
+    if (days.has(day)) {
       streak++;
     } else {
-      const week = weekStart(cursor);
-      const prev = shiftDay(cursor, -1);
-      if (streak === 0 && shields.length === 0 && !days.has(dayKey(prev))) break;
-      if (!days.has(dayKey(prev)) || shields.some((d) => weekStart(new Date(`${d}T12:00:00`).getTime()) === week)) break;
-      shields.push(dayKey(cursor));
+      const prevDone = days.has(dayKey(shiftDay(cursor, -1)));
+      if (!prevDone) break;
+      if (!bought.has(day)) {
+        // ayer fallado y aún no se ha perdido: hoy se puede salvar haciéndolo (o con un escudo)
+        const pending = streak === 0 && shields.length === 0 && day === dayKey(shiftDay(now, -1));
+        const week = weekStart(cursor);
+        const free = day <= FREE_SHIELD_UNTIL && !shields.some((d) => weekStart(new Date(`${d}T12:00:00`).getTime()) === week);
+        if (!pending && !free) break;
+        if (!free) { cursor = shiftDay(cursor, -1); continue; } // pendiente: no es un escudo
+      }
+      shields.push(day);
     }
     cursor = shiftDay(cursor, -1);
   }
   return { streak, shields };
+}
+
+/**
+ * Racha en peligro: ayer no se hizo (ni hay escudo) pero anteayer sí, y hoy aún no. Si hoy tampoco, se pierde.
+ * Devuelve el día fallado o null.
+ */
+export function habitAtRisk(s: GameState, h: Habit, now: number): string | null {
+  if (h.frequency === 'weekly' || isHabitDone(s, h.id, dayKey(now))) return null;
+  const y = dayKey(shiftDay(now, -1));
+  if (isHabitDone(s, h.id, y) || shieldedDays(s, h.id).has(y) || y <= FREE_SHIELD_UNTIL) return null;
+  return isHabitDone(s, h.id, dayKey(shiftDay(now, -2))) ? y : null;
 }
 
 /** Tope diario de XP: crece con el nivel con el que empezaste el día (más nivel, más margen). */
@@ -435,8 +463,10 @@ export function habitXp(h: Habit): number {
   return h.xp ?? XP_RULES.habit;
 }
 
+export const MINIMUM_MAX = 80;
+
 export function addHabit(
-  s: GameState, name: string, now: number, opts: { focus?: AttributeId; xp?: number; rewards?: AttributeRewards; perWeek?: number } = {},
+  s: GameState, name: string, now: number, opts: { focus?: AttributeId; xp?: number; rewards?: AttributeRewards; perWeek?: number; minimum?: string } = {},
 ): GameState {
   const habit: Habit = {
     id: uid(), name: name.trim(), frequency: 'daily', createdAt: now,
@@ -447,11 +477,12 @@ export function addHabit(
     habit.perWeek = Math.max(1, Math.min(6, Math.round(opts.perWeek)));
   }
   if (opts.xp !== undefined) habit.xp = Math.round(clamp(opts.xp, CUSTOM_LIMITS.habitXp));
+  if (opts.minimum?.trim()) habit.minimum = opts.minimum.trim().slice(0, MINIMUM_MAX);
   return { ...s, habits: [...s.habits, habit] };
 }
 
 /** Edita un hábito; los cambios valen para los próximos días (lo ya ganado no cambia). */
-export function updateHabit(s: GameState, id: string, patch: { name?: string; xp?: number; rewards?: AttributeRewards }): GameState {
+export function updateHabit(s: GameState, id: string, patch: { name?: string; xp?: number; rewards?: AttributeRewards; minimum?: string }): GameState {
   return {
     ...s,
     habits: s.habits.map((h) => {
@@ -459,6 +490,10 @@ export function updateHabit(s: GameState, id: string, patch: { name?: string; xp
       const next: Habit = { ...h, name: patch.name?.trim() || h.name, rewards: patch.rewards ? cleanRewards(patch.rewards) : habitRewards(patch.name ?? h.name) };
       delete next.xp;
       if (patch.xp !== undefined) next.xp = Math.round(clamp(patch.xp, CUSTOM_LIMITS.habitXp));
+      if (patch.minimum !== undefined) {
+        const m = patch.minimum.trim().slice(0, MINIMUM_MAX);
+        if (m) next.minimum = m; else delete next.minimum;
+      }
       return next;
     }),
   };
@@ -509,6 +544,17 @@ export function toggleHabit(s: GameState, habitId: string, now: number, day = da
   }
   const completion = { id: uid(), habitId, day, at: now };
   const base = habitXp(habit);
+  // si ese día tenía escudo, ya no hace falta: vuelve sin usar
+  if (s.purchases.some((p) => p.shield?.habitId === habitId && p.shield.day === day)) {
+    s = {
+      ...s,
+      purchases: s.purchases.map((p) => {
+        if (p.shield?.habitId !== habitId || p.shield.day !== day) return p;
+        const { shield: _, ...rest } = p;
+        return { ...rest, usedAt: null };
+      }),
+    };
+  }
   const amount = cappedAmount(s, 'habit', base, now);
   let state: GameState = { ...s, habitCompletions: [...s.habitCompletions, completion] };
   state = withXp(state, { at: now, amount, source: 'habit', sourceId: completion.id, label: habit.name, attributes: habit.rewards });

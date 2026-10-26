@@ -6,7 +6,7 @@ import { CustomizeToggle, RewardEditor, sameRewards, type CustomValue } from './
 import { addKingdom, BUILDINGS, buildings, deleteKingdom, kingdomName, kingdomProgress, nextStage, renameKingdom, setKingdomDeadline } from './kingdoms';
 import { DatePicker } from './pickers';
 import { CityScene } from './city';
-import { kingdomBonus } from './economy';
+import { kingdomBonus, spendShield } from './economy';
 import { RealmMap } from './realm';
 import { AmbientPanel } from './ambient-ui';
 import { WeeklyChronicle } from './settings';
@@ -36,7 +36,7 @@ import { addStep, deleteStep, setStepDeadline, toggleStep } from './core';
 import type { StepActions } from './steps-ui';
 import { SessionEdit } from './session-ui';
 import { QuestTemplates } from './templates-ui';
-import { DragHandle } from './habits-ui';
+import { DragHandle, MinimumInput, weekShareText } from './habits-ui';
 import { ACHIEVEMENTS } from './achievements';
 
 export type Game = ReturnType<typeof useGame>;
@@ -201,7 +201,7 @@ export function Dashboard({
             <ul className="list">
               {habitsInOrder(state, now).map((h) => (
                 <HabitItem key={h.id} state={state} habit={h} now={now} onToggle={() => act((st) => toggleHabit(st, h.id, Date.now()), CAP_HABIT, { sound: 'habit' })}
-                  onToggleDay={(d) => act((st) => toggleHabit(st, h.id, Date.now(), d), CAP_HABIT, { sound: 'habit' })} />
+                  onToggleDay={(d) => act((st) => toggleHabit(st, h.id, Date.now(), d), CAP_HABIT, { sound: 'habit' })} onShield={(d) => spendHabitShield(game, h.id, d)} />
               ))}
             </ul>
           )}
@@ -611,6 +611,15 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
 
 // ---------- Hábitos ----------
 
+/** Gasta un escudo de racha del cofre en un día fallado. */
+function spendHabitShield(game: Game, habitId: string, day: string) {
+  const r = spendShield(game.state, habitId, day, Date.now());
+  if (!r.ok) return;
+  game.act(() => r.state);
+  sfx.purchase();
+  game.toast('{i:shield} Escudo usado: la racha sigue viva.', 'level');
+}
+
 export function Habits({ game }: { game: Game }) {
   const { state, act } = game;
   const now = useNow(30_000);
@@ -618,14 +627,23 @@ export function Habits({ game }: { game: Game }) {
   const [custom, setCustom] = useState<CustomValue>({});
   const [open, setOpen] = useState(false);
   const [perWeek, setPerWeek] = useState(7); // 7 = cada día
+  const [minimum, setMinimum] = useState('');
   const ordered = habitsInOrder(state, now);
   const doneIds = new Set(ordered.filter((h) => habitCleared(state, h, now)).map((h) => h.id));
+  async function shareWeek() {
+    const text = weekShareText(state, Date.now());
+    try {
+      if (typeof navigator.share === 'function') await navigator.share({ title: 'Mi semana en Excelsior', text });
+      else { await navigator.clipboard.writeText(text); game.toast('Resumen copiado: pégalo en el chat de tu amigo.', 'info'); }
+    } catch { /* cancelado */ }
+  }
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
     const rewards = custom.rewards && !sameRewards(custom.rewards, habitRewards(name)) ? custom.rewards : undefined;
-    act((s) => addHabit(s, name, Date.now(), { xp: custom.xp, rewards, perWeek }));
+    act((s) => addHabit(s, name, Date.now(), { xp: custom.xp, rewards, perWeek, minimum }));
     setName('');
+    setMinimum('');
     setCustom({});
     setOpen(false);
   }
@@ -643,10 +661,21 @@ export function Habits({ game }: { game: Game }) {
           <CustomizeToggle open={open} onToggle={() => setOpen(!open)} custom={custom.xp !== undefined || custom.rewards !== undefined} />
           <button type="submit" className="primary" disabled={!name.trim()}><Icon name="plus" /> Añadir</button>
         </form>
-        {open && <RewardEditor autoXp={XP_RULES.habit} autoRewards={habitRewards(name)} value={custom} onChange={setCustom} maxXp={CUSTOM_LIMITS.habitXp} idPrefix="new-habit" />}
+        {open && (
+          <>
+            <MinimumInput id="new-habit-min" value={minimum} onChange={setMinimum} />
+            <RewardEditor autoXp={XP_RULES.habit} autoRewards={habitRewards(name)} value={custom} onChange={setCustom} maxXp={CUSTOM_LIMITS.habitXp} idPrefix="new-habit" />
+          </>
+        )}
         <p className="hint">+{XP_RULES.habit} XP cada vez que lo completes. Los diarios hacen racha de días; los de «N veces por semana», racha de semanas cumplidas (de lunes a domingo). Los puntos son los últimos 7 días: pulsa uno para marcar un día que se te olvidó, o el nombre para ver su historial.</p>
       </section>
       <section className="panel">
+        {state.habits.length > 0 && (
+          <div className="share-week">
+            <button type="button" className="ghost" onClick={shareWeek}><Icon name="send" /> Compartir mi semana</button>
+            <span className="hint">Manda cada domingo tu % de la semana a un amigo: cumplir delante de alguien ayuda.</span>
+          </div>
+        )}
         {state.habits.length === 0 ? (
           <div>
             <p className="empty">Aún no tienes hábitos. Escribe uno arriba o elige alguno:</p>
@@ -660,7 +689,8 @@ export function Habits({ game }: { game: Game }) {
               // solo se ordena entre los del mismo grupo (pendientes o ya hechos)
               const group = ordered.filter((x) => doneIds.has(x.id) === doneIds.has(h.id)).map((x) => x.id);
               return (
-                <HabitItem key={h.id} state={state} habit={h} now={now} onToggle={() => act((s) => toggleHabit(s, h.id, Date.now()), CAP_HABIT, { sound: 'habit' })} onToggleDay={(d) => act((s) => toggleHabit(s, h.id, Date.now(), d), CAP_HABIT, { sound: 'habit' })} onDelete={() => act((s) => deleteHabit(s, h.id))} onEdit={(n, v) => act((s) => updateHabit(s, h.id, { name: n, ...v }))}
+                <HabitItem key={h.id} state={state} habit={h} now={now} onToggle={() => act((s) => toggleHabit(s, h.id, Date.now()), CAP_HABIT, { sound: 'habit' })} onToggleDay={(d) => act((s) => toggleHabit(s, h.id, Date.now(), d), CAP_HABIT, { sound: 'habit' })} onDelete={() => act((s) => deleteHabit(s, h.id))} onEdit={(n, v, m) => act((s) => updateHabit(s, h.id, { name: n, ...v, minimum: m }))}
+                  onShield={(d) => spendHabitShield(game, h.id, d)}
                   handle={<DragHandle name={h.name} group={group} onDrop={(order) => act((s) => reorderHabits(s, order))} />} />
               );
             })}

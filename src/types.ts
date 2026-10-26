@@ -58,6 +58,8 @@ export interface Habit {
   createdAt: number;
   rewards: AttributeRewards;
   xp?: number; // XP a medida; sin él, XP_RULES.habit
+  /** Lo mínimo que cuenta en un día malo (solo un recordatorio, no se marca aparte). */
+  minimum?: string;
 }
 
 export interface HabitCompletion {
@@ -162,6 +164,8 @@ export interface Purchase {
   at: number;
   /** Cuándo lo usaste. null = guardado en el cofre sin usar; sin el campo (canjes antiguos) cuenta como usado. */
   usedAt?: number | null;
+  /** Escudo de racha ya usado: el día fallado de ese hábito que salva. */
+  shield?: { habitId: string; day: string };
 }
 
 /** De qué se alimenta el daño a un boss: XP global, minutos de foco, hábitos completados o XP de un atributo. */

@@ -1,7 +1,7 @@
 // Monedas y tienda de recompensas. El saldo se deriva: lo ganado (XP, bosses, reinos) menos lo gastado.
 import type { GameState, Purchase, Reward } from './types';
 import type { IconName } from './icon-data';
-import { totalXp, uid } from './game';
+import { dayKey, isHabitDone, shiftDay, shieldedDays, totalXp, uid } from './game';
 import { bossLoot, defeatedBosses } from './bosses';
 import { kingdomProgress } from './kingdoms';
 import { trophyCoins } from './trophies';
@@ -110,9 +110,50 @@ export function buyReward(s: GameState, rewardId: string, now: number): { state:
   return { state: { ...s, purchases: [...s.purchases, purchase] }, ok: true };
 }
 
-/** Premios canjeados que aún no has usado (el cofre), del más antiguo al más nuevo. */
+/** Premios canjeados que aún no has usado (el cofre), del más antiguo al más nuevo. Los escudos van aparte. */
 export function unusedPurchases(s: GameState): Purchase[] {
-  return s.purchases.filter((p) => p.usedAt === null);
+  return s.purchases.filter((p) => p.usedAt === null && p.rewardId !== SHIELD.id);
+}
+
+// ---------- Escudo de racha ----------
+
+/** Objeto fijo de la tienda: salva un día fallado de un hábito diario si el anterior lo hiciste. */
+export const SHIELD = { id: 'streak-shield', name: 'Escudo de racha', icon: 'shield', cost: 50 } as const;
+
+/** Escudos comprados que aún no has usado. */
+export function shieldsLeft(s: GameState): number {
+  return s.purchases.filter((p) => p.rewardId === SHIELD.id && p.usedAt === null).length;
+}
+
+export function buyShield(s: GameState, now: number): { state: GameState; ok: boolean } {
+  if (coinBalance(s, now) < SHIELD.cost) return { state: s, ok: false };
+  const purchase: Purchase = { id: uid(), rewardId: SHIELD.id, name: SHIELD.name, icon: SHIELD.icon, cost: SHIELD.cost, at: now, usedAt: null };
+  return { state: { ...s, purchases: [...s.purchases, purchase] }, ok: true };
+}
+
+/**
+ * Día que un escudo puede salvar ahora: el último fallo de los 7 últimos días con el día anterior hecho
+ * y todo hecho desde entonces hasta ayer (si no, la racha ya se perdió). Null si no hay ninguno.
+ */
+export function shieldableDay(s: GameState, habitId: string, now: number): string | null {
+  const h = s.habits.find((x) => x.id === habitId);
+  if (!h || h.frequency === 'weekly') return null;
+  const saved = shieldedDays(s, habitId);
+  const ok = (d: string) => isHabitDone(s, habitId, d) || saved.has(d);
+  for (let i = 1; i <= 6; i++) {
+    const d = dayKey(shiftDay(now, -i));
+    if (ok(d)) continue;
+    if (d < dayKey(h.createdAt)) return null;
+    return isHabitDone(s, habitId, dayKey(shiftDay(now, -i - 1))) ? d : null;
+  }
+  return null;
+}
+
+/** Usa un escudo del cofre en ese día fallado. */
+export function spendShield(s: GameState, habitId: string, day: string, now: number): { state: GameState; ok: boolean } {
+  const p = s.purchases.find((x) => x.rewardId === SHIELD.id && x.usedAt === null);
+  if (!p || shieldableDay(s, habitId, now) !== day) return { state: s, ok: false };
+  return { state: { ...s, purchases: s.purchases.map((x) => (x.id === p.id ? { ...x, usedAt: now, shield: { habitId, day } } : x)) }, ok: true };
 }
 
 /** Usa un premio del cofre. */
