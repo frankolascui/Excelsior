@@ -3,7 +3,7 @@ import {
   focusPercent, setPhase, timerTotals,
   addHabit, addQuest, completeQuest, createProfile, dayKey, emptyState, habitStreak,
   levelInfo, shiftDay, startTimer, stopTimer, suggest, toggleHabit, totalXp, undoQuest,
-  XP_RULES,
+  XP_RULES, habitsInOrder, moveHabit,
 } from './game';
 
 const NOW = new Date(2026, 9, 4, 10, 0).getTime();
@@ -130,5 +130,30 @@ describe('deep work: descanso, distracción y % de foco', () => {
   it('acepta un temporizador guardado por la versión anterior (sin fases)', () => {
     const s = { ...emptyState(), activeTimer: { startedAt: NOW, questId: null, targetMinutes: 0 } };
     expect(stopTimer(s, NOW + 20 * MIN).session?.minutes).toBe(20);
+  });
+});
+
+describe('orden de los hábitos', () => {
+  const three = () => ['Leer', 'Meditar', 'Correr'].reduce((st, n) => addHabit(st, n, NOW), createProfile(emptyState(), 'Nico', [], NOW));
+  const names = (s: ReturnType<typeof three>) => habitsInOrder(s, NOW).map((h) => h.name);
+
+  it('los hechos hoy bajan al final y los demás guardan su orden', () => {
+    let s = three();
+    s = toggleHabit(s, s.habits[0].id, NOW).state;
+    expect(names(s)).toEqual(['Meditar', 'Correr', 'Leer']);
+    s = toggleHabit(s, s.habits[0].id, NOW).state; // desmarcar: vuelve a su sitio
+    expect(names(s)).toEqual(['Leer', 'Meditar', 'Correr']);
+  });
+
+  it('subir y bajar cambia el orden respecto al vecino que se ve', () => {
+    let s = three();
+    const id = (n: string) => s.habits.find((h) => h.name === n)!.id;
+    const visible = () => habitsInOrder(s, NOW).map((h) => h.id);
+    s = moveHabit(s, id('Correr'), -1, visible());
+    expect(names(s)).toEqual(['Leer', 'Correr', 'Meditar']);
+    s = toggleHabit(s, id('Correr'), NOW).state; // Correr hecho: al final
+    s = moveHabit(s, id('Leer'), 1, visible()); // Leer baja por debajo de Meditar
+    expect(names(s)).toEqual(['Meditar', 'Leer', 'Correr']);
+    expect(moveHabit(s, id('Meditar'), -1, visible())).toBe(s); // ya es el primero
   });
 });

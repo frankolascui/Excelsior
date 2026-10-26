@@ -525,6 +525,15 @@ await page.click('[data-tour="habits"] button:has-text("Añadir")');
 check(await seen('.item:has-text("Gimnasio") .freq-tag:has-text("0/3 esta semana")'), 'hábito 3 veces por semana');
 await page.click('button[aria-label="Completar Gimnasio"]');
 check(await seen('.item:has-text("Gimnasio") .freq-tag:has-text("1/3 esta semana")'), 'marcarlo suma a la semana');
+const habitNames = () => page.$$eval('.item:has(.move-btns) .item-title', (els) => els.map((e) => e.textContent));
+let hn = await habitNames();
+check(hn.at(-1) === 'Gimnasio', `al completarlo, el hábito baja al final (${hn.join(', ')})`);
+if (hn.length >= 3) {
+  await page.click(`button[aria-label="Bajar ${hn[0]}"]`);
+  const after = await habitNames();
+  check(after[1] === hn[0] && after[0] === hn[1], 'el botón de bajar mueve el hábito un puesto');
+  check(await page.isDisabled(`button[aria-label="Subir ${after[0]}"]`), 'el primero no puede subir más');
+}
 await page.click('.habit-open:has-text("Gimnasio")');
 check(await seen('.item:has-text("Gimnasio") .habit-history .hh-grid'), 'pulsar el nombre de un hábito abre su historial');
 await page.click('.item:has-text("Gimnasio") button.dot[aria-label^="Marcar Gimnasio (ayer)"]');

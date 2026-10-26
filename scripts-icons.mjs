@@ -20,7 +20,7 @@ const MAP = {
   link: 'l:link', trend: 'l:trending-up', music: 'l:music', sparkles: 'l:sparkles', 'arrow-left': 'l:arrow-left', 'arrow-right': 'l:arrow-right',
   x: 'l:x', plus: 'l:plus', trash: 'l:trash-2', 'user-plus': 'l:user-plus', 'user-check': 'l:user-check', users: 'l:users', user: 'l:user-round',
   search: 'l:search', eye: 'l:eye', 'eye-off': 'l:eye-off', 'log-out': 'l:log-out', 'log-in': 'l:log-in', send: 'l:send', mail: 'l:mail',
-  'rotate-ccw': 'l:rotate-ccw', 'chevron-left': 'l:chevron-left', 'chevron-right': 'l:chevron-right', 'chevron-down': 'l:chevron-down',
+  'rotate-ccw': 'l:rotate-ccw', 'chevron-left': 'l:chevron-left', 'chevron-right': 'l:chevron-right', 'chevron-down': 'l:chevron-down', 'chevron-up': 'l:chevron-up',
   heart: 'l:heart', star: 'l:star', flag: 'l:flag', target: 'l:target', copy: 'l:copy', palette: 'l:palette', save: 'l:save',
   sliders: 'l:sliders-horizontal', info: 'l:info', moon: 'l:moon', sunrise: 'l:sunrise', 'grip': 'l:grip-vertical',
   // Tipos de evento

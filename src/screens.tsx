@@ -17,7 +17,7 @@ import { XpChart } from './charts';
 import {
   addHabit, addQuest, cancelTimer, CUSTOM_LIMITS, updateHabit, updateQuest, completeQuest, createProfile, dayKey, deepWorkMinutesOnDay,
   deleteHabit, deleteQuest, focusPercent, habitStreakDays, levelInfo, pendingQuests, scheduledQuests, setQuestDeadline, setQuestRepeat, setPhase, timerTotals,
-  pomodoroStatus, pomodoroStep, startTimer, stopTimer, suggest, toggleHabit, totalXp, undoQuest, XP_RULES,
+  pomodoroStatus, pomodoroStep, startTimer, stopTimer, suggest, toggleHabit, habitCleared, habitsInOrder, moveHabit, totalXp, undoQuest, XP_RULES,
 } from './game';
 import {
   AttributeList, AvatarCard, ConfirmButton, deadlineLabel, formatClock, shortDate, formatMinutes, HabitItem, LevelBar, QuestItem,
@@ -197,7 +197,7 @@ export function Dashboard({
             <p className="empty">Aún no tienes hábitos.</p>
           ) : (
             <ul className="list">
-              {state.habits.map((h) => (
+              {habitsInOrder(state, now).map((h) => (
                 <HabitItem key={h.id} state={state} habit={h} now={now} onToggle={() => act((st) => toggleHabit(st, h.id, Date.now()), CAP_HABIT, { sound: 'habit' })}
                   onToggleDay={(d) => act((st) => toggleHabit(st, h.id, Date.now(), d), CAP_HABIT, { sound: 'habit' })} />
               ))}
@@ -616,6 +616,8 @@ export function Habits({ game }: { game: Game }) {
   const [custom, setCustom] = useState<CustomValue>({});
   const [open, setOpen] = useState(false);
   const [perWeek, setPerWeek] = useState(7); // 7 = cada día
+  const ordered = habitsInOrder(state, now);
+  const doneIds = new Set(ordered.filter((h) => habitCleared(state, h, now)).map((h) => h.id));
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
@@ -652,9 +654,15 @@ export function Habits({ game }: { game: Game }) {
           </div>
         ) : (
           <ul className="list">
-            {state.habits.map((h) => (
-              <HabitItem key={h.id} state={state} habit={h} now={now} onToggle={() => act((s) => toggleHabit(s, h.id, Date.now()), CAP_HABIT, { sound: 'habit' })} onToggleDay={(d) => act((s) => toggleHabit(s, h.id, Date.now(), d), CAP_HABIT, { sound: 'habit' })} onDelete={() => act((s) => deleteHabit(s, h.id))} onEdit={(n, v) => act((s) => updateHabit(s, h.id, { name: n, ...v }))} />
-            ))}
+            {ordered.map((h, i) => {
+              // solo se mueve entre los del mismo grupo (pendientes o ya hechos)
+              const same = (j: number) => ordered[j] && doneIds.has(ordered[j].id) === doneIds.has(h.id);
+              const move = (dir: -1 | 1) => () => act((s) => moveHabit(s, h.id, dir, ordered.map((x) => x.id)));
+              return (
+                <HabitItem key={h.id} state={state} habit={h} now={now} onToggle={() => act((s) => toggleHabit(s, h.id, Date.now()), CAP_HABIT, { sound: 'habit' })} onToggleDay={(d) => act((s) => toggleHabit(s, h.id, Date.now(), d), CAP_HABIT, { sound: 'habit' })} onDelete={() => act((s) => deleteHabit(s, h.id))} onEdit={(n, v) => act((s) => updateHabit(s, h.id, { name: n, ...v }))}
+                  onMove={{ up: same(i - 1) ? move(-1) : undefined, down: same(i + 1) ? move(1) : undefined }} />
+              );
+            })}
           </ul>
         )}
       </section>

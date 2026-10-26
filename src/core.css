@@ -237,3 +237,7 @@ button.tg-session { font-family: inherit; justify-content: flex-start; align-ite
 .tg-block.key { font-weight: 700; z-index: 3; background: color-mix(in srgb, var(--ev) 42%, var(--surface-2)); box-shadow: 0 0 0 1.5px var(--ev), 0 4px 14px color-mix(in srgb, var(--ev) 30%, transparent); }
 .ev-chip.key { border-color: color-mix(in srgb, var(--ev) 60%, transparent); border-left-width: 4px; background: color-mix(in srgb, var(--ev) 16%, transparent); }
 .tg-block.key b { font-weight: 800; }
+
+/* Subir / bajar hábitos */
+.move-btns { display: inline-flex; gap: 2px; }
+.move-btns .icon-btn:disabled { opacity: 0.25; cursor: default; }

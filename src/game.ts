@@ -464,6 +464,26 @@ export function updateHabit(s: GameState, id: string, patch: { name?: string; xp
   };
 }
 
+/** Ya no hay que hacerlo hoy: hecho hoy o, si es semanal, objetivo de la semana cumplido. */
+export const habitCleared = (s: GameState, h: Habit, now: number) => isHabitDone(s, h.id, dayKey(now)) || habitSatisfied(s, h, now);
+
+/** Orden en pantalla: los que faltan arriba y los ya cumplidos al final; dentro de cada grupo, el orden elegido. */
+export function habitsInOrder(s: GameState, now: number): Habit[] {
+  const done = (h: Habit) => habitCleared(s, h, now);
+  return [...s.habits.filter((h) => !done(h)), ...s.habits.filter(done)];
+}
+
+/** Sube (−1) o baja (+1) un hábito un puesto respecto al que tiene al lado en `visible` (la lista tal como se ve). */
+export function moveHabit(s: GameState, id: string, dir: -1 | 1, visible: string[]): GameState {
+  const other = visible[visible.indexOf(id) + dir];
+  if (!visible.includes(id) || !other) return s;
+  const i = s.habits.findIndex((h) => h.id === id), j = s.habits.findIndex((h) => h.id === other);
+  if (i < 0 || j < 0) return s;
+  const habits = [...s.habits];
+  [habits[i], habits[j]] = [habits[j], habits[i]];
+  return { ...s, habits };
+}
+
 export function deleteHabit(s: GameState, id: string): GameState {
   return { ...s, habits: s.habits.filter((h) => h.id !== id) };
 }
