@@ -224,7 +224,8 @@ export function useGame() {
           toast(`+${r.xp} XP`);
           sfx[opts.sound ?? 'reward']();
           if (opts.party) confetti({ big: true });
-          else if (Math.random() < 0.12) confetti({ count: 70 });
+          // Los hábitos no lanzan confeti a pantalla completa: su efecto va dentro de la fila (motion.ts).
+          else if (opts.sound !== 'habit' && Math.random() < 0.12) confetti({ count: 70 });
           // Golpes a los bosses activos que no mueren con esta acción (la muerte la anuncia el efecto).
           const now = Date.now();
           for (const b of next.bosses) {

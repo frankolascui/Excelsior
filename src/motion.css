@@ -30,7 +30,7 @@
   background: linear-gradient(100deg, transparent 20%, color-mix(in srgb, var(--c1) 28%, transparent) 50%, transparent 80%);
   transform: translateX(-100%); animation: mo-sweep 0.7s ease-out forwards;
 }
-@keyframes mo-row { 30% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--c1) 60%, transparent), 0 0 26px color-mix(in srgb, var(--c1) 30%, transparent); } }
+@keyframes mo-row { 30% { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c1) 60%, transparent), inset 0 0 22px color-mix(in srgb, var(--c1) 22%, transparent); } }
 @keyframes mo-sweep { to { transform: translateX(100%); } }
 
 /* Desmarcar: sin animación ni transición (motion.ts pone data-quiet). */
@@ -45,6 +45,16 @@
 }
 .mo-spark:nth-child(odd) { background: var(--c2); box-shadow: 0 0 8px var(--c2); }
 @keyframes mo-spark { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; } }
+
+/* Confeti de los hábitos: dentro de la fila, recortado por sus bordes. */
+.mo-burst { position: absolute; inset: 0; z-index: 2; overflow: hidden; border-radius: inherit; pointer-events: none; }
+.mo-bit {
+  position: absolute; width: 6px; height: 3px; margin: -1.5px 0 0 -3px; border-radius: 1px; background: var(--c1);
+  animation: mo-bit 0.85s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+.mo-bit:nth-child(3n) { background: var(--c2); }
+.mo-bit:nth-child(3n + 1) { background: var(--c3); }
+@keyframes mo-bit { 0% { transform: translate(0, 0) rotate(0); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0; } }
 
 /* Barra de XP: al ganar XP la barra brilla y el número del nivel late. */
 .levelbar.gain .xpbar { animation: mo-bar 0.9s ease-out; }
@@ -79,5 +89,5 @@
   .main > .screen > *, .nav-item.on .nav-glyph, .overlay, .overlay-card, .item.mo-done, .item.mo-done::after,
   .levelbar.gain .xpbar, .levelbar.gain .levelbar-foot, .levelbar.lvl .level-badge, .levelup .emblem.big, .levelup .emblem.big .mono,
   .levelup::after, .levelup > *, .toast-xp { animation: none; }
-  .mo-spark { display: none; }
+  .mo-spark, .mo-burst { display: none; }
 }

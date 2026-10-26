@@ -8,6 +8,29 @@ function reducedMotion(): boolean {
   return typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 }
 
+/** Confeti pequeño dentro de la fila: sale del botón y no pasa de los bordes de la fila. */
+export function rowBurst(row: HTMLElement, x: number, y: number, doc: Document = document) {
+  if (reducedMotion()) return;
+  const box = doc.createElement('div');
+  box.className = 'mo-burst';
+  box.setAttribute('aria-hidden', 'true');
+  const r = row.getBoundingClientRect();
+  for (let i = 0; i < 14; i++) {
+    const a = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.6;
+    const d = 30 + Math.random() * 60;
+    const s = doc.createElement('span');
+    s.className = 'mo-bit';
+    s.style.left = `${x - r.left}px`;
+    s.style.top = `${y - r.top}px`;
+    s.style.setProperty('--dx', `${Math.round(Math.cos(a) * d * 1.6)}px`);
+    s.style.setProperty('--dy', `${Math.round(Math.sin(a) * d * 0.6)}px`);
+    s.style.setProperty('--rot', `${Math.round((Math.random() - 0.5) * 540)}deg`);
+    box.appendChild(s);
+  }
+  row.appendChild(box);
+  setTimeout(() => box.remove(), 900);
+}
+
 export function sparkBurst(x: number, y: number, doc: Document = document) {
   if (reducedMotion()) return;
   const box = doc.createElement('div');
@@ -47,8 +70,10 @@ export function installDoneFeedback(doc: Document = document) {
     const btn = (e.target as Element | null)?.closest?.('button.check') as HTMLElement | null;
     if (!btn || btn.classList.contains('checked') || (btn as HTMLButtonElement).disabled) return;
     const r = btn.getBoundingClientRect();
-    sparkBurst(r.left + r.width / 2, r.top + r.height / 2, doc);
     const row = btn.closest('.item') as HTMLElement | null;
+    // Hábitos: el efecto se queda dentro de su fila. Misiones: chispas en el body (la fila puede desaparecer).
+    if (row?.hasAttribute('data-habit')) rowBurst(row, r.left + r.width / 2, r.top + r.height / 2, doc);
+    else sparkBurst(r.left + r.width / 2, r.top + r.height / 2, doc);
     if (!row) return;
     // Tras el repintado de React: si la fila sigue ahí, destella.
     requestAnimationFrame(() => requestAnimationFrame(() => {
