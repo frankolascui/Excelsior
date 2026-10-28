@@ -81,8 +81,17 @@
 @keyframes fx-sway { 0%, 100% { transform: rotate(-1.6deg); } 50% { transform: rotate(1.6deg); } }
 .portrait .fx-dangle { transform-box: view-box; transform-origin: 0 0; animation: fx-dangle 3.6s ease-in-out infinite; }
 @keyframes fx-dangle { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
-.portrait .fx-flap { transform-box: view-box; transform-origin: 0 0; animation: fx-flap 3.4s ease-in-out infinite; }
-@keyframes fx-flap { 0%, 100% { transform: rotate(2deg) scale(1); } 45% { transform: rotate(-9deg) scale(1.03); } }
+/* Aleteo de las alas de Excelsior: bajan rápido, suben despacio y empiezan y acaban en la misma postura (bucle sin salto).
+   Ojo: no llamar a estos keyframes «fx-flap»; ese nombre ya lo usan los pájaros de styles.css y, según el orden del CSS,
+   las alas acababan con el de los pájaros (se daban la vuelta y volvían de golpe). */
+.portrait .fx-flap { transform-box: view-box; transform-origin: 0 0; animation: wing-beat 2.6s infinite; }
+@keyframes wing-beat {
+  0% { transform: rotate(0deg) scale(1, 1); animation-timing-function: cubic-bezier(0.5, 0, 0.75, 0.4); }
+  28% { transform: rotate(16deg) scale(0.9, 0.96); animation-timing-function: cubic-bezier(0.25, 0.6, 0.5, 1); }
+  40% { transform: rotate(17deg) scale(0.89, 0.96); animation-timing-function: ease-in-out; }
+  82% { transform: rotate(-5deg) scale(1.02, 1.02); animation-timing-function: ease-in-out; }
+  100% { transform: rotate(0deg) scale(1, 1); }
+}
 
 /* Barrido de luz sobre el escudo */
 .portrait .fx-sweep { animation: fx-sweep 5.5s ease-in-out infinite; }
