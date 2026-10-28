@@ -37,6 +37,7 @@ import type { StepActions } from './steps-ui';
 import { SessionEdit } from './session-ui';
 import { QuestTemplates } from './templates-ui';
 import { DragHandle, MinimumInput, weekShareText } from './habits-ui';
+import { InfoTip } from './infotip';
 import { ACHIEVEMENTS } from './achievements';
 
 export type Game = ReturnType<typeof useGame>;
@@ -272,21 +273,29 @@ export function Quests({ game, focusQuest, startFocus }: { game: Game; focusQues
       ))}
     </div>
   );
+  const title = (
+    <div className="title-row">
+      <div className="with-info">
+        <h1 className="screen-title">Misiones</h1>
+        <InfoTip label="Cómo funcionan las misiones"><p>Principal = lo importante. Diaria = para hoy. Secundaria = si sobra tiempo. Con «Misiones prehechas» las añades ya listas, con su XP y atributos.</p></InfoTip>
+      </div>
+      {toggle}
+    </div>
+  );
   if (view === 'calendar') {
     return (
       <div className="screen">
-        <div className="title-row"><h1 className="screen-title">Misiones</h1>{toggle}</div>
+        {title}
         <QuestCalendar game={game} now={now} focusQuest={focusQuest} startFocus={startFocus} capNote={CAP_QUEST} questOpts={questOpts} />
       </div>
     );
   }
   return (
     <div className="screen">
-      <div className="title-row"><h1 className="screen-title">Misiones</h1>{toggle}</div>
+      {title}
       <section className="panel" data-tour="quest-add">
         <QuickAddQuest autoFocus onAdd={(t, ty, c) => act((st) => addQuest(st, t, ty, Date.now(), c))} />
         <QuestTemplates game={game} />
-        <p className="hint">Principal = lo importante. Diaria = para hoy. Secundaria = si sobra tiempo. Con «Misiones prehechas» las añades ya listas, con su XP y atributos.</p>
       </section>
       <section className="panel">
         <header className="panel-head"><h3>Pendientes</h3><span className="count mono">{pending.length}</span></header>
@@ -520,7 +529,14 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
 
   return (
     <div className="screen">
-      <h1 className="screen-title">Deep Work</h1>
+      <div className="with-info">
+        <h1 className="screen-title">Deep Work</h1>
+        <InfoTip label="Cómo funciona el Deep Work">
+          <p>Durante la sesión puedes marcar Descanso o Me distraje. Solo el foco da 1 XP por minuto.</p>
+          <p>Si dices qué vas a hacer, lo práctico (ejercicios, programar, crear) sube Maestría y lo teórico (estudiar, leer, repasar) sube Sabiduría; si no, un poco de las dos. Siempre sube algo de Voluntad.</p>
+          <p>Foco real = foco ÷ (foco + distracción) × 100.</p>
+        </InfoTip>
+      </div>
 
       {result && shown && (
         <section className="panel result" aria-live="polite">
@@ -584,7 +600,6 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
         </div>
       </div>
       <AmbientPanel />
-      <p className="hint">Durante la sesión puedes marcar Descanso o Me distraje. Solo el foco da 1 XP por minuto. Si dices qué vas a hacer, lo práctico (ejercicios, programar, crear) sube Maestría y lo teórico (estudiar, leer, repasar) sube Sabiduría; si no, un poco de las dos. Siempre sube algo de Voluntad. Foco real = foco ÷ (foco + distracción) × 100.</p>
 
       <section className="panel">
         <header className="panel-head"><h3>Sesiones de hoy</h3><span className="count mono">{formatMinutes(deepWorkMinutesOnDay(state, today))}</span></header>
@@ -649,7 +664,14 @@ export function Habits({ game }: { game: Game }) {
   }
   return (
     <div className="screen">
-      <h1 className="screen-title">Hábitos</h1>
+      <div className="with-info">
+        <h1 className="screen-title">Hábitos</h1>
+        <InfoTip label="Cómo funcionan los hábitos">
+          <p>+{XP_RULES.habit} XP cada vez que lo completes. Los diarios hacen racha de días; los de «N veces por semana», racha de semanas cumplidas (de lunes a domingo).</p>
+          <p>Los puntos son los últimos 7 días: pulsa uno para marcar un día que se te olvidó, o el nombre para ver su historial. Arrastra el asa para ordenarlos.</p>
+          <p>Manda cada domingo tu % de la semana a un amigo con «Compartir mi semana»: cumplir delante de alguien ayuda.</p>
+        </InfoTip>
+      </div>
       <div className="stack-gap" data-tour="habits">
       <section className="panel">
         <form className="quick-add inline" onSubmit={submit}>
@@ -667,13 +689,11 @@ export function Habits({ game }: { game: Game }) {
             <RewardEditor autoXp={XP_RULES.habit} autoRewards={habitRewards(name)} value={custom} onChange={setCustom} maxXp={CUSTOM_LIMITS.habitXp} idPrefix="new-habit" />
           </>
         )}
-        <p className="hint">+{XP_RULES.habit} XP cada vez que lo completes. Los diarios hacen racha de días; los de «N veces por semana», racha de semanas cumplidas (de lunes a domingo). Los puntos son los últimos 7 días: pulsa uno para marcar un día que se te olvidó, o el nombre para ver su historial.</p>
       </section>
       <section className="panel">
         {state.habits.length > 0 && (
           <div className="share-week">
             <button type="button" className="ghost" onClick={shareWeek}><Icon name="send" /> Compartir mi semana</button>
-            <span className="hint">Manda cada domingo tu % de la semana a un amigo: cumplir delante de alguien ayuda.</span>
           </div>
         )}
         {state.habits.length === 0 ? (
@@ -809,8 +829,10 @@ export function Kingdoms({ game, focusQuest }: { game: Game; focusQuest: (q: Que
   }
   return (
     <div className="screen">
-      <h1 className="screen-title">Reinos</h1>
-      <p className="hint">Un reino es un proyecto. Cada tarea es una construcción y tu ciudad crece al completarlas: campamento, aldea, villa, ciudad amurallada y reino glorioso. Pulsa un reino en el mapa para entrar.</p>
+      <div className="with-info">
+        <h1 className="screen-title">Reinos</h1>
+        <InfoTip label="Cómo funcionan los reinos"><p>Un reino es un proyecto. Cada tarea es una construcción y tu ciudad crece al completarlas: campamento, aldea, villa, ciudad amurallada y reino glorioso. Pulsa un reino en el mapa para entrar.</p></InfoTip>
+      </div>
       <RealmMap state={state} onSelect={(id) => open(id)} />
       {state.kingdoms.length > 0 && (
         <div className="kingdom-tabs kingdom-pick" aria-label="Entrar en un reino">
@@ -956,8 +978,12 @@ function GoalsPanel({ game, now }: { game: Game; now: number }) {
   }
   return (
     <section className="panel" aria-labelledby="goals-h">
-      <header className="panel-head"><h3 id="goals-h">Metas para {next.name}</h3></header>
-      <p className="hint">Metas de tu vida real que también exiges para subir de avatar: personas nuevas, libros leídos, proyectos acabados…</p>
+      <header className="panel-head">
+        <div className="with-info">
+          <h3 id="goals-h">Metas para {next.name}</h3>
+          <InfoTip label="Qué son las metas"><p>Metas de tu vida real que también exiges para subir de avatar: personas nuevas, libros leídos, proyectos acabados…</p></InfoTip>
+        </div>
+      </header>
       {goals.length > 0 && (
         <ul className="list">
           {goals.map((g) => {

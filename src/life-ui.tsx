@@ -8,6 +8,7 @@ import { saveFile } from './download';
 import { sfx } from './sfx';
 import { shortDate } from './ui';
 import { Icon, type IconName } from './icons';
+import { InfoTip } from './infotip';
 
 /** Cuenta atrás para lo importante: «hoy», «mañana», «en 12 días». */
 export function countdown(day: string, now: number): string {
@@ -110,8 +111,12 @@ export function DayClose({ game, now }: { game: Game; now: number }) {
   }
   return (
     <section className="panel" aria-labelledby="dayclose-h">
-      <header className="panel-head"><h3 id="dayclose-h">Estado del día</h3></header>
-      <p className="hint">Un minuto al final del día: cómo estás y qué ha pasado. El informe lo resume todo (XP, misiones, hábitos, estado y nota) para pedirle feedback a una IA.</p>
+      <header className="panel-head">
+        <div className="with-info">
+          <h3 id="dayclose-h">Estado del día</h3>
+          <InfoTip label="Para qué sirve"><p>Un minuto al final del día: cómo estás y qué ha pasado. El informe lo resume todo (XP, misiones, hábitos, estado y nota) para pedirle feedback a una IA.</p></InfoTip>
+        </div>
+      </header>
       <DayCloseForm key={today} game={game} now={now} />
     </section>
   );

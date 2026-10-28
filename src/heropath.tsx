@@ -7,6 +7,7 @@ import { RitualCTA } from './ritual';
 import { DEFAULT_GUIDE } from './tutorial';
 import { Birds, Clouds, Mist, ShootingStars } from './sky-fx';
 import { Icon } from './icons';
+import { InfoTip } from './infotip';
 
 const W = 1000;
 const H = 470;
@@ -65,7 +66,12 @@ export function HeroPath({ state, now }: { state: GameState; now: number }) {
 
   return (
     <section className="panel hero-path" aria-labelledby="path-h" data-tour="ladder">
-      <header className="panel-head"><h3 id="path-h">Camino del héroe</h3><span className="count mono">{info.index + 1}/{AVATARS.length}</span></header>
+      <header className="panel-head">
+        <div className="with-info">
+          <h3 id="path-h">Camino del héroe</h3>
+          <InfoTip label="Cómo se sube de avatar"><p>Requisitos iguales para todos. Al cumplirlos, {DEFAULT_GUIDE} te espera para el ritual y ganas un aro más épico.</p></InfoTip>
+        </div>
+        <span className="count mono">{info.index + 1}/{AVATARS.length}</span></header>
       <div className="path-scroll" ref={scroller}>
         <svg className="path-map" viewBox={`0 0 ${W} ${H}`} role="group" aria-label="Camino del héroe: 10 avatares hasta la cima">
           <defs>
@@ -183,7 +189,6 @@ export function HeroPath({ state, now }: { state: GameState; now: number }) {
           </ul>
         )}
         {st === 'next' && <RitualCTA state={state} now={now} />}
-        <p className="hint">Requisitos iguales para todos. Al cumplirlos, {DEFAULT_GUIDE} te espera para el ritual y ganas un aro más épico.</p>
       </div>
     </section>
   );

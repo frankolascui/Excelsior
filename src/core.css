@@ -281,3 +281,63 @@ button.tg-session { font-family: inherit; justify-content: flex-start; align-ite
 /* Arena más compacta: el boss activo ocupa menos alto */
 .arena .fight-stage, .arena .boss-stage.fight-stage { height: 190px; width: min(320px, 100%); }
 @media (max-width: 560px) { .arena .fight-stage, .arena .boss-stage.fight-stage { height: 160px; } }
+
+/* La ⓘ de ayuda (src/infotip.tsx): icono suelto, brilla al pasar el ratón; la explicación sale al pulsar */
+.with-info { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.with-info > :is(h1, h2, h3) { margin: 0; }
+.with-info > .sub-h { margin-bottom: 0; }
+.info-tip { display: inline-flex; vertical-align: middle; }
+.info-dot {
+  all: unset; box-sizing: border-box; cursor: pointer; display: inline-grid; place-items: center;
+  width: 26px; height: 26px; border-radius: 50%; color: var(--muted);
+  transition: color 0.18s ease, filter 0.18s ease, transform 0.18s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.info-dot .ico { width: 20px; height: 20px; }
+.info-dot:hover, .info-dot:focus-visible, .info-tip.open .info-dot {
+  color: var(--c1); transform: scale(1.12);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--c1) 80%, transparent)) drop-shadow(0 0 14px color-mix(in srgb, var(--c2) 50%, transparent));
+}
+.info-dot:focus-visible { outline: 2px solid color-mix(in srgb, var(--c1) 60%, transparent); outline-offset: 2px; }
+.info-pop {
+  position: absolute; z-index: 60; width: min(360px, calc(100vw - 24px)); box-sizing: border-box;
+  padding: 14px 16px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--c1) 35%, var(--line));
+  background: linear-gradient(180deg, #15151f, #0c0c13); color: var(--fg); font-size: 14px; line-height: 1.45;
+  box-shadow: var(--shadow), 0 0 24px color-mix(in srgb, var(--c1) 16%, transparent);
+  display: grid; gap: 8px; animation: info-in 0.14s ease-out;
+}
+.info-pop p { margin: 0; }
+.info-pop .hint { color: var(--fg); opacity: 0.86; font-size: 14px; }
+.info-pop .ico { vertical-align: -2px; }
+@keyframes info-in { from { opacity: 0; transform: translateY(-4px); } }
+
+/* Arena: título con la ⓘ a la izquierda y las monedas + Tienda a la derecha, como stats */
+.arena-top { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; margin-bottom: 4px; }
+.arena-top .screen-title { margin: 0; }
+.arena-top-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.arena-coins {
+  display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--gold) 30%, var(--line)); background: color-mix(in srgb, var(--gold) 7%, var(--surface));
+  font-size: 17px; font-weight: 700;
+}
+.arena-coins .muted { font-size: 13px; font-weight: 500; }
+
+/* Botones más bonitos: plegables, Logros y Tienda */
+.fold-btn, .achv-open {
+  border-radius: 12px; border-color: color-mix(in srgb, var(--c1) 22%, var(--line));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c2) 9%, var(--surface-2)), var(--surface-2));
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.12s ease, background 0.18s ease;
+}
+.fold-btn .ico:first-child, .achv-open .ico:first-child { color: var(--c1); }
+.fold-btn:hover, .achv-open:hover {
+  border-color: color-mix(in srgb, var(--c1) 55%, var(--line)); transform: translateY(-1px);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--c1) 18%, transparent);
+}
+.fold.open > .fold-btn { border-color: color-mix(in srgb, var(--c1) 45%, var(--line)); }
+.fold-btn > .ico:last-child { margin-left: 2px; opacity: 0.7; transition: transform 0.18s ease; }
+.shop-jump { border-radius: 999px; padding: 8px 16px; }
+.shop-jump:hover:not(:disabled) { transform: translateY(-1px); }
+/* En escritorio, lo que va a la derecha del título no se mete debajo de ⚙ y el altavoz (fijos arriba a la derecha) */
+@media (min-width: 761px) {
+  .arena-top, .screen > .title-row { padding-right: max(0px, calc(80px - max(0px, (100vw - 1234px) / 2))); }
+}

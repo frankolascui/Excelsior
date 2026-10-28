@@ -21,6 +21,7 @@ import {
 import './guilds.css';
 import { canFoundGuild, GUILD_FOUND_LEVEL } from './unlocks';
 import { Glyph, Icon } from './icons';
+import { InfoTip } from './infotip';
 
 const fmt = (m: Metric, n: number) => (m === 'deep' ? formatMinutes(n) : `${n}${m === 'xp' ? ' XP' : ''}`);
 const DAY = 86_400_000;
@@ -82,8 +83,12 @@ function NoGuild({ game }: { game: Game }) {
         </section>
       )}
       <section className="panel" aria-labelledby="gnew-h">
-        <header className="panel-head"><h3 id="gnew-h">Funda tu gremio</h3></header>
-        <p className="hint">Hasta {GUILD_MAX} amigos. Juntos os enfrentáis a misiones y jefes con lo que hacéis de verdad: Deep Work, hábitos y XP.</p>
+        <header className="panel-head">
+          <div className="with-info">
+            <h3 id="gnew-h">Funda tu gremio</h3>
+            <InfoTip label="Qué es un gremio"><p>Hasta {GUILD_MAX} amigos. Juntos os enfrentáis a misiones y jefes con lo que hacéis de verdad: Deep Work, hábitos y XP.</p></InfoTip>
+          </div>
+        </header>
         {!canFoundGuild(game.state) ? (
           <p className="hint rank-note found-lock"><Icon name="lock" /> Fundar un gremio se desbloquea en el nivel {GUILD_FOUND_LEVEL}. Mientras tanto, pide a un amigo que te invite al suyo: las invitaciones aparecen aquí.</p>
         ) : (
@@ -106,10 +111,10 @@ function NoGuild({ game }: { game: Game }) {
 
 function RuleCard() {
   return (
-    <section className="panel quiet rule-card">
-      <h3><Icon name="scale" /> La regla del 30 %</h3>
-      <p className="hint">En cada encargo, a nadie le cuenta más del 30 % de la meta. Si haces más, se ve, pero no suma: el gremio gana cuando todos empujan, no cuando uno carga con todo. En gremios de menos de 4, el tope sube a partes iguales (la mitad con 2, un tercio con 3).</p>
-    </section>
+    <div className="with-info rule-card">
+      <span className="muted"><Icon name="scale" /> La regla del 30 %</span>
+      <InfoTip label="La regla del 30 %"><p>En cada encargo, a nadie le cuenta más del 30 % de la meta. Si haces más, se ve, pero no suma: el gremio gana cuando todos empujan, no cuando uno carga con todo. En gremios de menos de 4, el tope sube a partes iguales (la mitad con 2, un tercio con 3).</p></InfoTip>
+    </div>
   );
 }
 
@@ -247,8 +252,12 @@ function PickChallenge({ game, members, command, leader, level }: { game: Game; 
   );
   return (
     <section className="panel" aria-labelledby="pick-h">
-      <header className="panel-head"><h3 id="pick-h">Tablón de encargos</h3></header>
-      <p className="hint">Las metas se calculan para {members} {members === 1 ? 'miembro' : 'miembros'}. Cuenta lo que hagáis desde que empieza el encargo.</p>
+      <header className="panel-head">
+        <div className="with-info">
+          <h3 id="pick-h">Tablón de encargos</h3>
+          <InfoTip label="Cómo funcionan los encargos"><p>Las metas se calculan para {members} {members === 1 ? 'miembro' : 'miembros'}. Cuenta lo que hagáis desde que empieza el encargo.</p></InfoTip>
+        </div>
+      </header>
       {!command && <p className="hint rank-note"><Icon name="crown" /> Solo el líder y los colíderes aceptan encargos. Dile a {leader} cuál os apetece.</p>}
       <p className="eyebrow">Misiones</p>
       <ul className="pick-grid">{CHALLENGES.filter((t) => t.kind === 'mision').map(card)}</ul>
@@ -283,7 +292,13 @@ function Members({ game }: { game: Game }) {
       : null;
   return (
     <section className="panel" aria-labelledby="gm-h">
-      <header className="panel-head"><h3 id="gm-h">Miembros</h3><span className="count mono">{g.members.length}/{GUILD_MAX}</span></header>
+      <header className="panel-head">
+        <div className="with-info">
+          <h3 id="gm-h">Miembros</h3>
+          <InfoTip label="Rangos del gremio"><p><Icon name="crown" /> El líder nombra hasta {OFFICER_MAX} colíderes. Líder y colíderes aceptan encargos e invitan; todos aportan.</p></InfoTip>
+        </div>
+        <span className="count mono">{g.members.length}/{GUILD_MAX}</span>
+      </header>
       <ul className="list">
         {byRank(owner, g.members).map((m) => {
           const p = g.people[m.user_id];
@@ -334,7 +349,6 @@ function Members({ game }: { game: Game }) {
           );
         })}
       </ul>
-      <p className="hint"><Icon name="crown" /> El líder nombra hasta {OFFICER_MAX} colíderes. Líder y colíderes aceptan encargos e invitan; todos aportan.</p>
       <p className="eyebrow">Invitar amigos</p>
       {!canCommand(myRankNow) ? <p className="hint">Solo el líder y los colíderes pueden invitar. Si quieres traer a un amigo, díselo a ellos.</p>
         : full ? <p className="hint">El gremio está completo.</p> : friends.length === 0

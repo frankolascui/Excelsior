@@ -12,6 +12,7 @@ import {
   type PublicProfile, type Relation,
 } from './social';
 import { Icon } from './icons';
+import { InfoTip } from './infotip';
 import { inviteLink } from './invite';
 
 export function Face({ p, size = 56 }: { p: Pick<PublicProfile, 'name' | 'photo' | 'avatar_index' | 'avatar_name'>; size?: number }) {
@@ -159,7 +160,7 @@ function MyProfile({ game }: { game: Game }) {
           {me ? (
             <button className="tag-chip mono" onClick={copyTag} title="Copiar tag">{me.tag} <Icon name="copy" /></button>
           ) : <p className="muted small-text">Creando tu tag…</p>}
-          <p className="hint">Tus amigos te añaden con este tag, o mándales tu enlace: al entrar con él te llega su solicitud sola.</p>
+          <InfoTip label="Cómo te añaden"><p>Tus amigos te añaden con este tag, o mándales tu enlace: al entrar con él te llega su solicitud sola.</p></InfoTip>
           {me && <button className="primary small invite-btn" onClick={() => void shareInvite()}><Icon name="send" /> Invitar a un amigo</button>}
           {state.profile?.photo && <button className="link" onClick={() => act((s) => setPhoto(s, null))}>Quitar foto</button>}
         </div>
@@ -271,8 +272,12 @@ function FriendsBody({ game }: { game: Game }) {
       </section>
 
       <section className="panel" aria-labelledby="rec-h">
-        <header className="panel-head"><h3 id="rec-h">Recomendados</h3></header>
-        <p className="hint">Amigos de tus amigos primero, y después héroes de tu nivel.</p>
+        <header className="panel-head">
+          <div className="with-info">
+            <h3 id="rec-h">Recomendados</h3>
+            <InfoTip label="Cómo se eligen"><p>Amigos de tus amigos primero, y después héroes de tu nivel.</p></InfoTip>
+          </div>
+        </header>
         {social.recommended.length === 0
           ? <p className="muted small-text">{social.loading ? 'Cargando…' : 'Nadie que recomendarte todavía.'}</p>
           : (

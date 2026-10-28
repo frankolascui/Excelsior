@@ -298,7 +298,7 @@ check(await seen('.unlock-line:has-text("Arena")'), 'subir a nivel 5 anuncia la 
 await page.click('.levelup button:has-text("Ir a Arena")');
 check(await seen('.tour .tour-title:has-text("La Arena")'), 'Hiperión presenta la Arena');
 await page.click('.tour button:has-text("Saltar")');
-const coins = async () => Number((await page.textContent('.treasury-amount .coins, #shop .panel-head .coins')).replace(/[^0-9-]/g, ''));
+const coins = async () => Number((await page.textContent('.arena-coins .coins, #shop .panel-head .coins')).replace(/[^0-9-]/g, ''));
 const before = await coins();
 check(before >= 25, `hay monedas para gastar (${before})`);
 check(await seen('.saga:has-text("Saga del Héroe") .boss-template.locked:has-text("Medusa"):has-text("Nivel 8")'), 'Medusa aparece en silueta: «Nivel 8»');
@@ -314,7 +314,19 @@ check(await seen('.boss:has-text("Hidra de la Procrastinación")'), 'invocar la 
 check(await seen('.boss-template.fighting:has-text("Hidra") >> text=En combate'), 'la Hidra figura en combate en su saga');
 await page.evaluate(() => window.scrollTo(0, 0));
 check(!(await page.$('#shop')) && !(await page.$('.boss-lore')), 'la Arena ya no lleva la tienda debajo y el boss va sin la cita larga');
-await page.click('.treasury .shop-jump');
+check(await seen('.arena-top .arena-coins .coins') && await seen('.arena-top .shop-jump'), 'las monedas y el botón Tienda van arriba, junto al título de la Arena');
+check(!(await page.$('.info-pop')) && !(await page.$('.rules-fold')), 'las reglas de la Arena no ocupan sitio hasta pulsar la ⓘ');
+await page.click('.arena-top .info-dot');
+await page.waitForTimeout(300);
+await page.screenshot({ path: `${out}/09-arena-info.png` });
+check(await page.evaluate(() => { const a = document.querySelector('.arena-top .shop-jump').getBoundingClientRect(); const b = document.querySelector('.top-actions').getBoundingClientRect(); return a.right <= b.left || a.top >= b.bottom; }), 'el botón Tienda no queda debajo de ⚙ y el altavoz');
+check(await seen('.info-pop:has-text("Un boss es un reto con plazo")') && await seen('.info-pop:has-text("por XP")'), 'la ⓘ de la Arena enseña las reglas y de dónde salen las monedas');
+await page.keyboard.press('Escape');
+check(!(await page.$('.info-pop')), 'Escape cierra la ⓘ');
+await page.click('.arena-top .info-dot');
+await page.click('.arena-top .screen-title');
+check(!(await page.$('.info-pop')), 'pulsar fuera cierra la ⓘ');
+await page.click('.arena-top .shop-jump');
 check(await seen('#shop') && !(await page.$('.bosses-panel')), 'el botón Tienda abre la tienda en su propia vista');
 await (await page.$('#shop')).screenshot({ path: `${out}/09b-shop.png` });
 check(await seen('.shop-next:has-text("Tu próximo premio")'), 'la tienda señala el próximo premio');
@@ -349,6 +361,12 @@ await page.setViewportSize({ width: 390, height: 844 });
 await page.waitForTimeout(300);
 check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'la Arena en móvil no tiene scroll horizontal');
 await page.screenshot({ path: `${out}/09c-arena-mobile.png`, fullPage: true });
+await page.evaluate(() => window.scrollTo(0, 0));
+await page.click('.arena-top .info-dot');
+check(await page.evaluate(() => { const r = document.querySelector('.info-pop').getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; }), 'en móvil la ⓘ de la Arena cabe en la pantalla');
+await page.waitForTimeout(300);
+await page.screenshot({ path: `${out}/09d-arena-info-mobile.png` });
+await page.keyboard.press('Escape');
 await page.setViewportSize({ width: 1280, height: 860 });
 
 // 7a5. Tema y copia de seguridad, en la rueda de ajustes

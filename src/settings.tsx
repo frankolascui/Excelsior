@@ -23,6 +23,7 @@ import { DEFAULT_GUIDE } from './tutorial';
 import { sfx } from './sfx';
 import { APP_VERSION_LABEL } from './version';
 import { Icon } from './icons';
+import { InfoTip } from './infotip';
 
 // ---------- Ajustes ----------
 
@@ -211,8 +212,10 @@ function SettingsPanel({
         <button className="secondary" onClick={replayTutorial}><Icon name="rotate-ccw" /> Repetir tutorial</button>
       </div>
 
-      <h4 className="sub-h">Copia de seguridad</h4>
-      <p className="hint">Tu partida vive solo en este navegador. Descarga una copia de vez en cuando; con ella puedes pasarla a otro ordenador.</p>
+      <div className="with-info">
+        <h4 className="sub-h">Copia de seguridad</h4>
+        <InfoTip label="Para qué sirve"><p>Tu partida vive solo en este navegador. Descarga una copia de vez en cuando; con ella puedes pasarla a otro ordenador.</p></InfoTip>
+      </div>
       <div className="settings-row">
         <button className="secondary" onClick={download}><Icon name="download" /> Exportar partida</button>
         <button className="ghost" onClick={() => file.current?.click()}><Icon name="upload" /> Importar copia</button>

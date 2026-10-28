@@ -23,6 +23,7 @@ import { avatarInfo } from './attributes';
 import { AvatarPortrait, initialOf } from './portrait';
 import './arena.css';
 import { Fold } from './fold';
+import { InfoTip } from './infotip';
 
 const BOSS_ICONS: IconName[] = ['dragon-head', 'snake', 'bull', 'wolf', 'lion', 'evil-eye', 'vortex', 'tornado', 'scorpion', 'eagle', 'spider', 'death-skull', 'ogre', 'zombie', 'shark', 'octopus'];
 
@@ -458,30 +459,28 @@ export function Arena({ game }: { game: Game }) {
         </div>
         <Shop game={game} balance={balance} now={now} />
       </> : <>
-      <h1 className="screen-title">Arena</h1>
-
-      <section className="panel treasury" aria-labelledby="treasury-h">
-        <div>
-          <p className="eyebrow" id="treasury-h">Tesoro</p>
-          <p className="treasury-amount"><CoinBadge amount={balance} /> <span className="muted">monedas</span></p>
+      <div className="arena-top">
+        <h1 className="screen-title">Arena</h1>
+        <InfoTip label="Cómo funciona la Arena">
+          <p>Un boss es un reto con plazo: le haces daño con lo que hagas desde que lo invocas y, si cae a tiempo, te llevas su botín. Subir de nivel y vencer a cada bestia abre las siguientes de su saga. Cada boss tiene una habilidad y un punto débil que se revela a media vida.</p>
+          <p className="crit-hint"><Icon name="sparkles" /> {CRIT_RULES}</p>
           <p className="muted small-text">
-            {earned.fromXp} por XP (1 cada {COIN_RULES.xpPerCoin} XP) · {earned.fromBosses} por bosses · {earned.fromKingdoms} por reinos{earned.fromSocial > 0 && ` · ${earned.fromSocial} por trofeos`} · −{coinsSpent(state)} gastadas
+            Tus monedas: {earned.fromXp} por XP (1 cada {COIN_RULES.xpPerCoin} XP) · {earned.fromBosses} por bosses · {earned.fromKingdoms} por reinos{earned.fromSocial > 0 && ` · ${earned.fromSocial} por trofeos`} · −{coinsSpent(state)} gastadas
           </p>
+        </InfoTip>
+        <div className="arena-top-right">
+          <span className="arena-coins" title="Tus monedas"><CoinBadge amount={balance} /> <span className="muted">monedas</span></span>
+          <button type="button" className="primary shop-jump" data-tour="shop" onClick={() => setView('shop')}>
+            <Icon name="shopping-bag" /> Tienda
+          </button>
         </div>
-        <button type="button" className="primary shop-jump" data-tour="shop" onClick={() => setView('shop')}>
-          <Icon name="shopping-bag" /> Tienda
-        </button>
-      </section>
+      </div>
 
       <section className="panel bosses-panel" aria-labelledby="bosses-h" data-tour="bosses">
         <header className="panel-head">
           <h3 id="bosses-h">Bosses</h3>
           <span className="count mono">{active.length}/{MAX_ACTIVE_BOSSES} activos</span>
         </header>
-        <Fold label="Cómo funcionan" icon="info" className="rules-fold">
-          <p className="hint">Un boss es un reto con plazo: le haces daño con lo que hagas desde que lo invocas y, si cae a tiempo, te llevas su botín. Subir de nivel y vencer a cada bestia abre las siguientes de su saga. Cada boss tiene una habilidad y un punto débil que se revela a media vida.</p>
-          <p className="hint crit-hint"><Icon name="sparkles" /> {CRIT_RULES}</p>
-        </Fold>
         <div className="arena-progress">
           <span><b className="mono">Nv {level}</b> nivel global</span>
           <span><b className="mono">{unlockedCount}/{BOSS_TEMPLATES.length}</b> bosses desbloqueados</span>
@@ -579,8 +578,13 @@ function Shop({ game, balance, now }: { game: Game; balance: number; now: number
 
   return (
     <section id="shop" className="panel shop-panel" aria-labelledby="shop-h">
-      <header className="panel-head"><h3 id="shop-h">Tienda de recompensas</h3><CoinBadge amount={balance} /></header>
-      <p className="hint">Date caprichos con lo que te has ganado. Pon tú los precios: si algo te cuesta poco, no lo valoras.</p>
+      <header className="panel-head">
+        <div className="with-info">
+          <h3 id="shop-h">Tienda de recompensas</h3>
+          <InfoTip label="Cómo funciona la Tienda"><p>Date caprichos con lo que te has ganado. Pon tú los precios: si algo te cuesta poco, no lo valoras.</p></InfoTip>
+        </div>
+        <CoinBadge amount={balance} />
+      </header>
 
       <Chest game={game} />
 
