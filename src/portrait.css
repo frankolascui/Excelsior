@@ -29,10 +29,12 @@
   80% { transform: scale(1) rotate(45deg); opacity: 1; }
   92%, 100% { transform: scale(0) rotate(90deg); opacity: 0; }
 }
-.portrait .fx-halo { animation: fx-halo 2.8s ease-out infinite; }
+/* El aro nace transparente y se enciende poco a poco: así la vuelta a empezar no da un salto de brillo */
+.portrait .fx-halo { animation: fx-halo 3.2s ease-in-out infinite; }
 @keyframes fx-halo {
-  0% { transform: scale(0.9); opacity: 0.75; }
-  70%, 100% { transform: scale(1.35); opacity: 0; }
+  0% { transform: scale(0.9); opacity: 0; }
+  18% { transform: scale(0.98); opacity: 0.7; }
+  75%, 100% { transform: scale(1.35); opacity: 0; }
 }
 
 /* Resplandor que respira (canales fundidos y eléctricos, grietas) */
