@@ -22,6 +22,7 @@ import { Glyph, Icon, tok, type IconName } from './icons';
 import { avatarInfo } from './attributes';
 import { AvatarPortrait, initialOf } from './portrait';
 import './arena.css';
+import { Fold } from './fold';
 
 const BOSS_ICONS: IconName[] = ['dragon-head', 'snake', 'bull', 'wolf', 'lion', 'evil-eye', 'vortex', 'tornado', 'scorpion', 'eagle', 'spider', 'death-skull', 'ogre', 'zombie', 'shark', 'octopus'];
 
@@ -226,7 +227,7 @@ function BossCard({ boss: b, st, events, hero, onFlee }: { boss: Boss; st: Retur
           <span className={urgent ? 'urgent' : ''}><Icon name="hourglass" /> quedan {timeLeft(st.msLeft)}</span>
           <span className="loot"><Icon name="coin" className="coin-ico" /> botín {b.reward}</span>
         </p>
-        {b.rules === 2 && <CombatLog events={events} />}
+        {b.rules === 2 && <Fold label="Registro del combate" icon="list" count={events.length} className="log-fold"><CombatLog events={events} /></Fold>}
       </div>
     </article>
   );
@@ -459,6 +460,9 @@ export function Arena({ game }: { game: Game }) {
             {earned.fromXp} por XP (1 cada {COIN_RULES.xpPerCoin} XP) · {earned.fromBosses} por bosses · {earned.fromKingdoms} por reinos{earned.fromSocial > 0 && ` · ${earned.fromSocial} por trofeos`} · −{coinsSpent(state)} gastadas
           </p>
         </div>
+        <button type="button" className="primary shop-jump" onClick={() => document.getElementById('shop')?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' })}>
+          <Icon name="shopping-bag" /> Tienda
+        </button>
       </section>
 
       <section className="panel bosses-panel" aria-labelledby="bosses-h" data-tour="bosses">
@@ -510,8 +514,7 @@ export function Arena({ game }: { game: Game }) {
         {!full && <CustomBossForm onCreate={summonCustom} />}
 
         {finished.length > 0 && (
-          <>
-            <h4 className="sub-h">Últimos combates</h4>
+          <Fold label="Últimos combates" icon="crossed-swords" count={finished.length} className="combats-fold">
             <ul className="list plain combats">
               {finished.map(({ b, st }) => {
                 const t = templateOf(b);
@@ -524,7 +527,7 @@ export function Arena({ game }: { game: Game }) {
                 );
               })}
             </ul>
-          </>
+          </Fold>
         )}
       </section>
 
@@ -564,7 +567,7 @@ function Shop({ game, balance, now }: { game: Game; balance: number; now: number
     .sort((a, b) => order(a) - order(b) || a.cost - b.cost);
 
   return (
-    <section className="panel shop-panel" aria-labelledby="shop-h" data-tour="shop">
+    <section id="shop" className="panel shop-panel" aria-labelledby="shop-h" data-tour="shop">
       <header className="panel-head"><h3 id="shop-h">Tienda de recompensas</h3><CoinBadge amount={balance} /></header>
       <p className="hint">Date caprichos con lo que te has ganado. Pon tú los precios: si algo te cuesta poco, no lo valoras.</p>
 
@@ -612,8 +615,7 @@ function Shop({ game, balance, now }: { game: Game; balance: number; now: number
       <RewardForm onCreate={(r) => { act((s) => addReward(s, r, Date.now())); sfx.place(); }} />
 
       {history.length > 0 && (
-        <>
-          <h4 className="sub-h">Historial de canjes</h4>
+        <Fold label="Historial de canjes" icon="clock" count={history.length} className="purchases-fold">
           <p className="muted small-text">{history.length} {history.length === 1 ? 'premio canjeado' : 'premios canjeados'} · {coinsSpent(state)} <Icon name="coin" className="coin-ico" /> en total</p>
           <ul className="list plain purchases">
             {history.slice(0, showAll ? 50 : 6).map((p) => (
@@ -638,7 +640,7 @@ function Shop({ game, balance, now }: { game: Game; balance: number; now: number
           {history.length > 6 && (
             <button className="link" onClick={() => setShowAll(!showAll)}>{showAll ? 'Ver menos' : `Ver los ${history.length}`}</button>
           )}
-        </>
+        </Fold>
       )}
     </section>
   );

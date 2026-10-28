@@ -261,3 +261,19 @@ button.tg-session { font-family: inherit; justify-content: flex-start; align-ite
 .shop-shield .shop-next-body { flex: 1; min-width: 0; }
 .shop-shield .shop-next-body p { margin: 0; }
 .shop-shield .nowrap { white-space: nowrap; }
+
+/* Plegables con botón (historiales) */
+.fold { margin-top: 10px; }
+.fold-btn { display: inline-flex; align-items: center; gap: 8px; }
+.fold-count { color: var(--muted); font-size: 12.5px; }
+.fold-body { margin-top: 10px; }
+
+/* Reinos: cada reino en su vista, el mapa a un botón */
+.kingdom-back { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.kingdom-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.kingdom-pick { margin: 10px 0 14px; }
+
+/* Arena: la tienda a un botón desde el tesoro */
+.treasury { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.shop-jump { display: inline-flex; align-items: center; gap: 8px; }
+#shop { scroll-margin-top: 12px; }

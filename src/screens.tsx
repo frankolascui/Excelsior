@@ -772,28 +772,53 @@ export function Character({ game }: { game: Game }) {
 
 const BUILDING_TYPES: QuestType[] = ['side', 'daily', 'main'];
 
+// Reino abierto: se recuerda al cambiar de pestaña (p. ej. al volver de Deep Work) mientras dure la sesión.
+let openKingdom: string | null = null;
+
 export function Kingdoms({ game, focusQuest }: { game: Game; focusQuest: (q: Quest) => void }) {
   const { state, act } = game;
   const [name, setName] = useState('');
+  const [openId, setOpenId] = useState<string | null>(openKingdom);
+  const open = (id: string | null) => { openKingdom = id; setOpenId(id); window.scrollTo({ top: 0 }); };
+  const current = state.kingdoms.find((k) => k.id === openId);
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    act((s) => addKingdom(s, name, Date.now()));
+    const next = addKingdom(state, name, Date.now());
+    act(() => next);
     setName('');
+    open(next.kingdoms.at(-1)!.id);
   }
-  function showKingdom(id: string) {
-    const el = document.getElementById(`kingdom-${id}`);
-    if (!el) return;
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    el.classList.remove('flash');
-    void el.offsetWidth; // reinicia la animación
-    el.classList.add('flash');
+  if (current) {
+    // Cada reino en su propia vista; el mapa queda a un botón.
+    return (
+      <div className="screen">
+        <div className="kingdom-back">
+          <button className="ghost" onClick={() => open(null)}><Icon name="chevron-left" /> Mapa del reino</button>
+          {state.kingdoms.length > 1 && (
+            <div className="kingdom-tabs" role="tablist" aria-label="Tus reinos">
+              {state.kingdoms.map((k) => (
+                <button key={k.id} type="button" role="tab" aria-selected={k.id === current.id} className={k.id === current.id ? 'chip-btn on' : 'chip-btn'} onClick={() => open(k.id)}>{k.name}</button>
+              ))}
+            </div>
+          )}
+        </div>
+        <KingdomCard key={current.id} game={game} kingdomId={current.id} focusQuest={focusQuest} />
+      </div>
+    );
   }
   return (
     <div className="screen">
       <h1 className="screen-title">Reinos</h1>
-      <p className="hint">Un reino es un proyecto. Cada tarea es una construcción y tu ciudad crece al completarlas: campamento, aldea, villa, ciudad amurallada y reino glorioso.</p>
-      <RealmMap state={state} onSelect={showKingdom} />
+      <p className="hint">Un reino es un proyecto. Cada tarea es una construcción y tu ciudad crece al completarlas: campamento, aldea, villa, ciudad amurallada y reino glorioso. Pulsa un reino en el mapa para entrar.</p>
+      <RealmMap state={state} onSelect={(id) => open(id)} />
+      {state.kingdoms.length > 0 && (
+        <div className="kingdom-tabs kingdom-pick" aria-label="Entrar en un reino">
+          {state.kingdoms.map((k) => (
+            <button key={k.id} type="button" className="chip-btn" onClick={() => open(k.id)}><Icon name="castle" /> {k.name}</button>
+          ))}
+        </div>
+      )}
       <section className="panel" data-tour="kingdom-add">
         <form className="quick-add inline" onSubmit={submit}>
           <input id="new-kingdom" value={name} onChange={(e) => setName(e.target.value)} placeholder="+ Fundar un reino (ej. Reino de la Programación)" maxLength={50} aria-label="Nombre del nuevo reino" />
@@ -801,9 +826,6 @@ export function Kingdoms({ game, focusQuest }: { game: Game; focusQuest: (q: Que
         </form>
       </section>
       {state.kingdoms.length === 0 && <p className="empty">Aún no has fundado ningún reino.</p>}
-      {state.kingdoms.map((k) => (
-        <KingdomCard key={k.id} game={game} kingdomId={k.id} focusQuest={focusQuest} />
-      ))}
     </div>
   );
 }
