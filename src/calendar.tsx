@@ -6,7 +6,8 @@ import { addQuest, completeQuest, dayKey, deleteQuest, pendingQuests, setQuestDe
 import { QuestItem, QuickAddQuest, shortDate } from './ui';
 import { eventColor, eventIcon, eventsOn, isKeyEvent, priorityEvents, remindersOn } from './life';
 import { countdown } from './life-ui';
-import { addDays, DayAgenda, mondayOf, ReminderRow, TimeGrid } from './agenda-ui';
+import { addDays, AgendaForm, mondayOf, ReminderRow, TimeGrid } from './agenda-ui';
+import { Fold } from './fold';
 
 /** Si el panel de misiones y recordatorios del calendario está abierto (se recuerda). */
 const TASKS_KEY = 'excelsior:cal-tasks';
@@ -155,11 +156,11 @@ export function QuestCalendar({
         {view !== 'month' && <p className="hint cal-legend">Pulsa una hora libre para añadir algo a esa hora. <Icon name="zap" /> = tus sesiones de Deep Work. <Icon name="repeat" /> = se repite.</p>}
       </section>
 
-      <section className="panel" aria-labelledby="cal-day-h">
-        <header className="panel-head">
-          <h3 id="cal-day-h">{view === 'month' ? 'Exámenes y lanzamientos' : 'Eventos'} · {selected === today ? 'hoy' : shortDate(selected)}</h3>
-        </header>
-        <DayAgenda key={`${selected}-${view === 'month'}`} game={game} day={selected} startFocus={startFocus} onlyKey={view === 'month'} />
+      {/* Sin lista de eventos del día (ya se ven en el calendario): solo el botón para añadir uno ese día. */}
+      <section className="panel cal-add" aria-label="Añadir evento">
+        <Fold key={`${selected}-${view === 'month'}`} label={`Añadir ${view === 'month' ? 'examen o lanzamiento' : 'evento'} · ${selected === today ? 'hoy' : shortDate(selected)}`} icon="plus" className="cal-add-fold">
+          <AgendaForm game={game} day={selected} onlyKey={view === 'month'} />
+        </Fold>
         {view === 'month' && <button className="link cal-open-day" onClick={() => pickView('day')}>Ver el día por horas <Icon name="arrow-right" /></button>}
       </section>
 

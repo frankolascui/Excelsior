@@ -111,7 +111,7 @@ export const TOURS: Record<string, Step[]> = {
       tab: 'arena',
       target: 'shop',
       title: 'El tesoro',
-      text: () => 'Cada 5 XP ganas una moneda. Cámbialas aquí por premios reales que eliges tú: un episodio, salir con amigos…',
+      text: () => 'Cada 5 XP ganas una moneda. En la Tienda las cambias por premios reales que eliges tú: un episodio, salir con amigos…',
     },
   ],
   gremios: [

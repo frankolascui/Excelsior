@@ -93,7 +93,8 @@ check(await seen('.item:has-text("Entregar el trabajo de Historia") .due-soon:ha
 await page.click('[role=radio]:has-text("Calendario")');
 check(await seen('.cal-day.sel.today') && !(await page.$('.cal-grid .cal-q')), 'en la cuadrícula del calendario solo hay eventos (las misiones no)');
 await page.click('.cal-day[aria-label^="5 oct"]');
-check(await seen('#cal-day-h:has-text("5 oct")') && !(await page.$('.cal-tasks .item')), 'pulsar un día lo elige; sus misiones siguen plegadas');
+check(await seen('.cal-add-fold .fold-btn:has-text("5 oct")') && !(await page.$('.cal-tasks .item')), 'pulsar un día lo elige; sus misiones siguen plegadas');
+check(!(await page.$('#cal-day-h')) && !(await page.$('.ev-form')), 'debajo del calendario no hay lista de eventos del día, solo el botón de añadir');
 check(await seen('.cal-tasks-head:has-text("1")'), 'el panel plegado dice cuántas misiones hay ese día');
 await page.click('.cal-tasks-head');
 check(await seen('.cal-tasks .item:has-text("Entregar el trabajo")'), 'al abrir el panel se ven las misiones que vencen ese día');
@@ -297,7 +298,7 @@ check(await seen('.unlock-line:has-text("Arena")'), 'subir a nivel 5 anuncia la 
 await page.click('.levelup button:has-text("Ir a Arena")');
 check(await seen('.tour .tour-title:has-text("La Arena")'), 'Hiperión presenta la Arena');
 await page.click('.tour button:has-text("Saltar")');
-const coins = async () => Number((await page.textContent('.treasury-amount .coins')).replace(/[^0-9-]/g, ''));
+const coins = async () => Number((await page.textContent('.treasury-amount .coins, #shop .panel-head .coins')).replace(/[^0-9-]/g, ''));
 const before = await coins();
 check(before >= 25, `hay monedas para gastar (${before})`);
 check(await seen('.saga:has-text("Saga del Héroe") .boss-template.locked:has-text("Medusa"):has-text("Nivel 8")'), 'Medusa aparece en silueta: «Nivel 8»');
@@ -312,9 +313,10 @@ check(!(await page.$('.summon-intro')), 'la presentación se cierra');
 check(await seen('.boss:has-text("Hidra de la Procrastinación")'), 'invocar la Hidra');
 check(await seen('.boss-template.fighting:has-text("Hidra") >> text=En combate'), 'la Hidra figura en combate en su saga');
 await page.evaluate(() => window.scrollTo(0, 0));
+check(!(await page.$('#shop')) && !(await page.$('.boss-lore')), 'la Arena ya no lleva la tienda debajo y el boss va sin la cita larga');
 await page.click('.treasury .shop-jump');
-await page.waitForTimeout(800);
-check(await page.$eval('#shop', (el) => { const r = el.getBoundingClientRect(); return r.top >= -2 && r.top < innerHeight / 2; }), 'el botón Tienda del tesoro lleva directo a la tienda');
+check(await seen('#shop') && !(await page.$('.bosses-panel')), 'el botón Tienda abre la tienda en su propia vista');
+await (await page.$('#shop')).screenshot({ path: `${out}/09b-shop.png` });
 check(await seen('.shop-next:has-text("Tu próximo premio")'), 'la tienda señala el próximo premio');
 await page.click('.shop-filter button:has-text("Premios grandes")');
 check(await seen('.reward:has-text("Día libre sin culpa")') && !(await page.isVisible('.reward:has-text("Ver un episodio de una serie")')), 'filtrar la tienda por «Premios grandes»');
@@ -329,6 +331,8 @@ check(await seen('.chest-item:has-text("Ver un episodio de una serie")'), 'el co
 await page.click('.chest-item:has-text("Ver un episodio de una serie") button:has-text("Usar")');
 check(await seen('.toast:has-text("A disfrutar de Ver un episodio")'), 'usar el premio');
 check(!(await page.isVisible('.chest')) && await seen('.purchase:has-text("usado el")'), 'el premio usado sale del cofre y queda como usado');
+await page.click('.kingdom-back button:has-text("Arena")');
+check(await seen('.bosses-panel') && !(await page.$('#shop')), '«Arena» vuelve de la tienda a los bosses');
 await page.click('.nav-item:has-text("Hábitos")');
 await page.click('button[aria-label="Completar Tocar la guitarra"]');
 check(await seen('.toast:has-text("HP a Hidra")'), 'completar un hábito golpea a la Hidra');
@@ -341,7 +345,6 @@ if (await page.$('.boss .log-fold')) {
 }
 await page.waitForTimeout(1500);
 await page.screenshot({ path: `${out}/09-arena.png`, fullPage: true });
-await (await page.$('[data-tour="shop"]')).screenshot({ path: `${out}/09b-shop.png` });
 await page.setViewportSize({ width: 390, height: 844 });
 await page.waitForTimeout(300);
 check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'la Arena en móvil no tiene scroll horizontal');
@@ -587,6 +590,7 @@ await page.click('section:has(h3:text("Hábitos de hoy")) button.dot[aria-label^
 check(await seen('section:has(h3:text("Hábitos de hoy")) button.dot[aria-label^="Desmarcar Leer (ayer)"]'), 'en Hoy se puede marcar un hábito de un día anterior');
 await page.click('.nav-item:has-text("Misiones")');
 if (!(await page.isVisible('.calendar'))) await page.click('[role=radio]:has-text("Calendario")');
+await page.click('.cal-add-fold .fold-btn');
 await page.selectOption('.ev-form select', 'examen');
 await page.fill('#ev-title', 'Examen de cálculo');
 await page.click('.ev-form #ev-time');
@@ -683,7 +687,7 @@ await page.click('.sheet button:has-text("Deep Work")');
 check(await page.inputValue('#dw-intent') === 'Estudiar física', 'un bloque abre Deep Work con su nombre');
 await page.click('.nav-item:has-text("Misiones")');
 await page.click('.cal-views [role=radio]:has-text("Mes")');
-check(await seen('.cal-day .cal-ev:has-text("Examen de cálculo")') && !(await page.$('.cal-day .cal-ev:has-text("Estudiar")')) && !(await page.$('section:has(#cal-day-h) .ev-item:has-text("Estudiar")')), 'el mes solo enseña exámenes y lanzamientos, no los bloques de tiempo');
+check(await seen('.cal-day .cal-ev:has-text("Examen de cálculo")') && !(await page.$('.cal-day .cal-ev:has-text("Estudiar")')), 'el mes solo enseña exámenes y lanzamientos, no los bloques de tiempo');
 await page.click('.nav-item:has-text("Hoy")');
 
 // 8. Móvil

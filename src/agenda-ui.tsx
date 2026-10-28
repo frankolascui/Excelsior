@@ -6,7 +6,7 @@ import type { CalendarEvent, EventKind, EventRepeat, GameState, Reminder, Repeat
 import { dayKey, uid } from './game';
 import {
   addEvent, addReminder, deleteEvent, deleteReminder, dueAlerts, EVENT_COLORS, EVENT_KINDS, eventColor, eventIcon, eventSpan, eventsOn, fromMin,
-  cleanRule, laterReminders, layoutLanes, editOccurrence, isKeyEvent, moveEvent, REPEAT_NAMES, repeatText, skipEventDay, todayReminders, toggleReminder, toMin, updateEvent,
+  cleanRule, laterReminders, layoutLanes, editOccurrence, isKeyEvent, moveEvent, REPEAT_NAMES, skipEventDay, todayReminders, toggleReminder, toMin, updateEvent,
 } from './life';
 import { relDay } from './life-ui';
 import { DatePicker, DurationChips, TimePicker, durationWords } from './pickers';
@@ -363,33 +363,6 @@ function EventSheet({ game, id: firstId, day, onClose, startFocus }: { game: Gam
       </div>
       <p className="hint sheet-hint"><Icon name="info" /> Consejo: en la vista Día o Semana puedes arrastrar el evento para moverlo y estirar su borde de abajo para cambiar lo que dura.</p>
     </Sheet>
-  );
-}
-
-/** Lista de un día (debajo del mes o del día): eventos con su hora, recordatorios y el formulario para añadir. */
-export function DayAgenda({ game, day, startFocus, onlyKey }: { game: Game; day: string; startFocus?: (label: string) => void; onlyKey?: boolean }) {
-  const evs = eventsOn(game.state, day).filter((e) => !onlyKey || isKeyEvent(e));
-  const [open, setOpen] = useState<string | null>(null);
-  return (
-    <div className="day-events">
-      {evs.length > 0 && (
-        <ul className="list">
-          {evs.map((e) => (
-            <li key={e.id} className={`item ev-item ev-${e.kind}`} style={evStyle(e)}>
-              <span className="ev-icon" aria-hidden="true"><Icon name={eventIcon(e.kind)} /></span>
-              <button className="item-body ev-open" onClick={() => setOpen(e.id)} aria-label={`Abrir ${e.title}`}>
-                <span className="item-title">{e.title}</span>
-                <span className="muted small-text">{EVENT_KINDS.find((k) => k.id === e.kind)?.name}{e.time ? ` · ${timeRange(e)}` : ''}{e.repeat && <> · <Icon name="repeat" /> {repeatText(e)}</>}</span>
-              </button>
-              <button className="icon-btn" onClick={() => { sfx.remove(); game.act((s) => (e.repeat ? skipEventDay(s, e.id, day) : deleteEvent(s, e.id))); }}
-                aria-label={`Borrar evento ${e.title}${e.repeat ? ' (solo este día)' : ''}`} title="Borrar"><Icon name="trash" /></button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <AgendaForm game={game} day={day} onlyKey={onlyKey} />
-      {open && <EventSheet game={game} id={open} day={day} onClose={() => setOpen(null)} startFocus={startFocus} />}
-    </div>
   );
 }
 

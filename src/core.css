@@ -277,3 +277,7 @@ button.tg-session { font-family: inherit; justify-content: flex-start; align-ite
 .treasury { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .shop-jump { display: inline-flex; align-items: center; gap: 8px; }
 #shop { scroll-margin-top: 12px; }
+
+/* Arena más compacta: el boss activo ocupa menos alto */
+.arena .fight-stage, .arena .boss-stage.fight-stage { height: 190px; width: min(320px, 100%); }
+@media (max-width: 560px) { .arena .fight-stage, .arena .boss-stage.fight-stage { height: 160px; } }

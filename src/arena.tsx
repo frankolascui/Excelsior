@@ -203,13 +203,13 @@ function BossCard({ boss: b, st, events, hero, onFlee }: { boss: Boss; st: Retur
       <span className="fight-scene" aria-hidden="true">
         <span className="fight-hero">
           <span className="fight-hero-ground" />
-          <AvatarPortrait tier={hero.tier} photo={hero.photo} label={hero.initial} size={96} />
+          <AvatarPortrait tier={hero.tier} photo={hero.photo} label={hero.initial} size={64} />
           <span className="fight-hero-name">{hero.name}</span>
         </span>
         <span className={`boss-stage fight-stage phase-${phase}`}>
           <span className="fight-aura" />
           <span className="fight-ground" />
-          <PixelBoss templateId={t?.id} icon={b.icon} phase={phase} scale={3} className="boss-art" />
+          <PixelBoss templateId={t?.id} icon={b.icon} phase={phase} scale={2} className="boss-art" />
           {hit > 0 && <span className="dmg-float mono">{crit && <small>¡Crítico!</small>}−{fmtNum(hit)}</span>}
           {hit > 0 && <span className="slash" />}
         </span>
@@ -220,7 +220,6 @@ function BossCard({ boss: b, st, events, hero, onFlee }: { boss: Boss; st: Retur
           {t && <span className="saga-tag">{sagaOf(t).name}</span>}
           {phaseLabel && <span className={`phase-tag ${phase}`}>{phaseLabel}</span>}
         </div>
-        {t && <p className="boss-lore">«{t.lore}»</p>}
         <BossTraits boss={b} revealed={phase !== 'calma'} />
         <p className="boss-meta">
           <span><Icon name="crossed-swords" /> {SOURCE_LABEL[b.source].hint}</span>
@@ -423,6 +422,9 @@ export function Arena({ game }: { game: Game }) {
     confetti({ big: true, count: 220 });
   }, [state, victoryId, introId]);
   const victoryBoss = state.bosses.find((b) => b.id === victoryId) ?? null;
+  // La tienda va en su propia vista (como cada reino); al entrar en la Arena se ven los bosses.
+  const [view, setViewState] = useState<'bosses' | 'shop'>('bosses');
+  const setView = (v: 'bosses' | 'shop') => { setViewState(v); window.scrollTo({ top: 0 }); };
 
   function showIntro(id: string) {
     remember(INTRO_KEY, id);
@@ -450,6 +452,12 @@ export function Arena({ game }: { game: Game }) {
 
   return (
     <div className="screen arena">
+      {view === 'shop' ? <>
+        <div className="kingdom-back">
+          <button className="ghost" onClick={() => setView('bosses')}><Icon name="chevron-left" /> Arena</button>
+        </div>
+        <Shop game={game} balance={balance} now={now} />
+      </> : <>
       <h1 className="screen-title">Arena</h1>
 
       <section className="panel treasury" aria-labelledby="treasury-h">
@@ -460,7 +468,7 @@ export function Arena({ game }: { game: Game }) {
             {earned.fromXp} por XP (1 cada {COIN_RULES.xpPerCoin} XP) · {earned.fromBosses} por bosses · {earned.fromKingdoms} por reinos{earned.fromSocial > 0 && ` · ${earned.fromSocial} por trofeos`} · −{coinsSpent(state)} gastadas
           </p>
         </div>
-        <button type="button" className="primary shop-jump" onClick={() => document.getElementById('shop')?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' })}>
+        <button type="button" className="primary shop-jump" data-tour="shop" onClick={() => setView('shop')}>
           <Icon name="shopping-bag" /> Tienda
         </button>
       </section>
@@ -470,8 +478,10 @@ export function Arena({ game }: { game: Game }) {
           <h3 id="bosses-h">Bosses</h3>
           <span className="count mono">{active.length}/{MAX_ACTIVE_BOSSES} activos</span>
         </header>
-        <p className="hint">Un boss es un reto con plazo: le haces daño con lo que hagas desde que lo invocas y, si cae a tiempo, te llevas su botín. Subir de nivel y vencer a cada bestia abre las siguientes de su saga. Cada boss tiene una habilidad y un punto débil que se revela a media vida.</p>
-        <p className="hint crit-hint"><Icon name="sparkles" /> {CRIT_RULES}</p>
+        <Fold label="Cómo funcionan" icon="info" className="rules-fold">
+          <p className="hint">Un boss es un reto con plazo: le haces daño con lo que hagas desde que lo invocas y, si cae a tiempo, te llevas su botín. Subir de nivel y vencer a cada bestia abre las siguientes de su saga. Cada boss tiene una habilidad y un punto débil que se revela a media vida.</p>
+          <p className="hint crit-hint"><Icon name="sparkles" /> {CRIT_RULES}</p>
+        </Fold>
         <div className="arena-progress">
           <span><b className="mono">Nv {level}</b> nivel global</span>
           <span><b className="mono">{unlockedCount}/{BOSS_TEMPLATES.length}</b> bosses desbloqueados</span>
@@ -487,7 +497,7 @@ export function Arena({ game }: { game: Game }) {
           </div>
         )}
 
-        <h4 className="sub-h">Sagas</h4>
+        <Fold label={full ? 'Sagas' : 'Invocar un boss'} icon="crossed-swords" count={`${unlockedCount}/${BOSS_TEMPLATES.length}`} className="sagas-fold" defaultOpen={active.length === 0}>
         {full && <p className="muted small-text full-note">Ya tienes {MAX_ACTIVE_BOSSES} bosses activos. Derrota alguno antes de invocar más.</p>}
         <div className="sagas">
           {SAGAS.map((saga) => {
@@ -512,6 +522,7 @@ export function Arena({ game }: { game: Game }) {
           })}
         </div>
         {!full && <CustomBossForm onCreate={summonCustom} />}
+        </Fold>
 
         {finished.length > 0 && (
           <Fold label="Últimos combates" icon="crossed-swords" count={finished.length} className="combats-fold">
@@ -531,7 +542,7 @@ export function Arena({ game }: { game: Game }) {
         )}
       </section>
 
-      <Shop game={game} balance={balance} now={now} />
+      </>}
 
       {introBoss && <SummonIntro boss={introBoss} onClose={() => setIntroId(null)} />}
       {!introBoss && victoryBoss && <VictoryOverlay boss={victoryBoss} state={state} now={now} onClose={() => { setVictoryId(null); sfx.coin(); }} />}
@@ -567,7 +578,7 @@ function Shop({ game, balance, now }: { game: Game; balance: number; now: number
     .sort((a, b) => order(a) - order(b) || a.cost - b.cost);
 
   return (
-    <section id="shop" className="panel shop-panel" aria-labelledby="shop-h" data-tour="shop">
+    <section id="shop" className="panel shop-panel" aria-labelledby="shop-h">
       <header className="panel-head"><h3 id="shop-h">Tienda de recompensas</h3><CoinBadge amount={balance} /></header>
       <p className="hint">Date caprichos con lo que te has ganado. Pon tú los precios: si algo te cuesta poco, no lo valoras.</p>
 

@@ -2,8 +2,10 @@
 import { useState, type ReactNode } from 'react';
 import { Icon, type IconName } from './icons';
 
-export function Fold({ label, icon, count, className, children }: { label: string; icon?: IconName; count?: ReactNode; className?: string; children: ReactNode }) {
-  const [open, setOpen] = useState(false);
+export function Fold({ label, icon, count, className, defaultOpen = false, children }: {
+  label: string; icon?: IconName; count?: ReactNode; className?: string; defaultOpen?: boolean; children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
     <div className={`fold${open ? ' open' : ''}${className ? ` ${className}` : ''}`}>
       <button type="button" className="secondary fold-btn" aria-expanded={open} onClick={() => setOpen(!open)}>
