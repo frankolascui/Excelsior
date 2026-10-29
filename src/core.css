@@ -177,7 +177,6 @@ button.tg-session { font-family: inherit; justify-content: flex-start; align-ite
 .cal-tasks-count { display: inline-flex; gap: 10px; font-size: 13px; color: var(--muted); }
 .cal-tasks-count span { display: inline-flex; align-items: center; gap: 4px; }
 .cal-tasks-body { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
-.cal-undated h4 { margin: 4px 0; display: flex; align-items: center; gap: 8px; font-size: 15px; }
 
 /* Menú del móvil: 5 abajo (Hoy, Misiones, Deep Work, Social, Más); el resto en una hoja */
 .nav-item.mob-only { display: none; }
@@ -371,3 +370,27 @@ button.tg-session { font-family: inherit; justify-content: flex-start; align-ite
 .block-task-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .block-task.done .block-task-name { color: var(--muted); text-decoration: line-through; }
 .tg-tasks { font-weight: 400; opacity: 0.8; }
+
+/* Misiones: historial de completadas plegado y por días */
+.quest-history .fold { margin-top: 0; }
+.history-day + .history-day { margin-top: 12px; }
+.history-day-h { margin: 0 0 6px; }
+.history-day-h .mono { color: var(--muted); }
+.history-more { margin-top: 10px; }
+
+/* Calendario: misiones del día agrupadas (lo urgente arriba) */
+.cal-group { display: flex; flex-direction: column; gap: 6px; }
+.cal-group + .cal-group { padding-top: 10px; border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
+.cal-sub {
+  display: flex; align-items: center; gap: 7px; margin: 0; font-size: 12px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+}
+.cal-sub .ico { width: 14px; height: 14px; color: var(--c1); }
+.cal-sub .count { font-size: 11.5px; padding: 1px 7px; border-radius: 99px; background: var(--surface-2); letter-spacing: 0; }
+.cal-group.overdue .cal-sub, .cal-group.overdue .cal-sub .ico { color: var(--danger); }
+.cal-group.overdue .item { box-shadow: inset 3px 0 0 var(--danger); }
+.cal-group.done .item { opacity: 0.75; }
+.cal-group .with-info { gap: 6px; }
+.cal-tasks-count .late { color: var(--danger); }
+.cal-undated { padding: 12px; border-radius: 14px; border: 1px dashed color-mix(in srgb, var(--c2) 35%, var(--line)); background: color-mix(in srgb, var(--c2) 4%, transparent); }
+.cal-group.cal-undated { border-top: 1px dashed color-mix(in srgb, var(--c2) 35%, var(--line)); margin-top: 4px; }

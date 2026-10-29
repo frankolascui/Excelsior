@@ -40,6 +40,7 @@ import { QuestTemplates } from './templates-ui';
 import { DragHandle, draftToProgression, HabitHints, MinimumInput, PerDayInput, ProgressionInput, progressionDraft, RetiredHabits, weekShareText, type ProgressionDraft } from './habits-ui';
 import { atMax, levelUp, restoreHabit, retireHabit, setProgression, snoozeHint } from './progression';
 import { InfoTip } from './infotip';
+import { QuestHistory } from './quest-history';
 import { ACHIEVEMENTS } from './achievements';
 
 export type Game = ReturnType<typeof useGame>;
@@ -250,7 +251,6 @@ export function Quests({ game, focusQuest, startFocus }: { game: Game; focusQues
   const pending = pendingQuests(state, now);
   const scheduled = scheduledQuests(state, now);
   const [showScheduled, setShowScheduled] = useState(false);
-  const done = state.quests.filter((q) => q.completedAt).sort((a, b) => b.completedAt! - a.completedAt!).slice(0, 15);
   const [view, setView] = useState<'list' | 'calendar'>(() => {
     try {
       return localStorage.getItem(VIEW_KEY) === 'calendar' ? 'calendar' : 'list';
@@ -339,14 +339,7 @@ export function Quests({ game, focusQuest, startFocus }: { game: Game; focusQues
           )}
         </section>
       )}
-      {done.length > 0 && (
-        <section className="panel">
-          <header className="panel-head"><h3>Completadas</h3></header>
-          <ul className="list">
-            {done.map((q) => <QuestItem key={q.id} quest={q} kingdom={kingdomName(state, q.kingdomId)} onUndo={() => act((st) => ({ state: undoQuest(st, q.id), xp: 0 }))} />)}
-          </ul>
-        </section>
-      )}
+      <QuestHistory state={state} onUndo={(id) => act((st) => ({ state: undoQuest(st, id), xp: 0 }))} />
     </div>
   );
 }

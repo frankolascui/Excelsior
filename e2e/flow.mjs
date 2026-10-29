@@ -440,7 +440,11 @@ await page.fill('#session-minutes', '50');
 await page.click('.session-edit button:has-text("Guardar")');
 check(await seen('text=50 min de foco · +50 XP') && await seen('.session-row:has-text("corregida")'), 'se puede volver a subir hasta lo medido');
 await page.click('.nav-item:has-text("Misiones")');
-if (!(await page.isVisible('.calendar'))) await page.click('[role=radio]:has-text("Calendario")');
+if (await page.isVisible('.calendar')) await page.click('[role=radio]:has-text("Lista")');
+check(await seen('.quest-history .fold-btn:has-text("Historial de misiones")') && !(await page.$('.quest-history .history-day')), 'las misiones completadas van en un historial plegado');
+await page.click('.quest-history .fold-btn');
+check(await seen('.quest-history .history-day-h') && await seen('.quest-history .item:has-text("Responder emails")'), 'al abrirlo salen las completadas por días');
+await page.click('[role=radio]:has-text("Calendario")');
 await page.click('.cal-views [role=radio]:text-is("Día")');
 await page.click('.cal-head button:has-text("Hoy")');
 for (let i = 0; i < 3 && !(await page.$('.tg-day .tg-session')); i++) await page.click('.cal-head button[aria-label$="anterior"]');
@@ -658,6 +662,7 @@ await page.click('.sheet button:has-text("Añadir")');
 check(await seen('.tg-day .tg-block:has-text("Estudiar física")') && await seen('.tg-block:has-text("16:00 – 17:00")'), 'el bloque de tiempo aparece de 16:00 a 17:00');
 // arrastrar el bloque una hora abajo y estirarlo media hora
 const blk = await page.$('.tg-day .tg-block:has-text("Estudiar física")');
+await page.waitForTimeout(400); // que termine de entrar la animación antes de medirlo
 const bb = await blk.boundingBox();
 await page.mouse.move(bb.x + 40, bb.y + 10);
 await page.mouse.down();

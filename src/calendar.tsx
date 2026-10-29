@@ -8,6 +8,7 @@ import { eventColor, eventIcon, eventsOn, isKeyEvent, priorityEvents, remindersO
 import { countdown } from './life-ui';
 import { addDays, AgendaForm, mondayOf, ReminderRow, TimeGrid } from './agenda-ui';
 import { Fold } from './fold';
+import { InfoTip } from './infotip';
 
 /** Si el panel de misiones y recordatorios del calendario está abierto (se recuerda). */
 const TASKS_KEY = 'excelsior:cal-tasks';
@@ -103,6 +104,18 @@ export function QuestCalendar({
   const selDue = pendingQuests(state, now).filter((q) => q.deadline === selected);
   const selDone = doneOn(selected);
   const undated = pendingQuests(state, now).filter((q) => !q.deadline);
+  // Hoy también enseña lo atrasado, arriba del todo (pendingQuests ya viene ordenado por urgencia).
+  const overdue = selected === today ? pendingQuests(state, now).filter((q) => q.deadline && q.deadline < today) : [];
+  const pendingItem = (q: Quest) => (
+    <QuestItem
+      key={q.id} quest={q}
+      onComplete={() => act((st) => completeQuest(st, q.id, Date.now()), capNote, questOpts(q))}
+      onStart={() => focusQuest(q)}
+      onEdit={(t, v) => act((st) => updateQuest(st, q.id, { title: t, ...v }))}
+      onDeadline={(d) => act((st) => setQuestDeadline(st, q.id, d))}
+      onDelete={() => act((st) => deleteQuest(st, q.id))}
+    />
+  );
 
   return (
     <>
@@ -156,56 +169,58 @@ export function QuestCalendar({
         {view !== 'month' && <p className="hint cal-legend">Pulsa una hora libre para añadir algo a esa hora. <Icon name="zap" /> = tus sesiones de Deep Work. <Icon name="repeat" /> = se repite.</p>}
       </section>
 
-      {/* Sin lista de eventos del día (ya se ven en el calendario): solo el botón para añadir uno ese día. */}
-      <section className="panel cal-add" aria-label="Añadir evento">
-        <Fold key={`${selected}-${view === 'month'}`} label={`Añadir ${view === 'month' ? 'examen o lanzamiento' : 'evento'} · ${selected === today ? 'hoy' : shortDate(selected)}`} icon="plus" className="cal-add-fold">
-          <AgendaForm game={game} day={selected} onlyKey={view === 'month'} />
-        </Fold>
-        {view === 'month' && <button className="link cal-open-day" onClick={() => pickView('day')}>Ver el día por horas <Icon name="arrow-right" /></button>}
-      </section>
-
       <section className={`panel cal-tasks${tasksOpen ? ' open' : ''}`} aria-labelledby="cal-tasks-h">
         <button type="button" className="cal-tasks-head" aria-expanded={tasksOpen} onClick={() => toggleTasks(!tasksOpen)}>
           <h3 id="cal-tasks-h">Misiones y recordatorios · {selected === today ? 'hoy' : shortDate(selected)}</h3>
           <span className="cal-tasks-count mono">
+            {overdue.length > 0 && <span className="late"><Icon name="alert" /> {overdue.length}</span>}
             {selDue.length + selSteps.length > 0 && <span><Icon name="list" /> {selDue.length + selSteps.length}</span>}
             {selRems.length > 0 && <span><Icon name="bell" /> {selRems.length}</span>}
-            {selDue.length + selSteps.length + selRems.length === 0 && <span className="muted">nada</span>}
+            {overdue.length + selDue.length + selSteps.length + selRems.length === 0 && <span className="muted">nada</span>}
           </span>
           <Icon name={tasksOpen ? 'chevron-down' : 'chevron-right'} />
         </button>
         {tasksOpen && (
           <div className="cal-tasks-body">
-            {selDue.length === 0 && selDone.length === 0 && selSteps.length === 0 && selRems.length === 0 && <p className="empty">Nada para este día.</p>}
-            {selRems.length > 0 && <ul className="list">{selRems.map((r) => <ReminderRow key={r.id} r={r} now={now} game={game} />)}</ul>}
-            {selSteps.length > 0 && (
-              <ul className="list plain cal-steps" aria-label="Pasos con fecha este día">
-                {selSteps.map(({ quest, step }) => (
-                  <li key={step.id} className="step">
-                    <button type="button" className="step-check" aria-pressed={false} aria-label={`Marcar paso ${step.title}`} onClick={() => act((st) => toggleStep(st, quest.id, step.id))} />
-                    <span className="step-title">{step.title} <span className="muted small-text">· paso de {quest.title}</span></span>
-                  </li>
-                ))}
-              </ul>
+            {overdue.length + selDue.length + selDone.length + selSteps.length + selRems.length === 0 && <p className="empty">Nada para este día.</p>}
+            {overdue.length > 0 && (
+              <div className="cal-group overdue">
+                <h4 className="cal-sub"><Icon name="alert" /> Atrasadas <span className="count mono">{overdue.length}</span></h4>
+                <ul className="list">{overdue.map(pendingItem)}</ul>
+              </div>
             )}
             {selDue.length > 0 && (
-              <ul className="list">
-                {selDue.map((q) => (
-                  <QuestItem
-                    key={q.id} quest={q}
-                    onComplete={() => act((st) => completeQuest(st, q.id, Date.now()), capNote, questOpts(q))}
-                    onStart={() => focusQuest(q)}
-                    onEdit={(t, v) => act((st) => updateQuest(st, q.id, { title: t, ...v }))}
-                    onDeadline={(d) => act((st) => setQuestDeadline(st, q.id, d))}
-                    onDelete={() => act((st) => deleteQuest(st, q.id))}
-                  />
-                ))}
-              </ul>
+              <div className="cal-group">
+                <h4 className="cal-sub"><Icon name="target" /> Misiones que vencen {selected === today ? 'hoy' : `el ${shortDate(selected)}`} <span className="count mono">{selDue.length}</span></h4>
+                <ul className="list">{selDue.map(pendingItem)}</ul>
+              </div>
+            )}
+            {selSteps.length > 0 && (
+              <div className="cal-group">
+                <h4 className="cal-sub"><Icon name="list" /> Pasos <span className="count mono">{selSteps.length}</span></h4>
+                <ul className="list plain cal-steps" aria-label="Pasos con fecha este día">
+                  {selSteps.map(({ quest, step }) => (
+                    <li key={step.id} className="step">
+                      <button type="button" className="step-check" aria-pressed={false} aria-label={`Marcar paso ${step.title}`} onClick={() => act((st) => toggleStep(st, quest.id, step.id))} />
+                      <span className="step-title">{step.title} <span className="muted small-text">· paso de {quest.title}</span></span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {selRems.length > 0 && (
+              <div className="cal-group">
+                <h4 className="cal-sub"><Icon name="bell" /> Recordatorios <span className="count mono">{selRems.length}</span></h4>
+                <ul className="list">{selRems.map((r) => <ReminderRow key={r.id} r={r} now={now} game={game} />)}</ul>
+              </div>
             )}
             {selDone.length > 0 && (
-              <ul className="list">
-                {selDone.map((q) => <QuestItem key={q.id} quest={q} onUndo={() => act((st) => ({ state: undoQuest(st, q.id), xp: 0 }))} />)}
-              </ul>
+              <div className="cal-group done">
+                <h4 className="cal-sub"><Icon name="check" /> Hechas <span className="count mono">{selDone.length}</span></h4>
+                <ul className="list">
+                  {selDone.map((q) => <QuestItem key={q.id} quest={q} onUndo={() => act((st) => ({ state: undoQuest(st, q.id), xp: 0 }))} />)}
+                </ul>
+              </div>
             )}
             {selected >= today && (
               <div className="cal-add">
@@ -214,9 +229,11 @@ export function QuestCalendar({
               </div>
             )}
             {undated.length > 0 && (
-              <div className="cal-undated">
-                <h4>Misiones sin fecha <span className="count mono">{undated.length}</span></h4>
-                <p className="hint">Ponles fecha con <Icon name="calendar-plus" /> para que salgan en su día.</p>
+              <div className="cal-group cal-undated">
+                <div className="with-info">
+                  <h4 className="cal-sub"><Icon name="calendar-plus" /> Misiones sin fecha <span className="count mono">{undated.length}</span></h4>
+                  <InfoTip label="Misiones sin fecha"><p>Ponles fecha con <Icon name="calendar-plus" /> para que salgan en su día.</p></InfoTip>
+                </div>
                 <ul className="list">
                   {undated.map((q) => (
                     <QuestItem key={q.id} quest={q} onDeadline={(d) => act((st) => setQuestDeadline(st, q.id, d))}
@@ -228,6 +245,15 @@ export function QuestCalendar({
           </div>
         )}
       </section>
+
+      {/* Sin lista de eventos del día (ya se ven en el calendario): solo el botón para añadir uno ese día. */}
+      <section className="panel cal-add" aria-label="Añadir evento">
+        <Fold key={`${selected}-${view === 'month'}`} label={`Añadir ${view === 'month' ? 'examen o lanzamiento' : 'evento'} · ${selected === today ? 'hoy' : shortDate(selected)}`} icon="plus" className="cal-add-fold">
+          <AgendaForm game={game} day={selected} onlyKey={view === 'month'} />
+        </Fold>
+        {view === 'month' && <button className="link cal-open-day" onClick={() => pickView('day')}>Ver el día por horas <Icon name="arrow-right" /></button>}
+      </section>
+
     </>
   );
 }
