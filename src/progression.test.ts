@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { addHabit, dayKey, emptyState, shiftDay, toggleHabit } from './game';
-import { automatedDue, constancy, habitHints, levelUp, levelUpDue, nextValue, restoreHabit, retireHabit, setProgression, snoozeHint, valueText } from './progression';
+import { progressionText, automatedDue, constancy, habitHints, levelUp, levelUpDue, nextValue, restoreHabit, retireHabit, setProgression, snoozeHint, valueText } from './progression';
 import { draftToProgression } from './habits-ui';
 import type { GameState } from './types';
 
@@ -38,7 +38,7 @@ describe('sobrecarga progresiva', () => {
   });
 
   it('hora de dormir: adelanta 15 min y no sale del día', () => {
-    const p = draftToProgression({ kind: 'time', value: '22:00', step: '15', unit: '', dir: 'earlier' }, 7)!;
+    const p = draftToProgression({ kind: 'time', value: '22:00', step: '15', unit: '', dir: 'earlier', max: '' }, 7)!;
     expect(p).toEqual({ kind: 'time', value: 1320, step: -15 });
     expect(valueText(p, nextValue({ ...p, since: 0 })!)).toBe('a las 21:45');
     expect(nextValue({ kind: 'time', value: 5, step: -15, since: 0 })).toBeNull();
@@ -47,7 +47,7 @@ describe('sobrecarga progresiva', () => {
   it('veces por semana: sube hasta cada día', () => {
     let s = addHabit(emptyState(), 'Entrenar', NOW - 60 * D, { perWeek: 6 });
     const id = s.habits[0].id;
-    s = setProgression(s, id, draftToProgression({ kind: 'freq', value: '', step: '', unit: '', dir: 'earlier' }, 6), NOW - 30 * D);
+    s = setProgression(s, id, draftToProgression({ kind: 'freq', value: '', step: '', unit: '', dir: 'earlier', max: '' }, 6), NOW - 30 * D);
     s = levelUp(s, id, NOW);
     expect(s.habits[0]).toMatchObject({ frequency: 'daily' });
     expect(s.habits[0].perWeek).toBeUndefined();
@@ -60,6 +60,32 @@ describe('sobrecarga progresiva', () => {
     // semanas anteriores (lunes 9 y lunes 2 nov): 3 y 2 veces
     for (const d of ['2026-11-09', '2026-11-11', '2026-11-13', '2026-11-03', '2026-11-05']) s = toggleHabit(s, id, NOW, d).state;
     expect(constancy(s, s.habits[0], NOW, 14)).toBeCloseTo(5 / 6);
+  });
+});
+
+describe('meta final (hasta)', () => {
+  it('dormir: adelanta de 15 en 15 hasta las 21:00 y ahí para', () => {
+    const p = draftToProgression({ kind: 'time', value: '21:30', step: '20', unit: '', dir: 'earlier', max: '21:00' }, 7)!;
+    expect(p).toEqual({ kind: 'time', value: 1290, step: -20, max: 1260 });
+    expect(nextValue({ ...p, since: 0 })).toBe(1270);
+    expect(nextValue({ ...p, value: 1270, since: 0 })).toBe(1260); // no se pasa
+    expect(nextValue({ ...p, value: 1260, since: 0 })).toBeNull();
+    // una meta hacia el lado contrario no vale
+    expect(draftToProgression({ kind: 'time', value: '21:30', step: '15', unit: '', dir: 'earlier', max: '22:00' }, 7)).not.toHaveProperty('max');
+  });
+
+  it('cantidad y veces por semana con tope', () => {
+    expect(nextValue({ kind: 'amount', value: 55, step: 10, max: 60, since: 0 })).toBe(60);
+    expect(nextValue({ kind: 'amount', value: 60, step: 10, max: 60, since: 0 })).toBeNull();
+    const f = draftToProgression({ kind: 'freq', value: '', step: '', unit: '', dir: 'earlier', max: '5' }, 3)!;
+    expect(f).toEqual({ kind: 'freq', value: 3, step: 1, max: 5 });
+    expect(nextValue({ ...f, value: 5, since: 0 })).toBeNull();
+  });
+
+  it('con meta final la fila enseña «ahora → meta»', () => {
+    let s = addHabit(emptyState(), 'Dormir', NOW);
+    s = setProgression(s, s.habits[0].id, { kind: 'time', value: 1320, step: -15, max: 1260 }, NOW);
+    expect(progressionText(s.habits[0])).toBe('a las 22:00 → 21:00');
   });
 });
 

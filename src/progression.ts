@@ -28,15 +28,33 @@ export function valueText(p: Pick<HabitProgression, 'kind' | 'unit'>, value: num
   return `${value}${p.unit ? ` ${p.unit}` : ''}`;
 }
 
+/** «20 min» o, con meta final, «20 → 60 min». */
 export function progressionText(h: Habit): string | null {
-  return h.progression ? valueText(h.progression, h.progression.value) : null;
+  const p = h.progression;
+  if (!p) return null;
+  if (p.max === undefined || atMax(p)) return valueText(p, p.value);
+  if (p.kind === 'time') return `a las ${clockText(p.value)} → ${clockText(p.max)}`;
+  if (p.kind === 'amount') return `${p.value} → ${valueText(p, p.max)}`;
+  return `${valueText(p, p.value)} → ${valueText(p, p.max)}`;
 }
 
-/** Siguiente meta, o null si ya no puede subir (una hora fuera del día, más de 7 veces por semana, cantidad ≤ 0). */
+/** ¿Ya llegó a la meta final (`max`)? */
+export function atMax(p: Pick<HabitProgression, 'value' | 'step' | 'max' | 'kind'>): boolean {
+  const max = p.kind === 'freq' ? Math.min(7, p.max ?? 7) : p.max;
+  if (max === undefined) return false;
+  return p.step < 0 ? p.value <= max : p.value >= max;
+}
+
+/**
+ * Siguiente meta, sin pasarse de `max`; null si ya no puede subir (llegó al máximo, una hora fuera del día,
+ * más de 7 veces por semana, cantidad ≤ 0).
+ */
 export function nextValue(p: HabitProgression): number | null {
-  const v = p.value + p.step;
-  if (p.step === 0) return null;
-  if (p.kind === 'freq') return p.value >= 7 || v < 1 ? null : Math.min(7, v);
+  if (p.step === 0 || atMax(p)) return null;
+  let v = p.value + p.step;
+  const max = p.kind === 'freq' ? Math.min(7, p.max ?? 7) : p.max;
+  if (max !== undefined) v = p.step < 0 ? Math.max(v, max) : Math.min(v, max);
+  if (p.kind === 'freq') return v < 1 ? null : v;
   if (p.kind === 'time') return v < 0 || v >= 1440 ? null : v;
   return v <= 0 ? null : Math.round(v * 100) / 100;
 }

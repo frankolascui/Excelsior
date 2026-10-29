@@ -150,26 +150,36 @@ export function DragHandle({ name, group, onDrop }: { name: string; group: strin
 
 // ---------- Sobrecarga progresiva ----------
 
-export interface ProgressionDraft { kind: 'none' | HabitProgression['kind']; value: string; step: string; unit: string; dir: 'earlier' | 'later' }
+export interface ProgressionDraft { kind: 'none' | HabitProgression['kind']; value: string; step: string; unit: string; dir: 'earlier' | 'later'; max: string }
 
 export function progressionDraft(h?: Habit): ProgressionDraft {
   const p = h?.progression;
-  if (!p) return { kind: 'none', value: '', step: '', unit: '', dir: 'earlier' };
-  if (p.kind === 'time') return { kind: 'time', value: clockText(p.value), step: String(Math.abs(p.step)), unit: '', dir: p.step < 0 ? 'earlier' : 'later' };
-  return { kind: p.kind, value: String(p.value), step: String(p.step), unit: p.unit ?? '', dir: 'earlier' };
+  if (!p) return { kind: 'none', value: '', step: '', unit: '', dir: 'earlier', max: '' };
+  if (p.kind === 'time') return { kind: 'time', value: clockText(p.value), step: String(Math.abs(p.step)), unit: '', dir: p.step < 0 ? 'earlier' : 'later', max: p.max === undefined ? '' : clockText(p.max) };
+  return { kind: p.kind, value: String(p.value), step: String(p.step), unit: p.unit ?? '', dir: 'earlier', max: p.max === undefined ? '' : String(p.max) };
 }
 
 /** Del borrador a la sobrecarga (null = sin ella). `perWeek` = la frecuencia elegida (7 = cada día). */
 export function draftToProgression(d: ProgressionDraft, perWeek: number): Omit<HabitProgression, 'since' | 'history'> | null {
   if (d.kind === 'none') return null;
-  if (d.kind === 'freq') return perWeek >= 7 ? null : { kind: 'freq', value: perWeek, step: 1 };
+  if (d.kind === 'freq') {
+    if (perWeek >= 7) return null;
+    const max = Number(d.max);
+    return { kind: 'freq', value: perWeek, step: 1, ...(max > perWeek && max < 7 ? { max } : {}) };
+  }
   const step = Math.abs(Number(d.step.replace(',', '.')));
   if (d.kind === 'time') {
     const v = parseClock(d.value);
-    return v === null || !step ? null : { kind: 'time', value: v, step: d.dir === 'earlier' ? -Math.round(step) : Math.round(step) };
+    if (v === null || !step) return null;
+    const signed = d.dir === 'earlier' ? -Math.round(step) : Math.round(step);
+    const max = parseClock(d.max);
+    // la meta final tiene que estar hacia donde vas (antes si adelantas, después si retrasas)
+    const ok = max !== null && (signed < 0 ? max < v : max > v);
+    return { kind: 'time', value: v, step: signed, ...(ok ? { max: max! } : {}) };
   }
   const v = Number(d.value.replace(',', '.'));
-  return v > 0 && step > 0 ? { kind: 'amount', value: v, step, unit: d.unit } : null;
+  const max = Number(d.max.replace(',', '.'));
+  return v > 0 && step > 0 ? { kind: 'amount', value: v, step, unit: d.unit, ...(max > v ? { max } : {}) } : null;
 }
 
 /** Campos de la sobrecarga: qué sube (cantidad, hora o veces por semana), desde dónde y de cuánto en cuánto. */
@@ -189,6 +199,7 @@ export function ProgressionInput({ id, value: d, onChange, perWeek }: { id: stri
           <label>Empiezo en <input id={`${id}-value`} inputMode="decimal" value={d.value} onChange={(e) => set({ value: e.target.value })} placeholder="10" /></label>
           <label>unidad <input id={`${id}-unit`} value={d.unit} maxLength={20} onChange={(e) => set({ unit: e.target.value })} placeholder="min" /></label>
           <label>sube de <input id={`${id}-step`} inputMode="decimal" value={d.step} onChange={(e) => set({ step: e.target.value })} placeholder="5" /></label>
+          <label>hasta <input id={`${id}-max`} inputMode="decimal" value={d.max} onChange={(e) => set({ max: e.target.value })} placeholder="60" aria-label="Hasta dónde quieres llegar" /></label>
         </div>
       )}
       {d.kind === 'time' && (
@@ -198,9 +209,18 @@ export function ProgressionInput({ id, value: d, onChange, perWeek }: { id: stri
             <option value="earlier">adelantar</option>
             <option value="later">retrasar</option>
           </select> <input id={`${id}-step`} inputMode="numeric" value={d.step} onChange={(e) => set({ step: e.target.value })} placeholder="15" /> min</label>
+          <label>hasta las <input id={`${id}-max`} value={d.max} onChange={(e) => set({ max: e.target.value })} placeholder="21:00" aria-label="Hasta qué hora quieres llegar" /></label>
         </div>
       )}
-      {d.kind === 'freq' && <p className="hint">Empieza en {perWeek} y sube de 1 en 1 hasta cada día.</p>}
+      {d.kind === 'freq' && (
+        <div className="progression-row">
+          <span>Empieza en {perWeek} y sube de 1 en 1</span>
+          <label>hasta <select id={`${id}-max`} className="freq-select" value={d.max || '7'} onChange={(e) => set({ max: e.target.value })} aria-label="Hasta cuántas veces por semana">
+            {Array.from({ length: 7 - perWeek }, (_, i) => perWeek + 1 + i).map((n) => <option key={n} value={n}>{n === 7 ? 'cada día' : `${n} veces/sem`}</option>)}
+          </select></label>
+        </div>
+      )}
+      {d.kind !== 'none' && <p className="hint">«Hasta» es tu meta final (opcional): al llegar, deja de subir.</p>}
       {d.kind !== 'none' && <p className="hint">Hiperión te propondrá subir cuando lleves {PROGRESSION_RULES.levelDays} días con la meta actual al {Math.round(PROGRESSION_RULES.levelPct * 100)} % o más. Tú decides si subes.</p>}
     </fieldset>
   );
@@ -238,7 +258,7 @@ export function HabitHints({ state, now, guide, onLevel, onRetire, onSnooze }: {
             </li>
           ) : (
             <li key={h.id} className="habit-hint level">
-              <p><b>{h.name}</b>: llevas {PROGRESSION_RULES.levelDays} días cumpliendo <b>{valueText(p!, p!.value)}</b>. Toca subir un poco: <b>{valueText(p!, x.next)}</b>.</p>
+              <p><b>{h.name}</b>: llevas {PROGRESSION_RULES.levelDays} días cumpliendo <b>{valueText(p!, p!.value)}</b>. Toca subir un poco: <b>{valueText(p!, x.next)}</b>{p!.max === x.next && ', tu meta final'}.</p>
               <div className="habit-hint-actions">
                 <button className="primary small" onClick={() => onLevel(h.id)}><Icon name="trend" /> Subir la meta ({valueText(p!, x.next)})</button>
                 <button className="ghost small" onClick={() => onSnooze(h.id, 'level')}>Aún no</button>

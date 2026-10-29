@@ -78,6 +78,8 @@ export interface HabitProgression {
   value: number;
   step: number;
   unit?: string;
+  /** Hasta dónde quieres llegar (dormir a las 21:00, 60 min, cada día); sin él, sigue subiendo. */
+  max?: number;
   /** Desde cuándo vale el valor actual (se cuenta la constancia desde ahí). */
   since: number;
   /** Valores anteriores, del más antiguo al más nuevo. */

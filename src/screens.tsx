@@ -38,7 +38,7 @@ import type { StepActions } from './steps-ui';
 import { SessionEdit } from './session-ui';
 import { QuestTemplates } from './templates-ui';
 import { DragHandle, draftToProgression, HabitHints, MinimumInput, ProgressionInput, progressionDraft, RetiredHabits, weekShareText, type ProgressionDraft } from './habits-ui';
-import { levelUp, restoreHabit, retireHabit, setProgression, snoozeHint } from './progression';
+import { atMax, levelUp, restoreHabit, retireHabit, setProgression, snoozeHint } from './progression';
 import { InfoTip } from './infotip';
 import { ACHIEVEMENTS } from './achievements';
 
@@ -683,7 +683,12 @@ export function Habits({ game, guide }: { game: Game; guide: string }) {
       </div>
       <div className="stack-gap" data-tour="habits">
       <HabitHints state={state} now={now} guide={guide}
-        onLevel={(id) => { act((s) => levelUp(s, id, Date.now())); sfx.confirm(); game.toast('{i:trend} Meta subida. Paso a paso.', 'level'); }}
+        onLevel={(id) => {
+          const p = levelUp(state, id, Date.now()).habits.find((h) => h.id === id)?.progression;
+          act((s) => levelUp(s, id, Date.now()));
+          sfx.confirm();
+          game.toast(p && atMax(p) ? '{i:trophy} Has llegado a tu meta final. Ahora a mantenerla.' : '{i:trend} Meta subida. Paso a paso.', 'level');
+        }}
         onRetire={(id) => { act((s) => retireHabit(s, id, Date.now())); sfx.victory(); confetti({ count: 120 }); game.toast('{i:trophy} Hábito automatizado. A por el siguiente.', 'level'); }}
         onSnooze={(id, kind) => act((s) => snoozeHint(s, id, kind, Date.now()))} />
       <section className="panel">
