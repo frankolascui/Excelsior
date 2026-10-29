@@ -237,7 +237,7 @@ export default function App() {
             {tab === 'amigos' && <Friends game={game} />}
             {tab === 'gremios' && <Guilds game={game} />}
             {tab === 'deepwork' && <DeepWork key={preselect ?? `free:${presetIntent}`} game={game} preselect={preselect} presetIntent={presetIntent} clearPreselect={() => { setPreselect(null); setPresetIntent(''); }} />}
-            {tab === 'habitos' && <Habits game={game} />}
+            {tab === 'habitos' && <Habits game={game} guide={tutorial.guide} />}
             {tab === 'personaje' && <Character game={game} />}
             {tab === 'ajustes' && (
               <SettingsScreen

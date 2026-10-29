@@ -13,6 +13,7 @@ import { WeeklyChronicle } from './settings';
 import { HeroPath } from './heropath';
 import { useCloud } from './cloud';
 import { sfx } from './sfx';
+import { confetti } from './confetti';
 import { XpChart } from './charts';
 import {
   addHabit, addQuest, cancelTimer, CUSTOM_LIMITS, updateHabit, updateQuest, completeQuest, createProfile, dayKey, deepWorkMinutesOnDay,
@@ -36,7 +37,8 @@ import { addStep, deleteStep, setStepDeadline, toggleStep } from './core';
 import type { StepActions } from './steps-ui';
 import { SessionEdit } from './session-ui';
 import { QuestTemplates } from './templates-ui';
-import { DragHandle, MinimumInput, weekShareText } from './habits-ui';
+import { DragHandle, draftToProgression, HabitHints, MinimumInput, ProgressionInput, progressionDraft, RetiredHabits, weekShareText, type ProgressionDraft } from './habits-ui';
+import { levelUp, restoreHabit, retireHabit, setProgression, snoozeHint } from './progression';
 import { InfoTip } from './infotip';
 import { ACHIEVEMENTS } from './achievements';
 
@@ -635,7 +637,7 @@ function spendHabitShield(game: Game, habitId: string, day: string) {
   game.toast('{i:shield} Escudo usado: la racha sigue viva.', 'level');
 }
 
-export function Habits({ game }: { game: Game }) {
+export function Habits({ game, guide }: { game: Game; guide: string }) {
   const { state, act } = game;
   const now = useNow(30_000);
   const [name, setName] = useState('');
@@ -643,6 +645,7 @@ export function Habits({ game }: { game: Game }) {
   const [open, setOpen] = useState(false);
   const [perWeek, setPerWeek] = useState(7); // 7 = cada día
   const [minimum, setMinimum] = useState('');
+  const [prog, setProg] = useState<ProgressionDraft>(() => progressionDraft());
   const ordered = habitsInOrder(state, now);
   const doneIds = new Set(ordered.filter((h) => habitCleared(state, h, now)).map((h) => h.id));
   async function shareWeek() {
@@ -656,9 +659,14 @@ export function Habits({ game }: { game: Game }) {
     e.preventDefault();
     if (!name.trim()) return;
     const rewards = custom.rewards && !sameRewards(custom.rewards, habitRewards(name)) ? custom.rewards : undefined;
-    act((s) => addHabit(s, name, Date.now(), { xp: custom.xp, rewards, perWeek, minimum }));
+    const p = draftToProgression(prog, perWeek);
+    act((s) => {
+      const next = addHabit(s, name, Date.now(), { xp: custom.xp, rewards, perWeek, minimum });
+      return p ? setProgression(next, next.habits.at(-1)!.id, p, Date.now()) : next;
+    });
     setName('');
     setMinimum('');
+    setProg(progressionDraft());
     setCustom({});
     setOpen(false);
   }
@@ -670,9 +678,14 @@ export function Habits({ game }: { game: Game }) {
           <p>+{XP_RULES.habit} XP cada vez que lo completes. Los diarios hacen racha de días; los de «N veces por semana», racha de semanas cumplidas (de lunes a domingo).</p>
           <p>Los puntos son los últimos 7 días: pulsa uno para marcar un día que se te olvidó, o el nombre para ver su historial. Arrastra el asa para ordenarlos.</p>
           <p>Manda cada domingo tu % de la semana a un amigo con «Compartir mi semana»: cumplir delante de alguien ayuda.</p>
+          <p>Sobrecarga progresiva (en «XP y atributos»): ponle una meta que sube poco a poco, como minutos, una hora de dormir o veces por semana. Tras 14 días al 80 % Hiperión te propone subirla. Con un 90 % de constancia en 30 días te dirá que ya lo has automatizado y que puedes retirarlo para centrarte en otro.</p>
         </InfoTip>
       </div>
       <div className="stack-gap" data-tour="habits">
+      <HabitHints state={state} now={now} guide={guide}
+        onLevel={(id) => { act((s) => levelUp(s, id, Date.now())); sfx.confirm(); game.toast('{i:trend} Meta subida. Paso a paso.', 'level'); }}
+        onRetire={(id) => { act((s) => retireHabit(s, id, Date.now())); sfx.victory(); confetti({ count: 120 }); game.toast('{i:trophy} Hábito automatizado. A por el siguiente.', 'level'); }}
+        onSnooze={(id, kind) => act((s) => snoozeHint(s, id, kind, Date.now()))} />
       <section className="panel">
         <form className="quick-add inline" onSubmit={submit}>
           <input id="new-habit" value={name} onChange={(e) => setName(e.target.value)} placeholder="+ Nuevo hábito (ej. Leer 10 páginas)" maxLength={60} aria-label="Nombre del nuevo hábito" />
@@ -686,6 +699,7 @@ export function Habits({ game }: { game: Game }) {
         {open && (
           <>
             <MinimumInput id="new-habit-min" value={minimum} onChange={setMinimum} />
+            <ProgressionInput id="new-habit-prog" value={prog} onChange={setProg} perWeek={perWeek} />
             <RewardEditor autoXp={XP_RULES.habit} autoRewards={habitRewards(name)} value={custom} onChange={setCustom} maxXp={CUSTOM_LIMITS.habitXp} idPrefix="new-habit" />
           </>
         )}
@@ -709,7 +723,7 @@ export function Habits({ game }: { game: Game }) {
               // solo se ordena entre los del mismo grupo (pendientes o ya hechos)
               const group = ordered.filter((x) => doneIds.has(x.id) === doneIds.has(h.id)).map((x) => x.id);
               return (
-                <HabitItem key={h.id} state={state} habit={h} now={now} onToggle={() => act((s) => toggleHabit(s, h.id, Date.now()), CAP_HABIT, { sound: 'habit' })} onToggleDay={(d) => act((s) => toggleHabit(s, h.id, Date.now(), d), CAP_HABIT, { sound: 'habit' })} onDelete={() => act((s) => deleteHabit(s, h.id))} onEdit={(n, v, m) => act((s) => updateHabit(s, h.id, { name: n, ...v, minimum: m }))}
+                <HabitItem key={h.id} state={state} habit={h} now={now} onToggle={() => act((s) => toggleHabit(s, h.id, Date.now()), CAP_HABIT, { sound: 'habit' })} onToggleDay={(d) => act((s) => toggleHabit(s, h.id, Date.now(), d), CAP_HABIT, { sound: 'habit' })} onDelete={() => act((s) => deleteHabit(s, h.id))} onEdit={(n, v, m, d) => act((s) => setProgression(updateHabit(s, h.id, { name: n, ...v, minimum: m }), h.id, draftToProgression(d, h.frequency === 'weekly' ? h.perWeek ?? 1 : 7), Date.now()))}
                   onShield={(d) => spendHabitShield(game, h.id, d)}
                   handle={<DragHandle name={h.name} group={group} onDrop={(order) => act((s) => reorderHabits(s, order))} />} />
               );
@@ -717,6 +731,7 @@ export function Habits({ game }: { game: Game }) {
           </ul>
         )}
       </section>
+      <RetiredHabits state={state} onRestore={(id) => act((s) => restoreHabit(s, id))} />
       </div>
     </div>
   );

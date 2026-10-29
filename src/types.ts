@@ -60,6 +60,28 @@ export interface Habit {
   xp?: number; // XP a medida; sin él, XP_RULES.habit
   /** Lo mínimo que cuenta en un día malo (solo un recordatorio, no se marca aparte). */
   minimum?: string;
+  /** Sobrecarga progresiva: la meta que sube poco a poco (progression.ts). */
+  progression?: HabitProgression;
+  /** Hasta qué día (YYYY-MM-DD) Hiperión no vuelve a proponer subir o retirar. */
+  snooze?: { level?: string; auto?: string };
+  /** Cuándo se retiró por automatizado (solo en GameState.retiredHabits). */
+  retiredAt?: number;
+}
+
+/**
+ * Meta que sube con el tiempo. `amount`: cantidad con unidad (20 min, 10 páginas).
+ * `time`: una hora en minutos desde las 00:00 (luces a las 22:00 = 1320); `step` negativo la adelanta.
+ * `freq`: veces por semana (usa perWeek; al llegar a 7 pasa a diario).
+ */
+export interface HabitProgression {
+  kind: 'amount' | 'time' | 'freq';
+  value: number;
+  step: number;
+  unit?: string;
+  /** Desde cuándo vale el valor actual (se cuenta la constancia desde ahí). */
+  since: number;
+  /** Valores anteriores, del más antiguo al más nuevo. */
+  history?: { value: number; at: number }[];
 }
 
 export interface HabitCompletion {
@@ -192,6 +214,8 @@ export interface GameState {
   profile: Profile | null;
   quests: Quest[];
   habits: Habit[];
+  /** Hábitos retirados porque ya están automatizados (conservan su historial). */
+  retiredHabits?: Habit[];
   habitCompletions: HabitCompletion[];
   sessions: DeepWorkSession[];
   xp: XPTransaction[];

@@ -9,7 +9,8 @@ import { CustomizeToggle, InlineEdit, RewardEditor, sameRewards, type CustomValu
 import { RitualCTA } from './ritual';
 import { DatePicker, dayWords, RepeatPicker } from './pickers';
 import './core.css';
-import { HabitHistory, habitShields, MinimumInput } from './habits-ui';
+import { HabitHistory, habitShields, MinimumInput, ProgressionInput, progressionDraft, type ProgressionDraft } from './habits-ui';
+import { progressionText } from './progression';
 import { shieldableDay, shieldsLeft } from './economy';
 import { QuestSteps, type StepActions } from './steps-ui';
 import { nextStepDue } from './core';
@@ -261,7 +262,7 @@ export function HabitItem({
   /** Con él, los puntos de la semana se pueden pulsar y el nombre abre el historial. */
   onToggleDay?: (day: string) => void;
   onDelete?: () => void;
-  onEdit?: (name: string, v: CustomValue, minimum: string) => void;
+  onEdit?: (name: string, v: CustomValue, minimum: string, progression: ProgressionDraft) => void;
   /** Usa un escudo de racha del cofre en ese día fallado. */
   onShield?: (day: string) => void;
   /** Asa para ordenar arrastrando (la pone la lista). */
@@ -270,6 +271,7 @@ export function HabitItem({
   const [editing, setEditing] = useState(false);
   const [open, setOpen] = useState(false);
   const [minimum, setMinimum] = useState(habit.minimum ?? '');
+  const [prog, setProg] = useState(() => progressionDraft(habit));
   if (editing && onEdit) {
     const auto = habitRewards(habit.name);
     return (
@@ -278,8 +280,11 @@ export function HabitItem({
           name={habit.name} label="Nombre del hábito" autoXp={XP_RULES.habit} autoRewards={(n) => habitRewards(n)}
           initial={{ xp: habit.xp, rewards: sameRewards(habit.rewards, auto) ? undefined : habit.rewards }}
           maxXp={CUSTOM_LIMITS.habitXp} idPrefix={`edit-${habit.id}`}
-          extra={<MinimumInput id={`edit-${habit.id}-min`} value={minimum} onChange={setMinimum} />}
-          onSave={(n, v) => { onEdit(n, v, minimum); setEditing(false); }} onCancel={() => { setMinimum(habit.minimum ?? ''); setEditing(false); }}
+          extra={<>
+            <MinimumInput id={`edit-${habit.id}-min`} value={minimum} onChange={setMinimum} />
+            <ProgressionInput id={`edit-${habit.id}-prog`} value={prog} onChange={setProg} perWeek={habit.frequency === 'weekly' ? habit.perWeek ?? 1 : 7} />
+          </>}
+          onSave={(n, v) => { onEdit(n, v, minimum, prog); setEditing(false); }} onCancel={() => { setMinimum(habit.minimum ?? ''); setProg(progressionDraft(habit)); setEditing(false); }}
         />
       </li>
     );
@@ -311,6 +316,7 @@ export function HabitItem({
           ? <button type="button" className="habit-open" aria-expanded={open} onClick={() => setOpen(!open)} title="Ver historial"><span className="item-title">{habit.name}</span><Icon name="chevron-down" /></button>
           : <span className="item-title">{habit.name}</span>}
         <span className="item-meta">
+          {habit.progression && habit.progression.kind !== 'freq' && <span className="freq-tag goal-tag" title="Meta actual (sobrecarga progresiva)"><Icon name="trend" /> {progressionText(habit)}</span>}
           {weekly && <span className={weekDone ? 'freq-tag done' : 'freq-tag'}>{weekCount}/{habit.perWeek} esta semana{weekDone && <> <Icon name="check" /></>}</span>}
           <span className="week" aria-label="Últimos 7 días">
             {week.map((d) => {

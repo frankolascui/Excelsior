@@ -341,3 +341,19 @@ button.tg-session { font-family: inherit; justify-content: flex-start; align-ite
 @media (min-width: 761px) {
   .arena-top, .screen > .title-row { padding-right: max(0px, calc(80px - max(0px, (100vw - 1234px) / 2))); }
 }
+
+/* Hábitos: sobrecarga progresiva, consejos de Hiperión y automatizados */
+.progression-input { border: 0; padding: 0; margin: 8px 0; display: grid; gap: 6px; min-width: 0; }
+.progression-input legend { padding: 0; margin-bottom: 4px; }
+.progression-row { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
+.progression-row label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.progression-row input { width: 5.5em; }
+.progression-input .hint { margin: 0; }
+.goal-tag .ico { vertical-align: -2px; }
+.habit-hints-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.habit-hints-head h3, .habit-hints-head .eyebrow { margin: 0; }
+.habit-hint { padding: 10px 0; border-top: 1px solid var(--line); }
+.habit-hint p { margin: 0 0 8px; }
+.habit-hint-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.retired-habits summary { cursor: pointer; }
+.retired-habits li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; padding: 8px 0; border-top: 1px solid var(--line); }

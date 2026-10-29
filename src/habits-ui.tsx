@@ -1,5 +1,7 @@
 // Historial de un hábito: las últimas 5 semanas en cuadrícula (lunes a domingo), escudos y números del mes.
-import type { GameState, Habit } from './types';
+import type { GameState, Habit, HabitProgression } from './types';
+import { clockText, habitHints, nextValue, parseClock, PROGRESSION_RULES, valueText } from './progression';
+import { GuidePortrait } from './tutorial';
 import { dailyStreakInfo, dayKey, habitStreakDays, isHabitDone, MINIMUM_MAX, shiftDay, weekStart } from './game';
 import { SHIELD } from './economy';
 import { Icon } from './icons';
@@ -143,5 +145,127 @@ export function DragHandle({ name, group, onDrop }: { name: string; group: strin
       aria-label={`Mover ${name} (arrastra, o usa las flechas arriba y abajo)`} title="Arrastra para ordenar">
       <Icon name="grip" />
     </button>
+  );
+}
+
+// ---------- Sobrecarga progresiva ----------
+
+export interface ProgressionDraft { kind: 'none' | HabitProgression['kind']; value: string; step: string; unit: string; dir: 'earlier' | 'later' }
+
+export function progressionDraft(h?: Habit): ProgressionDraft {
+  const p = h?.progression;
+  if (!p) return { kind: 'none', value: '', step: '', unit: '', dir: 'earlier' };
+  if (p.kind === 'time') return { kind: 'time', value: clockText(p.value), step: String(Math.abs(p.step)), unit: '', dir: p.step < 0 ? 'earlier' : 'later' };
+  return { kind: p.kind, value: String(p.value), step: String(p.step), unit: p.unit ?? '', dir: 'earlier' };
+}
+
+/** Del borrador a la sobrecarga (null = sin ella). `perWeek` = la frecuencia elegida (7 = cada día). */
+export function draftToProgression(d: ProgressionDraft, perWeek: number): Omit<HabitProgression, 'since' | 'history'> | null {
+  if (d.kind === 'none') return null;
+  if (d.kind === 'freq') return perWeek >= 7 ? null : { kind: 'freq', value: perWeek, step: 1 };
+  const step = Math.abs(Number(d.step.replace(',', '.')));
+  if (d.kind === 'time') {
+    const v = parseClock(d.value);
+    return v === null || !step ? null : { kind: 'time', value: v, step: d.dir === 'earlier' ? -Math.round(step) : Math.round(step) };
+  }
+  const v = Number(d.value.replace(',', '.'));
+  return v > 0 && step > 0 ? { kind: 'amount', value: v, step, unit: d.unit } : null;
+}
+
+/** Campos de la sobrecarga: qué sube (cantidad, hora o veces por semana), desde dónde y de cuánto en cuánto. */
+export function ProgressionInput({ id, value: d, onChange, perWeek }: { id: string; value: ProgressionDraft; onChange: (d: ProgressionDraft) => void; perWeek: number }) {
+  const set = (patch: Partial<ProgressionDraft>) => onChange({ ...d, ...patch });
+  return (
+    <fieldset className="progression-input">
+      <legend className="small-text">Sobrecarga progresiva (opcional)</legend>
+      <select id={`${id}-kind`} className="freq-select" value={d.kind} onChange={(e) => set({ kind: e.target.value as ProgressionDraft['kind'] })} aria-label="Qué sube">
+        <option value="none">Sin sobrecarga</option>
+        <option value="amount">Cantidad (minutos, páginas, kilos…)</option>
+        <option value="time">Hora (ej. irse a dormir)</option>
+        {perWeek < 7 && <option value="freq">Veces por semana</option>}
+      </select>
+      {d.kind === 'amount' && (
+        <div className="progression-row">
+          <label>Empiezo en <input id={`${id}-value`} inputMode="decimal" value={d.value} onChange={(e) => set({ value: e.target.value })} placeholder="10" /></label>
+          <label>unidad <input id={`${id}-unit`} value={d.unit} maxLength={20} onChange={(e) => set({ unit: e.target.value })} placeholder="min" /></label>
+          <label>sube de <input id={`${id}-step`} inputMode="decimal" value={d.step} onChange={(e) => set({ step: e.target.value })} placeholder="5" /></label>
+        </div>
+      )}
+      {d.kind === 'time' && (
+        <div className="progression-row">
+          <label>Ahora a las <input id={`${id}-value`} value={d.value} onChange={(e) => set({ value: e.target.value })} placeholder="22:00" /></label>
+          <label><select id={`${id}-dir`} className="freq-select" value={d.dir} onChange={(e) => set({ dir: e.target.value as ProgressionDraft['dir'] })} aria-label="Hacia dónde">
+            <option value="earlier">adelantar</option>
+            <option value="later">retrasar</option>
+          </select> <input id={`${id}-step`} inputMode="numeric" value={d.step} onChange={(e) => set({ step: e.target.value })} placeholder="15" /> min</label>
+        </div>
+      )}
+      {d.kind === 'freq' && <p className="hint">Empieza en {perWeek} y sube de 1 en 1 hasta cada día.</p>}
+      {d.kind !== 'none' && <p className="hint">Hiperión te propondrá subir cuando lleves {PROGRESSION_RULES.levelDays} días con la meta actual al {Math.round(PROGRESSION_RULES.levelPct * 100)} % o más. Tú decides si subes.</p>}
+    </fieldset>
+  );
+}
+
+/** Hiperión sobre tus hábitos: subir la meta cuando ya la cumples y retirar los que ya están automatizados. */
+export function HabitHints({ state, now, guide, onLevel, onRetire, onSnooze }: {
+  state: GameState; now: number; guide: string;
+  onLevel: (id: string) => void; onRetire: (id: string) => void; onSnooze: (id: string, kind: 'level' | 'auto') => void;
+}) {
+  const hints = habitHints(state, now);
+  if (hints.length === 0) return null;
+  return (
+    <section className="panel habit-hints" aria-labelledby="habit-hints-h">
+      <header className="habit-hints-head">
+        <span className="tour-portrait" aria-hidden="true"><GuidePortrait /></span>
+        <div>
+          <p className="eyebrow">{guide}</p>
+          <h3 id="habit-hints-h">{hints.length === 1 ? 'Tengo algo que decirte de un hábito' : 'Tengo algo que decirte de tus hábitos'}</h3>
+        </div>
+      </header>
+      <ul className="list plain">
+        {hints.map((x) => {
+          const h = x.habit;
+          const p = h.progression;
+          const canLevel = p && nextValue(p) !== null;
+          return x.kind === 'auto' ? (
+            <li key={h.id} className="habit-hint auto">
+              <p><b>{h.name}</b>: {Math.round(x.pct * 100)} % de constancia en los últimos {PROGRESSION_RULES.autoDays} días. Ya lo has automatizado: te sale solo. Puedes retirarlo de la lista y poner tu energía en otro hábito.{canLevel && <> O súbelo a <b>{valueText(p!, nextValue(p!)!)}</b> si quieres seguir creciendo ahí.</>}</p>
+              <div className="habit-hint-actions">
+                <button className="primary small" onClick={() => onRetire(h.id)}><Icon name="check" /> Retirarlo</button>
+                {canLevel && <button className="ghost small" onClick={() => onLevel(h.id)}><Icon name="trend" /> Subir la meta</button>}
+                <button className="ghost small" onClick={() => onSnooze(h.id, 'auto')}>Seguir con él</button>
+              </div>
+            </li>
+          ) : (
+            <li key={h.id} className="habit-hint level">
+              <p><b>{h.name}</b>: llevas {PROGRESSION_RULES.levelDays} días cumpliendo <b>{valueText(p!, p!.value)}</b>. Toca subir un poco: <b>{valueText(p!, x.next)}</b>.</p>
+              <div className="habit-hint-actions">
+                <button className="primary small" onClick={() => onLevel(h.id)}><Icon name="trend" /> Subir la meta ({valueText(p!, x.next)})</button>
+                <button className="ghost small" onClick={() => onSnooze(h.id, 'level')}>Aún no</button>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+/** Hábitos retirados por automatizados, plegados al final. */
+export function RetiredHabits({ state, onRestore }: { state: GameState; onRestore: (id: string) => void }) {
+  const list = state.retiredHabits ?? [];
+  if (list.length === 0) return null;
+  return (
+    <details className="panel retired-habits">
+      <summary><Icon name="trophy" /> Hábitos automatizados ({list.length})</summary>
+      <ul className="list plain">
+        {list.map((h) => (
+          <li key={h.id}>
+            <span><b>{h.name}</b>{h.progression && <> · {valueText(h.progression, h.progression.value)}</>} <span className="muted small-text">retirado el {new Date(h.retiredAt ?? 0).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</span></span>
+            <button className="link" onClick={() => onRestore(h.id)}><Icon name="rotate-ccw" /> Volver a la lista</button>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
