@@ -15,7 +15,7 @@ button.repeat-tag:hover { text-decoration: underline; }
 .scheduled-list .starts { font-size: 12px; color: var(--muted); }
 
 /* Barra de Hoy */
-.today-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.today-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-bottom: 4px; }
 .today-tile {
   display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px;
   background: var(--surface); border: 1px solid var(--line); min-width: 0;
@@ -216,7 +216,12 @@ button.tg-session { font-family: inherit; justify-content: flex-start; align-ite
 
 /* Hoy más corto: lo vacío se pliega en una línea */
 .columns.one { grid-template-columns: 1fr; }
-.reminders-folded { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 12px; }
+.today-dayclose { display: flex; flex-direction: column; min-width: 0; }
+@media (max-width: 900px) {
+  .columns > .col-stack:has(> .today-dayclose) { display: contents; }
+  .columns > .col-stack > .today-dayclose { order: 2; }
+}
+.panel.reminders-folded { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; padding-block: 10px; }
 .reminders-folded p { margin: 0; display: flex; align-items: center; gap: 8px; color: var(--muted); }
 .now .now-add { margin-top: 10px; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; }
 .now .quick-add { margin-top: 12px; }

@@ -159,7 +159,7 @@ export function XpChart({ state, now }: { state: GameState; now: number }) {
   const activeDays = data.filter((d) => d.xp > 0).length;
 
   const STRIP = 0;
-  const H = 210 + STRIP;
+  const H = 170 + STRIP;
   const m = { top: 22, right: 18, bottom: 26 + STRIP, left: 40 };
   const iw = Math.max(10, width - m.left - m.right);
   const ih = H - m.top - m.bottom;

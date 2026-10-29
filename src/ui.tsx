@@ -421,7 +421,7 @@ export function AttributeList({ state, detailed = false }: { state: GameState; d
   const xp = attributeXp(state);
   const level = levelInfo(totalXp(state)).level;
   return (
-    <ul className="attrs">
+    <ul className={detailed ? 'attrs detailed' : 'attrs'}>
       {ATTRIBUTES.map((a) => {
         const lvl = attributeLevel(xp[a.id]);
         const last = detailed ? attributeHistory(state, a.id).slice(-1)[0] : undefined;

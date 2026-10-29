@@ -191,6 +191,8 @@ export function Dashboard({
         </section>}
 
         <RemindersPanel game={game} now={now} />
+        {/* en escritorio llena el hueco bajo misiones y recordatorios; en el móvil baja tras los hábitos (CSS) */}
+        {!fresh && <div className="today-dayclose"><DayClose game={game} now={now} /></div>}
         </div>
 
         {state.habits.length > 0 && <section className="panel">
@@ -210,8 +212,6 @@ export function Dashboard({
           )}
         </section>}
       </div>
-
-      {!fresh && <DayClose game={game} now={now} />}
 
       <AvatarCard state={state} now={now} />
 
