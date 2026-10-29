@@ -373,6 +373,7 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
   const [questId, setQuestId] = useState<string | null>(preselect);
   const [result, setResult] = useState<SessionResult | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
+  const [rating, setRating] = useState<string | null>(null);
   const [intent, setIntent] = useState(presetIntent);
   const [pomo, setPomo] = useState(() => {
     try {
@@ -548,7 +549,7 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
                 <div><span className="mono">{formatMinutes(result.distractionMinutes)}</span><span>Distracción{result.distractions ? ` ×${result.distractions}` : ''}</span></div>
               </div>
               <p className="now-sub">{result.label} <RewardTags rewards={deepWorkRewards(shown.minutes, result.area)} /></p>
-              {result.id && <SessionRating game={game} id={result.id} />}
+              {result.id && <SessionRating key={result.id} game={game} id={result.id} />}
               {result.id && (editing === result.id
                 ? <SessionEdit game={game} id={result.id} onDone={() => setEditing(null)} />
                 : <button className="link session-fix" onClick={() => setEditing(result.id!)}><Icon name="clock" /> ¿Se te olvidó pararlo? Corregir la hora de fin</button>)}
@@ -606,16 +607,18 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
         {sessionsToday.length === 0 ? <p className="empty">Todavía ninguna.</p> : (
           <ul className="list plain">
             {sessionsToday.map((x) => (
-              <li key={x.id} className={editing === x.id ? 'session-row editing' : 'row-between session-row'}>
+              <li key={x.id} className={editing === x.id || rating === x.id ? 'session-row editing' : 'row-between session-row'}>
                 <span>{x.label}</span>
                 <span className="mono muted">
                   {new Date(x.startedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })} · {formatMinutes(x.minutes)}
                   {x.focusPct !== undefined && ` · ${x.focusPct} % foco`}
                   {x.rating && ` · ${formatHours(sessionProductivity(x)!)} prod.`}
                   {x.measured && ' · corregida'}
+                  {editing !== x.id && rating !== x.id && <button className="icon-btn" onClick={() => setRating(x.id)} aria-label={`Valorar ${x.label}`} title={x.rating ? 'Ajustar la valoración' : 'Valorar la sesión'}><Icon name="sliders" /></button>}
                   {editing !== x.id && <button className="icon-btn" onClick={() => setEditing(x.id)} aria-label={`Corregir ${x.label}`} title="Corregir hora de fin"><Icon name="pencil" /></button>}
                 </span>
                 {editing === x.id && <SessionEdit game={game} id={x.id} onDone={() => setEditing(null)} />}
+                {rating === x.id && <SessionRating game={game} id={x.id} startOpen onDone={() => setRating(null)} />}
               </li>
             ))}
           </ul>

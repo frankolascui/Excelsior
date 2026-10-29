@@ -3,6 +3,7 @@ import { useState } from 'react';
 import type { Game } from './screens';
 import { formatHours, MINDSET_LABELS, PERFORMANCE_LABELS, rateSession, senseOf, sessionProductivity } from './productivity';
 import { InfoTip } from './infotip';
+import { Icon } from './icons';
 import { sfx } from './sfx';
 
 function Dots({ label, labels, value, onPick }: { label: string; labels: string[]; value: number; onPick: (n: number) => void }) {
@@ -22,36 +23,61 @@ function Dots({ label, labels, value, onPick }: { label: string; labels: string[
 
 const SENSE_TEXT: Record<string, string> = { '1': 'misión vinculada', '0.8': 'intención escrita', '0.6': 'sesión libre' };
 
-export function SessionRating({ game, id }: { game: Game; id: string }) {
+/**
+ * Al terminar la sesión aparece la pregunta (con «Omitir»); una vez valorada u omitida queda en una línea
+ * con un botón pequeño para ajustarla. `startOpen` la abre directamente para editar (desde «Sesiones de hoy»).
+ */
+export function SessionRating({ game, id, startOpen = false, onDone }: { game: Game; id: string; startOpen?: boolean; onDone?: () => void }) {
   const x = game.state.sessions.find((y) => y.id === id);
   const [perf, setPerf] = useState(x?.rating?.performance ?? 0);
   const [mind, setMind] = useState(x?.rating?.mindset ?? 0);
+  const [mode, setMode] = useState<'ask' | 'edit' | 'closed'>(startOpen ? 'edit' : x?.rating ? 'closed' : 'ask');
   if (!x) return null;
+  function save(p: number, m: number) {
+    if (!p || !m) return;
+    if (!x!.rating) sfx.saved();
+    game.act((s) => rateSession(s, id, p, m));
+  }
   function pick(p: number, m: number) {
     setPerf(p);
     setMind(m);
-    if (p && m) {
-      if (!x!.rating) sfx.saved();
-      game.act((s) => rateSession(s, id, p, m));
-    }
+    save(p, m);
+    if (mode === 'ask' && p && m) setMode('closed');
+  }
+  function close() {
+    setMode('closed');
+    onDone?.();
   }
   const prod = sessionProductivity(x);
   const sense = senseOf(x);
+  const info = (
+    <InfoTip label="Cómo se calcula la productividad">
+      <p>Horas productivas = Tiempo real × (Rendimiento × Sentido) ^ (3 ÷ Mentalidad).</p>
+      <p>Tiempo real: horas de foco, ya sin descansos ni distracciones. Rendimiento: cuánto y con qué calidad produjiste (5 = 1). Sentido: 1 con una misión vinculada, 0,8 con una intención escrita y 0,6 en sesión libre. Esta va con {SENSE_TEXT[String(sense)]}.</p>
+      <p>El tiempo va fuera de la potencia para que las sesiones largas no se disparen. La mentalidad amplifica: con 3 no cambia nada, con 5 el resultado sube y con 1 baja. Nunca pasa de las horas de foco.</p>
+      <p>No da XP: es para que te veas con honestidad, no para inflar notas.</p>
+    </InfoTip>
+  );
+  if (mode === 'closed') {
+    return (
+      <p className="rate-result rate-closed">
+        {prod === null
+          ? <span className="muted">Sin valorar</span>
+          : <><b className="mono">{formatHours(prod)}</b> productivas de {formatHours(x.minutes / 60)} de foco</>}
+        <button type="button" className="link small-text" onClick={() => setMode('edit')}><Icon name="sliders" /> {prod === null ? 'Valorar' : 'Ajustar'}</button>
+        {info}
+      </p>
+    );
+  }
   return (
     <div className="session-rating">
+      <p className="rate-ask">{mode === 'ask' ? '¿Qué tal ha ido?' : 'Ajustar la valoración'} {info}</p>
       <Dots label="Rendimiento" labels={PERFORMANCE_LABELS} value={perf} onPick={(n) => pick(n, mind)} />
       <Dots label="Mentalidad" labels={MINDSET_LABELS} value={mind} onPick={(n) => pick(perf, n)} />
-      <p className="rate-result">
-        {prod === null
-          ? <span className="muted">Valora la sesión para ver tus horas productivas.</span>
-          : <><b className="mono">{formatHours(prod)}</b> productivas de {formatHours(x.minutes / 60)} de foco</>}
-        <InfoTip label="Cómo se calcula la productividad">
-          <p>Horas productivas = Tiempo real × (Rendimiento × Sentido) ^ (3 ÷ Mentalidad).</p>
-          <p>Tiempo real: horas de foco, ya sin descansos ni distracciones. Rendimiento: cuánto y con qué calidad produjiste (5 = 1). Sentido: 1 con una misión vinculada, 0,8 con una intención escrita y 0,6 en sesión libre. Esta va con {SENSE_TEXT[String(sense)]}.</p>
-          <p>El tiempo va fuera de la potencia para que las sesiones largas no se disparen. La mentalidad amplifica: con 3 no cambia nada, con 5 el resultado sube y con 1 baja. Nunca pasa de las horas de foco.</p>
-          <p>No da XP: es para que te veas con honestidad, no para inflar notas.</p>
-        </InfoTip>
-      </p>
+      <div className="rate-foot">
+        {prod !== null && <span><b className="mono">{formatHours(prod)}</b> productivas</span>}
+        <button type="button" className="ghost small" onClick={close}>{mode === 'ask' ? 'Omitir' : 'Listo'}</button>
+      </div>
     </div>
   );
 }

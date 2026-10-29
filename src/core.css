@@ -413,3 +413,8 @@ button.tg-session { font-family: inherit; justify-content: flex-start; align-ite
 .share-week .habit-count { font-size: 12.5px; color: var(--muted); margin-right: auto; }
 .share-week .habit-count.over { color: var(--danger); }
 .retire-now { justify-self: start; margin-top: 4px; }
+.rate-ask { display: flex; align-items: center; gap: 6px; margin: 0; font-weight: 600; }
+.rate-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; }
+.rate-foot .mono { color: var(--c1); }
+.rate-closed .link { display: inline-flex; align-items: center; gap: 4px; }
+.rate-foot button { margin-left: auto; }
