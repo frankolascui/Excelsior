@@ -54,7 +54,9 @@ export interface Habit {
   id: string;
   name: string;
   frequency: 'daily' | 'weekly';
-  perWeek?: number; // solo semanales: veces por semana (1–6)
+  perWeek?: number; // solo semanales: veces por semana (1–6; con perDay, hasta 7 × perDay)
+  /** Opcional: veces que se puede marcar el mismo día (2–3), p. ej. doble entreno. Sin él, una. */
+  perDay?: number;
   createdAt: number;
   rewards: AttributeRewards;
   xp?: number; // XP a medida; sin él, XP_RULES.habit

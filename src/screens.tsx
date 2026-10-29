@@ -16,7 +16,7 @@ import { sfx } from './sfx';
 import { confetti } from './confetti';
 import { XpChart } from './charts';
 import {
-  addHabit, addQuest, cancelTimer, CUSTOM_LIMITS, updateHabit, updateQuest, completeQuest, createProfile, dayKey, deepWorkMinutesOnDay,
+  addHabit, addQuest, cancelTimer, CUSTOM_LIMITS, maxPerWeek, updateHabit, updateQuest, completeQuest, createProfile, dayKey, deepWorkMinutesOnDay,
   deleteHabit, deleteQuest, focusPercent, habitStreakDays, levelInfo, pendingQuests, scheduledQuests, setQuestDeadline, setQuestRepeat, setPhase, timerTotals,
   pomodoroStatus, pomodoroStep, startTimer, stopTimer, suggest, toggleHabit, habitCleared, habitsInOrder, reorderHabits, totalXp, undoQuest, XP_RULES,
 } from './game';
@@ -37,7 +37,7 @@ import { addStep, deleteStep, setStepDeadline, toggleStep } from './core';
 import type { StepActions } from './steps-ui';
 import { SessionEdit } from './session-ui';
 import { QuestTemplates } from './templates-ui';
-import { DragHandle, draftToProgression, HabitHints, MinimumInput, ProgressionInput, progressionDraft, RetiredHabits, weekShareText, type ProgressionDraft } from './habits-ui';
+import { DragHandle, draftToProgression, HabitHints, MinimumInput, PerDayInput, ProgressionInput, progressionDraft, RetiredHabits, weekShareText, type ProgressionDraft } from './habits-ui';
 import { atMax, levelUp, restoreHabit, retireHabit, setProgression, snoozeHint } from './progression';
 import { InfoTip } from './infotip';
 import { ACHIEVEMENTS } from './achievements';
@@ -646,6 +646,7 @@ export function Habits({ game, guide }: { game: Game; guide: string }) {
   const [perWeek, setPerWeek] = useState(7); // 7 = cada día
   const [minimum, setMinimum] = useState('');
   const [prog, setProg] = useState<ProgressionDraft>(() => progressionDraft());
+  const [perDay, setPerDay] = useState(1);
   const ordered = habitsInOrder(state, now);
   const doneIds = new Set(ordered.filter((h) => habitCleared(state, h, now)).map((h) => h.id));
   async function shareWeek() {
@@ -659,14 +660,16 @@ export function Habits({ game, guide }: { game: Game; guide: string }) {
     e.preventDefault();
     if (!name.trim()) return;
     const rewards = custom.rewards && !sameRewards(custom.rewards, habitRewards(name)) ? custom.rewards : undefined;
-    const p = draftToProgression(prog, perWeek);
+    const p = draftToProgression(prog, perWeek, perDay);
     act((s) => {
-      const next = addHabit(s, name, Date.now(), { xp: custom.xp, rewards, perWeek, minimum });
+      const next = addHabit(s, name, Date.now(), { xp: custom.xp, rewards, perWeek, minimum, perDay });
       return p ? setProgression(next, next.habits.at(-1)!.id, p, Date.now()) : next;
     });
     setName('');
     setMinimum('');
     setProg(progressionDraft());
+    setPerDay(1);
+    if (perWeek > 7) setPerWeek(7);
     setCustom({});
     setOpen(false);
   }
@@ -696,7 +699,7 @@ export function Habits({ game, guide }: { game: Game; guide: string }) {
           <input id="new-habit" value={name} onChange={(e) => setName(e.target.value)} placeholder="+ Nuevo hábito (ej. Leer 10 páginas)" maxLength={60} aria-label="Nombre del nuevo hábito" />
           <select id="new-habit-freq" className="freq-select" value={perWeek} onChange={(e) => setPerWeek(Number(e.target.value))} aria-label="Frecuencia">
             <option value={7}>Cada día</option>
-            {[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n} {n === 1 ? 'vez' : 'veces'} por semana</option>)}
+            {Array.from({ length: maxPerWeek(perDay) }, (_, i) => i + 1).filter((n) => n !== 7).map((n) => <option key={n} value={n}>{n} {n === 1 ? 'vez' : 'veces'} por semana</option>)}
           </select>
           <CustomizeToggle open={open} onToggle={() => setOpen(!open)} custom={custom.xp !== undefined || custom.rewards !== undefined} />
           <button type="submit" className="primary" disabled={!name.trim()}><Icon name="plus" /> Añadir</button>
@@ -704,7 +707,8 @@ export function Habits({ game, guide }: { game: Game; guide: string }) {
         {open && (
           <>
             <MinimumInput id="new-habit-min" value={minimum} onChange={setMinimum} />
-            <ProgressionInput id="new-habit-prog" value={prog} onChange={setProg} perWeek={perWeek} />
+            <PerDayInput id="new-habit-perday" value={perDay} onChange={(n) => { setPerDay(n); if (perWeek > maxPerWeek(n) && perWeek !== 7) setPerWeek(maxPerWeek(n)); }} />
+            <ProgressionInput id="new-habit-prog" value={prog} onChange={setProg} perWeek={perWeek} perDay={perDay} />
             <RewardEditor autoXp={XP_RULES.habit} autoRewards={habitRewards(name)} value={custom} onChange={setCustom} maxXp={CUSTOM_LIMITS.habitXp} idPrefix="new-habit" />
           </>
         )}
@@ -728,7 +732,11 @@ export function Habits({ game, guide }: { game: Game; guide: string }) {
               // solo se ordena entre los del mismo grupo (pendientes o ya hechos)
               const group = ordered.filter((x) => doneIds.has(x.id) === doneIds.has(h.id)).map((x) => x.id);
               return (
-                <HabitItem key={h.id} state={state} habit={h} now={now} onToggle={() => act((s) => toggleHabit(s, h.id, Date.now()), CAP_HABIT, { sound: 'habit' })} onToggleDay={(d) => act((s) => toggleHabit(s, h.id, Date.now(), d), CAP_HABIT, { sound: 'habit' })} onDelete={() => act((s) => deleteHabit(s, h.id))} onEdit={(n, v, m, d) => act((s) => setProgression(updateHabit(s, h.id, { name: n, ...v, minimum: m }), h.id, draftToProgression(d, h.frequency === 'weekly' ? h.perWeek ?? 1 : 7), Date.now()))}
+                <HabitItem key={h.id} state={state} habit={h} now={now} onToggle={() => act((s) => toggleHabit(s, h.id, Date.now()), CAP_HABIT, { sound: 'habit' })} onToggleDay={(d) => act((s) => toggleHabit(s, h.id, Date.now(), d), CAP_HABIT, { sound: 'habit' })} onDelete={() => act((s) => deleteHabit(s, h.id))} onEdit={(n, v, m, d, pd) => act((s) => {
+                  const next = updateHabit(s, h.id, { name: n, ...v, minimum: m, perDay: pd });
+                  const hh = next.habits.find((x) => x.id === h.id)!;
+                  return setProgression(next, h.id, draftToProgression(d, hh.frequency === 'weekly' ? hh.perWeek ?? 1 : 7, hh.perDay), Date.now());
+                })}
                   onShield={(d) => spendHabitShield(game, h.id, d)}
                   handle={<DragHandle name={h.name} group={group} onDrop={(order) => act((s) => reorderHabits(s, order))} />} />
               );

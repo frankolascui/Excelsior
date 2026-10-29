@@ -1,6 +1,6 @@
 // Sobrecarga progresiva de hábitos y hábitos automatizados: Hiperión propone subir la meta y retirar lo que ya sale solo.
 import type { GameState, Habit, HabitProgression } from './types';
-import { dayKey, isHabitDone, shiftDay, weekStart } from './game';
+import { dayKey, habitDayCount, isHabitDone, shiftDay, weekStart } from './game';
 
 export const PROGRESSION_RULES = {
   levelDays: 14, // días con la meta actual antes de proponer subirla
@@ -24,7 +24,7 @@ export function parseClock(text: string): number | null {
 /** «20 min», «a las 22:00», «5 veces/sem». */
 export function valueText(p: Pick<HabitProgression, 'kind' | 'unit'>, value: number): string {
   if (p.kind === 'time') return `a las ${clockText(value)}`;
-  if (p.kind === 'freq') return value >= 7 ? 'cada día' : `${value} ${value === 1 ? 'vez' : 'veces'}/sem`;
+  if (p.kind === 'freq') return value === 7 && !((p as HabitProgression).max! > 7) ? 'cada día' : `${value} ${value === 1 ? 'vez' : 'veces'}/sem`;
   return `${value}${p.unit ? ` ${p.unit}` : ''}`;
 }
 
@@ -40,7 +40,7 @@ export function progressionText(h: Habit): string | null {
 
 /** ¿Ya llegó a la meta final (`max`)? */
 export function atMax(p: Pick<HabitProgression, 'value' | 'step' | 'max' | 'kind'>): boolean {
-  const max = p.kind === 'freq' ? Math.min(7, p.max ?? 7) : p.max;
+  const max = p.kind === 'freq' ? p.max ?? 7 : p.max;
   if (max === undefined) return false;
   return p.step < 0 ? p.value <= max : p.value >= max;
 }
@@ -52,7 +52,7 @@ export function atMax(p: Pick<HabitProgression, 'value' | 'step' | 'max' | 'kind
 export function nextValue(p: HabitProgression): number | null {
   if (p.step === 0 || atMax(p)) return null;
   let v = p.value + p.step;
-  const max = p.kind === 'freq' ? Math.min(7, p.max ?? 7) : p.max;
+  const max = p.kind === 'freq' ? p.max ?? 7 : p.max;
   if (max !== undefined) v = p.step < 0 ? Math.max(v, max) : Math.min(v, max);
   if (p.kind === 'freq') return v < 1 ? null : v;
   if (p.kind === 'time') return v < 0 || v >= 1440 ? null : v;
@@ -76,8 +76,9 @@ export function setProgression(s: GameState, id: string, p: Omit<HabitProgressio
   };
 }
 
+/** 7 veces por semana = cada día, salvo que la meta pase de 7 (hábitos de más de una vez al día). */
 function applyFreq(h: Habit, value: number) {
-  if (value >= 7) { h.frequency = 'daily'; delete h.perWeek; } else { h.frequency = 'weekly'; h.perWeek = Math.max(1, Math.round(value)); }
+  if (value === 7 && !((h.progression?.max ?? 7) > 7)) { h.frequency = 'daily'; delete h.perWeek; } else { h.frequency = 'weekly'; h.perWeek = Math.max(1, Math.round(value)); }
 }
 
 /**
@@ -94,7 +95,7 @@ export function constancy(s: GameState, h: Habit, now: number, days: number, sin
     for (let w = 1; w <= weeks; w++) {
       const start = shiftDay(thisMonday, -7 * w);
       if (dayKey(start) < dayKey(since)) return null;
-      const n = Array.from({ length: 7 }, (_, i) => dayKey(shiftDay(start, i))).filter((d) => isHabitDone(s, h.id, d)).length;
+      const n = Array.from({ length: 7 }, (_, i) => habitDayCount(s, h.id, dayKey(shiftDay(start, i)))).reduce((a, b) => a + b, 0);
       got += Math.min(need, n);
     }
     return weeks ? got / (need * weeks) : null;

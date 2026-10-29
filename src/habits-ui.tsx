@@ -2,7 +2,7 @@
 import type { GameState, Habit, HabitProgression } from './types';
 import { clockText, habitHints, nextValue, parseClock, PROGRESSION_RULES, valueText } from './progression';
 import { GuidePortrait } from './tutorial';
-import { dailyStreakInfo, dayKey, habitStreakDays, isHabitDone, MINIMUM_MAX, shiftDay, weekStart } from './game';
+import { dailyStreakInfo, dayKey, habitDayCount, habitStreakDays, isHabitDone, maxPerWeek, MINIMUM_MAX, PER_DAY_MAX, shiftDay, weekStart } from './game';
 import { SHIELD } from './economy';
 import { Icon } from './icons';
 
@@ -62,6 +62,19 @@ export function MinimumInput({ id, value, onChange }: { id: string; value: strin
   );
 }
 
+/** Opción escondida en «XP y atributos»: poder marcarlo más de una vez el mismo día (p. ej. doble entreno). */
+export function PerDayInput({ id, value, onChange }: { id: string; value: number; onChange: (n: number) => void }) {
+  return (
+    <label className="minimum-input" htmlFor={id}>
+      <span className="small-text">Veces al día que se puede marcar (opcional)</span>
+      <select id={id} className="freq-select" value={value} onChange={(e) => onChange(Number(e.target.value))}>
+        <option value={1}>Una vez al día</option>
+        {Array.from({ length: PER_DAY_MAX - 1 }, (_, i) => i + 2).map((n) => <option key={n} value={n}>Hasta {n} veces al día (ej. doble entreno)</option>)}
+      </select>
+    </label>
+  );
+}
+
 /** Texto de «Compartir mi semana»: % de cada hábito de lunes a hoy, para mandarlo a un amigo. */
 export function weekShareText(state: GameState, now: number): string {
   const start = new Date(`${weekStart(now)}T12:00:00`).getTime();
@@ -69,7 +82,7 @@ export function weekShareText(state: GameState, now: number): string {
   const fmt = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }).replace('.', '');
   const lines = state.habits.map((h) => {
     const counted = days.filter((d) => d >= dayKey(h.createdAt));
-    const done = counted.filter((d) => isHabitDone(state, h.id, d)).length;
+    const done = h.frequency === 'weekly' ? counted.reduce((n, d) => n + habitDayCount(state, h.id, d), 0) : counted.filter((d) => isHabitDone(state, h.id, d)).length;
     const need = h.frequency === 'weekly' ? (h.perWeek ?? 1) : counted.length;
     const pct = need ? Math.min(100, Math.round((done / need) * 100)) : 0;
     return { pct, text: `- ${h.name}: ${done}/${need} (${pct} %)${pct < 80 ? ' · por debajo del 80 %' : ''}` };
@@ -160,12 +173,13 @@ export function progressionDraft(h?: Habit): ProgressionDraft {
 }
 
 /** Del borrador a la sobrecarga (null = sin ella). `perWeek` = la frecuencia elegida (7 = cada día). */
-export function draftToProgression(d: ProgressionDraft, perWeek: number): Omit<HabitProgression, 'since' | 'history'> | null {
+export function draftToProgression(d: ProgressionDraft, perWeek: number, perDay = 1): Omit<HabitProgression, 'since' | 'history'> | null {
   if (d.kind === 'none') return null;
   if (d.kind === 'freq') {
-    if (perWeek >= 7) return null;
+    const cap = perDay > 1 ? maxPerWeek(perDay) : 7;
+    if (perWeek >= cap || (perWeek === 7 && perDay <= 1)) return null;
     const max = Number(d.max);
-    return { kind: 'freq', value: perWeek, step: 1, ...(max > perWeek && max < 7 ? { max } : {}) };
+    return { kind: 'freq', value: perWeek, step: 1, ...(max > perWeek && max <= cap && !(max === 7 && cap === 7) ? { max } : {}) };
   }
   const step = Math.abs(Number(d.step.replace(',', '.')));
   if (d.kind === 'time') {
@@ -183,8 +197,10 @@ export function draftToProgression(d: ProgressionDraft, perWeek: number): Omit<H
 }
 
 /** Campos de la sobrecarga: qué sube (cantidad, hora o veces por semana), desde dónde y de cuánto en cuánto. */
-export function ProgressionInput({ id, value: d, onChange, perWeek }: { id: string; value: ProgressionDraft; onChange: (d: ProgressionDraft) => void; perWeek: number }) {
+export function ProgressionInput({ id, value: d, onChange, perWeek, perDay = 1 }: { id: string; value: ProgressionDraft; onChange: (d: ProgressionDraft) => void; perWeek: number; perDay?: number }) {
   const set = (patch: Partial<ProgressionDraft>) => onChange({ ...d, ...patch });
+  const cap = perDay > 1 ? maxPerWeek(perDay) : 7;
+  const freqOk = perWeek !== 7 && perWeek < cap;
   return (
     <fieldset className="progression-input">
       <legend className="small-text">Sobrecarga progresiva (opcional)</legend>
@@ -192,7 +208,7 @@ export function ProgressionInput({ id, value: d, onChange, perWeek }: { id: stri
         <option value="none">Sin sobrecarga</option>
         <option value="amount">Cantidad (minutos, páginas, kilos…)</option>
         <option value="time">Hora (ej. irse a dormir)</option>
-        {perWeek < 7 && <option value="freq">Veces por semana</option>}
+        {freqOk && <option value="freq">Veces por semana</option>}
       </select>
       {d.kind === 'amount' && (
         <div className="progression-row">
@@ -212,11 +228,11 @@ export function ProgressionInput({ id, value: d, onChange, perWeek }: { id: stri
           <label>hasta las <input id={`${id}-max`} value={d.max} onChange={(e) => set({ max: e.target.value })} placeholder="21:00" aria-label="Hasta qué hora quieres llegar" /></label>
         </div>
       )}
-      {d.kind === 'freq' && (
+      {d.kind === 'freq' && freqOk && (
         <div className="progression-row">
           <span>Empieza en {perWeek} y sube de 1 en 1</span>
-          <label>hasta <select id={`${id}-max`} className="freq-select" value={d.max || '7'} onChange={(e) => set({ max: e.target.value })} aria-label="Hasta cuántas veces por semana">
-            {Array.from({ length: 7 - perWeek }, (_, i) => perWeek + 1 + i).map((n) => <option key={n} value={n}>{n === 7 ? 'cada día' : `${n} veces/sem`}</option>)}
+          <label>hasta <select id={`${id}-max`} className="freq-select" value={d.max || String(cap)} onChange={(e) => set({ max: e.target.value })} aria-label="Hasta cuántas veces por semana">
+            {Array.from({ length: cap - perWeek }, (_, i) => perWeek + 1 + i).map((n) => <option key={n} value={n}>{n === 7 && cap === 7 ? 'cada día' : `${n} veces/sem`}</option>)}
           </select></label>
         </div>
       )}

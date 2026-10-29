@@ -111,3 +111,45 @@ describe('hábito automatizado', () => {
     expect(automatedDue(s, s.habits[0], NOW)).toBeNull();
   });
 });
+
+describe('más de una vez al día (opcional)', () => {
+  it('8 entrenos: hasta 2 al día, semanal de 8, y al pulsar en el tope se quitan las del día', async () => {
+    const { habitDayCount, habitWeekCount, habitSatisfied } = await import('./game');
+    let s = addHabit(emptyState(), 'Entrenar', NOW - 30 * D, { perWeek: 8, perDay: 2 });
+    const h = s.habits[0];
+    expect(h).toMatchObject({ frequency: 'weekly', perWeek: 8, perDay: 2 });
+    s = toggleHabit(s, h.id, NOW).state;
+    s = toggleHabit(s, h.id, NOW).state;
+    expect(habitDayCount(s, h.id, dayKey(NOW))).toBe(2);
+    for (const d of ['2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19']) {
+      s = toggleHabit(s, h.id, NOW, d).state;
+      s = toggleHabit(s, h.id, NOW, d).state;
+    }
+    expect(habitWeekCount(s, h.id, NOW)).toBe(10);
+    expect(habitSatisfied(s, s.habits[0], NOW)).toBe(true);
+    const r = toggleHabit(s, h.id, NOW); // tercera vez hoy: se quitan las dos
+    expect(habitDayCount(r.state, h.id, dayKey(NOW))).toBe(0);
+    expect(r.xp).toBe(-20);
+  });
+
+  it('sin perDay sigue siendo marcar y desmarcar, y no pasa de 6 veces por semana', () => {
+    let s = addHabit(emptyState(), 'Leer', NOW, { perWeek: 9 });
+    expect(s.habits[0].perWeek).toBe(6);
+    s = toggleHabit(s, s.habits[0].id, NOW).state;
+    s = toggleHabit(s, s.habits[0].id, NOW).state;
+    expect(s.habitCompletions).toHaveLength(0);
+  });
+
+  it('la sobrecarga de veces por semana puede pasar de 7 con perDay', () => {
+    const p = draftToProgression({ kind: 'freq', value: '', step: '', unit: '', dir: 'earlier', max: '8' }, 5, 2)!;
+    expect(p).toEqual({ kind: 'freq', value: 5, step: 1, max: 8 });
+    let s = addHabit(emptyState(), 'Entrenar', NOW - 30 * D, { perWeek: 6, perDay: 2 });
+    const id = s.habits[0].id;
+    s = setProgression(s, id, { kind: 'freq', value: 6, step: 1, max: 8 }, NOW - 20 * D);
+    s = levelUp(s, id, NOW);
+    expect(s.habits[0]).toMatchObject({ frequency: 'weekly', perWeek: 7 }); // 7/sem, no «cada día»
+    s = levelUp(s, id, NOW);
+    expect(s.habits[0].perWeek).toBe(8);
+    expect(nextValue(s.habits[0].progression!)).toBeNull();
+  });
+});

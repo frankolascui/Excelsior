@@ -144,6 +144,16 @@ export function deepWorkMinutesOnDay(s: GameState, day: string): number {
   return s.sessions.filter((x) => dayKey(x.endedAt) === day).reduce((n, x) => n + x.minutes, 0);
 }
 
+/** Veces que se marcó el hábito ese día (más de una solo con perDay). */
+export function habitDayCount(s: GameState, habitId: string, day: string): number {
+  return s.habitCompletions.filter((c) => c.habitId === habitId && c.day === day).length;
+}
+
+export const PER_DAY_MAX = 3;
+
+/** Tope de veces por semana: 6 (7 ya es «cada día»), o 7 × perDay si se puede hacer más de una vez al día. */
+export const maxPerWeek = (perDay?: number) => ((perDay ?? 1) > 1 ? 7 * perDay! : 6);
+
 export function isHabitDone(s: GameState, habitId: string, day: string): boolean {
   return s.habitCompletions.some((c) => c.habitId === habitId && c.day === day);
 }
@@ -466,15 +476,17 @@ export function habitXp(h: Habit): number {
 export const MINIMUM_MAX = 80;
 
 export function addHabit(
-  s: GameState, name: string, now: number, opts: { focus?: AttributeId; xp?: number; rewards?: AttributeRewards; perWeek?: number; minimum?: string } = {},
+  s: GameState, name: string, now: number, opts: { focus?: AttributeId; xp?: number; rewards?: AttributeRewards; perWeek?: number; minimum?: string; perDay?: number } = {},
 ): GameState {
   const habit: Habit = {
     id: uid(), name: name.trim(), frequency: 'daily', createdAt: now,
     rewards: opts.rewards ? cleanRewards(opts.rewards) : habitRewards(name, opts.focus),
   };
-  if (opts.perWeek && opts.perWeek < 7) {
+  const perDay = Math.max(1, Math.min(PER_DAY_MAX, Math.round(opts.perDay ?? 1)));
+  if (perDay > 1) habit.perDay = perDay;
+  if (opts.perWeek && opts.perWeek !== 7) {
     habit.frequency = 'weekly';
-    habit.perWeek = Math.max(1, Math.min(6, Math.round(opts.perWeek)));
+    habit.perWeek = Math.max(1, Math.min(maxPerWeek(habit.perDay), Math.round(opts.perWeek)));
   }
   if (opts.xp !== undefined) habit.xp = Math.round(clamp(opts.xp, CUSTOM_LIMITS.habitXp));
   if (opts.minimum?.trim()) habit.minimum = opts.minimum.trim().slice(0, MINIMUM_MAX);
@@ -482,7 +494,7 @@ export function addHabit(
 }
 
 /** Edita un hábito; los cambios valen para los próximos días (lo ya ganado no cambia). */
-export function updateHabit(s: GameState, id: string, patch: { name?: string; xp?: number; rewards?: AttributeRewards; minimum?: string }): GameState {
+export function updateHabit(s: GameState, id: string, patch: { name?: string; xp?: number; rewards?: AttributeRewards; minimum?: string; perDay?: number }): GameState {
   return {
     ...s,
     habits: s.habits.map((h) => {
@@ -490,6 +502,11 @@ export function updateHabit(s: GameState, id: string, patch: { name?: string; xp
       const next: Habit = { ...h, name: patch.name?.trim() || h.name, rewards: patch.rewards ? cleanRewards(patch.rewards) : habitRewards(patch.name ?? h.name) };
       delete next.xp;
       if (patch.xp !== undefined) next.xp = Math.round(clamp(patch.xp, CUSTOM_LIMITS.habitXp));
+      if (patch.perDay !== undefined) {
+        const n = Math.max(1, Math.min(PER_DAY_MAX, Math.round(patch.perDay)));
+        if (n > 1) next.perDay = n; else delete next.perDay;
+        if (next.perWeek) next.perWeek = Math.min(next.perWeek, maxPerWeek(next.perDay));
+      }
       if (patch.minimum !== undefined) {
         const m = patch.minimum.trim().slice(0, MINIMUM_MAX);
         if (m) next.minimum = m; else delete next.minimum;
@@ -500,7 +517,8 @@ export function updateHabit(s: GameState, id: string, patch: { name?: string; xp
 }
 
 /** Ya no hay que hacerlo hoy: hecho hoy o, si es semanal, objetivo de la semana cumplido. */
-export const habitCleared = (s: GameState, h: Habit, now: number) => isHabitDone(s, h.id, dayKey(now)) || habitSatisfied(s, h, now);
+export const habitCleared = (s: GameState, h: Habit, now: number) =>
+  habitDayCount(s, h.id, dayKey(now)) >= (h.perDay ?? 1) || habitSatisfied(s, h, now);
 
 /** Orden en pantalla: los que faltan arriba y los ya cumplidos al final; dentro de cada grupo, el orden elegido. */
 export function habitsInOrder(s: GameState, now: number): Habit[] {
@@ -524,20 +542,23 @@ export function deleteHabit(s: GameState, id: string): GameState {
   return { ...s, habits: s.habits.filter((h) => h.id !== id) };
 }
 
-/** Marca el hábito como hecho hoy, o lo desmarca (retirando su XP). */
-/** Marca o desmarca el hábito hoy, o un día pasado (`day`): el XP cuenta para ese día. */
+/**
+ * Marca o desmarca el hábito hoy, o un día pasado (`day`): el XP cuenta para ese día.
+ * Con perDay se marca otra vez hasta el tope, y al pulsar en el tope se quitan todas las de ese día.
+ */
 export function toggleHabit(s: GameState, habitId: string, now: number, day = dayKey(now)): ActionResult {
   const habit = s.habits.find((h) => h.id === habitId);
   if (!habit || day > dayKey(now)) return { state: s, xp: 0 };
   if (day !== dayKey(now)) now = new Date(`${day}T20:00:00`).getTime();
-  const existing = s.habitCompletions.find((c) => c.habitId === habitId && c.day === day);
-  if (existing) {
-    const removed = s.xp.find((t) => t.source === 'habit' && t.sourceId === existing.id)?.amount ?? 0;
+  const existing = s.habitCompletions.filter((c) => c.habitId === habitId && c.day === day);
+  if (existing.length >= (habit.perDay ?? 1)) {
+    const ids = new Set(existing.map((c) => c.id));
+    const removed = s.xp.filter((t) => t.source === 'habit' && ids.has(t.sourceId)).reduce((n, t) => n + t.amount, 0);
     return {
       state: {
         ...s,
-        habitCompletions: s.habitCompletions.filter((c) => c.id !== existing.id),
-        xp: s.xp.filter((t) => !(t.source === 'habit' && t.sourceId === existing.id)),
+        habitCompletions: s.habitCompletions.filter((c) => !ids.has(c.id)),
+        xp: s.xp.filter((t) => !(t.source === 'habit' && ids.has(t.sourceId))),
       },
       xp: -removed,
     };
