@@ -1,6 +1,6 @@
 // Tu vida real dentro de Excelsior: cierre del día y eventos del calendario.
 // Funciones puras sobre GameState, como el resto de reglas.
-import type { CalendarEvent, DayLog, EventKind, EventRepeat, GameState, Reminder, RepeatRule } from './types';
+import type { BlockTask, CalendarEvent, DayLog, EventKind, EventRepeat, GameState, Quest, Reminder, RepeatRule } from './types';
 import type { IconName } from './icon-data';
 import { dayKey, deepWorkMinutesOnDay, isHabitDone, levelInfo, totalXp, uid, xpOnDay } from './game';
 
@@ -53,7 +53,7 @@ export const EVENT_COLORS: { id: string; name: string; hex: string }[] = [
 
 export const eventColor = (e: { color?: string }) => (e.color ? EVENT_COLORS.find((c) => c.id === e.color)?.hex : undefined);
 
-type EventFields = { title: string; day: string; time?: string; end?: string; kind: EventKind; repeat?: EventRepeat; rule?: RepeatRule; until?: string; color?: string };
+type EventFields = { title: string; day: string; time?: string; end?: string; kind: EventKind; repeat?: EventRepeat; rule?: RepeatRule; until?: string; color?: string; tasks?: BlockTask[] };
 
 /** Evento limpio: sin campos vacíos, fin solo si va después del inicio. */
 function cleanEvent(ev: CalendarEvent): CalendarEvent {
@@ -65,6 +65,7 @@ function cleanEvent(ev: CalendarEvent): CalendarEvent {
   if (ev.repeat && ev.until && ev.until >= ev.day) out.until = ev.until;
   if (ev.repeat && ev.skip?.length) out.skip = ev.skip;
   if (ev.color) out.color = ev.color;
+  if (ev.kind === 'bloque' && ev.tasks?.length) out.tasks = ev.tasks;
   return out;
 }
 
@@ -93,7 +94,7 @@ export function updateEvent(s: GameState, id: string, patch: Partial<EventFields
 export function moveEvent(s: GameState, occ: CalendarEvent, to: { day: string; time: string; end: string }, now: number): GameState {
   if (!occ.repeat) return updateEvent(s, occ.id, to);
   const moved = skipEventDay(s, occ.id, occ.day);
-  return addEvent(moved, { title: occ.title, kind: occ.kind, color: occ.color, ...to }, now);
+  return addEvent(moved, { title: occ.title, kind: occ.kind, color: occ.color, tasks: occ.tasks, ...to }, now);
 }
 
 /**
@@ -104,7 +105,7 @@ export function editOccurrence(s: GameState, id: string, day: string, patch: Par
   const e = (s.events ?? []).find((x) => x.id === id);
   if (!e) return s;
   if (!e.repeat) return updateEvent(s, id, patch);
-  const one: CalendarEvent = { id: newId, title: e.title, day, time: e.time, end: e.end, kind: e.kind, color: e.color, createdAt: now };
+  const one: CalendarEvent = { id: newId, title: e.title, day, time: e.time, end: e.end, kind: e.kind, color: e.color, tasks: e.tasks, createdAt: now };
   const { repeat: _r, rule: _u, until: _t, ...fields } = patch;
   const skipped = skipEventDay(s, id, day);
   return { ...skipped, events: [...skipped.events!, cleanEvent({ ...one, ...fields })] };
@@ -305,4 +306,53 @@ export function dailyReport(s: GameState, now: number): string {
   ];
   if (soon.length || due.length) lines.push('', '## Próximos días', ...soon, ...due);
   return lines.join('\n') + '\n';
+}
+
+// ---------- Misiones y hábitos dentro de un bloque ----------
+
+/** Mete una misión o un hábito en un bloque (en toda la serie). */
+export function addBlockTask(s: GameState, eventId: string, task: BlockTask): GameState {
+  return {
+    ...s,
+    events: (s.events ?? []).map((e) => {
+      if (e.id !== eventId || e.tasks?.some((x) => x.kind === task.kind && x.id === task.id)) return e;
+      return cleanEvent({ ...e, tasks: [...(e.tasks ?? []), task] });
+    }),
+  };
+}
+
+export function removeBlockTask(s: GameState, eventId: string, task: BlockTask): GameState {
+  return { ...s, events: (s.events ?? []).map((e) => (e.id === eventId ? cleanEvent({ ...e, tasks: (e.tasks ?? []).filter((x) => !(x.kind === task.kind && x.id === task.id)) }) : e)) };
+}
+
+/**
+ * La misión que toca ese día: si se repite, cada vez que se completa nace otra (spawnedId), así que se sigue la cadena
+ * hasta la que se completó ese día o la que aún está pendiente.
+ */
+export function questOnDay(s: GameState, id: string, day: string): Quest | null {
+  let q = s.quests.find((x) => x.id === id);
+  for (let guard = 0; q && q.completedAt && dayKey(q.completedAt) < day && q.spawnedId && guard < 500; guard++) {
+    const next = s.quests.find((x) => x.id === q!.spawnedId);
+    if (!next) break;
+    q = next;
+  }
+  return q ?? null;
+}
+
+export interface BlockItem { task: BlockTask; label: string; done: boolean; questId?: string }
+
+/** Lo que hay en un bloque ese día, con lo hecho marcado. Lo borrado no sale. */
+export function blockItems(s: GameState, ev: Pick<CalendarEvent, 'tasks'>, day: string): BlockItem[] {
+  const out: BlockItem[] = [];
+  for (const task of ev.tasks ?? []) {
+    if (task.kind === 'habit') {
+      const h = s.habits.find((x) => x.id === task.id);
+      if (h) out.push({ task, label: h.name, done: isHabitDone(s, h.id, day) });
+    } else {
+      const q = questOnDay(s, task.id, day);
+      if (!q || (q.completedAt && dayKey(q.completedAt) < day && !q.repeat?.length)) continue; // ya terminada otro día
+      out.push({ task, label: q.title, done: !!q.completedAt && dayKey(q.completedAt) <= day, questId: q.id });
+    }
+  }
+  return out;
 }

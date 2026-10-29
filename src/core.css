@@ -357,3 +357,12 @@ button.tg-session { font-family: inherit; justify-content: flex-start; align-ite
 .habit-hint-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .retired-habits summary { cursor: pointer; }
 .retired-habits li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+
+/* Bloques del calendario con misiones y hábitos dentro */
+.block-tasks { display: grid; gap: 6px; margin: 10px 0; }
+.block-tasks-h { margin: 0; color: var(--muted); }
+.block-task { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
+.block-task .check { width: 28px; height: 28px; flex: none; }
+.block-task-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.block-task.done .block-task-name { color: var(--muted); text-decoration: line-through; }
+.tg-tasks { font-weight: 400; opacity: 0.8; }

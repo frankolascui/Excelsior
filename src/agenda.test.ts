@@ -167,3 +167,34 @@ describe('repetición personalizada', () => {
     expect(s.events![0].rule).toBeUndefined();
   });
 });
+
+describe('misiones y hábitos dentro de un bloque', () => {
+  it('se meten en la serie, se marcan por día y siguen la copia de una misión que se repite', async () => {
+    const { addBlockTask, blockItems, removeBlockTask, eventsOn } = await import('./life');
+    const { addHabit, addQuest, completeQuest, toggleHabit } = await import('./game');
+    const T = new Date('2026-10-06T10:00:00').getTime(); // martes
+    let s = addEvent(base(), { title: 'Mañana', day: '2026-10-05', time: '08:00', end: '10:00', kind: 'bloque', repeat: 'daily' }, T);
+    const ev = s.events![0].id;
+    s = addHabit(s, 'Leer', T - 10 * 86_400_000);
+    s = addQuest(s, 'Responder emails', 'daily', T, { repeat: [0, 1, 2, 3, 4, 5, 6] });
+    s = addQuest(s, 'Entregar práctica', 'main', T);
+    const [habit] = s.habits;
+    const [daily, once] = s.quests;
+    s = addBlockTask(s, ev, { kind: 'habit', id: habit.id });
+    s = addBlockTask(s, ev, { kind: 'quest', id: daily.id });
+    s = addBlockTask(s, ev, { kind: 'quest', id: once.id });
+    s = addBlockTask(s, ev, { kind: 'habit', id: habit.id }); // repetido: no se duplica
+    expect(s.events![0].tasks).toHaveLength(3);
+    s = toggleHabit(s, habit.id, T).state;
+    s = completeQuest(s, daily.id, T).state;
+    s = completeQuest(s, once.id, T).state;
+    const today = eventsOn(s, '2026-10-06')[0];
+    expect(blockItems(s, today, '2026-10-06').map((x) => [x.label, x.done])).toEqual([['Leer', true], ['Responder emails', true], ['Entregar práctica', true]]);
+    // mañana: el hábito y la copia nueva de la diaria, sin hacer; la principal ya terminada no sale
+    const next = blockItems(s, eventsOn(s, '2026-10-07')[0], '2026-10-07');
+    expect(next.map((x) => [x.label, x.done])).toEqual([['Leer', false], ['Responder emails', false]]);
+    expect(next[1].questId).not.toBe(daily.id);
+    s = removeBlockTask(s, ev, { kind: 'habit', id: habit.id });
+    expect(s.events![0].tasks).toHaveLength(2);
+  });
+});

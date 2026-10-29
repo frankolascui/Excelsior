@@ -3,9 +3,10 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import type { Game } from './screens';
 import type { CalendarEvent, EventKind, EventRepeat, GameState, Reminder, RepeatRule } from './types';
-import { dayKey, uid } from './game';
+import { completeQuest, dayKey, pendingQuests, toggleHabit, uid, undoQuest } from './game';
 import {
   addEvent, addReminder, deleteEvent, deleteReminder, dueAlerts, EVENT_COLORS, EVENT_KINDS, eventColor, eventIcon, eventSpan, eventsOn, fromMin,
+  addBlockTask, blockItems, removeBlockTask, type BlockItem,
   cleanRule, laterReminders, layoutLanes, editOccurrence, isKeyEvent, moveEvent, REPEAT_NAMES, skipEventDay, todayReminders, toggleReminder, toMin, updateEvent,
 } from './life';
 import { relDay } from './life-ui';
@@ -351,6 +352,7 @@ function EventSheet({ game, id: firstId, day, onClose, startFocus }: { game: Gam
             }}
             onEnd={(t) => set({ end: t })} />
         </div>
+        {ev.kind === 'bloque' && <BlockTasks game={game} eventId={id} ev={ev} day={onDay} />}
         <div className="ev-form-extra">
           {!one && <RepeatEditor value={series} day={series.day} onChange={(p) => set(p)} />}
           <ColorSwatches value={ev.color} onChange={(c) => set({ color: c })} />
@@ -365,6 +367,63 @@ function EventSheet({ game, id: firstId, day, onClose, startFocus }: { game: Gam
     </Sheet>
   );
 }
+
+/**
+ * Misiones y hábitos de un bloque: se marcan ahí mismo para ese día y valen para toda la serie
+ * (en una misión que se repite sale la copia que toca ese día).
+ */
+function BlockTasks({ game, eventId, ev, day }: { game: Game; eventId: string; ev: CalendarEvent; day: string }) {
+  const { state, act } = game;
+  const [adding, setAdding] = useState('');
+  const today = dayKey(Date.now());
+  const items = blockItems(state, ev, day);
+  const inBlock = new Set((ev.tasks ?? []).map((x) => `${x.kind}:${x.id}`));
+  const quests = pendingQuests(state, Date.now()).filter((q) => !inBlock.has(`quest:${q.id}`));
+  const habits = state.habits.filter((h) => !inBlock.has(`habit:${h.id}`));
+  const canMark = day <= today && day >= addDays(today, -6);
+  function toggle(it: BlockItem) {
+    if (!canMark) return;
+    if (it.task.kind === 'habit') return act((s) => toggleHabit(s, it.task.id, Date.now(), day), CAP_HABIT_NOTE, { sound: 'habit' });
+    const q = state.quests.find((x) => x.id === it.questId);
+    if (!q) return;
+    if (!q.completedAt) act((s) => completeQuest(s, q.id, Date.now()), CAP_QUEST_NOTE, { sound: q.kingdomId ? 'build' : 'reward', party: q.type === 'main' });
+    else if (dayKey(q.completedAt) === today) act((s) => undoQuest(s, q.id));
+  }
+  function add(value: string) {
+    setAdding('');
+    const [kind, taskId] = value.split(':') as ['quest' | 'habit', string];
+    if (!taskId) return;
+    sfx.place();
+    act((s) => addBlockTask(s, eventId, { kind, id: taskId }));
+  }
+  return (
+    <div className="block-tasks">
+      <p className="small-text block-tasks-h">En este bloque{items.length > 0 && <span className="mono"> · {items.filter((x) => x.done).length}/{items.length}</span>}</p>
+      {items.length > 0 && (
+        <ul className="list plain">
+          {items.map((it) => (
+            <li key={`${it.task.kind}:${it.task.id}`} className={it.done ? 'block-task done' : 'block-task'}>
+              <button type="button" className={it.done ? 'check checked' : 'check'} disabled={!canMark} onClick={() => toggle(it)}
+                aria-pressed={it.done} aria-label={`${it.done ? 'Desmarcar' : 'Completar'} ${it.label}`} title={canMark ? undefined : 'Solo se marca hoy o en los 7 días anteriores'}>✓</button>
+              <span className="block-task-name"><Icon name={it.task.kind === 'habit' ? 'repeat' : 'scroll'} /> {it.label}</span>
+              <button type="button" className="icon-btn" onClick={() => act((s) => removeBlockTask(s, eventId, it.task))} aria-label={`Sacar ${it.label} del bloque`} title="Sacar del bloque"><Icon name="x" /></button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {(quests.length > 0 || habits.length > 0) && (
+        <select className="freq-select" value={adding} onChange={(e) => add(e.target.value)} aria-label="Añadir una misión o un hábito al bloque">
+          <option value="">+ Añadir una misión o un hábito</option>
+          {habits.length > 0 && <optgroup label="Hábitos">{habits.map((h) => <option key={h.id} value={`habit:${h.id}`}>{h.name}</option>)}</optgroup>}
+          {quests.length > 0 && <optgroup label="Misiones pendientes">{quests.map((q) => <option key={q.id} value={`quest:${q.id}`}>{q.title}</option>)}</optgroup>}
+        </select>
+      )}
+    </div>
+  );
+}
+
+const CAP_HABIT_NOTE = 'Tope diario de XP por hábitos alcanzado. Sube de nivel para ampliarlo.';
+const CAP_QUEST_NOTE = 'Tope diario de XP por misiones alcanzado: la misión cuenta igual. Sube de nivel para ampliarlo.';
 
 // ---------- Vista por horas ----------
 
@@ -617,7 +676,7 @@ function DayBlocks({ state, day, hour, now, drag, onOpen, onGrab, onSession }: {
             onClick={() => onOpen(e)} onKeyDown={(ev) => (ev.key === 'Enter' || ev.key === ' ') && (ev.preventDefault(), onOpen(e))}
             aria-label={`${e.title}, ${timeRange({ time: fromMin(a), end: fromMin(Math.min(b, LAST)) })}`}
           >
-            <b>{e.kind !== 'bloque' && <><Icon name={eventIcon(e.kind)} /> </>}{e.title}</b>
+            <b>{e.kind !== 'bloque' && <><Icon name={eventIcon(e.kind)} /> </>}{e.title}{e.tasks?.length ? <span className="tg-tasks mono"> {blockItems(state, e, e.day).filter((x) => x.done).length}/{blockItems(state, e, e.day).length}</span> : null}</b>
             <span className="mono">{fromMin(a)} – {fromMin(Math.min(b, LAST))}{isDragged ? ` · ${durationWords(b - a)}` : ''}{!isDragged && e.repeat && <> <Icon name="repeat" /></>}</span>
             <span className="tg-resize" onPointerDown={(ev) => onGrab(ev, e, 'resize')} onClick={(ev) => ev.stopPropagation()} aria-hidden="true" />
           </div>

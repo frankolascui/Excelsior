@@ -325,7 +325,14 @@ export interface CalendarEvent {
   skip?: string[];
   /** Color elegido (id de EVENT_COLORS); sin él, el del tipo. */
   color?: string;
+  /** Bloques: misiones y hábitos que haces en ese bloque (valen para toda la serie). */
+  tasks?: BlockTask[];
   createdAt: number;
+}
+
+export interface BlockTask {
+  kind: 'quest' | 'habit';
+  id: string;
 }
 
 export interface Reminder {
