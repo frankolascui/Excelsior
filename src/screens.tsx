@@ -36,7 +36,7 @@ import { TodayStrip } from './today';
 import { addStep, deleteStep, setStepDeadline, toggleStep } from './core';
 import type { StepActions } from './steps-ui';
 import { SessionEdit } from './session-ui';
-import { SessionRating } from './productivity-ui';
+import { RateDialog, SessionRating } from './productivity-ui';
 import { formatHours, productivityWeek, sessionProductivity } from './productivity';
 import { QuestTemplates } from './templates-ui';
 import { DragHandle, draftToProgression, HabitHints, MinimumInput, PerDayInput, ProgressionInput, progressionDraft, RetiredHabits, weekShareText, type ProgressionDraft } from './habits-ui';
@@ -374,6 +374,7 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
   const [result, setResult] = useState<SessionResult | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [rating, setRating] = useState<string | null>(null);
+  const [asking, setAsking] = useState<string | null>(null);
   const [intent, setIntent] = useState(presetIntent);
   const [pomo, setPomo] = useState(() => {
     try {
@@ -409,6 +410,7 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
     act((s) => {
       const r = stopTimer(s, Date.now());
       const x = r.session;
+      setAsking(x?.id ?? null);
       setResult(x
         ? {
           id: x.id, minutes: x.minutes, xp: r.xp, questId: x.questId, label: x.label, breakMinutes: x.breakMinutes ?? 0,
@@ -528,6 +530,7 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
 
   return (
     <div className="screen">
+      {asking && !game.levelUp && <RateDialog game={game} id={asking} onClose={() => setAsking(null)} />}
       <div className="with-info">
         <h1 className="screen-title">Deep Work</h1>
         <InfoTip label="Cómo funciona el Deep Work">
@@ -549,7 +552,7 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
                 <div><span className="mono">{formatMinutes(result.distractionMinutes)}</span><span>Distracción{result.distractions ? ` ×${result.distractions}` : ''}</span></div>
               </div>
               <p className="now-sub">{result.label} <RewardTags rewards={deepWorkRewards(shown.minutes, result.area)} /></p>
-              {result.id && <SessionRating key={result.id} game={game} id={result.id} />}
+              {result.id && asking !== result.id && <SessionRating key={result.id} game={game} id={result.id} />}
               {result.id && (editing === result.id
                 ? <SessionEdit game={game} id={result.id} onDone={() => setEditing(null)} />
                 : <button className="link session-fix" onClick={() => setEditing(result.id!)}><Icon name="clock" /> ¿Se te olvidó pararlo? Corregir la hora de fin</button>)}
@@ -618,7 +621,7 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
                   {editing !== x.id && <button className="icon-btn" onClick={() => setEditing(x.id)} aria-label={`Corregir ${x.label}`} title="Corregir hora de fin"><Icon name="pencil" /></button>}
                 </span>
                 {editing === x.id && <SessionEdit game={game} id={x.id} onDone={() => setEditing(null)} />}
-                {rating === x.id && <SessionRating game={game} id={x.id} startOpen onDone={() => setRating(null)} />}
+                {rating === x.id && <SessionRating game={game} id={x.id} start="edit" onDone={() => setRating(null)} />}
               </li>
             ))}
           </ul>

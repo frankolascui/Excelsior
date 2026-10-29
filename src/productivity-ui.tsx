@@ -25,13 +25,14 @@ const SENSE_TEXT: Record<string, string> = { '1': 'misión vinculada', '0.8': 'i
 
 /**
  * Al terminar la sesión aparece la pregunta (con «Omitir»); una vez valorada u omitida queda en una línea
- * con un botón pequeño para ajustarla. `startOpen` la abre directamente para editar (desde «Sesiones de hoy»).
+ * con un botón pequeño para ajustarla. `start` elige cómo empieza: preguntando (la ventana de fin de sesión),
+ * editando (desde «Sesiones de hoy») o en una línea (la tarjeta de sesión registrada).
  */
-export function SessionRating({ game, id, startOpen = false, onDone }: { game: Game; id: string; startOpen?: boolean; onDone?: () => void }) {
+export function SessionRating({ game, id, start = 'closed', onDone }: { game: Game; id: string; start?: 'ask' | 'edit' | 'closed'; onDone?: () => void }) {
   const x = game.state.sessions.find((y) => y.id === id);
   const [perf, setPerf] = useState(x?.rating?.performance ?? 0);
   const [mind, setMind] = useState(x?.rating?.mindset ?? 0);
-  const [mode, setMode] = useState<'ask' | 'edit' | 'closed'>(startOpen ? 'edit' : x?.rating ? 'closed' : 'ask');
+  const [mode, setMode] = useState<'ask' | 'edit' | 'closed'>(start);
   if (!x) return null;
   function save(p: number, m: number) {
     if (!p || !m) return;
@@ -42,7 +43,7 @@ export function SessionRating({ game, id, startOpen = false, onDone }: { game: G
     setPerf(p);
     setMind(m);
     save(p, m);
-    if (mode === 'ask' && p && m) setMode('closed');
+    if (mode === 'ask' && p && m) close();
   }
   function close() {
     setMode('closed');
@@ -77,6 +78,22 @@ export function SessionRating({ game, id, startOpen = false, onDone }: { game: G
       <div className="rate-foot">
         {prod !== null && <span><b className="mono">{formatHours(prod)}</b> productivas</span>}
         <button type="button" className="ghost small" onClick={close}>{mode === 'ask' ? 'Omitir' : 'Listo'}</button>
+      </div>
+    </div>
+  );
+}
+
+/** Ventana que salta al terminar la sesión: valórala o pulsa «Omitir» (luego se puede ajustar). */
+export function RateDialog({ game, id, onClose }: { game: Game; id: string; onClose: () => void }) {
+  const x = game.state.sessions.find((y) => y.id === id);
+  if (!x) return null;
+  return (
+    <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="rate-h" onClick={onClose}>
+      <div className="overlay-card rate-dialog" onClick={(e) => e.stopPropagation()}>
+        <p className="eyebrow">Sesión terminada</p>
+        <h2 id="rate-h">{formatHours(x.minutes / 60)} de foco</h2>
+        <p className="muted small-text">{x.label}</p>
+        <SessionRating game={game} id={id} start="ask" onDone={onClose} />
       </div>
     </div>
   );

@@ -418,3 +418,8 @@ button.tg-session { font-family: inherit; justify-content: flex-start; align-ite
 .rate-foot .mono { color: var(--c1); }
 .rate-closed .link { display: inline-flex; align-items: center; gap: 4px; }
 .rate-foot button { margin-left: auto; }
+.rate-dialog { gap: 6px; }
+.rate-dialog h2 { margin: 0; }
+.rate-dialog .session-rating { border-top: 0; padding-top: 4px; }
+.rate-dialog .rate-foot .ghost { padding: 8px 18px; }
+.rate-dialog .rate-dot { width: 22px; height: 22px; } .rate-dialog .rate-dots { gap: 8px; }
