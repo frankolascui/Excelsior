@@ -110,6 +110,8 @@ export interface DeepWorkSession {
   pomodoros?: number; // pomodoros completados en la sesión
   /** Lo que midió el reloj antes de corregir la sesión a mano: tope de lo que se puede poner. */
   measured?: { minutes: number; endedAt: number };
+  /** Nota al terminar (1–5): cuánto y qué tal rendiste, y con qué mentalidad. Da las horas productivas (productivity.ts). */
+  rating?: { performance: number; mindset: number };
 }
 
 export type XPSource = 'quest' | 'habit' | 'deepwork' | 'admin' | 'guild';

@@ -253,7 +253,7 @@ export function QuickAddQuest({
 }
 
 export function HabitItem({
-  state, habit, now, onToggle, onDelete, onEdit, onToggleDay, onShield, handle,
+  state, habit, now, onToggle, onDelete, onEdit, onToggleDay, onShield, onRetire, handle,
 }: {
   state: GameState;
   habit: Habit;
@@ -265,6 +265,8 @@ export function HabitItem({
   onEdit?: (name: string, v: CustomValue, minimum: string, progression: ProgressionDraft, perDay: number) => void;
   /** Usa un escudo de racha del cofre en ese día fallado. */
   onShield?: (day: string) => void;
+  /** Retirarlo a mano porque ya está consolidado (va a «Hábitos automatizados» con su historial). */
+  onRetire?: () => void;
   /** Asa para ordenar arrastrando (la pone la lista). */
   handle?: ReactNode;
 }) {
@@ -285,6 +287,7 @@ export function HabitItem({
             <MinimumInput id={`edit-${habit.id}-min`} value={minimum} onChange={setMinimum} />
             <ProgressionInput id={`edit-${habit.id}-prog`} value={prog} onChange={setProg} perWeek={habit.frequency === 'weekly' ? habit.perWeek ?? 1 : 7} perDay={perDayDraft} />
             <PerDayInput id={`edit-${habit.id}-perday`} value={perDayDraft} onChange={setPerDayDraft} />
+            {onRetire && <button type="button" className="link retire-now" onClick={() => { setEditing(false); onRetire(); }}><Icon name="trophy" /> Ya lo tengo consolidado: retirarlo del seguimiento</button>}
           </>}
           onSave={(n, v) => { onEdit(n, v, minimum, prog, perDayDraft); setEditing(false); }} onCancel={() => { setMinimum(habit.minimum ?? ''); setProg(progressionDraft(habit)); setPerDayDraft(habit.perDay ?? 1); setEditing(false); }}
         />

@@ -36,6 +36,8 @@ import { TodayStrip } from './today';
 import { addStep, deleteStep, setStepDeadline, toggleStep } from './core';
 import type { StepActions } from './steps-ui';
 import { SessionEdit } from './session-ui';
+import { SessionRating } from './productivity-ui';
+import { formatHours, productivityWeek, sessionProductivity } from './productivity';
 import { QuestTemplates } from './templates-ui';
 import { DragHandle, draftToProgression, HabitHints, MinimumInput, PerDayInput, ProgressionInput, progressionDraft, RetiredHabits, weekShareText, type ProgressionDraft } from './habits-ui';
 import { atMax, levelUp, restoreHabit, retireHabit, setProgression, snoozeHint } from './progression';
@@ -517,6 +519,7 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
     );
   }
 
+  const week = productivityWeek(state, now);
   const linked = result?.questId ? state.quests.find((q) => q.id === result.questId && !q.completedAt) : null;
   // si corriges o borras la sesión recién guardada, la tarjeta lo refleja
   const live = result?.id ? state.sessions.find((x) => x.id === result.id) : undefined;
@@ -545,6 +548,7 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
                 <div><span className="mono">{formatMinutes(result.distractionMinutes)}</span><span>Distracción{result.distractions ? ` ×${result.distractions}` : ''}</span></div>
               </div>
               <p className="now-sub">{result.label} <RewardTags rewards={deepWorkRewards(shown.minutes, result.area)} /></p>
+              {result.id && <SessionRating game={game} id={result.id} />}
               {result.id && (editing === result.id
                 ? <SessionEdit game={game} id={result.id} onDone={() => setEditing(null)} />
                 : <button className="link session-fix" onClick={() => setEditing(result.id!)}><Icon name="clock" /> ¿Se te olvidó pararlo? Corregir la hora de fin</button>)}
@@ -598,6 +602,7 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
 
       <section className="panel">
         <header className="panel-head"><h3>Sesiones de hoy</h3><span className="count mono">{formatMinutes(deepWorkMinutesOnDay(state, today))}</span></header>
+        {week.rated > 0 && <p className="muted small-text">Últimos 7 días: <b className="mono">{formatHours(week.productive)}</b> productivas de {formatHours(week.focus)} valoradas</p>}
         {sessionsToday.length === 0 ? <p className="empty">Todavía ninguna.</p> : (
           <ul className="list plain">
             {sessionsToday.map((x) => (
@@ -606,6 +611,7 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
                 <span className="mono muted">
                   {new Date(x.startedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })} · {formatMinutes(x.minutes)}
                   {x.focusPct !== undefined && ` · ${x.focusPct} % foco`}
+                  {x.rating && ` · ${formatHours(sessionProductivity(x)!)} prod.`}
                   {x.measured && ' · corregida'}
                   {editing !== x.id && <button className="icon-btn" onClick={() => setEditing(x.id)} aria-label={`Corregir ${x.label}`} title="Corregir hora de fin"><Icon name="pencil" /></button>}
                 </span>
@@ -629,6 +635,8 @@ function spendHabitShield(game: Game, habitId: string, day: string) {
   sfx.purchase();
   game.toast('{i:shield} Escudo usado: la racha sigue viva.', 'level');
 }
+
+const HABITS_IDEAL = { min: 4, max: 7 };
 
 export function Habits({ game, guide }: { game: Game; guide: string }) {
   const { state, act } = game;
@@ -665,6 +673,7 @@ export function Habits({ game, guide }: { game: Game; guide: string }) {
     if (perWeek > 7) setPerWeek(7);
     setCustom({});
     setOpen(false);
+    if (state.habits.length + 1 > HABITS_IDEAL.max) game.toast(`Ya llevas ${state.habits.length + 1}. Más de ${HABITS_IDEAL.max} a la vez cuesta sostenerlos: retira uno consolidado cuando puedas.`, 'info');
   }
   return (
     <div className="screen">
@@ -673,6 +682,7 @@ export function Habits({ game, guide }: { game: Game; guide: string }) {
         <InfoTip label="Cómo funcionan los hábitos">
           <p>+{XP_RULES.habit} XP cada vez que lo completes. Los diarios hacen racha de días; los de «N veces por semana», racha de semanas cumplidas (de lunes a domingo).</p>
           <p>Los puntos son los últimos 7 días: pulsa uno para marcar un día que se te olvidó, o el nombre para ver su historial. Arrastra el asa para ordenarlos.</p>
+          <p>Mejor entre {HABITS_IDEAL.min} y {HABITS_IDEAL.max} hábitos a la vez: sostenibles con tu día a día y que de verdad cambien tu productividad o tu bienestar. Cuando uno ya te salga solo, retíralo desde «XP y atributos» y pon en su lugar el siguiente que necesites.</p>
           <p>Manda cada domingo tu % de la semana a un amigo con «Compartir mi semana»: cumplir delante de alguien ayuda.</p>
           <p>Sobrecarga progresiva (en «XP y atributos»): ponle una meta que sube poco a poco, como minutos, una hora de dormir o veces por semana. Tras 14 días al 80 % Hiperión te propone subirla. Con un 90 % de constancia en 30 días te dirá que ya lo has automatizado y que puedes retirarlo para centrarte en otro.</p>
         </InfoTip>
@@ -709,6 +719,9 @@ export function Habits({ game, guide }: { game: Game; guide: string }) {
       <section className="panel">
         {state.habits.length > 0 && (
           <div className="share-week">
+            <span className={`habit-count mono${state.habits.length > HABITS_IDEAL.max ? ' over' : ''}`} title="Lo ideal son entre 4 y 7 hábitos a la vez">
+              {state.habits.length} {state.habits.length === 1 ? 'hábito' : 'hábitos'} · ideal {HABITS_IDEAL.min}–{HABITS_IDEAL.max}
+            </span>
             <button type="button" className="ghost" onClick={shareWeek}><Icon name="send" /> Compartir mi semana</button>
           </div>
         )}
@@ -731,6 +744,7 @@ export function Habits({ game, guide }: { game: Game; guide: string }) {
                   return setProgression(next, h.id, draftToProgression(d, hh.frequency === 'weekly' ? hh.perWeek ?? 1 : 7, hh.perDay), Date.now());
                 })}
                   onShield={(d) => spendHabitShield(game, h.id, d)}
+                  onRetire={() => { act((s) => retireHabit(s, h.id, Date.now())); sfx.victory(); game.toast('{i:trophy} Hábito consolidado. Elige el siguiente que quieras desarrollar.', 'level'); }}
                   handle={<DragHandle name={h.name} group={group} onDrop={(order) => act((s) => reorderHabits(s, order))} />} />
               );
             })}
