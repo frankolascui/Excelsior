@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { APP_VERSION_LABEL } from './version';
+import { APP_VERSION, APP_VERSION_LABEL } from './version';
 import { AchievementPopup } from './achievements-ui';
 import { useGame } from './store';
 import { addHabit, deleteHabit, hasSeenTour, levelInfo, markTour, totalXp, xpForLevel } from './game';
@@ -7,7 +7,8 @@ import { avatarInfo } from './attributes';
 import { isMuted, setMuted, sfx } from './sfx';
 import { Arena, CoinBadge } from './arena';
 import { AmbientDock } from './ambient-ui';
-import { NewsGate } from './news-ui';
+import { NewsGate, VersionButton } from './news-ui';
+import { loadNewsSeen, markNewsSeen } from './news';
 import { ConflictDialog, loadGuest, saveGuest, Welcome } from './account';
 import { Guilds } from './guilds-ui';
 import { cloudEnabled, useCloud } from './cloud';
@@ -199,7 +200,7 @@ export default function App() {
           {avatar.ready && <span className="nav-new" aria-label="Ritual disponible" />}
         </button>
         <div className="nav-level mono">Nv {level} · <CoinBadge amount={coinBalance(state, Date.now())} /></div>
-        <div className="nav-version mono">{APP_VERSION_LABEL}</div>
+        <VersionButton className="nav-version mono" label={APP_VERSION_LABEL} />
       </nav>
 
       {sheet && (
@@ -215,7 +216,7 @@ export default function App() {
                 </button>
               )}
             </div>
-            <p className="mob-sheet-foot mono">Nv {level} · <CoinBadge amount={coinBalance(state, Date.now())} /> · {APP_VERSION_LABEL}</p>
+            <p className="mob-sheet-foot mono">Nv {level} · <CoinBadge amount={coinBalance(state, Date.now())} /> · <VersionButton className="mono" label={APP_VERSION_LABEL} onClick={() => setSheet(null)} /></p>
           </div>
         </div>
       )}
@@ -270,7 +271,12 @@ export default function App() {
       {ritual && !tour && <RitualDialog game={game} guide={tutorial.guide} onClose={() => setRitual(false)} />}
       {review && !tour && !ritual && <ReviewDialog game={game} guide={tutorial.guide} onClose={() => setReview(false)} />}
 
-      <NewsGate createdAt={state.profile.createdAt} blocked={!!tour || ritual || review || !!game.levelUp || !!game.conflict} />
+      <NewsGate
+        seen={state.newsSeen ?? loadNewsSeen()} createdAt={state.profile.createdAt}
+        ready={introSeen && (!cloud.email || game.cloudChecked)}
+        blocked={!!tour || ritual || review || !!game.levelUp || !!game.conflict}
+        markSeen={() => { markNewsSeen(); game.act((s) => (s.newsSeen === APP_VERSION ? s : { ...s, newsSeen: APP_VERSION })); }}
+      />
 
       {game.conflict && <ConflictDialog local={state} remote={game.conflict} onChoose={game.resolveConflict} />}
 

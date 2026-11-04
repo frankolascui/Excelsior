@@ -23,7 +23,9 @@ async function deepWork(minutes, keepLevelUp = false) {
   await page.click('text=Terminar sesión');
   if (!keepLevelUp && await seen('.levelup')) await page.click('.levelup button.primary');
   if (!keepLevelUp && await seen('.tour')) await page.click('.tour button:has-text("Saltar")');
+  if (!keepLevelUp && await quick('#rate-h')) await page.click('[aria-labelledby="rate-h"] button:has-text("Omitir")');
 }
+const quick = (sel) => page.waitForSelector(sel, { timeout: 800 }).then(() => true, () => false);
 
 const seen = (sel) => page.waitForSelector(sel, { timeout: 3000 }).then(() => true, () => false);
 const check = (cond, msg) => { if (!cond) { console.error('FALLO:', msg); process.exitCode = 1; } else console.log('ok:', msg); };
@@ -143,7 +145,7 @@ check(await seen('.toast:has-text("+20 XP")'), 'toast +20 XP');
 check(await seen('.achv-pop:has-text("Primer Juramento")'), 'logro épico al completar la primera misión');
 await page.screenshot({ path: `${out}/03b-logro.png` });
 await page.click('.achv-pop');
-check(await seen('.nav-version:has-text("Excelsior RPG v1.")'), 'la versión de la app se ve en una esquina');
+check(await seen('.nav-version:has-text("Excelsior RPG V2.")'), 'la versión de la app se ve en una esquina');
 check((await page.textContent('.levelbar .levelbar-foot')).includes('20 / 100'), 'barra de XP en 20/100');
 
 // 4. Deep Work vinculado a la misión principal (45 min simulados)
@@ -162,6 +164,7 @@ await page.click('button:has-text("Volver al foco")');
 await page.click('text=Terminar sesión');
 check(await seen('text=45 min de foco · +45 XP'), 'solo cuenta el foco: 45 min, +45 XP');
 check(await seen('.result >> text=90 %'), 'resumen muestra 90 % de foco real');
+if (await quick('#rate-h')) await page.click('[aria-labelledby="rate-h"] button:has-text("Omitir")');
 await page.click('button:has-text("Completar «Terminar el tema 3 de Física»")');
 // 20 + 45 + 50 = 115 → nivel 2
 check(await seen('#lvl-h:has-text("Nivel 2")'), 'sube a nivel 2');
@@ -373,11 +376,15 @@ await page.setViewportSize({ width: 1280, height: 860 });
 await page.click('button[aria-label="Ajustes"]');
 check(await seen('h1:has-text("Ajustes")'), 'la rueda abre Ajustes');
 await page.click('.news-row:has-text("v2.0")');
-check(await seen('.news-detail:has-text("Amigos")') && await seen('.news-row:has-text("Llega el 3 de noviembre")'), 'Ajustes tiene el historial de novedades (la V2 sale el 3 de noviembre)');
+check(await seen('.news-detail:has-text("Amigos")') && await seen('.news-row:has-text("3 de noviembre de 2026")'), 'Ajustes tiene el historial de novedades (V2 del 3 de noviembre)');
 await page.click('.news-detail button:has-text("Ver el aviso")');
 check(await seen('.news-dialog h2:has-text("La era social")'), 'el aviso de novedades se puede ver');
 await page.screenshot({ path: `${out}/20-news.png` });
 await page.click('.news-dialog button.primary');
+await page.click('.app-version .version-btn');
+check(await seen('.news-dialog h2:has-text("La era social")'), 'pulsar la versión de la app vuelve a abrir las novedades');
+await page.click('.news-dialog button.primary');
+check(!(await quick('.news-dialog')), 'y se cierra');
 await page.click('.theme-swatch:has-text("Olimpo")');
 check((await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--c1').trim())) === '#ffd166', 'el tema Olimpo cambia los colores');
 await page.screenshot({ path: `${out}/10-theme.png`, fullPage: true });
@@ -421,6 +428,7 @@ check(await seen('.eyebrow:has-text("Pomodoro 2")'), 'empieza el segundo pomodor
 await page.click('text=Terminar sesión');
 check(await seen('text=50 min de foco · +50 XP'), 'Pomodoro: el descanso no da XP (50 min, +50 XP)');
 check(await seen('.result:has-text("Ejercicios de derivadas")'), 'la sesión se llama como lo que ibas a hacer');
+if (await quick('#rate-h')) await page.click('[aria-labelledby="rate-h"] button:has-text("Omitir")');
 
 // 7b2. Corregir una sesión que se quedó encendida: solo se puede quitar tiempo
 await page.click('button.session-fix');

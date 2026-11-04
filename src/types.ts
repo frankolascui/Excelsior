@@ -235,6 +235,8 @@ export interface GameState {
   bosses: Boss[];
   /** Tutoriales ya vistos ('intro', 'reinos', 'arena', 'gremios'). Viaja con la partida, no con el dispositivo. */
   tours?: string[];
+  /** Última versión cuyo aviso de novedades ya viste. Viaja con la partida. */
+  newsSeen?: string;
   /** Avatares a los que ya has ascendido con su ritual. Sin el campo (partidas antiguas) se calculan como antes. */
   ascended?: string[];
   /** Respuestas que diste a Hiperión en cada ritual de ascensión. */

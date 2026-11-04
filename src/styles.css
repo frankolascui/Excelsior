@@ -115,6 +115,9 @@ p { margin: 0; }
 .nav-glyph { width: 20px; text-align: center; font-size: 17px; }
 .nav-level { margin-top: auto; padding: 0 12px; color: var(--muted); font-size: 13px; }
 .nav-version { padding: 6px 12px 0; color: color-mix(in srgb, var(--muted) 70%, transparent); font-size: 11px; letter-spacing: 0.04em; }
+.version-btn { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-align: left; }
+.version-btn:hover, .version-btn:focus-visible { color: var(--text); text-decoration: underline; }
+.nav-version.version-btn { padding: 6px 12px 0; }
 .app-version { text-align: center; color: var(--muted); font-size: 12px; opacity: 0.75; margin: 8px 0 0; }
 .live-dot {
   width: 8px; height: 8px; border-radius: 50%; background: var(--ok);

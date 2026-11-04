@@ -1,7 +1,7 @@
 // Panel de novedades: una vez por versión (al abrir la app) y el historial completo en Ajustes.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { APP_VERSION } from './version';
-import { cmpVersion, loadNewsSeen, markNewsSeen, NEWS, newsToAnnounce, type NewsEntry } from './news';
+import { cmpVersion, NEWS, newsToAnnounce, type NewsEntry } from './news';
 import { Icon } from './icons';
 
 const longDate = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -32,21 +32,46 @@ function NewsDialog({ entry, onClose }: { entry: NewsEntry; onClose: () => void 
   );
 }
 
+const OPEN_EVENT = 'excelsior:news-open';
+
+/** Abre el aviso de la versión actual (al pulsar la versión de la app). */
+export function openNews() {
+  window.dispatchEvent(new Event(OPEN_EVENT));
+}
+
+/** La versión visible de la app: al pulsarla vuelve a salir el aviso de novedades. */
+export function VersionButton({ label, className, onClick }: { label: string; className: string; onClick?: () => void }) {
+  return (
+    <button type="button" className={`${className} version-btn`} onClick={() => { onClick?.(); openNews(); }} title="Ver las novedades de esta versión">
+      {label}
+    </button>
+  );
+}
+
 /**
- * Sale una vez al llegar una versión nueva. Una partida recién creada no la ve (todo es nuevo para ella):
- * se marca como vista en silencio.
+ * Sale una vez por versión, nada más entrar. Lo visto se guarda en la partida (no se repite en otro dispositivo).
+ * Una partida recién creada no lo ve (todo es nuevo para ella): se marca como vista en silencio.
+ * `ready` espera a que la partida de la nube haya llegado, para no enseñarlo si ya se vio en otro dispositivo.
  */
-export function NewsGate({ createdAt, blocked }: { createdAt: number | null; blocked: boolean }) {
-  const [entry, setEntry] = useState(() => {
-    const e = newsToAnnounce(loadNewsSeen());
-    if (e && createdAt !== null && Date.now() - createdAt < 30 * 60_000) {
-      markNewsSeen();
-      return null;
-    }
-    return e;
-  });
-  if (!entry || blocked) return null;
-  return <NewsDialog entry={entry} onClose={() => { markNewsSeen(); setEntry(null); }} />;
+export function NewsGate({ seen, createdAt, ready, blocked, markSeen }: {
+  seen: string | null; createdAt: number | null; ready: boolean; blocked: boolean; markSeen: () => void;
+}) {
+  const [manual, setManual] = useState(false);
+  useEffect(() => {
+    const on = () => setManual(true);
+    window.addEventListener(OPEN_EVENT, on);
+    return () => window.removeEventListener(OPEN_EVENT, on);
+  }, []);
+  const auto = ready ? newsToAnnounce(seen) : null;
+  const fresh = !!auto && createdAt !== null && Date.now() - createdAt < 30 * 60_000;
+  useEffect(() => {
+    if (fresh) markSeen();
+  }, [fresh]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const current = NEWS.find((n) => n.version === APP_VERSION) ?? NEWS[0];
+  if (manual && current) return <NewsDialog entry={current} onClose={() => { setManual(false); if (auto) markSeen(); }} />;
+  if (!auto || fresh || blocked) return null;
+  return <NewsDialog entry={auto} onClose={markSeen} />;
 }
 
 /** Historial en Ajustes. Lo que aún no ha salido se marca como «Llega el …». */

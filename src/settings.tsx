@@ -1,5 +1,5 @@
 // Ajustes (tema, guía, tutorial, copia de seguridad), escalera de avatares y crónica semanal.
-import { NewsHistory } from './news-ui';
+import { NewsHistory, VersionButton } from './news-ui';
 import { XpHistory } from './history-ui';
 import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import type { Game, Tab } from './screens';
@@ -44,7 +44,7 @@ export function SettingsScreen({
         <ConfirmButton label="Borrar personaje" confirmLabel="Sí, borrar todo" onConfirm={game.reset} />
         <DeleteAccount game={game} />
       </section>
-      <p className="app-version mono">{APP_VERSION_LABEL}</p>
+      <p className="app-version"><VersionButton className="mono" label={APP_VERSION_LABEL} /></p>
     </div>
   );
 }
