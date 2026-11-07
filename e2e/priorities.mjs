@@ -52,7 +52,7 @@ async function calm(page) {
     else break;
   }
   // la subida de nivel puede llevar a una sección recién desbloqueada: volver a Hoy
-  if (!(await page.isVisible('.top-three'))) await page.click('.nav-item:has-text("Hoy")');
+  if (!(await page.isVisible('.now'))) await page.click('.nav-item:has-text("Hoy")');
 }
 const seen = (page, sel) => page.waitForSelector(sel, { timeout: 3000 }).then(() => true, () => false);
 
@@ -72,31 +72,29 @@ await page.click('.weekly-review button:has-text("Guardar la revisión")');
 check(!(await page.isVisible('.chronicle')), 'guardar la revisión cierra la crónica');
 
 // Las 3 de hoy
-check(await seen(page, '.top-three button:has-text("Elegir las 3 de hoy")'), 'Hoy pide elegir las 3 de hoy');
-check(await seen(page, '.top-three .top3-change:has-text("Dejar lista la presentación")'), 'muestra lo importante de la semana');
-check(await seen(page, '.top-three .top3-change:has-text("Móvil en otra habitación")'), 'muestra el cambio que pruebas esta semana');
-await page.click('.top-three button:has-text("Elegir las 3 de hoy")');
+check(await seen(page, '.now button:has-text("Elegir las 3 de hoy")'), 'Hoy pide elegir las 3 de hoy');
+check(await seen(page, '.now .top3-change:has-text("Dejar lista la presentación")'), 'muestra lo importante de la semana');
+check(await seen(page, '.now .top3-change:has-text("Móvil en otra habitación")'), 'muestra el cambio que pruebas esta semana');
+await page.click('.now button:has-text("Elegir las 3 de hoy")');
 const first = await page.textContent('.prio-options li:first-child .prio-title');
 check(first.includes('Terminar el tema 4') || first.includes('Preparar la presentación'), 'las candidatas salen por impacto');
 await page.click('.prio-option:has-text("Preparar la presentación")');
 await page.click('.prio-option:has-text("Terminar el tema 4")');
 await page.click('.prio-option:has-text("Leer 20 páginas")');
 check(await page.isDisabled('.prio-option:has-text("Responder correos")'), 'no deja elegir más de 3');
-await page.click('.top-three button:has-text("Fijar prioridades")');
-check(await seen(page, '.top3-list li:has-text("Preparar la presentación")'), 'las 3 quedan fijadas');
+await page.click('.now button:has-text("Fijar prioridades")');
+check(await seen(page, '.now .eyebrow:has-text("Las 3 de hoy · 0/3")'), 'las 3 quedan fijadas');
 const now = await page.textContent('.now h2');
 check(now.includes('Preparar la presentación') || now.includes('Terminar el tema 4'), '«¿Qué hago ahora?» propone una de las 3, la de más impacto');
-check(await seen(page, '.now .prio-tag'), 'y dice que es prioridad de hoy');
+check(!(await page.isVisible('.now .top3-list li:has-text("' + now.trim().slice(0, 12) + '")')), 'y no se repite en la lista de debajo');
 await page.screenshot({ path: `${out}/p2-las-3-de-hoy.png`, fullPage: true });
 
 // Bonus al cerrar las tres
-await page.click('.top3-list li:has-text("Leer 20 páginas") button.check');
-await calm(page);
-await page.click('.top3-list li:has-text("Terminar el tema 4") button.check');
-await calm(page);
-await page.click('.top3-list li:has-text("Preparar la presentación") button.check');
-await calm(page);
-check(await seen(page, '.top-three:has-text("Las tres hechas")'), 'cerrar las tres lo celebra con el bonus');
+for (let i = 0; i < 3; i++) {
+  await page.click('.now button:has-text("Ya la terminé")');
+  await calm(page);
+}
+check(await seen(page, '.now-note:has-text("Las 3 de hoy, hechas")'), 'cerrar las tres lo celebra con el bonus');
 
 // Misiones: impacto y limpieza
 await page.click('.nav-item:has-text("Misiones")');
@@ -129,13 +127,13 @@ await page.locator('.day-close').screenshot({ path: `${out}/p5-cierre-manana.png
 await page.clock.fastForward('24:00:00');
 await page.reload();
 await page.waitForSelector('.nav');
-const nextDay = await seen(page, '.top3-list li:has-text("Llamar al tutor")');
+const nextDay = await seen(page, '.now:has-text("Llamar al tutor")');
 check(nextDay, 'al día siguiente ya están en Las 3 de hoy');
 
 // Móvil
 const m = await open({ width: 390, height: 844 });
 await m.click('.chronicle button:has-text("Entendido")').catch(() => {});
-await m.click('.top-three button:has-text("Elegir las 3 de hoy")');
+await m.click('.now button:has-text("Elegir las 3 de hoy")');
 await m.screenshot({ path: `${out}/p6-movil.png`, fullPage: false });
 
 check(errors.length === 0, `sin errores en consola${errors.length ? ': ' + errors.join(' | ') : ''}`);

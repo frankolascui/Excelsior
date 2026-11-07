@@ -79,9 +79,9 @@ await page.click('[role=radio]:has-text("Principal")');
 await page.click('button:has-text("Crear")');
 check(await seen('h2:has-text("Terminar el tema 3 de Física")'), '¿Qué hago ahora? sugiere la misión principal');
 check(!(await page.$('.today-strip')) && !(await page.$('#attrs-h')), 'Hoy de una partida nueva esconde lo que aún estaría vacío');
-await page.click('button.now-add');
-await page.fill('#new-quest', 'Responder emails');
-await page.click('button:has-text("Crear")');
+await page.fill('#capture', 'Responder emails');
+await page.press('#capture', 'Enter');
+check(await seen('.now-foot .link:has-text("1 misión más")') && !(await page.$('.item:has-text("Responder emails")')), 'Hoy apunta misiones en una línea y no repite la lista: enlaza con Misiones');
 
 // 2b. Fecha límite y calendario
 await page.click('.nav-item:has-text("Misiones")');
@@ -140,13 +140,15 @@ await page.click('button.templates-open');
 await page.click('.nav-item:has-text("Hoy")');
 
 // 3. Completar misión → XP
+await page.click('.nav-item:has-text("Misiones")');
 await page.click('button[aria-label="Completar Responder emails"]');
 check(await seen('.toast:has-text("+20 XP")'), 'toast +20 XP');
 check(await seen('.achv-pop:has-text("Primer Juramento")'), 'logro épico al completar la primera misión');
 await page.screenshot({ path: `${out}/03b-logro.png` });
 await page.click('.achv-pop');
 check(await seen('.nav-version:has-text("Excelsior RPG V2.")'), 'la versión de la app se ve en una esquina');
-check((await page.textContent('.levelbar .levelbar-foot')).includes('20 / 100'), 'barra de XP en 20/100');
+await page.click('.nav-item:has-text("Hoy")');
+check((await page.textContent('.hero-line .levelbar-foot')).includes('20 / 100'), 'la fila del personaje en Hoy marca 20/100 XP');
 
 // 4. Deep Work vinculado a la misión principal (45 min simulados)
 await page.click('button:has-text("Empezar Deep Work")');
@@ -181,6 +183,7 @@ await page.screenshot({ path: `${out}/04-dashboard.png`, fullPage: true });
 await page.emulateMedia({ colorScheme: 'light' });
 
 // 5b. Atributos y avatar: Diaria ⚔️3 + 45 min de «Terminar el tema 3» (teoría: ⚔️11,3 🧠22,5) + Principal (⚔️5 🔨5) + Leer (🧠3)
+await page.click('.nav-item:has-text("Personaje")');
 const attr = async (name) => (await page.textContent(`.attr:has-text("${name}") .attr-xp`)).trim();
 check(await attr('Voluntad') === '19,3 XP', 'Voluntad 19,3 XP (con decimales)');
 check(await attr('Maestría') === '5 XP', 'Maestría 5 XP (el Deep Work de un tema es teoría)');

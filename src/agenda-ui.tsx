@@ -131,7 +131,9 @@ export function RemindersPanel({ game, now }: { game: Game; now: number }) {
           <ul className="list">{later.map((r) => <ReminderRow key={r.id} r={r} now={now} game={game} />)}</ul>
         </details>
       )}
-      <ReminderForm game={game} now={now} />
+      {adding || (list.length === 0 && later.length === 0)
+        ? <ReminderForm game={game} now={now} />
+        : <button className="link rem-add" onClick={() => setAdding(true)}><Icon name="plus" /> Recordatorio</button>}
     </section>
   );
 }

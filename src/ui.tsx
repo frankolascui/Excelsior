@@ -270,7 +270,7 @@ export function QuickAddQuest({
 }
 
 export function HabitItem({
-  state, habit, now, onToggle, onDelete, onEdit, onToggleDay, onShield, onRetire, handle,
+  state, habit, now, onToggle, onDelete, onEdit, onToggleDay, onShield, onRetire, handle, compact = false,
 }: {
   state: GameState;
   habit: Habit;
@@ -286,6 +286,8 @@ export function HabitItem({
   onRetire?: () => void;
   /** Asa para ordenar arrastrando (la pone la lista). */
   handle?: ReactNode;
+  /** En Hoy: sin XP ni atributos (están en Hábitos). */
+  compact?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [open, setOpen] = useState(false);
@@ -355,8 +357,8 @@ export function HabitItem({
             })}
           </span>
           <span className="mono streak">{streak > 0 ? `racha ${streak}${weekly ? ' sem' : ''}` : 'sin racha'}</span>
-          <span className="mono xp-tag">+{habitXp(habit)} XP</span>
-          <RewardTags rewards={habit.rewards} />
+          {!compact && <span className="mono xp-tag">+{habitXp(habit)} XP</span>}
+          {!compact && <RewardTags rewards={habit.rewards} />}
         </span>
         {(risk || (savable && stock > 0)) && (
           <p className="habit-risk small-text">

@@ -75,3 +75,38 @@
   .cleanup-item { flex-wrap: wrap; }
   .cleanup-item .item-actions { width: 100%; justify-content: flex-start; }
 }
+
+/* Hoy simplificado: una tarjeta para Las 3 de hoy y ¿Qué hago ahora? */
+.now-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.now-top .eyebrow { display: inline-flex; align-items: center; gap: 6px; margin: 0; }
+.now .now-sub { margin: 2px 0 0; }
+.now-rest { margin: 12px 0 0; }
+.now-rest li { background: color-mix(in srgb, var(--surface-2) 80%, transparent); }
+.now-note { margin: 8px 0 0; font-size: 13.5px; color: var(--gold); display: flex; gap: 6px; align-items: center; }
+.now-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 12px; }
+.now-foot .link { font-size: 14px; }
+.capture { display: flex; gap: 8px; flex: 1 1 220px; min-width: 0; }
+.capture input { flex: 1; min-width: 0; padding: 7px 12px; font-size: 14px; border-radius: 10px; background: transparent; border: 1px dashed var(--line); color: var(--fg); }
+.capture input:focus { border-style: solid; border-color: var(--c1); outline: none; }
+.now-week { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+.now-week .top3-change { margin: 2px 0; }
+.rem-add { justify-self: start; font-size: 14px; }
+
+.panel.hero-line { display: flex; flex-direction: row; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 14px; }
+.hero-line-main { flex: 1 1 260px; display: flex; align-items: center; gap: 12px; background: none; border: 0; padding: 0; color: var(--fg); text-align: left; cursor: pointer; min-width: 0; }
+.hero-line-txt { flex: 1; display: grid; gap: 4px; min-width: 0; }
+.hero-line-name { font-size: 14.5px; }
+.hero-line .xpbar { height: 6px; }
+.hero-line .levelbar-foot { font-size: 11.5px; }
+.hero-line .ritual-cta { flex: none; }
+
+/* La barra de cifras en una sola fila también en el móvil */
+@media (max-width: 760px) {
+  .today-strip { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)) !important; gap: 6px !important; }
+  .today-tile { padding: 6px 8px !important; gap: 0 !important; justify-content: center; text-align: center; }
+  .today-tile:last-child:nth-child(odd) { grid-column: auto !important; }
+  .today-ico, .today-bar { display: none !important; }
+  .today-val { font-size: 15px !important; }
+  .today-lbl { font-size: 10.5px !important; }
+  .today-lbl .muted { display: none; }
+}
