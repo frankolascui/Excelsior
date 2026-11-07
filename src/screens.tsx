@@ -43,6 +43,8 @@ import { DragHandle, draftToProgression, HabitHints, MinimumInput, PerDayInput, 
 import { atMax, levelUp, restoreHabit, retireHabit, setProgression, snoozeHint } from './progression';
 import { InfoTip } from './infotip';
 import { QuestHistory } from './quest-history';
+import { CleanupPanel, TopThree } from './priorities-ui';
+import { IMPACTS, priorityIds, setQuestImpact } from './priorities';
 import { ACHIEVEMENTS } from './achievements';
 
 export type Game = ReturnType<typeof useGame>;
@@ -116,6 +118,7 @@ export function Dashboard({
   const others = s.kind === 'quest' ? pending.filter((q) => q.id !== s.quest.id) : pending;
   const [adding, setAdding] = useState(false);
   const fresh = totalXp(state) === 0; // partida nueva: se esconde lo que aún estaría vacío
+  const prio = priorityIds(state, dayKey(now));
   const anyAttr = Object.values(attributeXp(state)).some((v) => v > 0);
 
   return (
@@ -124,6 +127,7 @@ export function Dashboard({
       <WeeklyChronicle game={game} guide={guide} now={now} go={go} />
       <ReviewBanner state={state} now={now} guide={guide} />
       <UpcomingEvents state={state} now={now} />
+      {!fresh && <TopThree game={game} now={now} />}
       <section className="now" aria-labelledby="now-h" data-tour="now">
         <p className="eyebrow" id="now-h">¿Qué hago ahora?</p>
         {s.kind === 'timer' && (
@@ -135,7 +139,11 @@ export function Dashboard({
         {s.kind === 'quest' && (
           <>
             <h2>{s.quest.title}</h2>
-            <p className="now-sub">Misión {s.quest.type === 'main' ? 'principal' : s.quest.type === 'daily' ? 'diaria' : 'secundaria'} · +{XP_RULES.quest[s.quest.type]} XP al completarla, +1 XP por minuto de foco</p>
+            <p className="now-sub">
+              {prio.includes(s.quest.id) && <span className="prio-tag"><Icon name="flag" /> Prioridad de hoy</span>}{' '}
+              Misión {s.quest.type === 'main' ? 'principal' : s.quest.type === 'daily' ? 'diaria' : 'secundaria'}
+              {s.quest.impact && ` · impacto ${IMPACTS.find((x) => x.id === s.quest.impact)!.name.toLowerCase()}`} · +{XP_RULES.quest[s.quest.type]} XP al completarla, +1 XP por minuto de foco
+            </p>
             <div className="row">
               <button className="primary big" onClick={() => focusQuest(s.quest)}><Icon name="play" /> Empezar Deep Work</button>
               <button className="secondary big" onClick={() => act((st) => completeQuest(st, s.quest.id, Date.now()), CAP_QUEST, questOpts(s.quest))}><Icon name="check" /> Ya la terminé</button>
@@ -186,7 +194,7 @@ export function Dashboard({
           ) : (
             <ul className="list">
               {others.slice(0, 5).map((q) => (
-                <QuestItem key={q.id} quest={q} kingdom={kingdomName(state, q.kingdomId)} onComplete={() => act((st) => completeQuest(st, q.id, Date.now()), CAP_QUEST, questOpts(q))} onStart={() => focusQuest(q)} onDeadline={(d) => act((st) => setQuestDeadline(st, q.id, d))} steps={stepActions(act, q.id)} />
+                <QuestItem key={q.id} quest={q} kingdom={kingdomName(state, q.kingdomId)} priority={prio.includes(q.id)} onComplete={() => act((st) => completeQuest(st, q.id, Date.now()), CAP_QUEST, questOpts(q))} onStart={() => focusQuest(q)} onDeadline={(d) => act((st) => setQuestDeadline(st, q.id, d))} onImpact={(v) => act((st) => setQuestImpact(st, q.id, v))} steps={stepActions(act, q.id)} />
               ))}
             </ul>
           )}
@@ -252,6 +260,7 @@ export function Quests({ game, focusQuest, startFocus }: { game: Game; focusQues
   const now = useNow(60_000);
   const pending = pendingQuests(state, now);
   const scheduled = scheduledQuests(state, now);
+  const prio = priorityIds(state, dayKey(now));
   const [showScheduled, setShowScheduled] = useState(false);
   const [view, setView] = useState<'list' | 'calendar'>(() => {
     try {
@@ -301,6 +310,7 @@ export function Quests({ game, focusQuest, startFocus }: { game: Game; focusQues
         <QuickAddQuest autoFocus onAdd={(t, ty, c) => act((st) => addQuest(st, t, ty, Date.now(), c))} />
         <QuestTemplates game={game} />
       </section>
+      <CleanupPanel game={game} now={now} />
       <section className="panel">
         <header className="panel-head"><h3>Pendientes</h3><span className="count mono">{pending.length}</span></header>
         {pending.length === 0 ? <p className="empty">Nada pendiente. Crea una misión arriba.</p> : (
@@ -315,6 +325,8 @@ export function Quests({ game, focusQuest, startFocus }: { game: Game; focusQues
                 onEdit={(t, v) => act((st) => updateQuest(st, q.id, { title: t, ...v }))}
                 onDeadline={(d) => act((st) => setQuestDeadline(st, q.id, d))}
                 onRepeat={q.kingdomId ? undefined : (d) => act((st) => setQuestRepeat(st, q.id, d))}
+                onImpact={(v) => act((st) => setQuestImpact(st, q.id, v))}
+                priority={prio.includes(q.id)}
                 steps={stepActions(act, q.id)}
                 onDelete={() => act((st) => deleteQuest(st, q.id))}
               />
@@ -965,6 +977,7 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
               onStart={() => focusQuest(q)}
               onDelete={() => act((s) => deleteQuest(s, q.id))}
               onEdit={(t, v) => act((s) => updateQuest(s, q.id, { title: t, ...v }))}
+              onImpact={(v) => act((s) => setQuestImpact(s, q.id, v))}
               steps={stepActions(act, q.id)}
             />
           ))}

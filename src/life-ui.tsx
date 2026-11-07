@@ -9,6 +9,7 @@ import { sfx } from './sfx';
 import { shortDate } from './ui';
 import { Icon, type IconName } from './icons';
 import { InfoTip } from './infotip';
+import { TomorrowPriorities } from './priorities-ui';
 
 /** Cuenta atrás para lo importante: «hoy», «mañana», «en 12 días». */
 export function countdown(day: string, now: number): string {
@@ -51,9 +52,11 @@ function DayCloseForm({ game, now }: { game: Game; now: number }) {
   const [energy, setEnergy] = useState(saved?.energy);
   const [mood, setMood] = useState(saved?.mood);
   const [note, setNote] = useState(saved?.note ?? '');
+  const [advanced, setAdvanced] = useState(saved?.advanced ?? '');
+  const [improve, setImprove] = useState(saved?.improve ?? '');
 
   function save(): GameState {
-    return saveDayLog(state, { energy, mood, note: note.trim() || undefined }, Date.now());
+    return saveDayLog(state, { energy, mood, note: note.trim() || undefined, advanced: advanced.trim() || undefined, improve: improve.trim() || undefined }, Date.now());
   }
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -85,8 +88,17 @@ function DayCloseForm({ game, now }: { game: Game; now: number }) {
         <Scale label="Energía" value={energy} onChange={setEnergy} icons={ENERGY} />
         <Scale label="Ánimo" value={mood} onChange={setMood} icons={MOOD} />
       </div>
-      <textarea id="day-note" value={note} onChange={(e) => setNote(e.target.value)} rows={3} maxLength={1200}
-        placeholder="¿Qué ha ido bien? ¿Qué te ha frenado? ¿Qué harás distinto mañana?" aria-label="Nota del día" />
+      <label className="field"><span>¿Qué has avanzado hoy?</span>
+        <textarea id="day-advanced" value={advanced} onChange={(e) => setAdvanced(e.target.value)} rows={2} maxLength={600}
+          placeholder="Resultados, no horas: qué está más cerca que ayer" /></label>
+      <label className="field"><span>¿Qué mejorarías mañana?</span>
+        <textarea id="day-improve" value={improve} onChange={(e) => setImprove(e.target.value)} rows={2} maxLength={600}
+          placeholder="Una cosa concreta" /></label>
+      {/* la nota libre de antes solo sale si ya la usabas ese día */}
+      {saved?.note && (
+        <textarea id="day-note" value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={1200} aria-label="Nota del día" />
+      )}
+      <TomorrowPriorities game={game} now={now} />
       <div className="row">
         <button type="submit" className="primary"><Icon name="save" /> {saved ? 'Actualizar el día' : 'Guardar el día'}</button>
         <button type="button" className="secondary" onClick={copy}><Icon name="copy" /> Copiar informe para la IA</button>

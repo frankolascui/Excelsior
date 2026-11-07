@@ -1,13 +1,16 @@
 // Piezas de interfaz compartidas entre pantallas.
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import type { AttributeRewards, GameState, Habit, Quest, QuestType } from './types';
+import type { AttributeRewards, GameState, Habit, Impact, Quest, QuestType } from './types';
 import { ATTRIBUTES, attributeHistory, attributeLevel, attributeXp, avatarInfo, formatAttrXp, habitRewards, questRewards } from './attributes';
 import {
   daysUntil, CUSTOM_LIMITS, dayKey, habitAtRisk, habitDayCount, habitStreak, habitWeekCount, habitXp, isHabitDone, levelInfo, QUEST_LABEL, questAttributeRewards, repeatLabel, questXp, shiftDay, totalXp, XP_RULES,
 } from './game';
 import { CustomizeToggle, InlineEdit, RewardEditor, sameRewards, type CustomValue } from './customize';
 import { RitualCTA } from './ritual';
-import { DatePicker, dayWords, RepeatPicker } from './pickers';
+import { DatePicker, dayWords, ImpactPicker, RepeatPicker } from './pickers';
+import { IMPACTS } from './priorities';
+
+const impactName = (v: Impact) => IMPACTS.find((x) => x.id === v)!.name;
 import './core.css';
 import { HabitHistory, habitShields, MinimumInput, PerDayInput, ProgressionInput, progressionDraft, type ProgressionDraft } from './habits-ui';
 import { progressionText } from './progression';
@@ -104,7 +107,7 @@ export function deadlineLabel(day: string, now: number): { text: string; tone: '
 }
 
 export function QuestItem({
-  quest, kingdom, onComplete, onStart, onDelete, onUndo, onEdit, onDeadline, onRepeat, steps,
+  quest, kingdom, onComplete, onStart, onDelete, onUndo, onEdit, onDeadline, onRepeat, onImpact, steps, priority,
 }: {
   quest: Quest;
   kingdom?: string;
@@ -115,6 +118,10 @@ export function QuestItem({
   onEdit?: (title: string, v: CustomValue) => void;
   onDeadline?: (day: string | null) => void;
   onRepeat?: (days: number[] | null) => void;
+  /** Con él, el impacto se puede marcar o cambiar. */
+  onImpact?: (v: Impact | null) => void;
+  /** Es una de «Las 3 de hoy». */
+  priority?: boolean;
   /** Con él, la misión puede tener pasos (subtareas) con casillas. */
   steps?: StepActions;
 }) {
@@ -147,7 +154,11 @@ export function QuestItem({
       <div className="item-body">
         <span className="item-title">{quest.title}</span>
         <span className="item-meta">
+          {priority && !done && <span className="prio-tag" title="Una de las 3 de hoy"><Icon name="flag" /> Hoy</span>}
           <TypeChip type={quest.type} />
+          {quest.impact && !done && (onImpact
+            ? <ImpactPicker value={quest.impact} onChange={onImpact} label={`Impacto de ${quest.title}`} className={`impact-tag imp-${quest.impact}`}><Icon name="target" /> {impactName(quest.impact)}</ImpactPicker>
+            : <span className={`impact-tag imp-${quest.impact}`}><Icon name="target" /> {impactName(quest.impact)}</span>)}
           {due && (onDeadline
             ? <DatePicker value={quest.deadline ?? null} onChange={onDeadline} label={`Fecha límite de ${quest.title}`} clearLabel="Quitar fecha límite" className={`due due-${due.tone}`}><Icon name="calendar" /> {due.text}</DatePicker>
             : <span className={`due due-${due.tone}`}><Icon name="calendar" /> {due.text}</span>)}
@@ -169,6 +180,9 @@ export function QuestItem({
           <button className="ghost small" onClick={onStart} title="Hacer Deep Work en esta misión"><Icon name="play" /> Foco</button>
         )}
         {onUndo && done && <button className="ghost small" onClick={onUndo}><Icon name="rotate-ccw" /> Deshacer</button>}
+        {onImpact && !done && !quest.impact && (
+          <ImpactPicker value={null} onChange={onImpact} label={`Marcar el impacto de ${quest.title}`} className="icon-btn impact-add"><Icon name="target" /></ImpactPicker>
+        )}
         {onDeadline && !done && !quest.deadline && (
           <DatePicker value={null} onChange={onDeadline} label={`Poner fecha límite a ${quest.title}`} className="icon-btn due-add"><Icon name="calendar-plus" /></DatePicker>
         )}
@@ -193,8 +207,9 @@ const TYPES: QuestType[] = ['daily', 'main', 'side'];
 
 export function QuickAddQuest({
   onAdd, autoFocus = false, fixedDeadline,
-}: { onAdd: (title: string, type: QuestType, custom: CustomValue & { deadline?: string; repeat?: number[] }) => void; autoFocus?: boolean; fixedDeadline?: string }) {
+}: { onAdd: (title: string, type: QuestType, custom: CustomValue & { deadline?: string; repeat?: number[]; impact?: Impact }) => void; autoFocus?: boolean; fixedDeadline?: string }) {
   const [title, setTitle] = useState('');
+  const [impact, setImpact] = useState<Impact | null>(null);
   const [deadline, setDeadline] = useState('');
   const [repeat, setRepeat] = useState<number[] | null>(null);
   const [type, setType] = useState<QuestType>('daily');
@@ -205,8 +220,9 @@ export function QuickAddQuest({
     e.preventDefault();
     if (!title.trim()) return;
     const rewards = custom.rewards && !sameRewards(custom.rewards, questRewards(type, title)) ? custom.rewards : undefined;
-    onAdd(title, type, { xp: custom.xp, rewards, deadline: fixedDeadline ?? (deadline || undefined), repeat: repeat ?? undefined });
+    onAdd(title, type, { xp: custom.xp, rewards, deadline: fixedDeadline ?? (deadline || undefined), repeat: repeat ?? undefined, impact: impact ?? undefined });
     setTitle('');
+    setImpact(null);
     setDeadline('');
     setRepeat(null);
     setCustom({});
@@ -242,6 +258,7 @@ export function QuickAddQuest({
           <DatePicker id="new-quest-deadline" value={deadline || null} onChange={(d) => setDeadline(d ?? '')} label="Fecha límite (opcional)" clearLabel="Sin fecha límite" placeholder="Fecha límite" />
         )}
         <RepeatPicker id="new-quest-repeat" value={repeat} onChange={setRepeat} label="Repetir" describe={repeatLabel} />
+        <ImpactPicker id="new-quest-impact" value={impact} onChange={setImpact} label="Impacto" />
         <CustomizeToggle open={open} onToggle={() => setOpen(!open)} custom={isCustom} />
         <button type="submit" className="primary" disabled={!title.trim()}><Icon name="plus" /> Crear</button>
       </div>

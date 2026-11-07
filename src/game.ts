@@ -318,6 +318,7 @@ export interface QuestOptions {
   rewards?: AttributeRewards;
   deadline?: string;
   repeat?: number[];
+  impact?: Quest['impact'];
 }
 
 export function questXp(q: Quest): number {
@@ -335,6 +336,7 @@ export function addQuest(s: GameState, title: string, type: QuestType, now: numb
   if (opts.xp !== undefined) quest.xp = Math.round(clamp(opts.xp, CUSTOM_LIMITS.questXp));
   if (opts.rewards) quest.rewards = cleanRewards(opts.rewards);
   if (opts.deadline) quest.deadline = opts.deadline;
+  if (opts.impact) quest.impact = opts.impact;
   const repeat = cleanRepeat(opts.repeat);
   if (repeat && !opts.kingdomId) quest.repeat = repeat;
   return { ...s, quests: [...s.quests, quest] };
@@ -444,11 +446,30 @@ export function completeQuest(s: GameState, id: string, now: number): ActionResu
   }
   let state: GameState = { ...s, quests };
   state = withXp(state, { at: now, amount, source: 'quest', sourceId: id, label: q.title, attributes: questAttributeRewards(q) });
-  return { state, xp: amount, capped: amount < base };
+  // «Las 3 de hoy»: cerrar las tres prioridades del día da un bonus pequeño y fijo (una vez por día)
+  const day = dayKey(now);
+  const prio = dayPriorityIds(state, day);
+  const bonusId = `prio:${day}`;
+  let bonus = 0;
+  if (prio.includes(id) && prio.length === 3 && !state.xp.some((t) => t.sourceId === bonusId)
+    && prio.every((pid) => state.quests.some((x) => x.id === pid && x.completedAt))) {
+    bonus = cappedAmount(state, 'quest', PRIORITY_BONUS, now);
+    state = withXp(state, { at: now, amount: bonus, source: 'quest', sourceId: bonusId, label: 'Las 3 de hoy', attributes: { voluntad: 2 } });
+  }
+  return { state, xp: amount + bonus, capped: amount < base };
 }
+
+/** XP por cerrar las 3 prioridades del día. El impacto en sí no da XP. */
+export const PRIORITY_BONUS = 15;
+
+const dayPriorityIds = (s: GameState, day: string) => s.priorities?.find((p) => p.day === day)?.ids ?? [];
+const IMPACT_ORDER = { alto: 0, medio: 1, none: 1.5, bajo: 2 } as const;
 
 /** Deshacer devuelve la misión a pendiente y retira su XP (evita farmear marcando/desmarcando). */
 export function undoQuest(s: GameState, id: string): GameState {
+  // si era una de «Las 3» del día en que se completó, el bonus de ese día se retira también
+  const done = s.quests.find((q) => q.id === id)?.completedAt;
+  const bonusId = done && dayPriorityIds(s, dayKey(done)).includes(id) ? `prio:${dayKey(done)}` : null;
   return {
     ...s,
     quests: s.quests
@@ -459,7 +480,7 @@ export function undoQuest(s: GameState, id: string): GameState {
         delete next.spawnedId;
         return next;
       }),
-    xp: s.xp.filter((t) => !(t.source === 'quest' && t.sourceId === id)),
+    xp: s.xp.filter((t) => !(t.source === 'quest' && (t.sourceId === id || t.sourceId === bonusId))),
   };
 }
 
@@ -731,8 +752,9 @@ export type Suggestion =
 const QUEST_PRIORITY: Record<QuestType, number> = { main: 0, daily: 1, side: 2 };
 
 /**
- * Pendientes por urgencia: primero lo vencido o que vence en 2 días (por fecha),
- * luego por tipo (Principal → Diaria → Secundaria) y antigüedad.
+ * Pendientes en el orden en que conviene hacerlas: primero «Las 3 de hoy» (de más a menos impacto),
+ * luego lo vencido o que vence en 2 días (por fecha), luego por impacto (alto → medio → sin marcar → bajo),
+ * tipo (Principal → Diaria → Secundaria) y antigüedad.
  */
 export function pendingQuests(s: GameState, now = Date.now()): Quest[] {
   const urgent = (q: Quest) => {
@@ -742,16 +764,21 @@ export function pendingQuests(s: GameState, now = Date.now()): Quest[] {
     return d !== null && d <= 2 ? d : null;
   };
   const today = dayKey(now);
+  const prio = dayPriorityIds(s, today);
+  const impact = (q: Quest) => IMPACT_ORDER[q.impact ?? 'none'];
   return s.quests
     .filter((q) => !q.completedAt && !(q.startsOn && q.startsOn > today))
     .sort((a, b) => {
+      const pa = prio.includes(a.id), pb = prio.includes(b.id);
+      if (pa !== pb) return pa ? -1 : 1;
+      if (pa && pb) return impact(a) - impact(b) || prio.indexOf(a.id) - prio.indexOf(b.id);
       const ua = urgent(a), ub = urgent(b);
       if (ua !== null || ub !== null) {
         if (ua === null) return 1;
         if (ub === null) return -1;
         if (ua !== ub) return ua - ub;
       }
-      return QUEST_PRIORITY[a.type] - QUEST_PRIORITY[b.type] || a.createdAt - b.createdAt;
+      return impact(a) - impact(b) || QUEST_PRIORITY[a.type] - QUEST_PRIORITY[b.type] || a.createdAt - b.createdAt;
     });
 }
 

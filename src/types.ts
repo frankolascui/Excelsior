@@ -41,6 +41,31 @@ export interface Quest {
   startsOn?: string; // repetición programada: no sale en pendientes hasta ese día (YYYY-MM-DD local)
   spawnedId?: string; // la repetición que creó al completarse (para deshacer)
   steps?: QuestStep[]; // pasos (subtareas) para partir una misión grande; no dan XP por separado
+  /** Impacto que esperas de ella. No da XP: sirve para decidir qué hacer primero. */
+  impact?: Impact;
+  /** Cuándo decidiste conservarla en la limpieza (no vuelve a preguntar en 14 días). */
+  keptAt?: number;
+}
+
+export type Impact = 'alto' | 'medio' | 'bajo';
+
+/** Las misiones que elegiste como prioridad de un día (máx. 3). */
+export interface DayPriorities {
+  day: string; // YYYY-MM-DD
+  ids: string[];
+}
+
+/** Revisión semanal: lo que funcionó, lo que no y el cambio que pruebas la semana siguiente. */
+export interface WeeklyReview {
+  week: string; // lunes de la semana revisada (YYYY-MM-DD)
+  at: number;
+  worked?: string;
+  failed?: string;
+  change?: string;
+  /** Lo más importante de la semana que empieza (la previsión). */
+  focus?: string;
+  /** Si el cambio de la semana anterior sirvió. */
+  prevVerdict?: 'si' | 'medias' | 'no';
 }
 
 export interface QuestStep {
@@ -248,6 +273,10 @@ export interface GameState {
   /** Medidas de tu vida real (dinero, peso…): ya no salen en la app (2026-10-24); se conservan en partidas antiguas sin usarse. */
   metrics?: Metric[];
   metricEntries?: MetricEntry[];
+  /** Prioridades del día («Las 3 de hoy»), las más recientes. */
+  priorities?: DayPriorities[];
+  /** Revisiones semanales. */
+  weeklyReviews?: WeeklyReview[];
   /** Cierre del día: energía, ánimo y nota. */
   dayLogs?: DayLog[];
   /** Eventos del calendario: exámenes, lanzamientos, llamadas, bloques de tiempo… */
@@ -303,6 +332,10 @@ export interface DayLog {
   mood?: number; // 1–5
   sleep?: number; // horas; ya no se pide (2026-10-24), queda en partidas antiguas
   note?: string;
+  /** ¿Qué has avanzado hoy? */
+  advanced?: string;
+  /** ¿Qué mejorarías mañana? */
+  improve?: string;
 }
 
 export type EventKind = 'bloque' | 'examen' | 'lanzamiento' | 'llamada' | 'reunion' | 'otro';

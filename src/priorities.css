@@ -1,0 +1,77 @@
+/* Priorización estratégica: impacto, «Las 3 de hoy», limpieza y revisión semanal. */
+.impact-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+.impact-tag.imp-alto { color: var(--gold); }
+.impact-tag.imp-medio { color: var(--c2, var(--c1)); }
+.impact-tag.imp-bajo { color: var(--muted); font-weight: 500; }
+.pick-btn.impact-tag { padding: 1px 8px; border-radius: 99px; background: none; border-color: currentColor; }
+.pick-btn.impact-add { padding: 6px; border: 0; background: none; }
+.prio-tag {
+  display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 99px; font-size: 11.5px; font-weight: 700;
+  color: var(--gold); background: color-mix(in srgb, var(--gold) 14%, transparent);
+}
+
+.pop-impact { width: 280px; }
+.pop-impacts { display: grid; gap: 6px; margin: 6px 0; }
+.pop-impact-opt {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 7px 10px; border-radius: 10px; text-align: left;
+  background: var(--surface-2); border: 1px solid var(--line); color: var(--fg); font-size: 13.5px;
+}
+.pop-impact-opt span { font-size: 12px; color: var(--muted); }
+.pop-impact-opt:hover, .pop-impact-opt.on { border-color: var(--c1); }
+.pop-impact-opt.on { background: color-mix(in srgb, var(--c1) 16%, var(--surface-2)); }
+.pop-impact-opt.imp-alto b { color: var(--gold); }
+
+/* Las 3 de hoy */
+.top-three h3 { display: inline-flex; align-items: center; gap: 6px; }
+.top3-empty { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.top3-empty p { margin: 0; }
+.top3-list { list-style: none; margin: 0 0 6px; padding: 0; display: grid; gap: 6px; }
+.top3-list li { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 12px; background: var(--surface-2); }
+.top3-list .check { width: 30px; height: 30px; }
+.top3-title { flex: 1; min-width: 0; font-weight: 600; }
+.top3-list li.done .top3-title { text-decoration: line-through; color: var(--muted); font-weight: 500; }
+.top3-change { margin: 6px 0 0; font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: baseline; }
+.top3-change em { color: var(--fg); font-style: normal; }
+
+.prio-picker .hint { margin: 0 0 8px; }
+.prio-options { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 5px; }
+.prio-option {
+  width: 100%; display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 10px; text-align: left;
+  background: var(--surface-2); border: 1px solid var(--line); color: var(--fg); font-size: 14px;
+}
+.prio-option:hover:not(:disabled) { border-color: var(--c1); }
+.prio-option.on { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, var(--surface-2)); }
+.prio-option:disabled { opacity: 0.45; cursor: not-allowed; }
+.prio-box {
+  flex: none; width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; font-family: var(--mono); font-size: 12px; font-weight: 700;
+  border: 1.5px solid var(--line);
+}
+.prio-option.on .prio-box { background: var(--gold); border-color: var(--gold); color: var(--gold-ink, #000); }
+.prio-title { flex: 1; min-width: 0; }
+
+/* Cierre del día: las de mañana */
+.tomorrow { margin: 4px 0 10px; padding: 10px 12px; border-radius: 12px; border: 1px dashed var(--line); }
+.tomorrow-head { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; }
+.tomorrow-head .link { margin-left: auto; }
+.tomorrow-list { margin: 0; padding-left: 22px; font-size: 14px; }
+.day-close .field { display: grid; gap: 4px; margin-bottom: 8px; }
+.day-close .field > span { font-size: 13px; color: var(--muted); }
+
+/* Limpieza */
+.cleanup-item .item-meta { font-size: 12.5px; }
+.cleanup-item .item-actions { flex-wrap: wrap; justify-content: flex-end; }
+.ghost.danger { color: var(--danger); }
+
+/* Revisión semanal (dentro de la crónica) */
+.weekly-review { display: grid; gap: 10px; margin: 12px 0 4px; padding: 12px; border-radius: 12px; background: var(--surface-2); }
+.weekly-review .eyebrow { margin: 0; }
+.weekly-review .field { display: grid; gap: 4px; }
+.weekly-review .field > span { font-size: 13px; font-weight: 600; }
+.weekly-review .primary { justify-self: start; }
+.wr-prev { display: grid; gap: 6px; }
+.wr-prev p { margin: 0; }
+.wr-prev em { font-style: normal; font-weight: 600; }
+@media (max-width: 600px) {
+  .cleanup-item { flex-wrap: wrap; }
+  .cleanup-item .item-actions { width: 100%; justify-content: flex-start; }
+}

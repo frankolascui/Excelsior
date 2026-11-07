@@ -5,6 +5,8 @@ import { createPortal } from 'react-dom';
 import { dayKey } from './game';
 import { fromMin, toMin } from './life';
 import { Icon } from './icons';
+import type { Impact } from './types';
+import { IMPACTS } from './priorities';
 
 const WD = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
@@ -248,6 +250,36 @@ export function RepeatPicker({ value, onChange, label, className = '', children,
             ))}
           </div>
           <p className="pop-note">Al completarla, la siguiente aparece sola el próximo día que toque.</p>
+        </Popover>
+      )}
+    </>
+  );
+}
+
+/** Elegir el impacto de una misión: alto, medio o bajo (o sin marcar). */
+export function ImpactPicker({ value, onChange, label, className = '', children, id }: {
+  value: Impact | null; onChange: (v: Impact | null) => void; label: string; className?: string; children?: ReactNode; id?: string;
+}) {
+  const { open, setOpen, btn, toggle } = usePop();
+  const set = (v: Impact | null) => { onChange(v); setOpen(false); btn.current?.focus(); };
+  const name = value ? IMPACTS.find((x) => x.id === value)!.name : null;
+  return (
+    <>
+      <button type="button" ref={btn} id={id} className={`pick-btn${value ? ' set' : ''} ${className}`} onClick={toggle} aria-label={`${label}: ${name ? `impacto ${name.toLowerCase()}` : 'sin marcar'}`} aria-expanded={open}>
+        {children ?? <><Icon name="target" /> {name ? `Impacto ${name.toLowerCase()}` : 'Impacto'}</>}
+      </button>
+      {open && (
+        <Popover anchor={btn.current} onClose={() => setOpen(false)} className="pop-impact">
+          <p className="pop-note">¿Cuánto te acerca a lo que de verdad quieres?</p>
+          <div className="pop-impacts">
+            {IMPACTS.map((x) => (
+              <button type="button" key={x.id} className={`pop-impact-opt imp-${x.id}${value === x.id ? ' on' : ''}`} onClick={() => set(x.id)}>
+                <b>{x.name}</b><span>{x.hint}</span>
+              </button>
+            ))}
+          </div>
+          {value && <button type="button" className="pop-chip" onClick={() => set(null)}>Quitar impacto</button>}
+          <p className="pop-note">No da XP: sirve para decidir qué va primero.</p>
         </Popover>
       )}
     </>

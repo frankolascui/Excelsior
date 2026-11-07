@@ -301,9 +301,18 @@ export function dailyReport(s: GameState, now: number): string {
     '## Estado',
     `- Energía: ${stars(log?.energy)} · Ánimo: ${stars(log?.mood)}`,
     '',
-    '## Nota',
-    log?.note?.trim() || '(sin nota)',
+    '## Avance',
+    log?.advanced?.trim() || '(sin anotar)',
+    '',
+    '## Qué mejorar mañana',
+    log?.improve?.trim() || '(sin anotar)',
   ];
+  if (log?.note?.trim()) lines.push('', '## Nota', log.note.trim());
+  const prio = (d: string) => (s.priorities?.find((p) => p.day === d)?.ids ?? []).map((id) => s.quests.find((q) => q.id === id)).filter((q) => !!q);
+  const today = prio(day);
+  if (today.length) lines.push('', '## Las 3 de hoy', ...today.map((q) => `- ${q!.completedAt ? '[x]' : '[ ]'} ${q!.title}${q!.impact ? ` (impacto ${q!.impact})` : ''}`));
+  const tomorrow = prio(dayKey(now + 86_400_000));
+  if (tomorrow.length) lines.push('', '## Las 3 de mañana', ...tomorrow.map((q) => `- ${q!.title}`));
   if (soon.length || due.length) lines.push('', '## Próximos días', ...soon, ...due);
   return lines.join('\n') + '\n';
 }
