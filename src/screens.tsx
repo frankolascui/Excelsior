@@ -233,6 +233,7 @@ export function Dashboard({
 
       <div className={state.habits.length > 0 ? 'columns' : 'columns one'}>
         <div className="col-stack">
+        {!fresh && <TomorrowPanel game={game} now={now} />}
         <RemindersPanel game={game} now={now} />
         {/* en escritorio llena el hueco bajo los recordatorios; en el móvil baja tras los hábitos (CSS) */}
         {!fresh && <div className="today-dayclose"><DayClose game={game} now={now} /></div>}

@@ -94,6 +94,7 @@ await page.screenshot({ path: `${out}/p2-las-3-de-hoy.png`, fullPage: true });
 await page.click('.now-rest button[aria-label="Pasar a mañana Leer 20 páginas"]');
 check(!(await page.isVisible('.now-rest li:has-text("Leer 20 páginas")')), 'pasar a mañana la quita de Las 3 de hoy');
 check(await seen(page, '.now .eyebrow:has-text("Las 3 de hoy · 0/2")'), 'y quedan 2 para hoy');
+check(await seen(page, '.tomorrow-panel .tomorrow-list li:has-text("Leer 20 páginas")'), 'Hoy tiene un panel con las 3 de mañana');
 // volver a traerla para cerrar las tres
 await page.click('.now-top button:has-text("Cambiar")');
 await page.click('.prio-option:has-text("Leer 20 páginas")');
@@ -115,7 +116,8 @@ check(await seen(page, '.cleanup .cleanup-item:has-text("Ver el curso de Notion"
 check(!(await page.isVisible('.cleanup .cleanup-item:has-text("Responder correos")')), 'lo bajo pero reciente no sale');
 check(await seen(page, '.tomorrow-panel .tomorrow-list li:has-text("Leer 20 páginas")'), 'Misiones → Mañana muestra lo pasado a mañana');
 check(await seen(page, '.tomorrow-panel .tomorrow-more:has-text("Entregar la práctica")'), 'y lo que vence mañana');
-await page.locator('.tomorrow-panel').screenshot({ path: `${out}/p7-misiones-manana.png` });
+await page.click('.tomorrow-panel button[aria-label="Quitar Leer 20 páginas de mañana"]');
+check(!(await page.isVisible('.tomorrow-panel .tomorrow-list li:has-text("Leer 20 páginas")')), 'se puede quitar una de las de mañana');
 await page.fill('#new-quest', 'Llamar al tutor del TFG');
 await page.click('[data-tour="quest-add"] [role=radio]:has-text("Alto")');
 await page.screenshot({ path: `${out}/p3-impacto-al-crear.png` });
@@ -136,7 +138,7 @@ check(!(await page.isVisible('.cleanup')), 'posponer la quita de la limpieza');
 await page.click('.nav-item:has-text("Hoy")');
 await page.click('.dayclose-folded button:has-text("Hacerlo ahora")');
 await page.fill('#day-advanced', 'Presentación terminada.');
-await page.click('.day-close .tomorrow-head .link');
+await page.click('.tomorrow-panel .tomorrow-head .link');
 await page.click('.tomorrow .prio-option:has-text("Llamar al tutor")');
 await page.click('.tomorrow button:has-text("Fijar prioridades")');
 check(await seen(page, '.tomorrow-list li:has-text("Llamar al tutor")'), 'las de mañana quedan elegidas');

@@ -20,7 +20,7 @@ const state = {
   ],
   priorities: [{ day: '2026-11-09', ids: ['q1', 'q2', 'q3'] }],
   habits: [], habitCompletions: [], sessions: [], activeTimer: null, kingdoms: [], goals: [], rewards: [], purchases: [], bosses: [],
-  xp: [], tours: ['intro', 'reinos', 'arena', 'gremios'], newsSeen: '2.0', balance: 2, ascended: [],
+  xp: [{ id: 'x1', at: NOW - DAY, amount: 40, source: 'quest', sourceId: 'old1', label: 'Antes', attributes: { voluntad: 2 } }], tours: ['intro', 'reinos', 'arena', 'gremios'], newsSeen: '2.0', balance: 2, ascended: [],
   weeklyReviews: [{ week: '2026-11-02', at: NOW - DAY, change: 'Móvil fuera durante el foco', focus: 'Dejar lista la presentación' }],
 };
 const browser = await chromium.launch();
@@ -36,6 +36,7 @@ for (const [name, viewport] of [['pc', { width: 1280, height: 900 }], ['movil', 
   await page.click('.now-rest button[aria-label="Pasar a mañana Leer 20 páginas"]');
   await page.waitForTimeout(800);
   await page.locator('.now').screenshot({ path: `${out}/manana-hoy-${name}.png` });
+  await page.screenshot({ path: `${out}/manana-panel-hoy-${name}.png`, fullPage: true });
   await page.click(name === 'pc' ? '.nav-item:has-text("Misiones")' : 'nav >> text=Misiones');
   if (await page.isVisible('.calendar')) await page.click('[role=radio]:has-text("Lista")');
   await page.waitForSelector('.tomorrow-panel');

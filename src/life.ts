@@ -298,9 +298,8 @@ export function dailyReport(s: GameState, now: number): string {
     '## Hábitos',
     ...(habits.length ? habits.map((h) => `- ${h}`) : ['- (sin hábitos)']),
     '',
-    '## Estado',
-    `- Energía: ${stars(log?.energy)} · Ánimo: ${stars(log?.mood)}`,
-    '',
+    // energía y ánimo ya no se piden aquí (irán en Excelsior Health); los días antiguos que los tengan los siguen mostrando
+    ...(log?.energy || log?.mood ? ['## Estado', `- Energía: ${stars(log?.energy)} · Ánimo: ${stars(log?.mood)}`, ''] : []),
     '## Avance',
     log?.advanced?.trim() || '(sin anotar)',
     '',

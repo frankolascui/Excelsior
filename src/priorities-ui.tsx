@@ -124,7 +124,17 @@ export function TomorrowPriorities({ game, now }: { game: Game; now: number }) {
         {!open && <button type="button" className="link" onClick={() => setOpen(true)}>{chosen.length ? 'Cambiar' : 'Elegir'}</button>}
       </p>
       {open ? <PriorityPicker game={game} day={tomorrow} onDone={() => setOpen(false)} compact />
-        : chosen.length ? <ol className="tomorrow-list">{chosen.map((q) => <li key={q.id}>{q.title}</li>)}</ol>
+        : chosen.length ? (
+          <ol className="tomorrow-list">
+            {chosen.map((q) => (
+              <li key={q.id} className={q.completedAt ? 'done' : ''}>
+                <span className="tomorrow-title">{pathLabel(game.state, q) && <span className="item-path">{pathLabel(game.state, q)}</span>}{q.title}</span>
+                <button type="button" className="icon-btn" aria-label={`Quitar ${q.title} de mañana`} title="Quitar de mañana"
+                  onClick={() => game.act((s) => setPriorities(s, tomorrow, priorityIds(s, tomorrow).filter((id) => id !== q.id), Date.now()))}><Icon name="x" /></button>
+              </li>
+            ))}
+          </ol>
+        )
         : <p className="muted small-text">Decídelas hoy y mañana te despiertas sabiendo qué hacer.</p>}
     </div>
   );
