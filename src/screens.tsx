@@ -33,8 +33,9 @@ import { AchievementsPanel } from './achievements-ui';
 import { Inventory } from './inventory';
 import { Icon } from './icons';
 import { TodayStrip } from './today';
-import { addStep, deleteStep, setStepDeadline, toggleStep } from './core';
-import type { StepActions } from './steps-ui';
+import { QuestNode } from './tree-ui';
+import { effectiveDeadline, pathLabel } from './tree';
+import { addSubQuest, rootsInOrder, splitIntoSessions } from './tree-actions';
 import { SessionEdit } from './session-ui';
 import { RateDialog, SessionRating } from './productivity-ui';
 import { formatHours, productivityWeek, sessionProductivity } from './productivity';
@@ -51,13 +52,11 @@ import { ACHIEVEMENTS } from './achievements';
 
 export type Game = ReturnType<typeof useGame>;
 
-/** Acciones de los pasos de una misión para QuestItem. */
-function stepActions(act: Game['act'], questId: string): StepActions {
+/** Partir una misión: submisiones a mano o sesiones repartidas hasta su fecha. */
+function treeActions(act: Game['act'], questId: string) {
   return {
-    add: (t) => act((st) => addStep(st, questId, t)),
-    toggle: (id) => act((st) => toggleStep(st, questId, id)),
-    remove: (id) => act((st) => deleteStep(st, questId, id)),
-    deadline: (id, day) => act((st) => setStepDeadline(st, questId, id, day)),
+    onAddChild: (t: string) => act((st) => addSubQuest(st, questId, t, Date.now())),
+    onSplit: (n: number) => act((st) => splitIntoSessions(st, questId, n, Date.now())),
   };
 }
 export type Tab = 'hoy' | 'misiones' | 'reinos' | 'arena' | 'gremios' | 'amigos' | 'deepwork' | 'habitos' | 'personaje' | 'ajustes';
@@ -124,6 +123,8 @@ export function Dashboard({
   const [picking, setPicking] = useState(false);
   const hero = s.kind === 'quest' ? s.quest : null;
   const heroIsPrio = !!hero && prio.includes(hero.id);
+  const heroPath = hero ? pathLabel(state, hero) : '';
+  const heroDue = hero ? effectiveDeadline(state, hero) : undefined;
   // el resto de «Las 3 de hoy» va debajo de la principal; las demás misiones, en Misiones
   const restPrio = prioQs.filter((q) => q.id !== hero?.id);
   const more = pending.filter((q) => q.id !== hero?.id && !prio.includes(q.id)).length;
@@ -162,10 +163,11 @@ export function Dashboard({
             )}
             {hero && (
               <>
+                {heroPath && <p className="now-path">{heroPath}</p>}
                 <h2>{hero.title}</h2>
                 <p className="now-sub">
                   Impacto {IMPACTS.find((x) => x.id === impactOf(hero))!.name.toLowerCase()} · 
-                  +{questXp(hero)} XP{hero.deadline && <> · {deadlineLabel(hero.deadline, now).text}</>}
+                  +{questXp(hero)} XP{heroDue && <> · {deadlineLabel(heroDue, now).text}</>}
                 </p>
                 <div className="row">
                   <button className="primary big" onClick={() => focusQuest(hero)}><Icon name="play" /> Empezar Deep Work</button>
@@ -204,7 +206,7 @@ export function Dashboard({
                     {q.completedAt
                       ? <span className="check checked" aria-hidden="true">✓</span>
                       : <button className="check" aria-label={`Completar ${q.title}`} title="Completar misión" onClick={() => complete(q)}>✓</button>}
-                    <span className="top3-title">{q.title}</span>
+                    <span className="top3-title">{pathLabel(state, q) && <span className="item-path">{pathLabel(state, q)}</span>}{q.title}</span>
                     {!q.completedAt && <button className="ghost small push-btn" onClick={() => toTomorrow(q)} aria-label={`Pasar a mañana ${q.title}`} title="Pasar a mañana"><Icon name="sunrise" /><span className="push-label"> Mañana</span></button>}
                     {!q.completedAt && <button className="ghost small" onClick={() => focusQuest(q)} title="Hacer Deep Work en esta misión"><Icon name="play" /> Foco</button>}
                   </li>
@@ -304,6 +306,7 @@ export function Quests({ game, focusQuest, startFocus }: { game: Game; focusQues
   const { state, act } = game;
   const now = useNow(60_000);
   const pending = pendingQuests(state, now);
+  const roots = rootsInOrder(state, now);
   const scheduled = scheduledQuests(state, now);
   const prio = priorityIds(state, dayKey(now));
   const [showScheduled, setShowScheduled] = useState(false);
@@ -359,23 +362,27 @@ export function Quests({ game, focusQuest, startFocus }: { game: Game; focusQues
       <TomorrowPanel game={game} now={now} />
       <section className="panel">
         <header className="panel-head"><h3>Pendientes</h3><span className="count mono">{pending.length}</span></header>
-        {pending.length === 0 ? <p className="empty">Nada pendiente. Crea una misión arriba.</p> : (
+        {roots.length === 0 ? <p className="empty">Nada pendiente. Crea una misión arriba.</p> : (
           <ul className="list">
-            {pending.map((q) => (
-              <QuestItem
-                key={q.id}
-                quest={q}
-                kingdom={kingdomName(state, q.kingdomId)}
-                onComplete={() => act((st) => completeQuest(st, q.id, Date.now()), CAP_QUEST, questOpts(q))}
-                onStart={() => focusQuest(q)}
-                onEdit={(t, v) => act((st) => updateQuest(st, q.id, { title: t, ...v }))}
-                onDeadline={(d) => act((st) => setQuestDeadline(st, q.id, d))}
-                onRepeat={q.kingdomId ? undefined : (d) => act((st) => setQuestRepeat(st, q.id, d))}
-                onImpact={(v) => act((st) => setQuestImpact(st, q.id, v))}
-                priority={prio.includes(q.id)}
-                steps={stepActions(act, q.id)}
-                onDelete={() => act((st) => deleteQuest(st, q.id))}
-              />
+            {roots.map((root) => (
+              <QuestNode key={root.id} state={state} quest={root} render={(q, extra) => (
+                <QuestItem
+                  key={q.id}
+                  quest={q}
+                  {...extra}
+                  kingdom={kingdomName(state, q.kingdomId)}
+                  onComplete={() => act((st) => completeQuest(st, q.id, Date.now()), CAP_QUEST, questOpts(q))}
+                  onUndo={() => act((st) => undoQuest(st, q.id))}
+                  onStart={() => focusQuest(q)}
+                  onEdit={(t, v) => act((st) => updateQuest(st, q.id, { title: t, ...v }))}
+                  onDeadline={(d) => act((st) => setQuestDeadline(st, q.id, d))}
+                  onRepeat={q.kingdomId ? undefined : (d) => act((st) => setQuestRepeat(st, q.id, d))}
+                  onImpact={(v) => act((st) => setQuestImpact(st, q.id, v))}
+                  priority={prio.includes(q.id)}
+                  {...treeActions(act, q.id)}
+                  onDelete={() => act((st) => deleteQuest(st, q.id))}
+                />
+              )} />
             ))}
           </ul>
         )}
@@ -1016,15 +1023,19 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
       <CityScene quests={all} progress={p.progress} complete={p.complete} stage={p.stage} icon={p.icon} />
       {pending.length > 0 && (
         <ul className="list">
-          {pending.map((q) => (
-            <QuestItem
-              key={q.id} quest={q}
-              onComplete={() => act((s) => completeQuest(s, q.id, Date.now()), CAP_QUEST, questOpts(q))}
-              onStart={() => focusQuest(q)}
-              onDelete={() => act((s) => deleteQuest(s, q.id))}
-              onEdit={(t, v) => act((s) => updateQuest(s, q.id, { title: t, ...v }))}
-              steps={stepActions(act, q.id)}
-            />
+          {pending.map((root) => (
+            <QuestNode key={root.id} state={state} quest={root} render={(q, extra) => (
+              <QuestItem
+                key={q.id} quest={q} {...extra}
+                onComplete={() => act((s) => completeQuest(s, q.id, Date.now()), CAP_QUEST, questOpts(q))}
+                onUndo={() => act((s) => undoQuest(s, q.id))}
+                onStart={() => focusQuest(q)}
+                onDelete={() => act((s) => deleteQuest(s, q.id))}
+                onEdit={(t, v) => act((s) => updateQuest(s, q.id, { title: t, ...v }))}
+                onDeadline={q.kingdomId ? undefined : (d) => act((s) => setQuestDeadline(s, q.id, d))}
+                {...treeActions(act, q.id)}
+              />
+            )} />
           ))}
         </ul>
       )}

@@ -3,6 +3,7 @@
 import type {
   ActiveTimer, AttributeId, AttributeRewards, GameState, Habit, Quest, QuestType, XPSource, XPTransaction, DeepWorkSession, DeepWorkArea, FocusPhase,
 } from './types';
+import { ancestors, descendants, effectiveDeadline, hasOpenChildren, isLeaf } from './tree';
 import { deepWorkRewards, habitRewards, inferDeepWorkArea, questRewards } from './attributes';
 import { defaultRewards } from './economy';
 import { ADMIN } from './admin';
@@ -65,10 +66,29 @@ export function emptyState(): GameState {
  * v2 no daba Conexión/Creación y redondeaba la Voluntad del Deep Work).
  */
 export function migrate(raw: { version: number } & Record<string, unknown>): GameState {
-  const s = migrateToV4(raw);
+  const s = stepsToChildren(migrateToV4(raw));
   // v4 → v5: aparecen monedas, tienda de recompensas y bosses.
   if (raw.version < 5) return { ...s, rewards: defaultRewards(Date.now()), purchases: [], bosses: [] };
   return s;
+}
+
+/** Los antiguos «pasos» pasan a ser submisiones (árbol de misiones). No da ni quita XP. */
+function stepsToChildren(s: GameState): GameState {
+  if (!s.quests.some((q) => q.steps?.length)) return s;
+  const quests: Quest[] = [];
+  for (const q of s.quests) {
+    const { steps, ...rest } = q;
+    quests.push(rest);
+    (steps ?? []).forEach((x, i) => {
+      const child: Quest = {
+        id: `${q.id}-p${i}-${x.id}`, title: x.title, type: q.type, impact: impactOf(q), parentId: q.id,
+        createdAt: q.createdAt + i + 1, completedAt: x.done || q.completedAt ? (q.completedAt ?? q.createdAt + i + 1) : null,
+      };
+      if (x.deadline) child.deadline = x.deadline;
+      quests.push(child);
+    });
+  }
+  return { ...s, quests };
 }
 
 function migrateToV4(raw: { version: number } & Record<string, unknown>): GameState {
@@ -326,6 +346,8 @@ export interface QuestOptions {
   deadline?: string;
   repeat?: number[];
   impact?: Quest['impact'];
+  /** Submisión de esta misión: hereda su impacto si no se indica otro. */
+  parentId?: string;
 }
 
 export function questXp(q: Quest): number {
@@ -337,6 +359,11 @@ export function questAttributeRewards(q: Quest): AttributeRewards {
 }
 
 export function addQuest(s: GameState, title: string, type: QuestType, now: number, opts: QuestOptions = {}): GameState {
+  const parent = opts.parentId ? s.quests.find((q) => q.id === opts.parentId) : undefined;
+  if (opts.parentId) {
+    if (!parent || parent.completedAt) return s;
+    opts = { ...opts, impact: opts.impact ?? impactOf(parent), kingdomId: undefined };
+  }
   // el impacto manda sobre el tipo (son lo mismo desde la V2.1)
   const quest: Quest = { id: uid(), title: title.trim(), type: opts.impact ? IMPACT_TYPE[opts.impact] : type, createdAt: now, completedAt: null };
   if (opts.kingdomId) quest.kingdomId = opts.kingdomId;
@@ -347,7 +374,16 @@ export function addQuest(s: GameState, title: string, type: QuestType, now: numb
   quest.impact = opts.impact ?? TYPE_IMPACT[type];
   const repeat = cleanRepeat(opts.repeat);
   if (repeat && !opts.kingdomId) quest.repeat = repeat;
-  return { ...s, quests: [...s.quests, quest] };
+  if (!parent) return { ...s, quests: [...s.quests, quest] };
+  quest.parentId = parent.id;
+  // una misión con submisiones no se repite (la repetición es cosa de las hojas)
+  const quests = s.quests.map((q) => {
+    if (q.id !== parent.id || !q.repeat) return q;
+    const next = { ...q };
+    delete next.repeat;
+    return next;
+  });
+  return { ...s, quests: [...quests, quest] };
 }
 
 // ---------- Misiones que se repiten ----------
@@ -394,7 +430,7 @@ export function setQuestRepeat(s: GameState, id: string, days: number[] | null):
 /** Repeticiones ya creadas que aún no tocan (salen en pendientes el día que empiezan). */
 export function scheduledQuests(s: GameState, now: number): Quest[] {
   const today = dayKey(now);
-  return s.quests.filter((q) => !q.completedAt && q.startsOn && q.startsOn > today).sort((a, b) => a.startsOn!.localeCompare(b.startsOn!));
+  return s.quests.filter((q) => !q.completedAt && !q.parentId && q.startsOn && q.startsOn > today).sort((a, b) => a.startsOn!.localeCompare(b.startsOn!));
 }
 
 /** Pone o quita (null) la fecha límite de una misión. */
@@ -440,7 +476,8 @@ export function updateQuest(
 
 export function completeQuest(s: GameState, id: string, now: number): ActionResult {
   const q = s.quests.find((x) => x.id === id);
-  if (!q || q.completedAt) return { state: s, xp: 0 };
+  // con submisiones pendientes no se cierra: primero se hacen (o se borran) las hojas
+  if (!q || q.completedAt || hasOpenChildren(s, id)) return { state: s, xp: 0 };
   const base = questXp(q);
   const amount = cappedAmount(s, 'quest', base, now);
   let quests = s.quests.map((x) => (x.id === id ? { ...x, completedAt: now } : x));
@@ -475,6 +512,13 @@ const IMPACT_ORDER = { alto: 0, medio: 1, bajo: 2 } as const;
 
 /** Deshacer devuelve la misión a pendiente y retira su XP (evita farmear marcando/desmarcando). */
 export function undoQuest(s: GameState, id: string): GameState {
+  const q = s.quests.find((x) => x.id === id);
+  // si su misión de arriba ya estaba cerrada, vuelve a abrirse (y devuelve su XP): no puede estar hecha con una hija pendiente
+  const closed = q ? ancestors(s, q).filter((a) => a.completedAt) : [];
+  return closed.reduce((st, a) => undoOne(st, a.id), undoOne(s, id));
+}
+
+function undoOne(s: GameState, id: string): GameState {
   // si era una de «Las 3» del día en que se completó, el bonus de ese día se retira también
   const done = s.quests.find((q) => q.id === id)?.completedAt;
   const bonusId = done && dayPriorityIds(s, dayKey(done)).includes(id) ? `prio:${dayKey(done)}` : null;
@@ -492,8 +536,10 @@ export function undoQuest(s: GameState, id: string): GameState {
   };
 }
 
+/** Borra la misión y todas sus submisiones. */
 export function deleteQuest(s: GameState, id: string): GameState {
-  return { ...s, quests: s.quests.filter((x) => x.id !== id) };
+  const gone = new Set([id, ...descendants(s, id).map((q) => q.id)]);
+  return { ...s, quests: s.quests.filter((x) => !gone.has(x.id)) };
 }
 
 // ---------- Hábitos ----------
@@ -761,20 +807,19 @@ const QUEST_PRIORITY: Record<QuestType, number> = { main: 0, daily: 1, side: 2 }
 
 /**
  * Pendientes en el orden en que conviene hacerlas: primero «Las 3 de hoy» (de más a menos impacto),
- * luego lo vencido o que vence en 2 días (por fecha), luego por impacto (alto → medio → bajo) y antigüedad.
+ * luego lo vencido o que vence en 2 días (por fecha), luego por impacto (alto → medio → bajo), fecha más cercana y antigüedad.
  */
 export function pendingQuests(s: GameState, now = Date.now()): Quest[] {
   const urgent = (q: Quest) => {
-    // cuenta la fecha de la misión o la del paso pendiente que vence antes
-    const step = q.steps?.filter((x) => !x.done && x.deadline).map((x) => x.deadline!).sort()[0];
-    const d = daysUntil(step && (!q.deadline || step < q.deadline) ? step : q.deadline, now);
+    // cuenta su fecha o la más cercana de las misiones de las que cuelga
+    const d = daysUntil(effectiveDeadline(s, q), now);
     return d !== null && d <= 2 ? d : null;
   };
   const today = dayKey(now);
   const prio = dayPriorityIds(s, today);
   const impact = (q: Quest) => IMPACT_ORDER[impactOf(q)];
   return s.quests
-    .filter((q) => !q.completedAt && !(q.startsOn && q.startsOn > today))
+    .filter((q) => isLeaf(s, q) && !(q.startsOn && q.startsOn > today))
     .sort((a, b) => {
       const pa = prio.includes(a.id), pb = prio.includes(b.id);
       if (pa !== pb) return pa ? -1 : 1;
@@ -785,7 +830,9 @@ export function pendingQuests(s: GameState, now = Date.now()): Quest[] {
         if (ub === null) return -1;
         if (ua !== ub) return ua - ub;
       }
-      return impact(a) - impact(b) || QUEST_PRIORITY[a.type] - QUEST_PRIORITY[b.type] || a.createdAt - b.createdAt;
+      // a igual impacto, antes lo que tiene fecha (propia o heredada) más cercana
+      const da = effectiveDeadline(s, a) ?? '9999', db = effectiveDeadline(s, b) ?? '9999';
+      return impact(a) - impact(b) || da.localeCompare(db) || QUEST_PRIORITY[a.type] - QUEST_PRIORITY[b.type] || a.createdAt - b.createdAt;
     });
 }
 

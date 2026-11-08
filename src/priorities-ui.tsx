@@ -9,6 +9,7 @@ import {
 } from './priorities';
 import { currentChange, previousReview, saveWeeklyReview, VERDICTS, weekFocus, weeklyReview } from './review';
 import { Icon } from './icons';
+import { pathLabel } from './tree';
 import './priorities.css';
 import { InfoTip } from './infotip';
 import { sfx } from './sfx';
@@ -40,7 +41,7 @@ export function PriorityPicker({ game, day, onDone, compact = false }: { game: G
             <li key={q.id}>
               <button type="button" className={`prio-option${on ? ' on' : ''}`} aria-pressed={on} disabled={full} onClick={() => flip(q.id)}>
                 <span className="prio-box" aria-hidden="true">{on ? picked.indexOf(q.id) + 1 : ''}</span>
-                <span className="prio-title">{q.title}</span>
+                <span className="prio-title">{pathLabel(state, q) && <span className="item-path">{pathLabel(state, q)}</span>}{q.title}</span>
                 <span className={`impact-tag imp-${impactOf(q)}`}><Icon name="target" /> {impactName(q)}</span>
               </button>
             </li>

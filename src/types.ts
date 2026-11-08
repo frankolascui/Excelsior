@@ -33,6 +33,8 @@ export interface Quest {
   createdAt: number;
   completedAt: number | null;
   kingdomId?: string; // si existe, la misión es una construcción de ese reino
+  /** Misión de la que es submisión (árbol sin límite de niveles; ver tree.ts). */
+  parentId?: string;
   focus?: AttributeId; // (v4) atributo elegido a mano; sin él se deduce del título
   xp?: number; // XP a medida; sin él, el del tipo
   rewards?: AttributeRewards; // atributos a medida (varios); sin él, se deducen

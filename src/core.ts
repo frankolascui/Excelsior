@@ -1,6 +1,6 @@
 // Reglas pequeñas del núcleo (Hoy, hábitos, reinos) que no encajan en game.ts.
-import type { DeepWorkSession, GameState, Quest, QuestStep } from './types';
-import { dayKey, shiftDay, uid, XP_RULES } from './game';
+import type { DeepWorkSession, GameState } from './types';
+import { dayKey, shiftDay, XP_RULES } from './game';
 import { deepWorkRewards } from './attributes';
 
 /**
@@ -13,59 +13,6 @@ export function activeDayStreak(s: GameState, now: number): { days: number; toda
   let days = 0;
   for (let i = today ? 0 : 1; active.has(dayKey(shiftDay(now, -i))); i++) days++;
   return { days, today };
-}
-
-// ---------- Pasos de una misión ----------
-
-function mapQuest(s: GameState, id: string, f: (q: Quest) => Quest): GameState {
-  return { ...s, quests: s.quests.map((q) => (q.id === id ? f(q) : q)) };
-}
-
-export function addStep(s: GameState, questId: string, title: string): GameState {
-  const t = title.trim().slice(0, 80);
-  if (!t) return s;
-  return mapQuest(s, questId, (q) => ({ ...q, steps: [...(q.steps ?? []), { id: uid(), title: t, done: false }] }));
-}
-
-export function toggleStep(s: GameState, questId: string, stepId: string): GameState {
-  return mapQuest(s, questId, (q) => ({ ...q, steps: (q.steps ?? []).map((x) => (x.id === stepId ? { ...x, done: !x.done } : x)) }));
-}
-
-export function deleteStep(s: GameState, questId: string, stepId: string): GameState {
-  return mapQuest(s, questId, (q) => {
-    const steps = (q.steps ?? []).filter((x) => x.id !== stepId);
-    const next: Quest = { ...q, steps };
-    if (!steps.length) delete next.steps;
-    return next;
-  });
-}
-
-/** Pone (o quita, con null) la fecha límite de un paso. */
-export function setStepDeadline(s: GameState, questId: string, stepId: string, day: string | null): GameState {
-  return mapQuest(s, questId, (q) => ({
-    ...q,
-    steps: (q.steps ?? []).map((x) => {
-      if (x.id !== stepId) return x;
-      const next: QuestStep = { ...x, deadline: day ?? undefined };
-      if (!day) delete next.deadline;
-      return next;
-    }),
-  }));
-}
-
-/** El paso pendiente que vence antes (para avisar en la tarjeta de la misión). */
-export function nextStepDue(q: Quest): QuestStep | undefined {
-  return (q.steps ?? []).filter((x) => !x.done && x.deadline).sort((a, b) => a.deadline!.localeCompare(b.deadline!))[0];
-}
-
-/** Pasos pendientes con fecha límite ese día, de misiones pendientes. */
-export function stepsDueOn(s: GameState, day: string): { quest: Quest; step: QuestStep }[] {
-  return s.quests.filter((q) => !q.completedAt).flatMap((q) => (q.steps ?? []).filter((x) => !x.done && x.deadline === day).map((step) => ({ quest: q, step })));
-}
-
-export function stepProgress(q: Quest): { done: number; total: number } {
-  const steps = q.steps ?? [];
-  return { done: steps.filter((x) => x.done).length, total: steps.length };
 }
 
 // ---------- Corregir una sesión de Deep Work ----------

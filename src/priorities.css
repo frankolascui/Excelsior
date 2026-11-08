@@ -137,3 +137,26 @@ html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted) 2
 @media (max-width: 600px) { .now-rest .push-label { display: none; } }
 .tomorrow-panel .tomorrow { margin: 0; padding: 0; border: 0; }
 .tomorrow-more { margin: 8px 0 0; font-size: 14px; display: flex; gap: 6px; align-items: baseline; }
+
+/* Árbol de misiones: submisiones dentro de su misión, ruta en las listas planas */
+.item.has-sub { flex-wrap: wrap; }
+.item.has-sub > .sub { flex-basis: 100%; padding-left: 22px; margin-left: 15px; border-left: 2px solid color-mix(in srgb, var(--c2) 35%, var(--line)); display: flex; flex-direction: column; gap: 6px; }
+.sub-list { gap: 6px; }
+.sub-list > .item { background: color-mix(in srgb, var(--surface-2) 70%, transparent); }
+.check.tree-count { font-size: 11px; font-weight: 700; letter-spacing: -0.02em; color: var(--muted); border-style: dashed; }
+.check.tree-count:hover { color: var(--text); }
+.sub-more { align-self: flex-start; color: var(--muted); }
+.sub-add { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.split-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 14px; }
+.split-n { width: 56px; padding: 4px 6px; text-align: center; }
+.item-path { display: block; font-size: 12px; font-weight: 500; color: var(--muted); letter-spacing: 0.01em; overflow-wrap: anywhere; }
+.now-path { margin: 0 0 2px; font-size: 13px; color: var(--muted); }
+.due.inherited { opacity: 0.8; border-style: dashed; }
+@media (max-width: 600px) {
+  .item.has-sub > .sub { padding-left: 10px; margin-left: 6px; }
+}
+/* al pasar por una submisión no se iluminan todas las de arriba: solo la fila sobre la que estás */
+@media (hover: hover) {
+  .item.has-sub:hover { border-color: transparent; box-shadow: none; }
+  .item.has-sub:hover::before { opacity: 0; }
+}

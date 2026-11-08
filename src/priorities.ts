@@ -3,6 +3,7 @@
 // El tope diario de XP frena marcarlo todo como alto. Cerrar tus 3 del día da un bonus fijo (PRIORITY_BONUS).
 import type { GameState, Impact, Quest } from './types';
 import { dayKey, deleteQuest, IMPACT_TYPE, impactOf, shiftDay, XP_RULES } from './game';
+import { hasChildren, isLeaf, rootOf } from './tree';
 
 export const MAX_PRIORITIES = 3;
 
@@ -44,7 +45,7 @@ export function priorityQuests(s: GameState, day: string): Quest[] {
 /** Candidatas para elegir: pendientes (o visibles ese día), de más a menos impacto. */
 export function priorityCandidates(s: GameState, day: string): Quest[] {
   return s.quests
-    .filter((q) => !q.completedAt && !(q.startsOn && q.startsOn > day))
+    .filter((q) => isLeaf(s, q) && !(q.startsOn && q.startsOn > day))
     .sort((a, b) => impactRank(a) - impactRank(b) || (a.deadline ?? '9999').localeCompare(b.deadline ?? '9999') || a.createdAt - b.createdAt);
 }
 
@@ -77,7 +78,7 @@ export function staleQuests(s: GameState, now: number): Quest[] {
   return s.quests
     .filter((q) => {
       const impact = impactOf(q);
-      if (q.completedAt || q.kingdomId || q.repeat || impact === 'alto') return false;
+      if (q.completedAt || q.repeat || impact === 'alto' || rootOf(s, q).kingdomId || hasChildren(s, q.id)) return false;
       if (q.startsOn && q.startsOn > today) return false;
       const limit = STALE_DAYS[impact];
       const since = Math.max(q.createdAt, q.keptAt ?? 0);

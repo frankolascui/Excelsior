@@ -126,16 +126,18 @@ check(await seen('#new-quest-repeat:has-text("Lunes a viernes")'), 'repetir: el 
 await page.click('[data-tour="quest-add"] button:has-text("Crear")');
 check(await seen('.item:has-text("Leer la prensa") .repeat-tag:has-text("Lunes a viernes")'), 'la misión muestra que se repite');
 await page.click('button[aria-label="Más acciones de Leer la prensa"]');
-await page.click('button[aria-label="Partir Leer la prensa en pasos"]');
-await page.fill('[aria-label="Nuevo paso de Leer la prensa"]', 'Titulares');
-await page.press('[aria-label="Nuevo paso de Leer la prensa"]', 'Enter');
-await page.fill('[aria-label="Nuevo paso de Leer la prensa"]', 'Opinión');
-await page.press('[aria-label="Nuevo paso de Leer la prensa"]', 'Enter');
-await page.click('button[aria-label="Marcar paso Titulares"]');
-check(await seen('.item:has-text("Leer la prensa") .steps-tag:has-text("1/2 pasos")'), 'una misión se puede partir en pasos con casillas');
-await page.click('button[aria-label^="Fecha límite del paso Opinión"]', { force: true });
-await page.click('.pop-date .pop-chip:has-text("Mañana")');
-check(await seen('.step:has-text("Opinión") .step-due:has-text("vence mañana")') && await seen('.item:has-text("Leer la prensa") .steps-tag:has-text("paso vence mañana")'), 'un paso puede tener fecha límite y la misión lo avisa');
+await page.click('button[aria-label="Partir Leer la prensa en submisiones"]');
+await page.fill('[aria-label="Nueva submisión de Leer la prensa"]', 'Titulares');
+await page.press('[aria-label="Nueva submisión de Leer la prensa"]', 'Enter');
+await page.fill('[aria-label="Nueva submisión de Leer la prensa"]', 'Opinión');
+await page.press('[aria-label="Nueva submisión de Leer la prensa"]', 'Enter');
+check(await seen('.item.has-sub:has-text("Leer la prensa") .tree-count:has-text("0/2")'), 'una misión se parte en submisiones');
+await page.click('button[aria-label="Completar Titulares"]');
+check(await seen('.item.has-sub:has-text("Leer la prensa") .tree-count:has-text("1/2")'), 'cerrar una submisión cuenta en la de arriba');
+check(!(await page.isVisible('.item:has-text("Leer la prensa") .repeat-tag')), 'una misión con submisiones deja de repetirse');
+// deshacerla devuelve su XP (las cuentas de XP de más abajo no la incluyen)
+await page.click('.item:has-text("Titulares") button:has-text("Deshacer")');
+check(await seen('.item.has-sub:has-text("Leer la prensa") .tree-count:has-text("0/2")'), 'deshacer una submisión la vuelve a abrir');
 await page.screenshot({ path: `${out}/02d-step-due.png` });
 await questAction('Leer la prensa', 'Borrar');
 // Misiones prehechas: añadir una con un toque y guardar una propia

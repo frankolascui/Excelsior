@@ -15,8 +15,7 @@ import './core.css';
 import { HabitHistory, habitShields, MinimumInput, PerDayInput, ProgressionInput, progressionDraft, type ProgressionDraft } from './habits-ui';
 import { progressionText } from './progression';
 import { shieldableDay, shieldsLeft } from './economy';
-import { QuestSteps, type StepActions } from './steps-ui';
-import { nextStepDue } from './core';
+import { SubAdd } from './tree-ui';
 import { AvatarPortrait, initialOf } from './portrait';
 import { Icon } from './icons';
 
@@ -107,7 +106,8 @@ export function deadlineLabel(day: string, now: number): { text: string; tone: '
 }
 
 export function QuestItem({
-  quest, kingdom, onComplete, onStart, onDelete, onUndo, onEdit, onDeadline, onRepeat, onImpact, steps, priority,
+  quest, kingdom, onComplete, onStart, onDelete, onUndo, onEdit, onDeadline, onRepeat, onImpact, priority,
+  path, progress, inherited, onAddChild, onSplit, children,
 }: {
   quest: Quest;
   kingdom?: string;
@@ -122,20 +122,31 @@ export function QuestItem({
   onImpact?: (v: Impact) => void;
   /** Es una de «Las 3 de hoy». */
   priority?: boolean;
-  /** Con él, la misión puede tener pasos (subtareas) con casillas. */
-  steps?: StepActions;
+  /** «Mates › Examen tema 4»: de dónde cuelga (en listas planas). */
+  path?: string;
+  /** Con él es una misión con submisiones: hojas hechas / total. Solo se cierra cuando todas están hechas. */
+  progress?: { done: number; total: number };
+  /** Fecha heredada de la misión de arriba (si no tiene una propia). */
+  inherited?: string;
+  /** Con ellos se puede partir en submisiones o repartir sesiones. */
+  onAddChild?: (title: string) => void;
+  onSplit?: (n: number) => void;
+  /** Las submisiones, debajo de la fila. */
+  children?: ReactNode;
 }) {
   const done = !!quest.completedAt;
   const [editing, setEditing] = useState(false);
-  const [showSteps, setShowSteps] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [tools, setTools] = useState(false);
-  const sp = { done: quest.steps?.filter((x) => x.done).length ?? 0, total: quest.steps?.length ?? 0 };
+  const [open, setOpen] = useState(true);
+  const container = !!progress && progress.total > 0;
+  const blocked = container && progress.done < progress.total; // con hojas pendientes no se cierra
   const due = quest.deadline && !done ? deadlineLabel(quest.deadline, Date.now()) : null;
-  const nextStep = done ? undefined : nextStepDue(quest);
-  const stepDue = nextStep ? deadlineLabel(nextStep.deadline!, Date.now()) : null;
+  const inheritedDue = !quest.deadline && inherited && !done ? deadlineLabel(inherited, Date.now()) : null;
   const imp = impactOf(quest);
   const impLabel = <><Icon name="target" /> {impactName(imp)} · +{questXp(quest)} XP</>;
-  const hasTools = !done && !!(onDeadline || steps || onRepeat || onEdit || onDelete);
+  const canSplit = !done && !!onAddChild;
+  const hasTools = !done && !!(onDeadline || canSplit || onRepeat || onEdit || onDelete);
   if (editing && onEdit) {
     const initial: CustomValue = { xp: quest.xp, rewards: quest.rewards ?? (quest.focus ? questRewards(quest.type, quest.title, quest.focus) : undefined) };
     return (
@@ -149,13 +160,18 @@ export function QuestItem({
     );
   }
   return (
-    <li className={done ? 'item done' : 'item'}>
+    <li className={`item${done ? ' done' : ''}${container ? ' has-sub' : ''}`}>
       {done ? (
         <span className="check checked" aria-hidden="true">✓</span>
+      ) : blocked ? (
+        <button className="check tree-count mono" onClick={() => setOpen(!open)} aria-expanded={open} aria-label={`${open ? 'Plegar' : 'Desplegar'} ${quest.title}: ${progress.done} de ${progress.total} hechas`} title="Se cierra cuando todas sus submisiones estén hechas">
+          {progress.done}/{progress.total}
+        </button>
       ) : (
-        <button className="check" onClick={onComplete} aria-label={`Completar ${quest.title}`} title="Completar misión">✓</button>
+        <button className="check" onClick={onComplete} aria-label={`Completar ${quest.title}`} title={container ? 'Todas sus submisiones están hechas: ciérrala' : 'Completar misión'}>✓</button>
       )}
       <div className="item-body">
+        {path && <span className="item-path">{path}</span>}
         <span className="item-title">{quest.title}</span>
         <span className="item-meta">
           {priority && !done && <span className="prio-tag" title="Una de las 3 de hoy"><Icon name="flag" /> Hoy</span>}
@@ -165,9 +181,8 @@ export function QuestItem({
           {due && (onDeadline
             ? <DatePicker value={quest.deadline ?? null} onChange={onDeadline} label={`Fecha límite de ${quest.title}`} clearLabel="Quitar fecha límite" className={`due due-${due.tone}`}><Icon name="calendar" /> {due.text}</DatePicker>
             : <span className={`due due-${due.tone}`}><Icon name="calendar" /> {due.text}</span>)}
-          {sp.total > 0 && (steps && !done
-            ? <button type="button" className={sp.done === sp.total ? 'steps-tag full' : 'steps-tag'} aria-expanded={showSteps} onClick={() => setShowSteps(!showSteps)} title="Ver pasos"><Icon name="list" /> {sp.done}/{sp.total} pasos{stepDue && <span className={`step-next due-${stepDue.tone}`}> · paso {stepDue.text}</span>}</button>
-            : <span className="steps-tag"><Icon name="list" /> {sp.done}/{sp.total} pasos</span>)}
+          {inheritedDue && path && <span className={`due inherited due-${inheritedDue.tone}`} title="Fecha de la misión de la que cuelga"><Icon name="calendar" /> {inheritedDue.text}</span>}
+          {container && !blocked && !done && <span className="steps-tag full"><Icon name="check" /> todo hecho: ciérrala o añade más</span>}
           {quest.repeat && !done && (onRepeat
             ? <RepeatPicker value={quest.repeat} onChange={onRepeat} label={`Repetición de ${quest.title}`} describe={repeatLabel} className="repeat-tag"><Icon name="repeat" /> {repeatLabel(quest.repeat)}</RepeatPicker>
             : <span className="repeat-tag"><Icon name="repeat" /> {repeatLabel(quest.repeat)}</span>)}
@@ -179,10 +194,10 @@ export function QuestItem({
             {onDeadline && !quest.deadline && (
               <DatePicker value={null} onChange={onDeadline} label={`Poner fecha límite a ${quest.title}`} className="ghost small due-add"><Icon name="calendar-plus" /> Fecha</DatePicker>
             )}
-            {steps && sp.total === 0 && (
-              <button className="ghost small steps-add" onClick={() => setShowSteps(!showSteps)} aria-expanded={showSteps} aria-label={`Partir ${quest.title} en pasos`}><Icon name="list" /> Pasos</button>
+            {canSplit && (
+              <button className="ghost small split-btn" onClick={() => { setAdding(true); setOpen(true); setTools(false); }} aria-label={`Partir ${quest.title} en submisiones`}><Icon name="list" /> {container ? 'Submisión' : 'Partir'}</button>
             )}
-            {onRepeat && !quest.repeat && (
+            {onRepeat && !quest.repeat && !container && (
               <RepeatPicker value={null} onChange={onRepeat} label={`Repetir ${quest.title}`} describe={repeatLabel} className="ghost small repeat-add"><Icon name="repeat" /> Repetir</RepeatPicker>
             )}
             {onEdit && (
@@ -193,19 +208,27 @@ export function QuestItem({
             )}
           </div>
         )}
-        {showSteps && steps && !done && <QuestSteps quest={quest} actions={steps} />}
+        {adding && canSplit && !container && <SubAdd quest={quest} inherited={quest.deadline ?? inherited} onAdd={onAddChild} onSplit={onSplit} onClose={() => setAdding(false)} />}
       </div>
       <div className="item-actions">
-        {onStart && !done && (
+        {onStart && !done && !container && (
           <button className="ghost small" onClick={onStart} title="Hacer Deep Work en esta misión"><Icon name="play" /> Foco</button>
         )}
         {onUndo && done && <button className="ghost small" onClick={onUndo}><Icon name="rotate-ccw" /> Deshacer</button>}
         {hasTools && (
-          <button className={tools ? 'icon-btn more-btn on' : 'icon-btn more-btn'} onClick={() => setTools(!tools)} aria-expanded={tools} aria-label={`Más acciones de ${quest.title}`} title="Fecha, pasos, repetir, editar o borrar">
+          <button className={tools ? 'icon-btn more-btn on' : 'icon-btn more-btn'} onClick={() => setTools(!tools)} aria-expanded={tools} aria-label={`Más acciones de ${quest.title}`} title="Fecha, partir, repetir, editar o borrar">
             <span className="dots" aria-hidden="true"><i /><i /><i /></span>
           </button>
         )}
       </div>
+      {container && open && (
+        <div className="sub">
+          {children}
+          {canSplit && (adding
+            ? <SubAdd quest={quest} inherited={quest.deadline ?? inherited} onAdd={onAddChild} onSplit={onSplit} onClose={() => setAdding(false)} />
+            : <button type="button" className="link small sub-more" onClick={() => setAdding(true)} aria-label={`Añadir submisión a ${quest.title}`}><Icon name="plus" /> Submisión</button>)}
+        </div>
+      )}
     </li>
   );
 }
