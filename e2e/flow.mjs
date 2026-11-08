@@ -25,6 +25,17 @@ async function deepWork(minutes, keepLevelUp = false) {
   if (!keepLevelUp && await seen('.tour')) await page.click('.tour button:has-text("Saltar")');
   if (!keepLevelUp && await quick('#rate-h')) await page.click('[aria-labelledby="rate-h"] button:has-text("Omitir")');
 }
+/** Acción de una misión que vive tras «⋯» (fecha, pasos, repetir, editar, borrar). */
+async function questAction(title, label) {
+  const sel = `button[aria-label="${label} ${title}"]`;
+  if (!(await page.isVisible(sel))) await page.click(`button[aria-label="Más acciones de ${title}"]`);
+  await page.click(sel);
+}
+/** Abre «Más opciones» del formulario de misión si está cerrado. */
+async function moreOpts(scope = '[data-tour="quest-add"]') {
+  const b = `${scope} button.more-opts[aria-expanded=false]`;
+  if (await page.isVisible(b)) await page.click(b);
+}
 const quick = (sel) => page.waitForSelector(sel, { timeout: 800 }).then(() => true, () => false);
 
 const seen = (sel) => page.waitForSelector(sel, { timeout: 3000 }).then(() => true, () => false);
@@ -75,7 +86,7 @@ await page.screenshot({ path: `${out}/01-empty.png`, fullPage: true });
 
 // 2. Crear misiones
 await page.fill('#new-quest', 'Terminar el tema 3 de Física');
-await page.click('[role=radio]:has-text("Principal")');
+await page.click('[role=radio]:has-text("Alto")');
 await page.click('button:has-text("Crear")');
 check(await seen('h2:has-text("Terminar el tema 3 de Física")'), '¿Qué hago ahora? sugiere la misión principal');
 check(!(await page.$('.today-strip')) && !(await page.$('#attrs-h')), 'Hoy de una partida nueva esconde lo que aún estaría vacío');
@@ -86,6 +97,7 @@ check(await seen('.now-foot .link:has-text("1 misión más")') && !(await page.$
 // 2b. Fecha límite y calendario
 await page.click('.nav-item:has-text("Misiones")');
 await page.fill('#new-quest', 'Entregar el trabajo de Historia');
+await moreOpts();
 await page.click('#new-quest-deadline');
 check(await seen('.pop-date .pop-chip:has-text("Mañana")'), 'la fecha límite abre su selector con atajos');
 await page.click('.pop-date .pop-chip:has-text("Mañana")');
@@ -105,13 +117,15 @@ await page.click('.cal-add button:has-text("Crear")');
 check(await seen('.cal-tasks .item:has-text("Repasar Física")'), 'crear una misión desde el calendario le pone esa fecha');
 await page.screenshot({ path: `${out}/02b-calendar.png`, fullPage: true });
 await page.click('[role=radio]:has-text("Lista")');
-for (const t of ['Entregar el trabajo de Historia', 'Repasar Física']) await page.click(`button[aria-label="Borrar ${t}"]`);
+for (const t of ['Entregar el trabajo de Historia', 'Repasar Física']) await questAction(t, 'Borrar');
 await page.fill('#new-quest', 'Leer la prensa');
+await moreOpts();
 await page.click('#new-quest-repeat');
 await page.click('.pop-repeat .pop-chip:has-text("Lunes a viernes")');
 check(await seen('#new-quest-repeat:has-text("Lunes a viernes")'), 'repetir: el botón dice los días');
 await page.click('[data-tour="quest-add"] button:has-text("Crear")');
 check(await seen('.item:has-text("Leer la prensa") .repeat-tag:has-text("Lunes a viernes")'), 'la misión muestra que se repite');
+await page.click('button[aria-label="Más acciones de Leer la prensa"]');
 await page.click('button[aria-label="Partir Leer la prensa en pasos"]');
 await page.fill('[aria-label="Nuevo paso de Leer la prensa"]', 'Titulares');
 await page.press('[aria-label="Nuevo paso de Leer la prensa"]', 'Enter');
@@ -123,7 +137,7 @@ await page.click('button[aria-label^="Fecha límite del paso Opinión"]', { forc
 await page.click('.pop-date .pop-chip:has-text("Mañana")');
 check(await seen('.step:has-text("Opinión") .step-due:has-text("vence mañana")') && await seen('.item:has-text("Leer la prensa") .steps-tag:has-text("paso vence mañana")'), 'un paso puede tener fecha límite y la misión lo avisa');
 await page.screenshot({ path: `${out}/02d-step-due.png` });
-await page.click('button[aria-label="Borrar Leer la prensa"]');
+await questAction('Leer la prensa', 'Borrar');
 // Misiones prehechas: añadir una con un toque y guardar una propia
 await page.click('button.templates-open');
 await page.click('.templates-tabs [role=tab]:has-text("Personas")');
@@ -135,7 +149,7 @@ await page.click('.template-new button:has-text("Guardar plantilla")');
 check(await seen('.templates-list .template-row:has-text("Clase de violín")') && await seen('[role=tab]:has-text("Mías · 1")'), 'se puede guardar una plantilla propia');
 await page.screenshot({ path: `${out}/02c-templates.png`, fullPage: true });
 await page.click('button[aria-label="Borrar plantilla Clase de violín"]');
-await page.click('button[aria-label="Borrar Hablar con alguien nuevo"]');
+await questAction('Hablar con alguien nuevo', 'Borrar');
 await page.click('button.templates-open');
 await page.click('.nav-item:has-text("Hoy")');
 

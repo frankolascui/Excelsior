@@ -1,32 +1,24 @@
 // Priorización estratégica: impacto de cada misión, «Las 3 de hoy» y limpieza de lo que no merece tu tiempo.
-// El impacto no da XP (marcarlo todo como alto compensaría y dejaría de servir). Solo cerrar
-// tus 3 prioridades del día da un bonus pequeño y fijo (game.ts, PRIORITY_BONUS).
+// El impacto es el antiguo tipo de misión: decide el orden y el XP (alto 50, medio 20, bajo 15).
+// El tope diario de XP frena marcarlo todo como alto. Cerrar tus 3 del día da un bonus fijo (PRIORITY_BONUS).
 import type { GameState, Impact, Quest } from './types';
-import { dayKey, deleteQuest, shiftDay } from './game';
+import { dayKey, deleteQuest, IMPACT_TYPE, impactOf, shiftDay, XP_RULES } from './game';
 
 export const MAX_PRIORITIES = 3;
 
-export const IMPACTS: { id: Impact; name: string; hint: string }[] = [
-  { id: 'alto', name: 'Alto', hint: 'Mueve de verdad un objetivo importante' },
-  { id: 'medio', name: 'Medio', hint: 'Ayuda, pero no cambia mucho' },
-  { id: 'bajo', name: 'Bajo', hint: 'Se podría posponer, delegar o eliminar' },
+export const IMPACTS: { id: Impact; name: string; hint: string; xp: number }[] = [
+  { id: 'alto', name: 'Alto', hint: 'Mueve de verdad un objetivo importante', xp: XP_RULES.quest.main },
+  { id: 'medio', name: 'Medio', hint: 'Ayuda, pero no cambia mucho', xp: XP_RULES.quest.daily },
+  { id: 'bajo', name: 'Bajo', hint: 'Se podría posponer, delegar o eliminar', xp: XP_RULES.quest.side },
 ];
 
-/** Orden para decidir: alto, medio, sin marcar y bajo. */
-export const IMPACT_RANK: Record<Impact | 'none', number> = { alto: 0, medio: 1, none: 1.5, bajo: 2 };
-export const impactRank = (q: Pick<Quest, 'impact'>) => IMPACT_RANK[q.impact ?? 'none'];
+/** Orden para decidir: alto, medio y bajo. */
+export const IMPACT_RANK: Record<Impact, number> = { alto: 0, medio: 1, bajo: 2 };
+export const impactRank = (q: Pick<Quest, 'impact' | 'type'>) => IMPACT_RANK[impactOf(q)];
 
-export function setQuestImpact(s: GameState, id: string, impact: Impact | null): GameState {
-  return {
-    ...s,
-    quests: s.quests.map((q) => {
-      if (q.id !== id) return q;
-      const next = { ...q };
-      if (impact) next.impact = impact;
-      else delete next.impact;
-      return next;
-    }),
-  };
+/** Cambia el impacto (y con él el XP y el tipo, que van juntos). Lo ya ganado no cambia. */
+export function setQuestImpact(s: GameState, id: string, impact: Impact): GameState {
+  return { ...s, quests: s.quests.map((q) => (q.id === id ? { ...q, impact, type: IMPACT_TYPE[impact] } : q)) };
 }
 
 // ---------- Las 3 de hoy ----------
@@ -72,21 +64,22 @@ export function priorityWeek(s: GameState, from: number): { planned: number; clo
 
 // ---------- Limpieza ----------
 
-export const STALE_DAYS = { bajo: 14, none: 30 };
+export const STALE_DAYS = { bajo: 14, medio: 30 };
 const DAY_MS = 86_400_000;
 
 /**
  * Misiones que llevan demasiado tiempo pendientes para lo que aportan: impacto bajo y más de 14 días,
- * o sin impacto marcado y más de 30. No cuentan las de un reino (son construcciones de un proyecto)
+ * o medio y más de 30. No cuentan las de un reino (son construcciones de un proyecto)
  * ni las que se repiten. Las que conservaste no vuelven a salir hasta 14 días después.
  */
 export function staleQuests(s: GameState, now: number): Quest[] {
   const today = dayKey(now);
   return s.quests
     .filter((q) => {
-      if (q.completedAt || q.kingdomId || q.repeat || q.impact === 'alto' || q.impact === 'medio') return false;
+      const impact = impactOf(q);
+      if (q.completedAt || q.kingdomId || q.repeat || impact === 'alto') return false;
       if (q.startsOn && q.startsOn > today) return false;
-      const limit = q.impact === 'bajo' ? STALE_DAYS.bajo : STALE_DAYS.none;
+      const limit = STALE_DAYS[impact];
       const since = Math.max(q.createdAt, q.keptAt ?? 0);
       const wait = q.keptAt ? STALE_DAYS.bajo : limit;
       return now - since >= wait * DAY_MS;

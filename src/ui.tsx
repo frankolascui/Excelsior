@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import type { AttributeRewards, GameState, Habit, Impact, Quest, QuestType } from './types';
 import { ATTRIBUTES, attributeHistory, attributeLevel, attributeXp, avatarInfo, formatAttrXp, habitRewards, questRewards } from './attributes';
 import {
-  daysUntil, CUSTOM_LIMITS, dayKey, habitAtRisk, habitDayCount, habitStreak, habitWeekCount, habitXp, isHabitDone, levelInfo, QUEST_LABEL, questAttributeRewards, repeatLabel, questXp, shiftDay, totalXp, XP_RULES,
+  daysUntil, CUSTOM_LIMITS, dayKey, habitAtRisk, impactOf, TYPE_IMPACT, habitDayCount, habitStreak, habitWeekCount, habitXp, isHabitDone, levelInfo, QUEST_LABEL, repeatLabel, questXp, shiftDay, totalXp, XP_RULES,
 } from './game';
 import { CustomizeToggle, InlineEdit, RewardEditor, sameRewards, type CustomValue } from './customize';
 import { RitualCTA } from './ritual';
@@ -118,8 +118,8 @@ export function QuestItem({
   onEdit?: (title: string, v: CustomValue) => void;
   onDeadline?: (day: string | null) => void;
   onRepeat?: (days: number[] | null) => void;
-  /** Con él, el impacto se puede marcar o cambiar. */
-  onImpact?: (v: Impact | null) => void;
+  /** Con él, el impacto (y con él el XP) se puede cambiar. */
+  onImpact?: (v: Impact) => void;
   /** Es una de «Las 3 de hoy». */
   priority?: boolean;
   /** Con él, la misión puede tener pasos (subtareas) con casillas. */
@@ -128,10 +128,14 @@ export function QuestItem({
   const done = !!quest.completedAt;
   const [editing, setEditing] = useState(false);
   const [showSteps, setShowSteps] = useState(false);
+  const [tools, setTools] = useState(false);
   const sp = { done: quest.steps?.filter((x) => x.done).length ?? 0, total: quest.steps?.length ?? 0 };
   const due = quest.deadline && !done ? deadlineLabel(quest.deadline, Date.now()) : null;
   const nextStep = done ? undefined : nextStepDue(quest);
   const stepDue = nextStep ? deadlineLabel(nextStep.deadline!, Date.now()) : null;
+  const imp = impactOf(quest);
+  const impLabel = <><Icon name="target" /> {impactName(imp)} · +{questXp(quest)} XP</>;
+  const hasTools = !done && !!(onDeadline || steps || onRepeat || onEdit || onDelete);
   if (editing && onEdit) {
     const initial: CustomValue = { xp: quest.xp, rewards: quest.rewards ?? (quest.focus ? questRewards(quest.type, quest.title, quest.focus) : undefined) };
     return (
@@ -155,10 +159,9 @@ export function QuestItem({
         <span className="item-title">{quest.title}</span>
         <span className="item-meta">
           {priority && !done && <span className="prio-tag" title="Una de las 3 de hoy"><Icon name="flag" /> Hoy</span>}
-          <TypeChip type={quest.type} />
-          {quest.impact && !done && (onImpact
-            ? <ImpactPicker value={quest.impact} onChange={onImpact} label={`Impacto de ${quest.title}`} className={`impact-tag imp-${quest.impact}`}><Icon name="target" /> {impactName(quest.impact)}</ImpactPicker>
-            : <span className={`impact-tag imp-${quest.impact}`}><Icon name="target" /> {impactName(quest.impact)}</span>)}
+          {onImpact && !done
+            ? <ImpactPicker value={imp} onChange={onImpact} label={`Impacto de ${quest.title}`} className={`impact-tag imp-${imp}`}>{impLabel}</ImpactPicker>
+            : <span className={`impact-tag imp-${imp}`}>{impLabel}</span>}
           {due && (onDeadline
             ? <DatePicker value={quest.deadline ?? null} onChange={onDeadline} label={`Fecha límite de ${quest.title}`} clearLabel="Quitar fecha límite" className={`due due-${due.tone}`}><Icon name="calendar" /> {due.text}</DatePicker>
             : <span className={`due due-${due.tone}`}><Icon name="calendar" /> {due.text}</span>)}
@@ -170,9 +173,26 @@ export function QuestItem({
             : <span className="repeat-tag"><Icon name="repeat" /> {repeatLabel(quest.repeat)}</span>)}
           {quest.startsOn && !done && quest.startsOn > dayKey(Date.now()) && <span className="starts">sale {dayWords(quest.startsOn).toLowerCase()}</span>}
           {kingdom && <span className="kingdom-tag"><Icon name="castle" /> {kingdom}</span>}
-          <span className="mono xp-tag">+{questXp(quest)} XP</span>
-          <RewardTags rewards={questAttributeRewards(quest)} />
         </span>
+        {tools && hasTools && (
+          <div className="item-tools" role="group" aria-label={`Acciones de ${quest.title}`}>
+            {onDeadline && !quest.deadline && (
+              <DatePicker value={null} onChange={onDeadline} label={`Poner fecha límite a ${quest.title}`} className="ghost small due-add"><Icon name="calendar-plus" /> Fecha</DatePicker>
+            )}
+            {steps && sp.total === 0 && (
+              <button className="ghost small steps-add" onClick={() => setShowSteps(!showSteps)} aria-expanded={showSteps} aria-label={`Partir ${quest.title} en pasos`}><Icon name="list" /> Pasos</button>
+            )}
+            {onRepeat && !quest.repeat && (
+              <RepeatPicker value={null} onChange={onRepeat} label={`Repetir ${quest.title}`} describe={repeatLabel} className="ghost small repeat-add"><Icon name="repeat" /> Repetir</RepeatPicker>
+            )}
+            {onEdit && (
+              <button className="ghost small edit-btn" onClick={() => setEditing(true)} aria-label={`Editar ${quest.title}`}><Icon name="pencil" /> Editar</button>
+            )}
+            {onDelete && (
+              <button className="ghost small danger" onClick={onDelete} aria-label={`Borrar ${quest.title}`}><Icon name="trash" /> Borrar</button>
+            )}
+          </div>
+        )}
         {showSteps && steps && !done && <QuestSteps quest={quest} actions={steps} />}
       </div>
       <div className="item-actions">
@@ -180,53 +200,41 @@ export function QuestItem({
           <button className="ghost small" onClick={onStart} title="Hacer Deep Work en esta misión"><Icon name="play" /> Foco</button>
         )}
         {onUndo && done && <button className="ghost small" onClick={onUndo}><Icon name="rotate-ccw" /> Deshacer</button>}
-        {onImpact && !done && !quest.impact && (
-          <ImpactPicker value={null} onChange={onImpact} label={`Marcar el impacto de ${quest.title}`} className="icon-btn impact-add"><Icon name="target" /></ImpactPicker>
-        )}
-        {onDeadline && !done && !quest.deadline && (
-          <DatePicker value={null} onChange={onDeadline} label={`Poner fecha límite a ${quest.title}`} className="icon-btn due-add"><Icon name="calendar-plus" /></DatePicker>
-        )}
-        {steps && !done && sp.total === 0 && (
-          <button className="icon-btn steps-add" onClick={() => setShowSteps(!showSteps)} aria-expanded={showSteps} aria-label={`Partir ${quest.title} en pasos`} title="Partir en pasos"><Icon name="list" /></button>
-        )}
-        {onRepeat && !done && !quest.repeat && (
-          <RepeatPicker value={null} onChange={onRepeat} label={`Repetir ${quest.title}`} describe={repeatLabel} className="icon-btn repeat-add"><Icon name="repeat" /></RepeatPicker>
-        )}
-        {onEdit && !done && (
-          <button className="icon-btn edit-btn" onClick={() => setEditing(true)} aria-label={`Editar ${quest.title}`} title="Editar XP y atributos"><Icon name="sliders" /></button>
-        )}
-        {onDelete && !done && (
-          <button className="icon-btn" onClick={onDelete} aria-label={`Borrar ${quest.title}`} title="Borrar"><Icon name="trash" /></button>
+        {hasTools && (
+          <button className={tools ? 'icon-btn more-btn on' : 'icon-btn more-btn'} onClick={() => setTools(!tools)} aria-expanded={tools} aria-label={`Más acciones de ${quest.title}`} title="Fecha, pasos, repetir, editar o borrar">
+            <span className="dots" aria-hidden="true"><i /><i /><i /></span>
+          </button>
         )}
       </div>
     </li>
   );
 }
 
-const TYPES: QuestType[] = ['daily', 'main', 'side'];
+const TYPES: QuestType[] = ['main', 'daily', 'side'];
 
 export function QuickAddQuest({
   onAdd, autoFocus = false, fixedDeadline,
 }: { onAdd: (title: string, type: QuestType, custom: CustomValue & { deadline?: string; repeat?: number[]; impact?: Impact }) => void; autoFocus?: boolean; fixedDeadline?: string }) {
   const [title, setTitle] = useState('');
-  const [impact, setImpact] = useState<Impact | null>(null);
   const [deadline, setDeadline] = useState('');
   const [repeat, setRepeat] = useState<number[] | null>(null);
   const [type, setType] = useState<QuestType>('daily');
   const [custom, setCustom] = useState<CustomValue>({});
+  const [more, setMore] = useState(false);
   const [open, setOpen] = useState(false);
   const isCustom = custom.xp !== undefined || custom.rewards !== undefined;
+  const extras = !!deadline || !!repeat || isCustom;
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
     const rewards = custom.rewards && !sameRewards(custom.rewards, questRewards(type, title)) ? custom.rewards : undefined;
-    onAdd(title, type, { xp: custom.xp, rewards, deadline: fixedDeadline ?? (deadline || undefined), repeat: repeat ?? undefined, impact: impact ?? undefined });
+    onAdd(title, type, { xp: custom.xp, rewards, deadline: fixedDeadline ?? (deadline || undefined), repeat: repeat ?? undefined, impact: TYPE_IMPACT[type] });
     setTitle('');
-    setImpact(null);
     setDeadline('');
     setRepeat(null);
     setCustom({});
     setOpen(false);
+    setMore(false);
   }
   return (
     <form className="quick-add" onSubmit={submit}>
@@ -240,29 +248,28 @@ export function QuickAddQuest({
         aria-label="Nombre de la nueva misión"
       />
       <div className="quick-add-row">
-        <div className="segmented" role="radiogroup" aria-label="Tipo de misión">
+        <div className="segmented" role="radiogroup" aria-label="Impacto de la misión" title="¿Cuánto te acerca a lo que de verdad quieres?">
           {TYPES.map((t) => (
-            <button
-              type="button"
-              key={t}
-              role="radio"
-              aria-checked={type === t}
-              className={type === t ? 'seg on' : 'seg'}
-              onClick={() => setType(t)}
-            >
+            <button type="button" key={t} role="radio" aria-checked={type === t} className={type === t ? 'seg on' : 'seg'} onClick={() => setType(t)}>
               {QUEST_LABEL[t]} <span className="mono">{XP_RULES.quest[t]}</span>
             </button>
           ))}
         </div>
-        {!fixedDeadline && (
-          <DatePicker id="new-quest-deadline" value={deadline || null} onChange={(d) => setDeadline(d ?? '')} label="Fecha límite (opcional)" clearLabel="Sin fecha límite" placeholder="Fecha límite" />
-        )}
-        <RepeatPicker id="new-quest-repeat" value={repeat} onChange={setRepeat} label="Repetir" describe={repeatLabel} />
-        <ImpactPicker id="new-quest-impact" value={impact} onChange={setImpact} label="Impacto" />
-        <CustomizeToggle open={open} onToggle={() => setOpen(!open)} custom={isCustom} />
+        <button type="button" className={`ghost small more-opts${extras ? ' set' : ''}`} aria-expanded={more} onClick={() => setMore(!more)}>
+          <Icon name="sliders" /> {extras ? 'Opciones puestas' : 'Más opciones'}
+        </button>
         <button type="submit" className="primary" disabled={!title.trim()}><Icon name="plus" /> Crear</button>
       </div>
-      {open && (
+      {more && (
+        <div className="quick-add-row quick-add-more">
+          {!fixedDeadline && (
+            <DatePicker id="new-quest-deadline" value={deadline || null} onChange={(d) => setDeadline(d ?? '')} label="Fecha límite (opcional)" clearLabel="Sin fecha límite" placeholder="Fecha límite" />
+          )}
+          <RepeatPicker id="new-quest-repeat" value={repeat} onChange={setRepeat} label="Repetir" describe={repeatLabel} />
+          <CustomizeToggle open={open} onToggle={() => setOpen(!open)} custom={isCustom} />
+        </div>
+      )}
+      {more && open && (
         <RewardEditor autoXp={XP_RULES.quest[type]} autoRewards={questRewards(type, title)} value={custom} onChange={setCustom} maxXp={CUSTOM_LIMITS.questXp} idPrefix="new-quest" />
       )}
     </form>

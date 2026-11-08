@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addQuest, completeQuest, createProfile, dayKey, emptyState, pendingQuests, PRIORITY_BONUS, shiftDay, suggest, undoQuest } from './game';
+import { addQuest, completeQuest, createProfile, dayKey, emptyState, impactOf, pendingQuests, PRIORITY_BONUS, shiftDay, suggest, undoQuest } from './game';
 import { keepQuest, postponeQuest, priorityQuests, priorityWeek, setPriorities, setQuestImpact, staleQuests } from './priorities';
 import { currentChange, previousReview, reviewWeekKey, saveWeeklyReview, weekFocus } from './review';
 import { weekStart } from './summary';
@@ -17,12 +17,11 @@ function withQuests(...titles: string[]): GameState {
 const idOf = (s: GameState, t: string) => s.quests.find((q) => q.title === t)!.id;
 
 describe('impacto', () => {
-  it('ordena las pendientes por impacto sin tocar el XP', () => {
+  it('ordena las pendientes por impacto', () => {
     let s = withQuests('A', 'B', 'C');
     s = setQuestImpact(s, idOf(s, 'A'), 'bajo');
     s = setQuestImpact(s, idOf(s, 'C'), 'alto');
     expect(pendingQuests(s, NOW).map((q) => q.title)).toEqual(['C', 'B', 'A']);
-    expect(completeQuest(s, idOf(s, 'C'), NOW).xp).toBe(completeQuest(s, idOf(s, 'B'), NOW).xp);
   });
 
   it('lo urgente sigue antes que el impacto, salvo tus prioridades del día', () => {
@@ -36,10 +35,15 @@ describe('impacto', () => {
     expect(sug.kind === 'quest' && sug.quest.title).toBe('Importante');
   });
 
-  it('quitar el impacto lo borra', () => {
+  it('el impacto es el tipo: decide el XP y las misiones antiguas lo sacan de su tipo', () => {
     let s = withQuests('A');
-    s = setQuestImpact(setQuestImpact(s, idOf(s, 'A'), 'alto'), idOf(s, 'A'), null);
-    expect(s.quests[0].impact).toBeUndefined();
+    s = setQuestImpact(s, idOf(s, 'A'), 'alto');
+    expect(s.quests[0].type).toBe('main');
+    expect(completeQuest(s, idOf(s, 'A'), NOW).xp).toBe(50);
+    const old = { ...s.quests[0], impact: undefined, type: 'side' as const };
+    expect(impactOf(old)).toBe('bajo');
+    expect(addQuest(s, 'B', 'daily', NOW).quests[1].impact).toBe('medio');
+    expect(addQuest(s, 'C', 'daily', NOW, { impact: 'alto' }).quests[1].type).toBe('main');
   });
 });
 
@@ -86,7 +90,7 @@ describe('Las 3 de hoy', () => {
 });
 
 describe('limpieza', () => {
-  it('saca lo de impacto bajo con más de 14 días y lo sin marcar con más de 30', () => {
+  it('saca lo de impacto bajo con más de 14 días y lo medio con más de 30', () => {
     let s = withQuests('Bajo', 'Sin marcar', 'Alto');
     s = setQuestImpact(s, idOf(s, 'Bajo'), 'bajo');
     s = setQuestImpact(s, idOf(s, 'Alto'), 'alto');

@@ -20,11 +20,18 @@ export const XP_RULES = {
   minSessionMinutes: 1,
 };
 
+/** Desde el 2026-11-08 el tipo es el impacto: alto = 50 XP, medio = 20, bajo = 15 (el campo `type` se conserva). */
 export const QUEST_LABEL: Record<QuestType, string> = {
-  daily: 'Diaria',
-  main: 'Principal',
-  side: 'Secundaria',
+  main: 'Alto',
+  daily: 'Medio',
+  side: 'Bajo',
 };
+
+export type ImpactLevel = NonNullable<Quest['impact']>;
+export const IMPACT_TYPE: Record<ImpactLevel, QuestType> = { alto: 'main', medio: 'daily', bajo: 'side' };
+export const TYPE_IMPACT: Record<QuestType, ImpactLevel> = { main: 'alto', daily: 'medio', side: 'bajo' };
+/** Impacto de una misión: el marcado o, en misiones antiguas, el que corresponde a su tipo. */
+export const impactOf = (q: Pick<Quest, 'impact' | 'type'>): ImpactLevel => q.impact ?? TYPE_IMPACT[q.type];
 
 const TITLES: [number, string][] = [
   [50, 'Maestro'],
@@ -322,7 +329,7 @@ export interface QuestOptions {
 }
 
 export function questXp(q: Quest): number {
-  return q.xp ?? XP_RULES.quest[q.type];
+  return q.xp ?? XP_RULES.quest[IMPACT_TYPE[impactOf(q)]];
 }
 
 export function questAttributeRewards(q: Quest): AttributeRewards {
@@ -330,13 +337,14 @@ export function questAttributeRewards(q: Quest): AttributeRewards {
 }
 
 export function addQuest(s: GameState, title: string, type: QuestType, now: number, opts: QuestOptions = {}): GameState {
-  const quest: Quest = { id: uid(), title: title.trim(), type, createdAt: now, completedAt: null };
+  // el impacto manda sobre el tipo (son lo mismo desde la V2.1)
+  const quest: Quest = { id: uid(), title: title.trim(), type: opts.impact ? IMPACT_TYPE[opts.impact] : type, createdAt: now, completedAt: null };
   if (opts.kingdomId) quest.kingdomId = opts.kingdomId;
   if (opts.focus) quest.focus = opts.focus;
   if (opts.xp !== undefined) quest.xp = Math.round(clamp(opts.xp, CUSTOM_LIMITS.questXp));
   if (opts.rewards) quest.rewards = cleanRewards(opts.rewards);
   if (opts.deadline) quest.deadline = opts.deadline;
-  if (opts.impact) quest.impact = opts.impact;
+  quest.impact = opts.impact ?? TYPE_IMPACT[type];
   const repeat = cleanRepeat(opts.repeat);
   if (repeat && !opts.kingdomId) quest.repeat = repeat;
   return { ...s, quests: [...s.quests, quest] };
@@ -459,11 +467,11 @@ export function completeQuest(s: GameState, id: string, now: number): ActionResu
   return { state, xp: amount + bonus, capped: amount < base };
 }
 
-/** XP por cerrar las 3 prioridades del día. El impacto en sí no da XP. */
+/** XP por cerrar las 3 prioridades del día. */
 export const PRIORITY_BONUS = 15;
 
 const dayPriorityIds = (s: GameState, day: string) => s.priorities?.find((p) => p.day === day)?.ids ?? [];
-const IMPACT_ORDER = { alto: 0, medio: 1, none: 1.5, bajo: 2 } as const;
+const IMPACT_ORDER = { alto: 0, medio: 1, bajo: 2 } as const;
 
 /** Deshacer devuelve la misión a pendiente y retira su XP (evita farmear marcando/desmarcando). */
 export function undoQuest(s: GameState, id: string): GameState {
@@ -753,8 +761,7 @@ const QUEST_PRIORITY: Record<QuestType, number> = { main: 0, daily: 1, side: 2 }
 
 /**
  * Pendientes en el orden en que conviene hacerlas: primero «Las 3 de hoy» (de más a menos impacto),
- * luego lo vencido o que vence en 2 días (por fecha), luego por impacto (alto → medio → sin marcar → bajo),
- * tipo (Principal → Diaria → Secundaria) y antigüedad.
+ * luego lo vencido o que vence en 2 días (por fecha), luego por impacto (alto → medio → bajo) y antigüedad.
  */
 export function pendingQuests(s: GameState, now = Date.now()): Quest[] {
   const urgent = (q: Quest) => {
@@ -765,7 +772,7 @@ export function pendingQuests(s: GameState, now = Date.now()): Quest[] {
   };
   const today = dayKey(now);
   const prio = dayPriorityIds(s, today);
-  const impact = (q: Quest) => IMPACT_ORDER[q.impact ?? 'none'];
+  const impact = (q: Quest) => IMPACT_ORDER[impactOf(q)];
   return s.quests
     .filter((q) => !q.completedAt && !(q.startsOn && q.startsOn > today))
     .sort((a, b) => {

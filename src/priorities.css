@@ -110,3 +110,21 @@
   .today-lbl { font-size: 10.5px !important; }
   .today-lbl .muted { display: none; }
 }
+
+/* Filas de misión: acciones detrás de «⋯» */
+.more-btn .dots { display: inline-flex; gap: 3px; align-items: center; }
+.more-btn .dots i { width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
+.more-btn.on { color: var(--c1); }
+.item-tools { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.item-tools .pick-btn.ghost { border: 1px solid var(--line); background: none; }
+.quick-add-more { padding-top: 2px; }
+.more-opts.set { color: var(--c1); border-color: var(--c1); }
+
+/* Barra de desplazamiento casi invisible: fina, sin carril, y solo se nota al pasar por encima */
+html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted) 22%, transparent) transparent; }
+* { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted) 22%, transparent) transparent; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--muted) 18%, transparent); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--c1) 55%, transparent); }
+::-webkit-scrollbar-corner { background: transparent; }

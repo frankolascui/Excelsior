@@ -256,17 +256,17 @@ export function RepeatPicker({ value, onChange, label, className = '', children,
   );
 }
 
-/** Elegir el impacto de una misión: alto, medio o bajo (o sin marcar). */
+/** Elegir el impacto de una misión: alto, medio o bajo (decide el orden y el XP). */
 export function ImpactPicker({ value, onChange, label, className = '', children, id }: {
-  value: Impact | null; onChange: (v: Impact | null) => void; label: string; className?: string; children?: ReactNode; id?: string;
+  value: Impact; onChange: (v: Impact) => void; label: string; className?: string; children?: ReactNode; id?: string;
 }) {
   const { open, setOpen, btn, toggle } = usePop();
-  const set = (v: Impact | null) => { onChange(v); setOpen(false); btn.current?.focus(); };
-  const name = value ? IMPACTS.find((x) => x.id === value)!.name : null;
+  const set = (v: Impact) => { onChange(v); setOpen(false); btn.current?.focus(); };
+  const cur = IMPACTS.find((x) => x.id === value)!;
   return (
     <>
-      <button type="button" ref={btn} id={id} className={`pick-btn${value ? ' set' : ''} ${className}`} onClick={toggle} aria-label={`${label}: ${name ? `impacto ${name.toLowerCase()}` : 'sin marcar'}`} aria-expanded={open}>
-        {children ?? <><Icon name="target" /> {name ? `Impacto ${name.toLowerCase()}` : 'Impacto'}</>}
+      <button type="button" ref={btn} id={id} className={`pick-btn set ${className}`} onClick={toggle} aria-label={`${label}: impacto ${cur.name.toLowerCase()}`} aria-expanded={open}>
+        {children ?? <><Icon name="target" /> Impacto {cur.name.toLowerCase()}</>}
       </button>
       {open && (
         <Popover anchor={btn.current} onClose={() => setOpen(false)} className="pop-impact">
@@ -274,12 +274,10 @@ export function ImpactPicker({ value, onChange, label, className = '', children,
           <div className="pop-impacts">
             {IMPACTS.map((x) => (
               <button type="button" key={x.id} className={`pop-impact-opt imp-${x.id}${value === x.id ? ' on' : ''}`} onClick={() => set(x.id)}>
-                <b>{x.name}</b><span>{x.hint}</span>
+                <b>{x.name} <span className="mono">+{x.xp} XP</span></b><span>{x.hint}</span>
               </button>
             ))}
           </div>
-          {value && <button type="button" className="pop-chip" onClick={() => set(null)}>Quitar impacto</button>}
-          <p className="pop-note">No da XP: sirve para decidir qué va primero.</p>
         </Popover>
       )}
     </>

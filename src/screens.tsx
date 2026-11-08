@@ -18,7 +18,7 @@ import { XpChart } from './charts';
 import {
   addHabit, addQuest, cancelTimer, CUSTOM_LIMITS, maxPerWeek, updateHabit, updateQuest, completeQuest, createProfile, dayKey, deepWorkMinutesOnDay,
   deleteHabit, deleteQuest, focusPercent, habitStreakDays, levelInfo, pendingQuests, scheduledQuests, setQuestDeadline, setQuestRepeat, setPhase, timerTotals,
-  pomodoroStatus, pomodoroStep, startTimer, stopTimer, suggest, questXp, PRIORITY_BONUS, toggleHabit, habitCleared, habitsInOrder, reorderHabits, totalXp, undoQuest, XP_RULES,
+  pomodoroStatus, pomodoroStep, startTimer, stopTimer, suggest, questXp, PRIORITY_BONUS, impactOf, toggleHabit, habitCleared, habitsInOrder, reorderHabits, totalXp, undoQuest, XP_RULES,
 } from './game';
 import {
   AttributeList, AvatarCard, ConfirmButton, deadlineLabel, formatClock, shortDate, formatMinutes, HabitItem, LevelBar, QuestItem,
@@ -158,8 +158,7 @@ export function Dashboard({
               <>
                 <h2>{hero.title}</h2>
                 <p className="now-sub">
-                  {!heroIsPrio && prioQs.length === 0 && <>Misión {hero.type === 'main' ? 'principal' : hero.type === 'daily' ? 'diaria' : 'secundaria'} · </>}
-                  {hero.impact && <>impacto {IMPACTS.find((x) => x.id === hero.impact)!.name.toLowerCase()} · </>}
+                  Impacto {IMPACTS.find((x) => x.id === impactOf(hero))!.name.toLowerCase()} · 
                   +{questXp(hero)} XP{hero.deadline && <> · {deadlineLabel(hero.deadline, now).text}</>}
                 </p>
                 <div className="row">
@@ -328,7 +327,7 @@ export function Quests({ game, focusQuest, startFocus }: { game: Game; focusQues
     <div className="title-row">
       <div className="with-info">
         <h1 className="screen-title">Misiones</h1>
-        <InfoTip label="Cómo funcionan las misiones"><p>Principal = lo importante. Diaria = para hoy. Secundaria = si sobra tiempo. Con «Misiones prehechas» las añades ya listas, con su XP y atributos.</p></InfoTip>
+        <InfoTip label="Cómo funcionan las misiones"><p>El impacto decide el orden y el XP: alto (50) mueve de verdad un objetivo, medio (20) ayuda, bajo (15) se podría posponer o eliminar. Con «Misiones prehechas» las añades ya listas.</p></InfoTip>
       </div>
       {toggle}
     </div>
@@ -609,7 +608,7 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
               {linked && (
                 <div className="row">
                   <button className="primary" onClick={() => { act((s) => completeQuest(s, linked.id, Date.now()), CAP_QUEST, questOpts(linked)); setResult({ ...result, questId: null }); }}>
-                    <Icon name="check" /> Completar «{linked.title}» (+{XP_RULES.quest[linked.type]} XP)
+                    <Icon name="check" /> Completar «{linked.title}» (+{questXp(linked)} XP)
                   </button>
                 </div>
               )}
@@ -1015,7 +1014,6 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
               onStart={() => focusQuest(q)}
               onDelete={() => act((s) => deleteQuest(s, q.id))}
               onEdit={(t, v) => act((s) => updateQuest(s, q.id, { title: t, ...v }))}
-              onImpact={(v) => act((s) => setQuestImpact(s, q.id, v))}
               steps={stepActions(act, q.id)}
             />
           ))}

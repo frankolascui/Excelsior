@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import type { Game } from './screens';
 import type { Quest, WeeklyReview } from './types';
-import { completeQuest, dayKey, PRIORITY_BONUS, shiftDay } from './game';
+import { completeQuest, dayKey, impactOf, PRIORITY_BONUS, shiftDay } from './game';
 import {
   IMPACTS, MAX_PRIORITIES, dropQuest, keepQuest, postponeQuest, priorityCandidates, priorityIds, priorityQuests, setPriorities, staleAge, staleQuests,
 } from './priorities';
@@ -13,7 +13,7 @@ import './priorities.css';
 import { InfoTip } from './infotip';
 import { sfx } from './sfx';
 
-const impactName = (q: Quest) => (q.impact ? IMPACTS.find((x) => x.id === q.impact)!.name.toLowerCase() : null);
+const impactName = (q: Quest) => IMPACTS.find((x) => x.id === impactOf(q))!.name.toLowerCase();
 
 /** Lista para marcar hasta 3 misiones de un día. Guarda al pulsar «Listo». */
 export function PriorityPicker({ game, day, onDone, compact = false }: { game: Game; day: string; onDone?: () => void; compact?: boolean }) {
@@ -41,7 +41,7 @@ export function PriorityPicker({ game, day, onDone, compact = false }: { game: G
               <button type="button" className={`prio-option${on ? ' on' : ''}`} aria-pressed={on} disabled={full} onClick={() => flip(q.id)}>
                 <span className="prio-box" aria-hidden="true">{on ? picked.indexOf(q.id) + 1 : ''}</span>
                 <span className="prio-title">{q.title}</span>
-                {q.impact && <span className={`impact-tag imp-${q.impact}`}><Icon name="target" /> {impactName(q)}</span>}
+                <span className={`impact-tag imp-${impactOf(q)}`}><Icon name="target" /> {impactName(q)}</span>
               </button>
             </li>
           );
@@ -76,7 +76,7 @@ export function TopThree({ game, now }: { game: Game; now: number }) {
           <h3 id="top3-h"><Icon name="flag" /> Las 3 de hoy</h3>
           <InfoTip label="Para qué sirve">
             <p>Antes de hacer, decide qué merece tu tiempo. Elige como máximo tres misiones: «¿Qué hago ahora?» te propone primero la de más impacto de ellas.</p>
-            <p>Cerrar las tres el mismo día da +{PRIORITY_BONUS} XP. Marcar el impacto no da XP.</p>
+            <p>Cerrar las tres el mismo día da +{PRIORITY_BONUS} XP.</p>
           </InfoTip>
         </div>
         {quests.length > 0 && !picking && <button className="link" onClick={() => setPicking(true)}>Cambiar</button>}
@@ -97,7 +97,7 @@ export function TopThree({ game, now }: { game: Game; now: number }) {
                   ? <span className="check checked" aria-hidden="true">✓</span>
                   : <button className="check" aria-label={`Completar ${q.title}`} title="Completar misión" onClick={() => act((s) => completeQuest(s, q.id, Date.now()), undefined, { party: q.type === 'main' })}>✓</button>}
                 <span className="top3-title">{q.title}</span>
-                {q.impact && !q.completedAt && <span className={`impact-tag imp-${q.impact}`}><Icon name="target" /> {impactName(q)}</span>}
+                {!q.completedAt && <span className={`impact-tag imp-${impactOf(q)}`}><Icon name="target" /> {impactName(q)}</span>}
               </li>
             ))}
           </ol>
@@ -139,7 +139,7 @@ export function CleanupPanel({ game, now }: { game: Game; now: number }) {
       <header className="panel-head">
         <div className="with-info">
           <h3 id="cleanup-h">Limpieza</h3>
-          <InfoTip label="Por qué sale esto"><p>Misiones de impacto bajo con más de 14 días, o sin impacto marcado con más de 30. Acumular lo que no importa también cuesta: decide y libera la lista.</p></InfoTip>
+          <InfoTip label="Por qué sale esto"><p>Misiones de impacto bajo con más de 14 días, o medio con más de 30. Acumular lo que no importa también cuesta: decide y libera la lista.</p></InfoTip>
         </div>
         <span className="count mono">{stale.length}</span>
       </header>
@@ -148,7 +148,7 @@ export function CleanupPanel({ game, now }: { game: Game; now: number }) {
           <li key={q.id} className="item cleanup-item">
             <div className="item-body">
               <span className="item-title">{q.title}</span>
-              <span className="item-meta muted">{staleAge(q, now)} días pendiente{q.impact ? ` · impacto ${impactName(q)}` : ' · sin impacto marcado'}</span>
+              <span className="item-meta muted">{staleAge(q, now)} días pendiente · impacto {impactName(q)}</span>
             </div>
             <div className="item-actions">
               <button className="ghost small" onClick={() => act((s) => keepQuest(s, q.id, Date.now()))} title="Se queda; no vuelve a preguntar en 14 días">La hago</button>
