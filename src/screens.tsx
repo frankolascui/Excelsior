@@ -216,7 +216,7 @@ export function Dashboard({
             {prioQs.length === 3 && prioDone === 3 && <p className="now-note"><Icon name="check" /> Las 3 de hoy, hechas: +{PRIORITY_BONUS} XP.</p>}
             {s.kind !== 'create' && (
               <div className="now-foot">
-                {prioQs.length === 0 && pending.length > 0 && !fresh && <button className="link" onClick={() => setPicking(true)}><Icon name="flag" /> Elegir las 3 de hoy</button>}
+                {prioQs.length === 0 && pending.length > 0 && <button className="link" onClick={() => setPicking(true)}><Icon name="flag" /> Elegir las 3 de hoy</button>}
                 {more > 0 && <button className="link" onClick={() => go('misiones')}>{more} {more === 1 ? 'misión más' : 'misiones más'} <Icon name="arrow-right" /></button>}
                 <QuickCapture onAdd={(t) => act((st) => addQuest(st, t, 'daily', Date.now()))} />
               </div>
@@ -233,7 +233,7 @@ export function Dashboard({
 
       <div className={state.habits.length > 0 ? 'columns' : 'columns one'}>
         <div className="col-stack">
-        {!fresh && <TomorrowPanel game={game} now={now} />}
+        {(pending.length > 0 || !fresh) && <TomorrowPanel game={game} now={now} />}
         <RemindersPanel game={game} now={now} />
         {/* en escritorio llena el hueco bajo los recordatorios; en el móvil baja tras los hábitos (CSS) */}
         {!fresh && <div className="today-dayclose"><DayClose game={game} now={now} /></div>}
