@@ -5,7 +5,7 @@ import type { Game } from './screens';
 import type { Quest, WeeklyReview } from './types';
 import { completeQuest, dayKey, impactOf, PRIORITY_BONUS, shiftDay } from './game';
 import {
-  IMPACTS, MAX_PRIORITIES, dropQuest, keepQuest, postponeQuest, priorityCandidates, priorityIds, priorityQuests, setPriorities, staleAge, staleQuests,
+  IMPACTS, MAX_PRIORITIES, dropQuest, keepQuest, postponeQuest, priorityCandidates, priorityIds, priorityQuests, setPriorities, staleAge, staleQuests, tomorrowQuests,
 } from './priorities';
 import { currentChange, previousReview, saveWeeklyReview, VERDICTS, weekFocus, weeklyReview } from './review';
 import { Icon } from './icons';
@@ -126,6 +126,28 @@ export function TomorrowPriorities({ game, now }: { game: Game; now: number }) {
         : chosen.length ? <ol className="tomorrow-list">{chosen.map((q) => <li key={q.id}>{q.title}</li>)}</ol>
         : <p className="muted small-text">Decídelas hoy y mañana te despiertas sabiendo qué hacer.</p>}
     </div>
+  );
+}
+
+/** Misiones: lo que toca mañana. Las 3 elegidas, lo que vence y lo que vuelve (pospuestas y repeticiones). */
+export function TomorrowPanel({ game, now }: { game: Game; now: number }) {
+  const { due, back } = tomorrowQuests(game.state, now);
+  return (
+    <section className="panel tomorrow-panel" aria-labelledby="tomorrow-h">
+      <header className="panel-head">
+        <div className="with-info">
+          <h3 id="tomorrow-h"><Icon name="sunrise" /> Mañana</h3>
+          <InfoTip label="Para qué sirve"><p>Deja decididas hoy las 3 de mañana: al día siguiente salen solas en Hoy. Lo que no terminas de Las 3 de hoy lo puedes pasar aquí desde Hoy.</p></InfoTip>
+        </div>
+      </header>
+      <TomorrowPriorities game={game} now={now} />
+      {due.length > 0 && (
+        <p className="tomorrow-more"><Icon name="calendar" /> Vence mañana: {due.map((q) => q.title).join(' · ')}</p>
+      )}
+      {back.length > 0 && (
+        <p className="tomorrow-more muted"><Icon name="repeat" /> Vuelve mañana: {back.map((q) => q.title).join(' · ')}</p>
+      )}
+    </section>
   );
 }
 

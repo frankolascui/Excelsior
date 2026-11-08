@@ -23,6 +23,7 @@ const state = {
     q('q4', 'Ordenar el escritorio', 'side', 20, { impact: 'bajo' }),
     q('q5', 'Ver el curso de Notion', 'side', 35),
     q('q6', 'Leer 20 páginas', 'daily', 2, { impact: 'medio' }),
+    q('q7', 'Entregar la práctica', 'daily', 1, { impact: 'medio', deadline: '2026-11-10' }),
   ],
   habits: [], habitCompletions: [], sessions: [], activeTimer: null, kingdoms: [], goals: [], rewards: [], purchases: [], bosses: [],
   xp: [1, 2, 3, 4].map((d) => ({ id: `x${d}`, at: NOW - d * DAY, amount: 60, source: 'quest', sourceId: `old${d}`, label: 'Antes', attributes: { voluntad: 3 } })),
@@ -89,6 +90,16 @@ check(now.includes('Preparar la presentación') || now.includes('Terminar el tem
 check(!(await page.isVisible('.now .top3-list li:has-text("' + now.trim().slice(0, 12) + '")')), 'y no se repite en la lista de debajo');
 await page.screenshot({ path: `${out}/p2-las-3-de-hoy.png`, fullPage: true });
 
+// Pasar a mañana lo que hoy no llegas
+await page.click('.now-rest button[aria-label="Pasar a mañana Leer 20 páginas"]');
+check(!(await page.isVisible('.now-rest li:has-text("Leer 20 páginas")')), 'pasar a mañana la quita de Las 3 de hoy');
+check(await seen(page, '.now .eyebrow:has-text("Las 3 de hoy · 0/2")'), 'y quedan 2 para hoy');
+// volver a traerla para cerrar las tres
+await page.click('.now-top button:has-text("Cambiar")');
+await page.click('.prio-option:has-text("Leer 20 páginas")');
+await page.click('.now button:has-text("Fijar prioridades")');
+check(await seen(page, '.now .eyebrow:has-text("Las 3 de hoy · 0/3")'), 'se puede volver a elegir para hoy');
+
 // Bonus al cerrar las tres
 for (let i = 0; i < 3; i++) {
   await page.click('.now button:has-text("Ya la terminé")');
@@ -102,6 +113,9 @@ if (await page.isVisible('.calendar')) await page.click('[role=radio]:has-text("
 check(await seen(page, '.cleanup .cleanup-item:has-text("Ordenar el escritorio")'), 'limpieza: impacto bajo con más de 14 días');
 check(await seen(page, '.cleanup .cleanup-item:has-text("Ver el curso de Notion")'), 'limpieza: misiones antiguas sacan el impacto de su tipo');
 check(!(await page.isVisible('.cleanup .cleanup-item:has-text("Responder correos")')), 'lo bajo pero reciente no sale');
+check(await seen(page, '.tomorrow-panel .tomorrow-list li:has-text("Leer 20 páginas")'), 'Misiones → Mañana muestra lo pasado a mañana');
+check(await seen(page, '.tomorrow-panel .tomorrow-more:has-text("Entregar la práctica")'), 'y lo que vence mañana');
+await page.locator('.tomorrow-panel').screenshot({ path: `${out}/p7-misiones-manana.png` });
 await page.fill('#new-quest', 'Llamar al tutor del TFG');
 await page.click('[data-tour="quest-add"] [role=radio]:has-text("Alto")');
 await page.screenshot({ path: `${out}/p3-impacto-al-crear.png` });
@@ -122,7 +136,7 @@ check(!(await page.isVisible('.cleanup')), 'posponer la quita de la limpieza');
 await page.click('.nav-item:has-text("Hoy")');
 await page.click('.dayclose-folded button:has-text("Hacerlo ahora")');
 await page.fill('#day-advanced', 'Presentación terminada.');
-await page.click('.tomorrow button:has-text("Elegir")');
+await page.click('.day-close .tomorrow-head .link');
 await page.click('.tomorrow .prio-option:has-text("Llamar al tutor")');
 await page.click('.tomorrow button:has-text("Fijar prioridades")');
 check(await seen(page, '.tomorrow-list li:has-text("Llamar al tutor")'), 'las de mañana quedan elegidas');

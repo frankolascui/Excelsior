@@ -43,10 +43,10 @@ import { DragHandle, draftToProgression, HabitHints, MinimumInput, PerDayInput, 
 import { atMax, levelUp, restoreHabit, retireHabit, setProgression, snoozeHint } from './progression';
 import { InfoTip } from './infotip';
 import { QuestHistory } from './quest-history';
-import { CleanupPanel, PriorityPicker } from './priorities-ui';
+import { CleanupPanel, PriorityPicker, TomorrowPanel } from './priorities-ui';
 import { currentChange, weekFocus } from './review';
 import { RitualCTA } from './ritual';
-import { IMPACTS, priorityIds, priorityQuests, setQuestImpact } from './priorities';
+import { IMPACTS, priorityIds, priorityQuests, pushToTomorrow, setQuestImpact } from './priorities';
 import { ACHIEVEMENTS } from './achievements';
 
 export type Game = ReturnType<typeof useGame>;
@@ -130,6 +130,12 @@ export function Dashboard({
   const focus = weekFocus(state, now);
   const change = currentChange(state, now);
   const complete = (q: Quest) => act((st) => completeQuest(st, q.id, Date.now()), CAP_QUEST, questOpts(q));
+  // «Pasar a mañana»: sale de Las 3 de hoy y entra en las de mañana (si mañana aún tiene hueco)
+  const toTomorrow = (q: Quest) => {
+    if (!pushToTomorrow(state, q.id, Date.now()).ok) { game.toast('Mañana ya tiene 3 prioridades. Cámbialas en Misiones → Mañana.', 'info'); return; }
+    act((st) => pushToTomorrow(st, q.id, Date.now()).state);
+    game.toast('Pasada a mañana', 'info');
+  };
 
   return (
     <div className="screen">
@@ -165,6 +171,7 @@ export function Dashboard({
                   <button className="primary big" onClick={() => focusQuest(hero)}><Icon name="play" /> Empezar Deep Work</button>
                   <button className="secondary big" onClick={() => complete(hero)}><Icon name="check" /> Ya la terminé</button>
                 </div>
+                {heroIsPrio && <button className="link small now-push" onClick={() => toTomorrow(hero)}><Icon name="sunrise" /> Hoy no llego: pasar a mañana</button>}
               </>
             )}
             {s.kind === 'habit' && (
@@ -198,6 +205,7 @@ export function Dashboard({
                       ? <span className="check checked" aria-hidden="true">✓</span>
                       : <button className="check" aria-label={`Completar ${q.title}`} title="Completar misión" onClick={() => complete(q)}>✓</button>}
                     <span className="top3-title">{q.title}</span>
+                    {!q.completedAt && <button className="ghost small push-btn" onClick={() => toTomorrow(q)} aria-label={`Pasar a mañana ${q.title}`} title="Pasar a mañana"><Icon name="sunrise" /><span className="push-label"> Mañana</span></button>}
                     {!q.completedAt && <button className="ghost small" onClick={() => focusQuest(q)} title="Hacer Deep Work en esta misión"><Icon name="play" /> Foco</button>}
                   </li>
                 ))}
@@ -348,6 +356,7 @@ export function Quests({ game, focusQuest, startFocus }: { game: Game; focusQues
         <QuestTemplates game={game} />
       </section>
       <CleanupPanel game={game} now={now} />
+      <TomorrowPanel game={game} now={now} />
       <section className="panel">
         <header className="panel-head"><h3>Pendientes</h3><span className="count mono">{pending.length}</span></header>
         {pending.length === 0 ? <p className="empty">Nada pendiente. Crea una misión arriba.</p> : (

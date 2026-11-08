@@ -101,3 +101,28 @@ export function postponeQuest(s: GameState, id: string, now: number, days = 7): 
 }
 
 export const dropQuest = deleteQuest;
+
+/**
+ * «Pasar a mañana»: la quita de las prioridades de hoy y la pone en las de mañana (al final).
+ * Si mañana ya tiene 3, no hace nada y devuelve ok = false.
+ */
+export function pushToTomorrow(s: GameState, id: string, now: number): { state: GameState; ok: boolean } {
+  const today = dayKey(now);
+  const tomorrow = dayKey(shiftDay(now, 1));
+  const next = priorityIds(s, tomorrow);
+  if (!next.includes(id) && next.length >= MAX_PRIORITIES) return { state: s, ok: false };
+  let state = setPriorities(s, today, priorityIds(s, today).filter((x) => x !== id), now);
+  state = setPriorities(state, tomorrow, next.includes(id) ? next : [...next, id], now);
+  return { state, ok: true };
+}
+
+/** Lo que toca mañana además de las prioridades: lo que vence y lo que vuelve (repeticiones y pospuestas). */
+export function tomorrowQuests(s: GameState, now: number): { due: Quest[]; back: Quest[] } {
+  const tomorrow = dayKey(shiftDay(now, 1));
+  const prio = priorityIds(s, tomorrow);
+  const open = s.quests.filter((q) => !q.completedAt && !prio.includes(q.id));
+  return {
+    due: open.filter((q) => q.deadline === tomorrow),
+    back: open.filter((q) => q.startsOn === tomorrow),
+  };
+}

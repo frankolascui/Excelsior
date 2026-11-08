@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { addQuest, completeQuest, createProfile, dayKey, emptyState, impactOf, pendingQuests, PRIORITY_BONUS, shiftDay, suggest, undoQuest } from './game';
-import { keepQuest, postponeQuest, priorityQuests, priorityWeek, setPriorities, setQuestImpact, staleQuests } from './priorities';
+import { keepQuest, postponeQuest, priorityQuests, priorityWeek, pushToTomorrow, setPriorities, setQuestImpact, staleQuests, tomorrowQuests } from './priorities';
 import { currentChange, previousReview, reviewWeekKey, saveWeeklyReview, weekFocus } from './review';
 import { weekStart } from './summary';
 import type { GameState } from './types';
@@ -125,5 +125,30 @@ describe('revisión semanal', () => {
     expect(previousReview(s, next)?.change).toBe('Móvil fuera');
     s = saveWeeklyReview(s, next, { prevVerdict: 'si' }, NOW + 7 * DAY);
     expect(s.weeklyReviews?.map((r) => r.week)).toEqual([week, next]);
+  });
+});
+
+describe('pasar a mañana', () => {
+  it('la mueve de hoy a mañana y respeta el máximo de 3', () => {
+    let s = withQuests('A', 'B', 'C', 'D', 'E');
+    const [a, b, c, d, e] = s.quests.map((q) => q.id);
+    const tomorrow = dayKey(NOW + DAY);
+    s = setPriorities(s, TODAY, [a, b], NOW);
+    s = setPriorities(s, tomorrow, [c, d], NOW);
+    const r = pushToTomorrow(s, a, NOW);
+    expect(r.ok).toBe(true);
+    expect(priorityQuests(r.state, TODAY).map((q) => q.title)).toEqual(['B']);
+    expect(priorityQuests(r.state, tomorrow).map((q) => q.title)).toEqual(['C', 'D', 'A']);
+    const full = pushToTomorrow(setPriorities(r.state, TODAY, [b, e], NOW), b, NOW);
+    expect(full.ok).toBe(false);
+  });
+
+  it('lista lo que vence y lo que vuelve mañana', () => {
+    let s = withQuests('Vence', 'Vuelve', 'Otra');
+    const tomorrow = dayKey(NOW + DAY);
+    s = { ...s, quests: s.quests.map((q) => (q.title === 'Vence' ? { ...q, deadline: tomorrow } : q.title === 'Vuelve' ? { ...q, startsOn: tomorrow } : q)) };
+    const t = tomorrowQuests(s, NOW);
+    expect(t.due.map((q) => q.title)).toEqual(['Vence']);
+    expect(t.back.map((q) => q.title)).toEqual(['Vuelve']);
   });
 });
