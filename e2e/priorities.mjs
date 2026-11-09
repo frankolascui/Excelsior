@@ -138,7 +138,7 @@ check(!(await page.isVisible('.cleanup')), 'posponer la quita de la limpieza');
 await page.click('.nav-item:has-text("Hoy")');
 await page.click('.dayclose-folded button:has-text("Hacerlo ahora")');
 await page.fill('#day-advanced', 'Presentación terminada.');
-await page.click('.tomorrow-panel .tomorrow-head .link');
+await page.click('.tomorrow-panel .panel-head .link');
 await page.click('.tomorrow .prio-option:has-text("Llamar al tutor")');
 await page.click('.tomorrow button:has-text("Fijar prioridades")');
 check(await seen(page, '.tomorrow-list li:has-text("Llamar al tutor")'), 'las de mañana quedan elegidas');

@@ -46,7 +46,7 @@ export function SettingsScreen({
         <ConfirmButton label="Borrar personaje" confirmLabel="Sí, borrar todo" onConfirm={game.reset} />
         <DeleteAccount game={game} />
       </section>
-      <p className="app-version"><VersionButton className="mono" label={APP_VERSION_LABEL} /></p>
+      <p className="app-version"><VersionButton className="" label={APP_VERSION_LABEL} /></p>
     </div>
   );
 }
@@ -181,7 +181,7 @@ function SettingsPanel({
 
   return (
     <section className="panel" aria-labelledby="settings-h" data-tour="settings">
-      <h3 id="settings-h">Ajustes</h3>
+      <h3 id="settings-h">Preferencias</h3>
 
       <h4 className="sub-h">Tema</h4>
       <div className="themes" role="radiogroup" aria-label="Tema de color">

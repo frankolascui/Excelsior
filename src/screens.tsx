@@ -149,7 +149,7 @@ export function Dashboard({
           <p className="eyebrow" id="now-h">
             {heroIsPrio && !picking ? <><Icon name="flag" /> Las 3 de hoy · {prioDone}/{prioQs.length}</> : '¿Qué hago ahora?'}
           </p>
-          {prioQs.length > 0 && !picking && <button className="link small" onClick={() => setPicking(true)}>Cambiar</button>}
+          {prioQs.length > 0 && !picking && <button className="link" onClick={() => setPicking(true)}>Cambiar</button>}
         </div>
         {picking ? (
           <PriorityPicker game={game} day={today} onDone={() => setPicking(false)} compact />
@@ -169,7 +169,7 @@ export function Dashboard({
                   Impacto {IMPACTS.find((x) => x.id === impactOf(hero))!.name.toLowerCase()} · 
                   +{questXp(hero)} XP{heroDue && <> · {deadlineLabel(heroDue, now).text}</>}
                 </p>
-                <div className="row">
+                <div className="row now-actions">
                   <button className="primary big" onClick={() => focusQuest(hero)}><Icon name="play" /> Empezar Deep Work</button>
                   <button className="secondary big" onClick={() => complete(hero)}><Icon name="check" /> Ya la terminé</button>
                 </div>
@@ -649,11 +649,12 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
       <p className="mono muted small-text dw-area">Sube {DEEP_WORK_AREA_HINT[inferDeepWorkArea(linkedQuest?.title ?? intent)]} y Voluntad</p>
 
       <div className="modes" data-tour="modes">
-        <button className="mode-card" onClick={() => start()}>
+        <div className="mode-card as-div mode-free">
           <span className="mode-icon" aria-hidden="true"><Icon name="timer" /></span>
           <span className="mode-title">Sesión libre</span>
           <span className="mode-sub">Cronómetro. Paras cuando quieras.</span>
-        </button>
+          <button className="primary wide" onClick={() => start()}><Icon name="play" /> Empezar sesión libre</button>
+        </div>
         <div className="mode-card as-div">
           <span className="mode-icon" aria-hidden="true"><Icon name="repeat" /></span>
           <span className="mode-title">Pomodoro</span>

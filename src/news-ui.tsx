@@ -42,8 +42,10 @@ export function openNews() {
 /** La versión visible de la app: al pulsarla vuelve a salir el aviso de novedades. */
 export function VersionButton({ label, className, onClick }: { label: string; className: string; onClick?: () => void }) {
   return (
-    <button type="button" className={`${className} version-btn`} onClick={() => { onClick?.(); openNews(); }} title="Ver las novedades de esta versión">
-      {label}
+    <button type="button" className={`${className} version-btn`} onClick={() => { onClick?.(); openNews(); }} title="Ver las novedades de esta versión" aria-label={`${label}: ver novedades`}>
+      <Icon name="sparkles" className="ver-ico" />
+      <span className="ver-name">Excelsior RPG</span>
+      <span className="ver-tag">V{APP_VERSION}</span>
     </button>
   );
 }

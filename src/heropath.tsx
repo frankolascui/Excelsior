@@ -3,7 +3,6 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { GameState } from './types';
 import { AVATARS, avatarInfo, avatarRequirements, requirementStatus } from './attributes';
 import { AvatarPortrait, initialOf } from './portrait';
-import { RitualCTA } from './ritual';
 import { DEFAULT_GUIDE } from './tutorial';
 import { Birds, Clouds, Mist, ShootingStars } from './sky-fx';
 import { Icon } from './icons';
@@ -188,7 +187,7 @@ export function HeroPath({ state, now }: { state: GameState; now: number }) {
             ))}
           </ul>
         )}
-        {st === 'next' && <RitualCTA state={state} now={now} />}
+        {/* El botón del ritual va solo en la tarjeta «Avatar actual», más abajo: aquí basta la etiqueta «Ritual disponible». */}
       </div>
     </section>
   );

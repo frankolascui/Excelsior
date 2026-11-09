@@ -199,8 +199,10 @@ export default function App() {
           <span className="nav-label">Más</span>
           {avatar.ready && <span className="nav-new" aria-label="Ritual disponible" />}
         </button>
-        <div className="nav-level mono">Nv {level} · <CoinBadge amount={coinBalance(state, Date.now())} /></div>
-        <VersionButton className="nav-version mono" label={APP_VERSION_LABEL} />
+        <div className="nav-foot">
+          <div className="nav-level mono">Nv {level} · <CoinBadge amount={coinBalance(state, Date.now())} /></div>
+          <VersionButton className="nav-version" label={APP_VERSION_LABEL} />
+        </div>
       </nav>
 
       {sheet && (
@@ -216,7 +218,7 @@ export default function App() {
                 </button>
               )}
             </div>
-            <p className="mob-sheet-foot mono">Nv {level} · <CoinBadge amount={coinBalance(state, Date.now())} /> · <VersionButton className="mono" label={APP_VERSION_LABEL} onClick={() => setSheet(null)} /></p>
+            <p className="mob-sheet-foot mono">Nv {level} · <CoinBadge amount={coinBalance(state, Date.now())} /> · <VersionButton className="" label={APP_VERSION_LABEL} onClick={() => setSheet(null)} /></p>
           </div>
         </div>
       )}

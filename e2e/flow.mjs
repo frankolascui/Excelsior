@@ -17,7 +17,7 @@ await page.goto(url);
 /** Sesión libre de Deep Work de `minutes` minutos; cierra la subida de nivel salvo que se pida conservarla. */
 async function deepWork(minutes, keepLevelUp = false) {
   await page.click('.nav-item:has-text("Deep Work")');
-  await page.click('button.mode-card:has-text("Sesión libre")');
+  await page.click('.mode-free button:has-text("Empezar sesión libre")');
   await page.clock.fastForward(minutes * 60_000);
   await page.waitForTimeout(300);
   await page.click('text=Terminar sesión');
@@ -162,13 +162,13 @@ check(await seen('.toast:has-text("+20 XP")'), 'toast +20 XP');
 check(await seen('.achv-pop:has-text("Primer Juramento")'), 'logro épico al completar la primera misión');
 await page.screenshot({ path: `${out}/03b-logro.png` });
 await page.click('.achv-pop');
-check(await seen('.nav-version:has-text("Excelsior RPG V2.")'), 'la versión de la app se ve en una esquina');
+check(await seen('.nav-version:has-text("Excelsior RPG") .ver-tag:has-text("V2.")'), 'la versión de la app se ve en una esquina');
 await page.click('.nav-item:has-text("Hoy")');
 check((await page.textContent('.hero-line .levelbar-foot')).includes('20 / 100'), 'la fila del personaje en Hoy marca 20/100 XP');
 
 // 4. Deep Work vinculado a la misión principal (45 min simulados)
 await page.click('button:has-text("Empezar Deep Work")');
-await page.click('button.mode-card:has-text("Sesión libre")');
+await page.click('.mode-free button:has-text("Empezar sesión libre")');
 check(await seen('.phase-pill:has-text("Foco")'), 'cronómetro libre en marcha');
 await page.clock.fastForward('45:10');
 await page.waitForTimeout(300);

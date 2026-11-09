@@ -25,7 +25,7 @@ const state = {
   profile: { ...backup.profile, createdAt: now - 30 * DAY },
   xp: [{ id: 'old', at: now - 20 * DAY, amount: 6000, source: 'quest', sourceId: 'old', label: 'Mucho trabajo', attributes: { voluntad: 10 } }],
   sessions: [],
-  tours: ['intro', 'reinos', 'arena', 'gremios'],
+  tours: ['intro', 'reinos', 'arena', 'gremios'], newsSeen: readFileSync('src/version.ts', 'utf8').match(/APP_VERSION = '([^']+)'/)[1], // sin el aviso de novedades encima
 };
 
 const mondayKey = () => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };

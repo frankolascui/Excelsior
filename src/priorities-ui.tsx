@@ -114,15 +114,23 @@ export function TopThree({ game, now }: { game: Game; now: number }) {
 }
 
 /** En el cierre del día: deja elegidas las prioridades de mañana. */
-export function TomorrowPriorities({ game, now }: { game: Game; now: number }) {
+export function TomorrowPriorities({ game, now, bare, open: openProp, setOpen: setOpenProp }: {
+  game: Game; now: number;
+  /** Dentro del panel «Mañana»: sin su propia cabecera (el panel ya pone el título y el botón). */
+  bare?: boolean; open?: boolean; setOpen?: (v: boolean) => void;
+}) {
   const tomorrow = dayKey(shiftDay(now, 1));
   const chosen = priorityQuests(game.state, tomorrow);
-  const [open, setOpen] = useState(false);
+  const [openLocal, setOpenLocal] = useState(false);
+  const open = openProp ?? openLocal;
+  const setOpen = setOpenProp ?? setOpenLocal;
   return (
     <div className="tomorrow">
-      <p className="tomorrow-head"><Icon name="sunrise" /> <b>Las 3 de mañana</b>
-        {!open && <button type="button" className="link" onClick={() => setOpen(true)}>{chosen.length ? 'Cambiar' : 'Elegir'}</button>}
-      </p>
+      {!bare && (
+        <p className="tomorrow-head"><Icon name="sunrise" /> <b>Las 3 de mañana</b>
+          {!open && <button type="button" className="link" onClick={() => setOpen(true)}>{chosen.length ? 'Cambiar' : 'Elegir'}</button>}
+        </p>
+      )}
       {open ? <PriorityPicker game={game} day={tomorrow} onDone={() => setOpen(false)} compact />
         : chosen.length ? (
           <ol className="tomorrow-list">
@@ -143,15 +151,18 @@ export function TomorrowPriorities({ game, now }: { game: Game; now: number }) {
 /** Misiones: lo que toca mañana. Las 3 elegidas, lo que vence y lo que vuelve (pospuestas y repeticiones). */
 export function TomorrowPanel({ game, now }: { game: Game; now: number }) {
   const { due, back } = tomorrowQuests(game.state, now);
+  const [open, setOpen] = useState(false);
+  const chosen = priorityQuests(game.state, dayKey(shiftDay(now, 1)));
   return (
     <section className="panel tomorrow-panel" aria-labelledby="tomorrow-h">
       <header className="panel-head">
         <div className="with-info">
-          <h3 id="tomorrow-h"><Icon name="sunrise" /> Mañana</h3>
+          <h3 id="tomorrow-h"><Icon name="sunrise" /> Las 3 de mañana</h3>
           <InfoTip label="Para qué sirve"><p>Deja decididas hoy las 3 de mañana: al día siguiente salen solas en Hoy. Lo que no terminas de Las 3 de hoy lo puedes pasar aquí desde Hoy.</p></InfoTip>
         </div>
+        {!open && <button type="button" className="link" onClick={() => setOpen(true)}>{chosen.length ? 'Cambiar' : 'Elegir'}</button>}
       </header>
-      <TomorrowPriorities game={game} now={now} />
+      <TomorrowPriorities game={game} now={now} bare open={open} setOpen={setOpen} />
       {due.length > 0 && (
         <p className="tomorrow-more"><Icon name="calendar" /> Vence mañana: {due.map((q) => q.title).join(' · ')}</p>
       )}

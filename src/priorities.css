@@ -130,7 +130,7 @@ html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted) 2
 ::-webkit-scrollbar-corner { background: transparent; }
 
 /* Pasar a mañana y bloque «Mañana» en Misiones */
-.now .link.now-push { margin-top: 8px; color: var(--muted); font-size: 14px; }
+.now .link.now-push { margin-top: 8px; color: var(--muted); font-size: 14px; font-weight: 500; }
 .now .link.now-push:hover { color: var(--text); }
 .now-rest .push-btn { color: var(--muted); }
 .now-rest .push-btn:hover { color: var(--text); }
@@ -169,3 +169,5 @@ html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted) 2
 .tomorrow-list .icon-btn { flex: none; width: 28px; height: 28px; color: var(--muted); }
 .tomorrow-list .icon-btn:hover { color: var(--text); }
 .tomorrow-list li.done .tomorrow-title { text-decoration: line-through; color: var(--muted); }
+/* Móvil: los dos botones de «¿Qué hago ahora?» a lo ancho, uno debajo del otro (antes uno largo y otro corto) */
+@media (max-width: 560px) { .now-actions > * { flex: 1 1 100%; } }

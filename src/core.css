@@ -326,21 +326,9 @@ button.tg-session { font-family: inherit; justify-content: flex-start; align-ite
 }
 .arena-coins .muted { font-size: 13px; font-weight: 500; }
 
-/* Botones más bonitos: plegables, Logros y Tienda */
-.fold-btn, .achv-open {
-  border-radius: 12px; border-color: color-mix(in srgb, var(--c1) 22%, var(--line));
-  background: linear-gradient(180deg, color-mix(in srgb, var(--c2) 9%, var(--surface-2)), var(--surface-2));
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.12s ease, background 0.18s ease;
-}
-.fold-btn .ico:first-child, .achv-open .ico:first-child { color: var(--c1); }
-.fold-btn:hover, .achv-open:hover {
-  border-color: color-mix(in srgb, var(--c1) 55%, var(--line)); transform: translateY(-1px);
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--c1) 18%, transparent);
-}
+/* Plegables, Logros y Tienda usan el botón secundario de siempre (styles.css); aquí solo su flecha y el estado abierto. */
 .fold.open > .fold-btn { border-color: color-mix(in srgb, var(--c1) 45%, var(--line)); }
 .fold-btn > .ico:last-child { margin-left: 2px; opacity: 0.7; transition: transform 0.18s ease; }
-.shop-jump { border-radius: 999px; padding: 8px 16px; }
-.shop-jump:hover:not(:disabled) { transform: translateY(-1px); }
 /* En escritorio, lo que va a la derecha del título no se mete debajo de ⚙ y el altavoz (fijos arriba a la derecha) */
 @media (min-width: 761px) {
   .arena-top, .screen > .title-row { padding-right: max(0px, calc(80px - max(0px, (100vw - 1234px) / 2))); }
