@@ -17,7 +17,7 @@ await page.goto(url);
 /** Sesión libre de Deep Work de `minutes` minutos; cierra la subida de nivel salvo que se pida conservarla. */
 async function deepWork(minutes, keepLevelUp = false) {
   await page.click('.nav-item:has-text("Deep Work")');
-  await page.click('.mode-free button:has-text("Empezar sesión libre")');
+  await page.click('button.mode-card:has-text("Sesión libre")');
   await page.clock.fastForward(minutes * 60_000);
   await page.waitForTimeout(300);
   await page.click('text=Terminar sesión');
@@ -168,7 +168,7 @@ check((await page.textContent('.hero-line .levelbar-foot')).includes('20 / 100')
 
 // 4. Deep Work vinculado a la misión principal (45 min simulados)
 await page.click('button:has-text("Empezar Deep Work")');
-await page.click('.mode-free button:has-text("Empezar sesión libre")');
+await page.click('button.mode-card:has-text("Sesión libre")');
 check(await seen('.phase-pill:has-text("Foco")'), 'cronómetro libre en marcha');
 await page.clock.fastForward('45:10');
 await page.waitForTimeout(300);

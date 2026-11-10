@@ -538,7 +538,7 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
     const R = 120;
     const C = 2 * Math.PI * R;
     return (
-      <div className={`screen focus-screen phase-${totals.phase}`}>
+      <div className={`screen dw-screen focus-screen phase-${totals.phase}`}>
         <p className="eyebrow">{eyebrow}</p>
         {title && <h1 className="focus-label">{title}</h1>}
         {timer.pomodoro && (
@@ -595,7 +595,7 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
   const shown = result && result.id && !live ? null : result && live ? { ...result, minutes: live.minutes, xp: live.minutes * XP_RULES.deepWorkPerMinute } : result;
 
   return (
-    <div className="screen">
+    <div className="screen dw-screen">
       {asking && !game.levelUp && <RateDialog game={game} id={asking} onClose={() => setAsking(null)} />}
       <div className="with-info">
         <h1 className="screen-title">Deep Work</h1>
@@ -649,12 +649,11 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
       <p className="mono muted small-text dw-area">Sube {DEEP_WORK_AREA_HINT[inferDeepWorkArea(linkedQuest?.title ?? intent)]} y Voluntad</p>
 
       <div className="modes" data-tour="modes">
-        <div className="mode-card as-div mode-free">
+        <button className="mode-card" onClick={() => start()}>
           <span className="mode-icon" aria-hidden="true"><Icon name="timer" /></span>
           <span className="mode-title">Sesión libre</span>
           <span className="mode-sub">Cronómetro. Paras cuando quieras.</span>
-          <button className="primary wide" onClick={() => start()}><Icon name="play" /> Empezar sesión libre</button>
-        </div>
+        </button>
         <div className="mode-card as-div">
           <span className="mode-icon" aria-hidden="true"><Icon name="repeat" /></span>
           <span className="mode-title">Pomodoro</span>

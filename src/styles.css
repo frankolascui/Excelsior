@@ -481,9 +481,7 @@ button.mode-card:hover { transform: translateY(-2px); box-shadow: 0 0 0 1px colo
 .mode-icon { font-size: 26px; display: flex; }
 .mode-card > :not(.mode-icon, .mode-title) { grid-column: 1 / -1; }
 .mode-card > .wide { justify-self: stretch; }
-/* Sesión libre: el texto ocupa el hueco y su botón queda a la altura del de Pomodoro */
-.mode-card.mode-free { grid-template-rows: auto 1fr auto; align-items: start; }
-.mode-card.mode-free > .mode-icon, .mode-card.mode-free > .mode-title { align-self: center; }
+
 .mode-title { font-family: var(--display); font-size: 24px; font-weight: 700; }
 .mode-sub { color: var(--muted); }
 .linked { color: var(--muted); }
@@ -1650,3 +1648,11 @@ svg .node-icon { color: var(--fg); }
   .primary::after { display: none; }
   :is(.primary, .secondary, .ghost, .danger-solid, .chip-btn, .icon-btn):hover { transform: none !important; }
 }
+
+/* Deep Work conserva sus botones de antes (Nicolas, 2026-11-10): más grandes y en negrita, con el borde de 12 px */
+.dw-screen :is(.primary, .secondary, .ghost, .danger-solid):not(.small, .big) { min-height: 40px; padding: 10px 16px; border-radius: 12px; font-size: 17px; font-weight: 700; }
+.dw-screen .ghost:not(.small, .big) { font-weight: 500; }
+.dw-screen :is(.primary, .secondary, .ghost).small { min-height: 32px; padding: 4px 10px; border-radius: 10px; font-size: 14px; }
+.dw-screen :is(.primary, .secondary, .ghost, .danger-solid).big { min-height: 50px; padding: 13px 22px; border-radius: 14px; font-size: 18px; }
+.dw-screen .ghost { background: transparent; box-shadow: none; }
+.dw-screen .ghost > .ico:first-child { color: inherit; }
