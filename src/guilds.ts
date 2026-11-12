@@ -52,7 +52,7 @@ export const CHALLENGES: ChallengeTemplate[] = [
   {
     id: 'pacto-habitos', kind: 'mision', name: 'Pacto de los Hábitos', icon: 'linked-rings', days: 7,
     lore: 'Un eslabón por cada hábito cumplido. La cadena la forjáis todos.',
-    per: { habits: 8 }, min: { habits: 20 }, reward: 40, guildXp: 50,
+    per: { habits: 5 }, min: { habits: 12 }, reward: 40, guildXp: 50,
   },
   {
     id: 'forja-comun', kind: 'mision', name: 'La Forja Común', icon: 'anvil-impact', days: 7,
@@ -374,7 +374,9 @@ export async function refreshGuild(s: GameState, now = Date.now()): Promise<void
     if (err) throw err;
     const challenges = (ch ?? []) as ChallengeRow[];
     const active = challenges.find((c) => challengeState(c, now) === 'active');
-    if (active) await reportContribution(s, active);
+    // Si falla la subida de mi aportación, el gremio se muestra igual y el fallo se enseña (antes se perdía en silencio).
+    let reportError: string | null = null;
+    if (active) await reportContribution(s, active).catch((e) => { reportError = `No se pudo subir tu aportación. ${describe(e)}`; });
     const { data: contribs, error: e8 } = challenges.length
       ? await db.from('guild_contributions').select('challenge_id, user_id, deep, habits, xp').in('challenge_id', challenges.map((c) => c.id))
       : { data: [], error: null };
@@ -387,6 +389,7 @@ export async function refreshGuild(s: GameState, now = Date.now()): Promise<void
     set({
       loaded: true, loading: false, guild: guild as Guild, members: (members ?? []) as Member[], people, invites: [],
       sent: (sent ?? []) as Invite[], challenges, contributions: (contribs ?? []) as GuildState['contributions'], events,
+      error: reportError,
     });
     // Si con lo subido ya se ha ganado, se marca para todo el gremio.
     if (active) {
@@ -398,11 +401,26 @@ export async function refreshGuild(s: GameState, now = Date.now()): Promise<void
   }
 }
 
+// Encargos en los que ya existe mi fila de aportes (en esta sesión): a partir de ahí solo se actualiza.
+const reported = new Set<string>();
+
+/**
+ * Sube mi aportación. No usa upsert: el servidor solo deja actualizar deep, habits, xp y updated_at
+ * (supabase-gremios-2.sql), y un upsert intenta escribir también la clave. Primero alta; si ya existía, actualización.
+ */
 async function reportContribution(s: GameState, c: ChallengeRow) {
   const me = getUserId();
   if (!me) return;
-  const mine = contributionFor(s, Date.parse(c.starts_at), Date.parse(c.ends_at));
-  await cloudClient().from('guild_contributions').upsert({ challenge_id: c.id, user_id: me, ...mine, updated_at: new Date().toISOString() });
+  const db = cloudClient();
+  const mine = { ...contributionFor(s, Date.parse(c.starts_at), Date.parse(c.ends_at)), updated_at: new Date().toISOString() };
+  if (!reported.has(c.id)) {
+    const { error } = await db.from('guild_contributions').insert({ challenge_id: c.id, user_id: me, ...mine });
+    reported.add(c.id);
+    if (!error) return;
+    if ((error as { code?: string }).code !== '23505') { reported.delete(c.id); throw error; }
+  }
+  const { error } = await db.from('guild_contributions').update(mine).eq('challenge_id', c.id).eq('user_id', me);
+  if (error) throw error;
 }
 
 /** Pide al servidor que compruebe la victoria: él recalcula la regla del 30 %, la marca y elige al MVP. */

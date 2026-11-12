@@ -161,6 +161,10 @@ export interface SyncHooks {
   adopt(remote: GameState): GameState;
   /** Las dos partidas cambiaron por separado: el jugador elige. */
   conflict(remote: RemoteSave): void;
+  /** ¿Sabe esta versión de la app leer esa partida? Si no, ni se carga ni se pisa. */
+  supports?(remote: GameState): boolean;
+  /** La nube tiene una partida de una versión más nueva de la app. */
+  outdated?(): void;
 }
 let hooks: SyncHooks | null = null;
 let paused = false; // hay un conflicto esperando respuesta: no se sube nada
@@ -248,6 +252,13 @@ async function sync(mode: 'push' | 'check'): Promise<void> {
     if (!remote) {
       const local = hooks.get();
       if (local.profile && !(await write(local, digest(local), null))) return sync('check');
+      return;
+    }
+    if (hooks.supports && !hooks.supports(remote.state)) {
+      // La guardó una versión más nueva de la app: cargarla aquí la estropearía y subir encima la pisaría.
+      paused = true;
+      set({ status: 'error' });
+      hooks.outdated?.();
       return;
     }
     if (rec && 'legacyAt' in rec && remote.updatedAt <= rec.legacyAt) {
