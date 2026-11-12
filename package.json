@@ -12,8 +12,14 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.2",
+    "katex": "^0.16.47",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "react-markdown": "^10.1.0",
+    "rehype-katex": "^7.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
+    "ts-fsrs": "^5.4.2"
   },
   "devDependencies": {
     "@iconify-json/game-icons": "^1.2.4",

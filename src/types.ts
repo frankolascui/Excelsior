@@ -144,6 +144,8 @@ export interface DeepWorkSession {
   measured?: { minutes: number; endedAt: number };
   /** Nota al terminar (1–5): cuánto y qué tal rendiste, y con qué mentalidad. Da las horas productivas (productivity.ts). */
   rating?: { performance: number; mindset: number };
+  /** Sesión de repaso de Academy (V3): tarjetas repasadas y si la cola del día quedó vacía. */
+  study?: { cards: number; cleared: boolean };
 }
 
 export type XPSource = 'quest' | 'habit' | 'deepwork' | 'admin' | 'guild';

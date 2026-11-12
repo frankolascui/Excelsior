@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { APP_VERSION, APP_VERSION_LABEL } from './version';
 import { AchievementPopup } from './achievements-ui';
 import { useHealthBridge } from './health-ui';
+import { DeepWorkTabs } from './deepwork-tabs';
 import { useGame } from './store';
 import { addHabit, deleteHabit, hasSeenTour, levelInfo, markTour, totalXp, xpForLevel } from './game';
 import { avatarInfo } from './attributes';
@@ -241,7 +242,7 @@ export default function App() {
             {tab === 'arena' && <Arena game={game} />}
             {tab === 'amigos' && <Friends game={game} />}
             {tab === 'gremios' && <Guilds game={game} />}
-            {tab === 'deepwork' && <DeepWork key={preselect ?? `free:${presetIntent}`} game={game} preselect={preselect} presetIntent={presetIntent} clearPreselect={() => { setPreselect(null); setPresetIntent(''); }} />}
+            {tab === 'deepwork' && <DeepWorkTabs game={game} force={!!preselect || !!presetIntent}><DeepWork key={preselect ?? `free:${presetIntent}`} game={game} preselect={preselect} presetIntent={presetIntent} clearPreselect={() => { setPreselect(null); setPresetIntent(''); }} /></DeepWorkTabs>}
             {tab === 'habitos' && <Habits game={game} guide={tutorial.guide} />}
             {tab === 'personaje' && <Character game={game} />}
             {tab === 'ajustes' && (
