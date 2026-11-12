@@ -18,7 +18,7 @@ const state = {
   quests: [], habits: [{ id: 'h1', name: 'Leer 20 páginas', frequency: 'daily', createdAt: NOW - 30 * DAY, rewards: { sabiduria: 1 } }],
   habitCompletions: [], sessions: [], activeTimer: null, kingdoms: [{ id: 'k1', name: 'Reino de la Programación', createdAt: NOW - 20 * DAY }], goals: [], rewards: [], purchases: [], bosses: [],
   xp: Array.from({ length: 12 }, (_, d) => ({ id: `x${d}`, at: NOW - (d + 1) * DAY, amount: 100, source: 'quest', sourceId: `old${d}`, label: 'Antes', attributes: { voluntad: 2 } })),
-  tours: ['intro', 'reinos', 'arena', 'gremios'], newsSeen: '3.0', ascended: [],
+  tours: ['intro', 'reinos', 'arena', 'gremios', 'v3'], newsSeen: '3.0', ascended: [],
 };
 // Noches ya apuntadas (lunes a miércoles), como si vinieran de la web de Health.
 const night = (fecha, peso) => ({ fecha, percibido: { cama: '23:05', levantado: '07:00' }, reloj: { total_dormido_min: 440 }, preguntas: { descanso: 4, entrenos_ayer: 1 }, cuerpo: { peso_kg: peso } });

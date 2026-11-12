@@ -13,7 +13,7 @@ export function DeepWorkTabs({ game, force, children }: { game: Game; force: boo
     <>
       <div className="deep-tabs-row"><div className="segmented deep-tabs" role="tablist" aria-label="Deep Work">
         <button type="button" role="tab" aria-selected={panel === 'foco'} className={panel === 'foco' ? 'seg on' : 'seg'} onClick={() => pick('foco')}><Icon name="hourglass" /> Foco</button>
-        <button type="button" role="tab" aria-selected={panel === 'academy'} className={panel === 'academy' ? 'seg on' : 'seg'} onClick={() => pick('academy')} data-testid="tab-academy"><Icon name="graduate-cap" /> Academy</button>
+        <button type="button" role="tab" aria-selected={panel === 'academy'} className={panel === 'academy' ? 'seg on' : 'seg'} onClick={() => pick('academy')} data-testid="tab-academy" data-tour="academy"><Icon name="graduate-cap" /> Academy</button>
       </div></div>
       {panel === 'foco' ? children : <div className="screen"><h1 className="screen-title">Academy</h1><AcademyPanel game={game} /></div>}
     </>

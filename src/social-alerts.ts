@@ -1,20 +1,29 @@
 // Avisos sociales en el menú (V2): solicitudes de amistad, invitaciones de gremio y recompensas de gremio por cobrar.
 // Al entrar con cuenta se cargan amigos y gremio en segundo plano (y cada 10 min); de paso se entrega la corona semanal.
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import type { Game } from './screens';
 import { useCloud } from './cloud';
 import { refreshSocial, useSocial } from './social';
 import { challengeState, refreshGuild, useGuild } from './guilds';
 import { freshMe } from './ranking-ui';
 import { crownCheck } from './trophies';
-import { captureInvite, redeemInvite } from './invite';
+import { acceptInvite, captureInvite, clearInvite, prepareInvite, type InviteOffer } from './invite';
 
 // Si se abrió un enlace de invitación, el tag queda guardado hasta que haya cuenta.
 captureInvite();
 
 const EVERY = 10 * 60_000;
 
-export function useSocialAlerts(game: Game): { amigos: number; gremios: number } {
+export interface SocialAlerts {
+  amigos: number;
+  gremios: number;
+  /** Alguien te invitó por enlace: se pregunta antes de mandar nada. */
+  invite: InviteOffer | null;
+  answerInvite: (yes: boolean) => void;
+}
+
+export function useSocialAlerts(game: Game): SocialAlerts {
+  const [invite, setInvite] = useState<InviteOffer | null>(null);
   const me = useCloud().userId;
   const social = useSocial();
   const guild = useGuild();
@@ -28,11 +37,22 @@ export function useSocialAlerts(game: Game): { amigos: number; gremios: number }
     return () => clearInterval(t);
   }, [me, online]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Enlace de invitación: en cuanto hay perfil publicado, solicitud a quien te invitó.
+  // Enlace de invitación: en cuanto hay perfil publicado, se busca a quien te invitó y se pregunta.
   useEffect(() => {
     if (!social.me || social.loading) return;
-    void redeemInvite(social.me, social.rows, game.state).then((msg) => { if (msg) game.toast(msg, 'info'); });
+    void prepareInvite(social.me, social.rows).then((r) => {
+      if (typeof r === 'string') game.toast(r, 'info');
+      else if (r) setInvite(r);
+    });
   }, [social.me?.user_id, social.loading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const answerInvite = (yes: boolean) => {
+    const offer = invite;
+    setInvite(null);
+    if (!offer) return;
+    if (!yes) { clearInvite(); return; }
+    void acceptInvite(offer, game.state).then((msg) => { game.toast(msg, 'info'); void refreshSocial(game.state); });
+  };
 
   // Corona: si ganaste la semana pasada entre tus amigos, va al inventario (una vez por semana).
   const friendIds = social.rows.filter((r) => r.status === 'accepted').map((r) => (r.requester === me ? r.addressee : r.requester));
@@ -47,11 +67,11 @@ export function useSocialAlerts(game: Game): { amigos: number; gremios: number }
     }
   }, [me, social.loading, game.cloudChecked, friendsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!online) return { amigos: 0, gremios: 0 };
+  if (!online) return { amigos: 0, gremios: 0, invite: null, answerInvite };
   const amigos = social.rows.filter((r) => r.status === 'pending' && r.addressee === me).length;
   const now = Date.now();
   const claims = new Set(game.state.guildClaims ?? []);
   const toClaim = guild.challenges.filter((c) => challengeState(c, now) === 'won' && !claims.has(c.id)
     && guild.contributions.some((x) => x.challenge_id === c.id && x.user_id === me && x.deep + x.habits + x.xp > 0)).length;
-  return { amigos, gremios: guild.invites.length + toClaim };
+  return { amigos, gremios: guild.invites.length + toClaim, invite, answerInvite };
 }

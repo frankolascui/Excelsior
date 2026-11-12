@@ -242,8 +242,11 @@ await ip.click('text=Enviarme un código');
 await ip.fill('#login-code', '123456');
 await ip.click('button:has-text("Entrar")');
 await ip.waitForSelector('text=¿Qué hago ahora?', { timeout: 5000 });
-await ip.waitForTimeout(1500);
-check(db.friendships.some((f) => f.requester === ME && f.addressee === LEO && f.status === 'pending'), 'al entrar, la solicitud a Leo se manda sola');
+check(await ip.waitForSelector('[data-testid=invite-dialog]:has-text("Leo te ha invitado")', { timeout: 5000 }).then(() => true, () => false), 'al entrar, pregunta antes de mandar nada');
+check(!db.friendships.some((f) => f.requester === ME && f.addressee === LEO), 'sin confirmar no se manda la solicitud');
+await ip.click('[data-testid=invite-dialog] button:has-text("Mandar solicitud")');
+await ip.waitForTimeout(1000);
+check(db.friendships.some((f) => f.requester === ME && f.addressee === LEO && f.status === 'pending'), 'al confirmar, la solicitud a Leo se manda');
 check(await ip.isVisible('text=Solicitud de amistad enviada a Leo'), 'y se le avisa');
 
 // Borrar la cuenta: pide escribir BORRAR, borra en el servidor y vuelve a la bienvenida.

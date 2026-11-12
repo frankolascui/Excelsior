@@ -1,8 +1,8 @@
 // Invitaciones por enlace (V2): «…/Excelsior/?amigo=Nicolas%231234». Quien lo abre, al entrar con su cuenta,
-// manda solicitud de amistad a quien le invitó (o la acepta si ya tenía una suya). El tag espera en este navegador
+// ve quién le invitó y, si confirma, le manda solicitud (o acepta la suya). El tag espera en este navegador
 // mientras la persona se registra o crea su personaje.
 import type { GameState } from './types';
-import { acceptRequest, findByTag, parseTag, relationWith, sendRequest, type Friendship } from './social';
+import { acceptRequest, findByTag, parseTag, relationWith, sendRequest, type Friendship, type PublicProfile } from './social';
 
 const KEY = 'excelsior:invite';
 const PARAM = 'amigo';
@@ -44,11 +44,14 @@ export function clearInvite() {
   }
 }
 
+export type InviteOffer = { kind: 'offer'; person: PublicProfile; incoming: boolean };
+
 /**
- * Con cuenta y perfil publicado: manda la solicitud a quien te invitó (o acepta la suya).
- * Devuelve el mensaje para el aviso, o null si no había nada que hacer.
+ * Con cuenta y perfil publicado: busca a quien te invitó. No manda nada: devuelve una oferta para que la persona
+ * confirme (un enlace abierto sin querer, o de un desconocido, no debe crear amistades solo).
+ * Devuelve un mensaje si no se encontró, o null si no hay nada que preguntar.
  */
-export async function redeemInvite(me: { user_id: string; tag: string }, rows: Friendship[], s: GameState): Promise<string | null> {
+export async function prepareInvite(me: { user_id: string; tag: string }, rows: Friendship[]): Promise<InviteOffer | string | null> {
   const tag = pendingInvite();
   if (!tag) return null;
   if (tag.toLowerCase() === me.tag.toLowerCase()) {
@@ -61,11 +64,22 @@ export async function redeemInvite(me: { user_id: string; tag: string }, rows: F
   } catch {
     return null; // sin conexión: se reintenta en la próxima carga
   }
-  clearInvite();
-  if (!found || found === 'invalid') return `No encontramos a ${tag}, quien te invitó. Pídele su tag de nuevo.`;
+  if (!found || found === 'invalid') {
+    clearInvite();
+    return `No encontramos a ${tag}, quien te invitó. Pídele su tag de nuevo.`;
+  }
   const rel = relationWith(me.user_id, found.user_id, rows);
-  if (rel === 'friend' || rel === 'outgoing') return null;
-  const err = rel === 'incoming' ? await acceptRequest(found.user_id, s) : await sendRequest(found, s);
+  if (rel === 'friend' || rel === 'outgoing') {
+    clearInvite();
+    return null;
+  }
+  return { kind: 'offer', person: found, incoming: rel === 'incoming' };
+}
+
+/** La persona dijo que sí: manda la solicitud (o acepta la que ya había). */
+export async function acceptInvite(offer: InviteOffer, s: GameState): Promise<string> {
+  clearInvite();
+  const err = offer.incoming ? await acceptRequest(offer.person.user_id, s) : await sendRequest(offer.person, s);
   if (err) return err;
-  return rel === 'incoming' ? `Ya eres amigo de ${found.name}` : `Solicitud de amistad enviada a ${found.name}, que te invitó`;
+  return offer.incoming ? `Ya eres amigo de ${offer.person.name}` : `Solicitud de amistad enviada a ${offer.person.name}`;
 }

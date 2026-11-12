@@ -20,7 +20,7 @@ const version = readFileSync('src/version.ts', 'utf8').match(/APP_VERSION = '([^
 const state = {
   version: 6, profile: { name: 'Nicolas', createdAt: now - 30 * DAY }, quests: [], habits: [], habitCompletions: [], sessions: [], activeTimer: null,
   kingdoms: [], goals: [], rewards: [], purchases: [], bosses: [], xp: [{ id: 'old', at: now - 5 * DAY, amount: 500, source: 'quest', sourceId: 'o', label: 'x', attributes: {} }],
-  tours: ['intro', 'reinos', 'arena', 'gremios'], newsSeen: version,
+  tours: ['intro', 'reinos', 'arena', 'gremios', 'v3'], newsSeen: version,
 };
 const card = (id, topic, front, back, st = 2) => ({
   id, topic_id: topic, front, back, due: iso(st ? now - DAY : now), stability: st ? 3 : 0, difficulty: st ? 5 : 0, elapsed_days: st ? 3 : 0, scheduled_days: st ? 3 : 0,

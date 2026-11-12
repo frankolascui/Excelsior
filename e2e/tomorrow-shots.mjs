@@ -20,7 +20,7 @@ const state = {
   ],
   priorities: [{ day: '2026-11-09', ids: ['q1', 'q2', 'q3'] }],
   habits: [], habitCompletions: [], sessions: [], activeTimer: null, kingdoms: [], goals: [], rewards: [], purchases: [], bosses: [],
-  xp: [{ id: 'x1', at: NOW - DAY, amount: 40, source: 'quest', sourceId: 'old1', label: 'Antes', attributes: { voluntad: 2 } }], tours: ['intro', 'reinos', 'arena', 'gremios'], newsSeen: '2.0', balance: 2, ascended: [],
+  xp: [{ id: 'x1', at: NOW - DAY, amount: 40, source: 'quest', sourceId: 'old1', label: 'Antes', attributes: { voluntad: 2 } }], tours: ['intro', 'reinos', 'arena', 'gremios', 'v3'], newsSeen: '3.0', balance: 2, ascended: [],
   weeklyReviews: [{ week: '2026-11-02', at: NOW - DAY, change: 'Móvil fuera durante el foco', focus: 'Dejar lista la presentación' }],
 };
 const browser = await chromium.launch();

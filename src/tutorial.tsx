@@ -68,7 +68,7 @@ export const TOURS: Record<string, Step[]> = {
       target: 'quest-add',
       title: 'Misiones',
       text: () =>
-        `Apunta tus tareas y márcalas al terminar. La Principal es la más importante del día (+${XP_RULES.quest.main} XP).`,
+        `Apunta tus tareas y márcalas al terminar. Ponles impacto: las de impacto Alto son las que mueven tu vida (+${XP_RULES.quest.main} XP). Si una es grande, pártela en submisiones.`,
     },
     {
       tab: 'deepwork',
@@ -77,10 +77,17 @@ export const TOURS: Record<string, Step[]> = {
       text: () => 'Pulsa empezar y concéntrate. Cada minuto de foco da 1 XP.',
     },
     {
+      tab: 'deepwork',
+      target: 'academy',
+      title: 'Academy',
+      text: () =>
+        'Aquí arriba está Academy: tus tarjetas de estudio con repaso espaciado. Repasar cuenta como foco de estudio y, si vacías la cola del día, se marca solo tu hábito «Repasar las tarjetas». Necesita cuenta.',
+    },
+    {
       tab: 'hoy',
       title: 'Tu primera misión',
       text: ({ guide }) =>
-        `Eso es todo por ahora. Al subir de nivel se abrirán los Reinos (nivel 3), la Arena y los Gremios (nivel 5), y te los enseñaré entonces. Ahora crea tu misión principal de hoy. — ${guide}`,
+        `Eso es todo por ahora. Al subir de nivel se abrirán los Reinos y el Reino de la Salud (nivel 3), la Arena y los Gremios (nivel 5), y te los enseñaré entonces. Ahora crea tu misión principal de hoy. — ${guide}`,
     },
   ],
   reinos: [
@@ -98,6 +105,13 @@ export const TOURS: Record<string, Step[]> = {
       text: () =>
         'Ponle nombre y añade sus tareas: cada una es una construcción. Al completarlas, el campamento crece hasta ser un reino glorioso que te paga monedas.',
     },
+    {
+      tab: 'reinos',
+      target: 'health',
+      title: 'El Reino de la Salud',
+      text: () =>
+        'Este reino no se construye con tareas, sino con tu cuerpo. Cada mañana apuntas la noche y se marca solo «Apuntar la noche». Dormir, levantarte a tu hora, entrenar y pesarte con constancia levanta obras cada semana que te pagan monedas.',
+    },
   ],
   arena: [
     {
@@ -112,6 +126,47 @@ export const TOURS: Record<string, Step[]> = {
       target: 'shop',
       title: 'El tesoro',
       text: () => 'Cada 5 XP ganas una moneda. En la Tienda las cambias por premios reales que eliges tú: un episodio, salir con amigos…',
+    },
+  ],
+  // V3: para quien ya jugaba antes de Academy y el Reino de la Salud (los nuevos lo ven dentro de la bienvenida).
+  v3: [
+    {
+      tab: 'hoy',
+      title: 'Cuerpo y mente',
+      text: ({ name }) => `${name}, el juego ha crecido: tu estudio y tu salud ahora también suben de nivel contigo. Te enseño dónde están.`,
+    },
+    {
+      tab: 'deepwork',
+      target: 'academy',
+      title: 'Academy',
+      text: () =>
+        'Aquí arriba está Academy: tus tarjetas de estudio con repaso espaciado. Repasar cuenta como foco de estudio y, si vacías la cola del día, se marca solo tu hábito «Repasar las tarjetas». Necesita cuenta.',
+    },
+    {
+      tab: 'reinos',
+      target: 'health',
+      title: 'El Reino de la Salud',
+      text: () =>
+        'Este reino no se construye con tareas, sino con tu cuerpo. Cada mañana apuntas la noche y se marca solo «Apuntar la noche». Dormir, levantarte a tu hora, entrenar y pesarte con constancia levanta obras cada semana que te pagan monedas.',
+    },
+  ],
+  'v3-basico': [
+    {
+      tab: 'hoy',
+      title: 'Cuerpo y mente',
+      text: ({ name }) => `${name}, el juego ha crecido: tu estudio ahora también sube de nivel contigo. Te enseño dónde está.`,
+    },
+    {
+      tab: 'deepwork',
+      target: 'academy',
+      title: 'Academy',
+      text: () =>
+        'Aquí arriba está Academy: tus tarjetas de estudio con repaso espaciado. Repasar cuenta como foco de estudio y, si vacías la cola del día, se marca solo tu hábito «Repasar las tarjetas». Necesita cuenta.',
+    },
+    {
+      tab: 'hoy',
+      title: 'Y tu salud',
+      text: () => 'En el nivel 3 se abren los Reinos y, con ellos, el Reino de la Salud: tu sueño y tus entrenos levantarán sus obras.',
     },
   ],
   gremios: [

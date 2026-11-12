@@ -27,7 +27,7 @@ const state = {
   ],
   habits: [], habitCompletions: [], sessions: [], activeTimer: null, kingdoms: [], goals: [], rewards: [], purchases: [], bosses: [],
   xp: [1, 2, 3, 4].map((d) => ({ id: `x${d}`, at: NOW - d * DAY, amount: 60, source: 'quest', sourceId: `old${d}`, label: 'Antes', attributes: { voluntad: 3 } })),
-  tours: ['intro', 'reinos', 'arena', 'gremios'], newsSeen: '2.0', balance: 2, ascended: [],
+  tours: ['intro', 'reinos', 'arena', 'gremios', 'v3'], newsSeen: '3.0', balance: 2, ascended: [],
   weeklyReviews: [{ week: '2026-10-26', at: NOW - 8 * DAY, change: 'Deep Work antes de mirar el móvil' }],
 };
 

@@ -967,7 +967,7 @@ export function Kingdoms({ game, focusQuest }: { game: Game; focusQuest: (q: Que
       </div>
       <RealmMap state={state} onSelect={(id) => open(id)} />
       <div className="kingdom-tabs kingdom-pick" aria-label="Entrar en un reino">
-        <button type="button" className="chip-btn health-chip" onClick={() => open(HEALTH_KINGDOM)} data-testid="open-health"><Icon name="caduceus" /> Reino de la Salud{!healthFounded(state) && <span className="muted small-text"> · nuevo</span>}</button>
+        <button type="button" className="chip-btn health-chip" onClick={() => open(HEALTH_KINGDOM)} data-testid="open-health" data-tour="health"><Icon name="caduceus" /> Reino de la Salud{!healthFounded(state) && <span className="muted small-text"> · nuevo</span>}</button>
         {state.kingdoms.map((k) => (
           <button key={k.id} type="button" className="chip-btn" onClick={() => open(k.id)}><Icon name="castle" /> {k.name}</button>
         ))}

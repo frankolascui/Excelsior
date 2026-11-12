@@ -22,6 +22,17 @@ export const NEWS: NewsEntry[] = [
         'Cada semana levantas obras: Templo del Sueño, Reloj de Sol, Palestra y Balanza. Dan monedas y hacen crecer el reino.',
         'Las noches son las mismas que en la web de Health: lo que apuntes en una aparece en la otra.',
       ] },
+      { name: 'Academy en Deep Work', items: [
+        'Nueva pestaña Academy dentro de Deep Work: repasa tus tarjetas sin salir del juego.',
+        'Repaso espaciado FSRS: tú dices qué tal la sabías y la tarjeta vuelve justo cuando la ibas a olvidar.',
+        'El repaso cuenta como foco de estudio (1 XP por minuto) y vaciar la cola del día da un bonus.',
+        'Nuevo hábito automático «Repasar las tarjetas»: se marca solo al vaciar la cola o al repasar 20 tarjetas.',
+      ] },
+      { name: 'Arreglos', items: [
+        'Un enlace de invitación ya no manda la solicitud de amistad solo: primero te pregunta.',
+        'Los aportes al gremio se guardan bien y una partida antigua de la nube ya no pisa la nueva.',
+        'Si tu partida local se estropea, se guarda una copia de rescate antes de sustituirla.',
+      ] },
     ],
   },
   {

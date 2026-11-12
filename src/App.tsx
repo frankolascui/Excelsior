@@ -93,6 +93,12 @@ export default function App() {
     if (tour && hasSeenTour(state, tour.id)) setTour(null);
   }, [state.tours]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // V3: quien ya jugaba ve una vez dónde están Academy y el Reino de la Salud.
+  useEffect(() => {
+    if (!state.profile || tour || !introSeen || hasSeenTour(state, 'v3')) return;
+    setTour({ id: isUnlocked(state, 'reinos') ? 'v3' : 'v3-basico', step: 0 });
+  }, [introSeen, profileId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Al abrir por primera vez una sección desbloqueada, Hiperión la presenta.
   useEffect(() => {
     if (!state.profile || tour || !introSeen) return;
@@ -108,7 +114,8 @@ export default function App() {
   function closeTour() {
     if (tour) {
       const id = tour.id;
-      game.act((s) => markTour(s, id));
+      // La bienvenida ya enseña lo de la V3; las dos variantes de la V3 cuentan como vista.
+      game.act((s) => (id === 'intro' || id.startsWith('v3') ? markTour(markTour(s, id), 'v3') : markTour(s, id)));
     }
     setTour(null);
   }
@@ -282,6 +289,19 @@ export default function App() {
         blocked={!!tour || ritual || review || !!game.levelUp || !!game.conflict}
         markSeen={() => { markNewsSeen(); game.act((s) => (s.newsSeen === APP_VERSION ? s : { ...s, newsSeen: APP_VERSION })); }}
       />
+
+      {alerts.invite && !game.conflict && (
+        <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="invite-h" data-testid="invite-dialog">
+          <div className="overlay-card">
+            <h2 id="invite-h"><Icon name="user-plus" /> {alerts.invite.person.name} te ha invitado</h2>
+            <p>{alerts.invite.incoming ? `${alerts.invite.person.name} (${alerts.invite.person.tag}) ya te mandó una solicitud. ¿La aceptas?` : `¿Quieres mandar una solicitud de amistad a ${alerts.invite.person.name} (${alerts.invite.person.tag})?`}</p>
+            <div className="invite-actions">
+              <button className="primary" autoFocus onClick={() => alerts.answerInvite(true)}>{alerts.invite.incoming ? 'Aceptar' : 'Mandar solicitud'}</button>
+              <button className="ghost" onClick={() => alerts.answerInvite(false)}>Ahora no</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {game.conflict && <ConflictDialog local={state} remote={game.conflict} onChoose={game.resolveConflict} />}
 
