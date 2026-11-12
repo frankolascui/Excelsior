@@ -5,6 +5,7 @@ import { dayKey, isHabitDone, shiftDay, shieldedDays, totalXp, uid } from './gam
 import { bossLoot, defeatedBosses } from './bosses';
 import { kingdomProgress } from './kingdoms';
 import { trophyCoins } from './trophies';
+import { healthCoins } from './health';
 
 export const COIN_RULES = {
   xpPerCoin: 5, // 1 moneda por cada 5 XP
@@ -64,7 +65,8 @@ export function coinsEarned(s: GameState, now: number) {
   const fromBosses = defeatedBosses(s, now).reduce((n, b) => n + bossLoot(s, b, now), 0);
   const fromKingdoms = s.kingdoms.reduce((n, k) => n + kingdomBonus(s, k.id), 0);
   const fromSocial = trophyCoins(s); // MVP de gremio y coronas semanales
-  return { fromXp, fromBosses, fromKingdoms, fromSocial, total: fromXp + fromBosses + fromKingdoms + fromSocial };
+  const fromHealth = healthCoins(s); // obras del Reino de la Salud
+  return { fromXp, fromBosses, fromKingdoms: fromKingdoms + fromHealth, fromSocial, total: fromXp + fromBosses + fromKingdoms + fromHealth + fromSocial };
 }
 
 export function coinsSpent(s: GameState): number {

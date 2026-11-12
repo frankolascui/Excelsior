@@ -1,0 +1,45 @@
+/* Reino de la Salud (V3) */
+.health-intro { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.health-rules { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.health-rules li { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.health-rules .ico { flex: none; color: var(--c2); }
+.kingdom-name > .ico { color: var(--c2); margin-right: 6px; }
+
+.health-vigor { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+.health-vigor-dots { display: flex; gap: 4px; }
+.health-vigor-dots i { width: 14px; height: 8px; border-radius: 4px; background: var(--line); }
+.health-vigor-dots i.on { background: var(--grad); box-shadow: 0 0 8px color-mix(in srgb, var(--c2) 50%, transparent); }
+
+.night-form { display: flex; flex-direction: column; gap: 14px; margin-top: 10px; }
+.night-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.night-grid input, .night-grid select { width: 100%; }
+.night-hm { display: flex; align-items: center; gap: 6px; }
+.night-hm input { width: 64px; }
+.night-summary { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: baseline; margin-top: 8px; }
+.night-summary p { margin: 0; }
+.night-summary .ico:first-child { color: var(--ok, #6fe3a1); }
+
+.health-days { display: flex; gap: 4px; flex-direction: row-reverse; }
+.day-dot { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface-2); font-size: 13px; padding: 0; color: var(--muted); }
+.day-dot.done { border-color: color-mix(in srgb, var(--c2) 60%, transparent); color: var(--text); background: color-mix(in srgb, var(--c2) 18%, transparent); }
+.day-dot.on { outline: 2px solid var(--c2); outline-offset: 1px; color: var(--text); }
+
+.health-works { list-style: none; padding: 0; margin: 10px 0; display: flex; flex-direction: column; gap: 10px; }
+.health-works li { display: flex; align-items: center; gap: 12px; }
+.health-work-ico { width: 38px; height: 38px; flex: none; display: grid; place-items: center; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line); }
+.health-work-ico .ico { width: 22px; height: 22px; }
+.health-works li.done .health-work-ico { border-color: var(--c2); box-shadow: 0 0 12px color-mix(in srgb, var(--c2) 40%, transparent); }
+.health-work-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.health-schedule summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+.health-schedule[open] summary { margin-bottom: 10px; }
+
+.health-nights { list-style: none; padding: 0; margin: 8px 0; display: flex; flex-direction: column; }
+.health-nights li { display: grid; grid-template-columns: 96px 110px 1fr; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+.health-nights li:last-child { border-bottom: 0; }
+.health-sync { margin-top: 8px; }
+
+@media (max-width: 560px) {
+  .health-nights li { grid-template-columns: 78px 1fr; }
+  .health-nights li > :last-child { grid-column: 1 / -1; }
+  .day-dot { width: 27px; height: 27px; }
+}

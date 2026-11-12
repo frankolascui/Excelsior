@@ -8,6 +8,9 @@ import { DatePicker } from './pickers';
 import { CityScene } from './city';
 import { kingdomBonus, spendShield } from './economy';
 import { RealmMap } from './realm';
+import { HealthKingdom } from './health-ui';
+import { healthFounded } from './health';
+import { HEALTH_KINGDOM, navState, openSystemHabit } from './nav-state';
 import { AmbientPanel } from './ambient-ui';
 import { WeeklyChronicle } from './settings';
 import { HeroPath } from './heropath';
@@ -180,7 +183,12 @@ export function Dashboard({
               <>
                 <h2>Hábito pendiente: {s.name}</h2>
                 <div className="row">
-                  <button className="primary big" onClick={() => act((st) => toggleHabit(st, s.habitId, Date.now()), CAP_HABIT, { sound: 'habit' })}><Icon name="check" /> Hecho</button>
+                  {(() => {
+                    const sys = state.habits.find((h) => h.id === s.habitId)?.system;
+                    return sys
+                      ? <button className="primary big" onClick={() => openSystemHabit(sys)}><Icon name="arrow-right" /> {sys === 'health' ? 'Apuntarla ahora' : 'Repasar ahora'}</button>
+                      : <button className="primary big" onClick={() => act((st) => toggleHabit(st, s.habitId, Date.now()), CAP_HABIT, { sound: 'habit' })}><Icon name="check" /> Hecho</button>;
+                  })()}
                 </div>
               </>
             )}
@@ -900,13 +908,11 @@ export function Character({ game }: { game: Game }) {
 const BUILDING_TYPES: QuestType[] = ['side', 'daily', 'main'];
 
 // Reino abierto: se recuerda al cambiar de pestaña (p. ej. al volver de Deep Work) mientras dure la sesión.
-let openKingdom: string | null = null;
-
 export function Kingdoms({ game, focusQuest }: { game: Game; focusQuest: (q: Quest) => void }) {
   const { state, act } = game;
   const [name, setName] = useState('');
-  const [openId, setOpenId] = useState<string | null>(openKingdom);
-  const open = (id: string | null) => { openKingdom = id; setOpenId(id); window.scrollTo({ top: 0 }); };
+  const [openId, setOpenId] = useState<string | null>(navState.kingdom);
+  const open = (id: string | null) => { navState.kingdom = id; setOpenId(id); window.scrollTo({ top: 0 }); };
   const current = state.kingdoms.find((k) => k.id === openId);
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -916,14 +922,33 @@ export function Kingdoms({ game, focusQuest }: { game: Game; focusQuest: (q: Que
     setName('');
     open(next.kingdoms.at(-1)!.id);
   }
+  if (openId === HEALTH_KINGDOM) {
+    return (
+      <div className="screen">
+        <div className="kingdom-back">
+          <button className="ghost" onClick={() => open(null)}><Icon name="chevron-left" /> Mapa del reino</button>
+          {state.kingdoms.length > 0 && (
+            <div className="kingdom-tabs" role="tablist" aria-label="Tus reinos">
+              <button type="button" role="tab" aria-selected className="chip-btn on"><Icon name="caduceus" /> Salud</button>
+              {state.kingdoms.map((k) => (
+                <button key={k.id} type="button" role="tab" aria-selected={false} className="chip-btn" onClick={() => open(k.id)}>{k.name}</button>
+              ))}
+            </div>
+          )}
+        </div>
+        <HealthKingdom game={game} />
+      </div>
+    );
+  }
   if (current) {
     // Cada reino en su propia vista; el mapa queda a un botón.
     return (
       <div className="screen">
         <div className="kingdom-back">
           <button className="ghost" onClick={() => open(null)}><Icon name="chevron-left" /> Mapa del reino</button>
-          {state.kingdoms.length > 1 && (
+          {state.kingdoms.length > 0 && (
             <div className="kingdom-tabs" role="tablist" aria-label="Tus reinos">
+              <button type="button" role="tab" aria-selected={false} className="chip-btn" onClick={() => open(HEALTH_KINGDOM)}><Icon name="caduceus" /> Salud</button>
               {state.kingdoms.map((k) => (
                 <button key={k.id} type="button" role="tab" aria-selected={k.id === current.id} className={k.id === current.id ? 'chip-btn on' : 'chip-btn'} onClick={() => open(k.id)}>{k.name}</button>
               ))}
@@ -941,13 +966,12 @@ export function Kingdoms({ game, focusQuest }: { game: Game; focusQuest: (q: Que
         <InfoTip label="Cómo funcionan los reinos"><p>Un reino es un proyecto. Cada tarea es una construcción y tu ciudad crece al completarlas: campamento, aldea, villa, ciudad amurallada y reino glorioso. Pulsa un reino en el mapa para entrar.</p></InfoTip>
       </div>
       <RealmMap state={state} onSelect={(id) => open(id)} />
-      {state.kingdoms.length > 0 && (
-        <div className="kingdom-tabs kingdom-pick" aria-label="Entrar en un reino">
-          {state.kingdoms.map((k) => (
-            <button key={k.id} type="button" className="chip-btn" onClick={() => open(k.id)}><Icon name="castle" /> {k.name}</button>
-          ))}
-        </div>
-      )}
+      <div className="kingdom-tabs kingdom-pick" aria-label="Entrar en un reino">
+        <button type="button" className="chip-btn health-chip" onClick={() => open(HEALTH_KINGDOM)} data-testid="open-health"><Icon name="caduceus" /> Reino de la Salud{!healthFounded(state) && <span className="muted small-text"> · nuevo</span>}</button>
+        {state.kingdoms.map((k) => (
+          <button key={k.id} type="button" className="chip-btn" onClick={() => open(k.id)}><Icon name="castle" /> {k.name}</button>
+        ))}
+      </div>
       <section className="panel" data-tour="kingdom-add">
         <form className="quick-add inline" onSubmit={submit}>
           <input id="new-kingdom" value={name} onChange={(e) => setName(e.target.value)} placeholder="+ Fundar un reino (ej. Reino de la Programación)" maxLength={50} aria-label="Nombre del nuevo reino" />

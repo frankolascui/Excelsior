@@ -44,7 +44,7 @@ const TITLES: [number, string][] = [
 
 export function emptyState(): GameState {
   return {
-    version: 5,
+    version: 6,
     profile: null,
     quests: [],
     habits: [],
@@ -92,7 +92,7 @@ function stepsToChildren(s: GameState): GameState {
 }
 
 function migrateToV4(raw: { version: number } & Record<string, unknown>): GameState {
-  const base = { ...emptyState(), ...raw, version: 5 } as GameState;
+  const base = { ...emptyState(), ...raw, version: 6 } as GameState; // v5 → v6 (V3): solo campos nuevos opcionales
   // v3 → v4: los reinos pasan a tener construcciones (misiones) y aparecen las metas; no hay nada que recalcular.
   if (raw.version >= 3) return { ...base, kingdoms: base.kingdoms.map(({ id, name, createdAt }) => ({ id, name, createdAt: createdAt ?? Date.now() })) };
   const habits = base.habits.map((h) => ({ ...h, rewards: habitRewards(h.name) }));
@@ -621,9 +621,11 @@ export function deleteHabit(s: GameState, id: string): GameState {
  * Marca o desmarca el hábito hoy, o un día pasado (`day`): el XP cuenta para ese día.
  * Con perDay se marca otra vez hasta el tope, y al pulsar en el tope se quitan todas las de ese día.
  */
-export function toggleHabit(s: GameState, habitId: string, now: number, day = dayKey(now)): ActionResult {
+export function toggleHabit(s: GameState, habitId: string, now: number, day = dayKey(now), bySystem = false): ActionResult {
   const habit = s.habits.find((h) => h.id === habitId);
   if (!habit || day > dayKey(now)) return { state: s, xp: 0 };
+  // los hábitos del sistema (apuntar la noche, repasar) solo los marca la app al hacer la cosa de verdad
+  if (habit.system && !bySystem) return { state: s, xp: 0 };
   if (day !== dayKey(now)) now = new Date(`${day}T20:00:00`).getTime();
   const existing = s.habitCompletions.filter((c) => c.habitId === habitId && c.day === day);
   if (existing.length >= (habit.perDay ?? 1)) {

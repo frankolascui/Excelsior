@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { APP_VERSION, APP_VERSION_LABEL } from './version';
 import { AchievementPopup } from './achievements-ui';
+import { useHealthBridge } from './health-ui';
 import { useGame } from './store';
 import { addHabit, deleteHabit, hasSeenTour, levelInfo, markTour, totalXp, xpForLevel } from './game';
 import { avatarInfo } from './attributes';
@@ -49,6 +50,7 @@ function tabFromHash(): Tab {
 
 export default function App() {
   const game = useGame();
+  useHealthBridge(game); // Reino de la Salud: noches de la nube → hábito y obras
   useAgendaAlerts(game.state, game.toast);
   const { state } = game;
   const [tab, setTab] = useState<Tab>(tabFromHash);

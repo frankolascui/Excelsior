@@ -17,6 +17,7 @@ import { progressionText } from './progression';
 import { shieldableDay, shieldsLeft } from './economy';
 import { SubAdd } from './tree-ui';
 import { AvatarPortrait, initialOf } from './portrait';
+import { openSystemHabit } from './nav-state';
 import { Icon } from './icons';
 
 export function useNow(intervalMs = 1000): number {
@@ -319,6 +320,13 @@ export function HabitItem({
   /** En Hoy: sin XP ni atributos (están en Hábitos). */
   compact?: boolean;
 }) {
+  // Hábitos del sistema (apuntar la noche, repasar): no se marcan ni se editan; pulsarlos te lleva a hacerlos.
+  if (habit.system) {
+    const kind = habit.system;
+    onToggle = () => openSystemHabit(kind);
+    if (onToggleDay) onToggleDay = () => openSystemHabit(kind);
+    onEdit = onDelete = onRetire = undefined;
+  }
   const [editing, setEditing] = useState(false);
   const [open, setOpen] = useState(false);
   const [minimum, setMinimum] = useState(habit.minimum ?? '');

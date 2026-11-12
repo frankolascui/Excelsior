@@ -119,6 +119,7 @@ export function levelUpDue(s: GameState, h: Habit, now: number): number | null {
 
 /** ¿Ya está automatizado (≥ 90 % en los últimos 30 días)? Devuelve la constancia. */
 export function automatedDue(s: GameState, h: Habit, now: number): number | null {
+  if (h.system) return null; // los hábitos del sistema no se retiran: son la puerta a Salud y Academy
   if (snoozed(h.snooze?.auto, now)) return null;
   const c = constancy(s, h, now, PROGRESSION_RULES.autoDays);
   return c !== null && c >= PROGRESSION_RULES.autoPct ? c : null;

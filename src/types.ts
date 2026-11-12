@@ -95,6 +95,11 @@ export interface Habit {
   snooze?: { level?: string; auto?: string };
   /** Cuándo se retiró por automatizado (solo en GameState.retiredHabits). */
   retiredAt?: number;
+  /**
+   * Hábito del sistema (V3): no se marca a mano. Lo marca la app cuando haces la cosa de verdad:
+   * 'health' al apuntar la noche en el Reino de la Salud, 'academy' al repasar tus tarjetas.
+   */
+  system?: 'health' | 'academy';
 }
 
 /**
@@ -243,7 +248,7 @@ export interface Boss {
 }
 
 export interface GameState {
-  version: 5;
+  version: 6;
   profile: Profile | null;
   quests: Quest[];
   habits: Habit[];
@@ -254,6 +259,8 @@ export interface GameState {
   xp: XPTransaction[];
   activeTimer: ActiveTimer | null;
   kingdoms: Kingdom[];
+  /** Reino de la Salud (V3): obras levantadas por constancia. Las noches viven aparte (health.ts). */
+  health?: { works: { id: string; kind: 'templo' | 'reloj' | 'palestra' | 'balanza'; week: string; at: number }[] };
   goals: Goal[];
   /** Plantillas de misión propias (las prehechas viven en el código). */
   questTemplates?: QuestTemplate[];

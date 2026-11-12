@@ -14,6 +14,17 @@ export interface NewsEntry {
 /** La más nueva primero. Al publicar una versión, añade su entrada arriba y sube APP_VERSION en version.ts. */
 export const NEWS: NewsEntry[] = [
   {
+    version: '3.0', date: '2026-11-12', title: 'Cuerpo y mente',
+    groups: [
+      { name: 'Reino de la Salud', items: [
+        'Excelsior Health entra en el juego: un reino que se construye durmiendo y entrenando con constancia.',
+        'Cada mañana apuntas la noche en menos de un minuto y se marca solo tu hábito «Apuntar la noche».',
+        'Cada semana levantas obras: Templo del Sueño, Reloj de Sol, Palestra y Balanza. Dan monedas y hacen crecer el reino.',
+        'Las noches son las mismas que en la web de Health: lo que apuntes en una aparece en la otra.',
+      ] },
+    ],
+  },
+  {
     version: '2.0', date: '2026-11-03', title: 'La era social',
     groups: [
       { name: 'Social', items: [
