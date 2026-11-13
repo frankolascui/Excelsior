@@ -81,7 +81,7 @@ export const TOURS: Record<string, Step[]> = {
       target: 'academy',
       title: 'Academy',
       text: () =>
-        'Aquí arriba está Academy: tus tarjetas de estudio con repaso espaciado. Repasar cuenta como foco de estudio y, si vacías la cola del día, se marca solo tu hábito «Repasar las tarjetas». Necesita cuenta.',
+        'Aquí arriba está Academy: tus asignaturas, apuntes, tarjetas y simulacros. El repaso espaciado te pregunta cada tarjeta justo a tiempo. Repasar cuenta como foco de estudio y, si vacías la cola del día, se marca solo tu hábito «Repasar las tarjetas». Necesita cuenta.',
     },
     {
       tab: 'hoy',
@@ -110,7 +110,7 @@ export const TOURS: Record<string, Step[]> = {
       target: 'health',
       title: 'El Reino de la Salud',
       text: () =>
-        'Este reino no se construye con tareas, sino con tu cuerpo. Cada mañana apuntas la noche y se marca solo «Apuntar la noche». Dormir, levantarte a tu hora, entrenar y pesarte con constancia levanta obras cada semana que te pagan monedas.',
+        'Este reino no se construye con tareas, sino con tu cuerpo. Cada mañana apuntas la noche y se marca solo «Apuntar la noche». Dormir, levantarte a tu hora, entrenar y pesarte con constancia levanta obras cada semana que te pagan monedas. En «Diario» tienes tu plan de sueño, la semana y el historial.',
     },
   ],
   arena: [
@@ -140,14 +140,14 @@ export const TOURS: Record<string, Step[]> = {
       target: 'academy',
       title: 'Academy',
       text: () =>
-        'Aquí arriba está Academy: tus tarjetas de estudio con repaso espaciado. Repasar cuenta como foco de estudio y, si vacías la cola del día, se marca solo tu hábito «Repasar las tarjetas». Necesita cuenta.',
+        'Aquí arriba está Academy: tus asignaturas, apuntes, tarjetas y simulacros. El repaso espaciado te pregunta cada tarjeta justo a tiempo. Repasar cuenta como foco de estudio y, si vacías la cola del día, se marca solo tu hábito «Repasar las tarjetas». Necesita cuenta.',
     },
     {
       tab: 'reinos',
       target: 'health',
       title: 'El Reino de la Salud',
       text: () =>
-        'Este reino no se construye con tareas, sino con tu cuerpo. Cada mañana apuntas la noche y se marca solo «Apuntar la noche». Dormir, levantarte a tu hora, entrenar y pesarte con constancia levanta obras cada semana que te pagan monedas.',
+        'Este reino no se construye con tareas, sino con tu cuerpo. Cada mañana apuntas la noche y se marca solo «Apuntar la noche». Dormir, levantarte a tu hora, entrenar y pesarte con constancia levanta obras cada semana que te pagan monedas. En «Diario» tienes tu plan de sueño, la semana y el historial.',
     },
   ],
   'v3-basico': [
@@ -161,7 +161,7 @@ export const TOURS: Record<string, Step[]> = {
       target: 'academy',
       title: 'Academy',
       text: () =>
-        'Aquí arriba está Academy: tus tarjetas de estudio con repaso espaciado. Repasar cuenta como foco de estudio y, si vacías la cola del día, se marca solo tu hábito «Repasar las tarjetas». Necesita cuenta.',
+        'Aquí arriba está Academy: tus asignaturas, apuntes, tarjetas y simulacros. El repaso espaciado te pregunta cada tarjeta justo a tiempo. Repasar cuenta como foco de estudio y, si vacías la cola del día, se marca solo tu hábito «Repasar las tarjetas». Necesita cuenta.',
     },
     {
       tab: 'hoy',

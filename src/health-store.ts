@@ -223,3 +223,47 @@ async function syncOnce(userId: string) {
 export function clearHealthLocal() {
   set({ nights: [], settings: DEFAULT_SETTINGS, meta: blankMeta(), sync: 'local', error: null });
 }
+
+/** Borra todas las noches (también de la nube, como borradas). */
+export function wipeNights() {
+  const now = stamp();
+  const pend = { ...store.meta.pend };
+  for (const n of store.nights) pend[n.fecha] = now;
+  set({ nights: [], meta: { ...store.meta, pend } });
+  schedule(500);
+}
+
+// La web antigua de Health guardaba sus noches en este mismo navegador con otra clave. Si estamos en la misma web
+// (p. ej. GitHub Pages), se traen una vez, sin pisar las que ya haya.
+const LEGACY_KEY = 'diario-sueno:noches';
+const LEGACY_DONE = 'excelsior:health-legacy';
+export function importLegacyDiary(): number {
+  try {
+    if (localStorage.getItem(LEGACY_DONE)) return 0;
+    const raw = JSON.parse(localStorage.getItem(LEGACY_KEY) ?? 'null');
+    localStorage.setItem(LEGACY_DONE, '1');
+    if (!Array.isArray(raw)) return 0;
+    const have = new Set(store.nights.map((n) => n.fecha));
+    const fresh = raw.filter((n) => validNight(n) && !have.has(n.fecha));
+    return fresh.length ? importNights(fresh) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+// Borrador del formulario: si cambias de app a mitad (para mirar Salud), no se pierde lo escrito.
+const DRAFT_KEY = 'excelsior:health-draft';
+export function loadDraft(): { night: Night; raw: string } | null {
+  try {
+    const d = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null');
+    return d && validNight(d.night) ? { night: normalizeNight(d.night), raw: typeof d.raw === 'string' ? d.raw : '' } : null;
+  } catch {
+    return null;
+  }
+}
+export function saveDraft(night: Night, raw: string) {
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ night, raw })); } catch { /* sin almacenamiento */ }
+}
+export function clearDraft() {
+  try { localStorage.removeItem(DRAFT_KEY); } catch { /* sin almacenamiento */ }
+}

@@ -14,21 +14,26 @@ export interface NewsEntry {
 /** La más nueva primero. Al publicar una versión, añade su entrada arriba y sube APP_VERSION en version.ts. */
 export const NEWS: NewsEntry[] = [
   {
-    version: '3.0', date: '2026-11-12', title: 'Cuerpo y mente',
+    version: '3.0', date: '2026-11-13', title: 'Cuerpo y mente',
     groups: [
+      { name: 'Una sola app', items: [
+        'Excelsior Health y Excelsior Academy viven ahora dentro de Excelsior RPG: una cuenta, una web, todo junto.',
+        'Tus noches, apuntes y tarjetas son los mismos de antes: están en tu cuenta y aparecen solos al entrar.',
+      ] },
       { name: 'Reino de la Salud', items: [
-        'Excelsior Health entra en el juego: un reino que se construye durmiendo y entrenando con constancia.',
-        'Cada mañana apuntas la noche en menos de un minuto y se marca solo tu hábito «Apuntar la noche».',
-        'Cada semana levantas obras: Templo del Sueño, Reloj de Sol, Palestra y Balanza. Dan monedas y hacen crecer el reino.',
-        'Las noches son las mismas que en la web de Health: lo que apuntes en una aparece en la otra.',
+        'Un reino que se construye durmiendo y entrenando con constancia. Cada semana levantas obras: Templo del Sueño, Reloj de Sol, Palestra y Balanza. Dan monedas y hacen crecer el reino.',
+        'El diario de sueño entero: lo esencial en menos de un minuto y «Más detalles» con fases, percepción y hábitos. Avisa si algo no cuadra.',
+        'Diario: cuenta atrás para acostarte, metas del plan, esta semana frente a la anterior y el sueño de 14 días. También historial y exportar a JSON o CSV.',
+        'Nuevo hábito automático «Apuntar la noche»: se marca solo al guardarla.',
       ] },
       { name: 'Academy en Deep Work', items: [
-        'Nueva pestaña Academy dentro de Deep Work: repasa tus tarjetas sin salir del juego.',
-        'Repaso espaciado FSRS: tú dices qué tal la sabías y la tarjeta vuelve justo cuando la ibas a olvidar.',
-        'El repaso cuenta como foco de estudio (1 XP por minuto) y vaciar la cola del día da un bonus.',
+        'Pestaña Academy dentro de Deep Work: tu estantería de asignaturas, hojas de apuntes con fórmulas, tarjetas, simulacros, fechas de examen, estadísticas e importar mazos de Anki.',
+        'Repaso espaciado FSRS: la tarjeta vuelve justo cuando la ibas a olvidar. Puedes ajustarlo a tu memoria con tu historial.',
+        'Repasar cuenta como foco de estudio (1 XP por minuto) y vaciar la cola del día da un bonus.',
         'Nuevo hábito automático «Repasar las tarjetas»: se marca solo al vaciar la cola o al repasar 20 tarjetas.',
       ] },
-      { name: 'Arreglos', items: [
+      { name: 'Logros y arreglos', items: [
+        '10 logros nuevos de Cuerpo y mente, de Guardián de Hipnos a Memoria de Mnemósine.',
         'Un enlace de invitación ya no manda la solicitud de amistad solo: primero te pregunta.',
         'Los aportes al gremio se guardan bien y una partida antigua de la nube ya no pisa la nueva.',
         'Si tu partida local se estropea, se guarda una copia de rescate antes de sustituirla.',

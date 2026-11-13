@@ -1,5 +1,5 @@
-// Reino de la Salud: apuntar la noche, obras de la semana, tu horario y las últimas noches.
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+// Reino de la Salud: el reino (obras de la semana) y el diario de sueño completo (panel del día, historial y datos).
+import { useEffect, useRef, useState } from 'react';
 import type { Game } from './screens';
 import { dayKey } from './game';
 import { stageFor, nextStage } from './kingdoms';
@@ -10,13 +10,13 @@ import { sfx } from './sfx';
 import { shortDate } from './ui';
 import { useCloud } from './cloud';
 import {
-  addDays, bedtimeGoal, emptyNight, fmtMin, foundHealth, healthBuildings, healthFounded, nightStats, syncHealth, vigor,
-  weekProgress, weekStart, weightTrend, workDef, WORK_COINS, WORKS, type Night,
+  addDays, bedtimeGoal, fmtMin, foundHealth, healthBuildings, healthFounded, nightStats, syncHealth, vigor,
+  weekProgress, weekStart, workDef, WORK_COINS, WORKS,
 } from './health';
-import { deleteNight, healthNights, healthSettings, importNights, onHealthChange, saveHealthSettings, saveNight, syncHealthCloud, useHealth } from './health-store';
+import { healthNights, healthSettings, importLegacyDiary, onHealthChange, syncHealthCloud, useHealth } from './health-store';
+import { CAP_NOTE, DiaryData, DiaryHistory, DiaryToday, NightForm } from './health-diary-ui';
 import './health.css';
 
-const CAP_NOTE = 'Has llegado al tope de XP de hábitos de hoy';
 
 /**
  * Mantiene la partida al día con las noches: al entrar con cuenta trae las de la nube y, si llegan noches
@@ -39,125 +39,33 @@ export function useHealthBridge(game: Game) {
   }, [founded]);
 }
 
-const hm = (min: number | null) => (min == null ? { h: '', m: '' } : { h: String(Math.floor(min / 60)), m: String(min % 60) });
-
-function NightForm({ game, day, onDone }: { game: Game; day: string; onDone: () => void }) {
-  const { act, toast } = game;
-  const { nights } = useHealth();
-  const saved = nights.find((n) => n.fecha === day);
-  const base = saved ?? emptyNight(day);
-  const [cama, setCama] = useState(base.percibido.cama ?? '');
-  const [levantado, setLevantado] = useState(base.percibido.levantado ?? '');
-  const t = hm(base.reloj.total_dormido_min);
-  const [h, setH] = useState(t.h);
-  const [m, setM] = useState(t.m);
-  const [descanso, setDescanso] = useState<number | null>(Number(base.preguntas.descanso) || null);
-  const [peso, setPeso] = useState(base.cuerpo.peso_kg == null ? '' : String(base.cuerpo.peso_kg));
-  const [entrenos, setEntrenos] = useState<number | null>(base.preguntas.entrenos_ayer == null ? null : Number(base.preguntas.entrenos_ayer));
-
-  function submit(e: FormEvent) {
-    e.preventDefault();
-    const total = h === '' && m === '' ? null : (Number(h) || 0) * 60 + (Number(m) || 0);
-    // Se conserva lo que la noche ya tuviera (fases, notas… apuntadas en la web de Health).
-    const night: Night = {
-      ...base,
-      percibido: { ...base.percibido, cama: cama || null, levantado: levantado || null },
-      reloj: { ...base.reloj, total_dormido_min: total },
-      preguntas: { ...base.preguntas, descanso, entrenos_ayer: entrenos },
-      cuerpo: { peso_kg: peso === '' ? null : Number(peso.replace(',', '.')), mismas_condiciones: base.cuerpo.mismas_condiciones },
-    };
-    saveNight(night);
-    let built: string[] = [];
-    act((s) => {
-      const r = syncHealth(s, healthNights(), healthSettings(), Date.now(), day);
-      built = r.built.map((k) => workDef(k).name);
-      return r;
-    }, CAP_NOTE, { sound: 'habit' });
-    if (built.length) {
-      sfx.victory();
-      toast(`{i:greek-temple} Obra levantada: ${built.join(', ')} · +${built.length * WORK_COINS} {i:coin}`, 'level', 5000);
-    } else if (saved) {
-      toast('Noche guardada', 'info');
-    }
-    onDone();
-  }
-
-  return (
-    <form className="night-form" onSubmit={submit} data-testid="night-form">
-      <div className="night-grid">
-        <label className="field"><span>Me acosté</span>
-          <input id="night-cama" type="time" value={cama} onChange={(e) => setCama(e.target.value)} /></label>
-        <label className="field"><span>Me levanté</span>
-          <input id="night-levantado" type="time" value={levantado} onChange={(e) => setLevantado(e.target.value)} /></label>
-        <div className="field"><span>Dormí (según el reloj)</span>
-          <div className="night-hm">
-            <input id="night-h" type="number" inputMode="numeric" min={0} max={23} value={h} onChange={(e) => setH(e.target.value)} aria-label="Horas dormidas" placeholder="7" /> h
-            <input id="night-m" type="number" inputMode="numeric" min={0} max={59} value={m} onChange={(e) => setM(e.target.value)} aria-label="Minutos dormidos" placeholder="30" /> min
-          </div></div>
-        <label className="field"><span>Peso (kg)</span>
-          <input id="night-peso" type="text" inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} placeholder="opcional" maxLength={6} /></label>
-      </div>
-      <div className="field"><span>¿Cómo te has levantado?</span>
-        <div className="segmented" role="radiogroup" aria-label="Descanso de 1 a 5">
-          {[1, 2, 3, 4, 5].map((v) => (
-            <button type="button" key={v} role="radio" aria-checked={descanso === v} className={descanso === v ? 'seg on' : 'seg'} onClick={() => setDescanso(descanso === v ? null : v)}>{v}</button>
-          ))}
-        </div></div>
-      <div className="field"><span>Entrenos de ayer</span>
-        <div className="segmented" role="radiogroup" aria-label="Entrenos de ayer">
-          {[0, 1, 2, 3].map((v) => (
-            <button type="button" key={v} role="radio" aria-checked={entrenos === v} className={entrenos === v ? 'seg on' : 'seg'} onClick={() => setEntrenos(entrenos === v ? null : v)}>{v}</button>
-          ))}
-        </div></div>
-      <div className="row">
-        <button type="submit" className="primary"><Icon name="check" /> {saved ? 'Guardar cambios' : 'Apuntar la noche'}</button>
-        {saved && (
-          <button type="button" className="ghost" onClick={() => {
-            deleteNight(day);
-            act((s) => syncHealth(s, healthNights(), healthSettings(), Date.now(), day));
-            onDone();
-          }}><Icon name="trash" /> Borrar</button>
-        )}
-      </div>
-    </form>
-  );
-}
-
-function ScheduleForm() {
-  const { settings } = useHealth();
-  return (
-    <details className="health-schedule">
-      <summary><Icon name="sliders" /> Tu horario: cama {bedtimeGoal(settings)}, arriba {settings.levantar} · {settings.entrenosMin} entrenos por semana</summary>
-      <div className="night-grid">
-        <label className="field"><span>Me levanto a las</span>
-          <input id="health-levantar" type="time" value={settings.levantar} onChange={(e) => e.target.value && saveHealthSettings({ levantar: e.target.value })} /></label>
-        <label className="field"><span>Horas en cama</span>
-          <select id="health-horas" value={settings.horas} onChange={(e) => saveHealthSettings({ horas: Number(e.target.value) })}>
-            {[6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10].map((v) => <option key={v} value={v}>{String(v).replace('.', ',')} h</option>)}
-          </select></label>
-        <label className="field"><span>Entrenos mínimos por semana</span>
-          <select id="health-entrenos" value={settings.entrenosMin} onChange={(e) => saveHealthSettings({ entrenosMin: Number(e.target.value), entrenosPlan: Math.max(settings.entrenosPlan, Number(e.target.value)) })}>
-            {Array.from({ length: 14 }, (_, i) => i + 1).map((v) => <option key={v} value={v}>{v}</option>)}
-          </select></label>
-      </div>
-    </details>
-  );
-}
+type HealthView = 'reino' | 'diario' | 'historial' | 'datos';
+const HEALTH_VIEWS: { id: HealthView; label: string; icon: 'castle' | 'sundial' | 'calendar' | 'sliders' }[] = [
+  { id: 'reino', label: 'Reino', icon: 'castle' },
+  { id: 'diario', label: 'Diario', icon: 'sundial' },
+  { id: 'historial', label: 'Historial', icon: 'calendar' },
+  { id: 'datos', label: 'Datos', icon: 'sliders' },
+];
 
 export function HealthKingdom({ game }: { game: Game }) {
   const { state, act, toast } = game;
-  const { nights, settings, sync, error } = useHealth();
-  const cloud = useCloud();
+  const { nights, settings } = useHealth();
   const now = Date.now();
   const today = dayKey(now);
   const [day, setDay] = useState(today);
   const [editing, setEditing] = useState(false);
-  const file = useRef<HTMLInputElement>(null);
+  const [view, setView] = useState<HealthView>('reino');
   const founded = healthFounded(state);
 
   useEffect(() => {
-    if (founded) void syncHealthCloud();
-  }, [founded]);
+    if (!founded) return;
+    void syncHealthCloud();
+    const n = importLegacyDiary();
+    if (n > 0) {
+      act((s) => syncHealth(s, healthNights(), healthSettings(), Date.now()));
+      toast(`${n} ${n === 1 ? 'noche traída' : 'noches traídas'} de tu antiguo Diario de Sueño`, 'info');
+    }
+  }, [founded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!founded) {
     return (
@@ -183,23 +91,30 @@ export function HealthKingdom({ game }: { game: Game }) {
   const week = weekProgress(nights, settings, weekStart(today));
   const dayNight = nights.find((n) => n.fecha === day);
   const days = Array.from({ length: 7 }, (_, i) => addDays(today, -i));
-  const w = weightTrend(nights, today);
-
-  async function onImport(e: ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
-    e.target.value = '';
-    if (!f) return;
-    let n = -1;
-    try {
-      n = importNights(JSON.parse(await f.text()));
-    } catch {
-      /* no es JSON */
-    }
-    if (n < 0) { sfx.error(); toast('Ese archivo no es una copia de Excelsior Health', 'info'); } else toast(`${n} ${n === 1 ? 'noche importada' : 'noches importadas'}`, 'info');
+  const record = (d: string) => { setDay(d); setEditing(true); setView('reino'); requestAnimationFrame(() => document.getElementById('night-title')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); };
+  const tabs = (
+    <div className="segmented health-tabs" role="tablist" aria-label="Reino de la Salud">
+      {HEALTH_VIEWS.map((t) => (
+        <button key={t.id} type="button" role="tab" aria-selected={view === t.id} className={view === t.id ? 'seg on' : 'seg'} onClick={() => { setView(t.id); sfx.page(); }} data-testid={`health-tab-${t.id}`}>
+          <Icon name={t.icon} /> {t.label}
+        </button>
+      ))}
+    </div>
+  );
+  if (view !== 'reino') {
+    return (
+      <>
+        {tabs}
+        {view === 'diario' && <DiaryToday onRecord={() => record(today)} onHistory={() => setView('historial')} onData={() => setView('datos')} />}
+        {view === 'historial' && <DiaryHistory onEdit={record} />}
+        {view === 'datos' && <DiaryData game={game} />}
+      </>
+    );
   }
 
   return (
     <>
+      {tabs}
       <section className="panel kingdom health" aria-labelledby="health-h">
         <header className="kingdom-head">
           <div className="kingdom-head-main">
@@ -275,33 +190,9 @@ export function HealthKingdom({ game }: { game: Game }) {
             );
           })}
         </ul>
-        <ScheduleForm />
+        <p className="muted small-text">Tu horario: cama {bedtimeGoal(settings)}, arriba {settings.levantar} · {settings.entrenosMin} entrenos por semana. <button className="link small" onClick={() => setView('datos')}>Cambiar</button></p>
       </section>
 
-      <section className="panel" aria-labelledby="nights-h">
-        <h3 id="nights-h"><Icon name="calendar" /> Últimas noches</h3>
-        {w && <p className="muted small-text"><Icon name="weight-scale" /> Peso medio de 7 días: {String(w.avg).replace('.', ',')} kg{w.change != null && <> ({w.change > 0 ? '+' : ''}{String(w.change).replace('.', ',')} kg frente a la semana anterior)</>}</p>}
-        {nights.length === 0 ? <p className="empty">Aún no hay noches. Apunta la de hoy y aparecerá aquí.</p> : (
-          <ul className="health-nights">
-            {nights.slice(0, 14).map((n) => {
-              const st = nightStats(n);
-              return (
-                <li key={n.fecha}>
-                  <span className="health-night-date">{shortDate(n.fecha)}</span>
-                  <span className="mono">{fmtMin(st.sleepMin)}</span>
-                  <span className="muted small-text">{[st.efficiency != null && `${st.efficiency} %`, n.preguntas.descanso != null && `descanso ${n.preguntas.descanso}/5`, n.cuerpo.peso_kg != null && `${String(n.cuerpo.peso_kg).replace('.', ',')} kg`].filter(Boolean).join(' · ')}</span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-        <p className="muted small-text health-sync">
-          <Icon name={cloud.userId ? (sync === 'error' ? 'cloud-off' : 'cloud') : 'laptop'} />{' '}
-          {!cloud.userId ? 'Sin cuenta: las noches se guardan solo en este navegador.' : error ?? (sync === 'syncing' ? 'Sincronizando…' : 'Noches sincronizadas con tu cuenta (las mismas que en Excelsior Health).')}
-          {' '}<button className="link small" onClick={() => file.current?.click()}><Icon name="upload" /> Importar copia de Health</button>
-          <input ref={file} type="file" accept="application/json,.json" hidden onChange={onImport} data-testid="health-import" />
-        </p>
-      </section>
     </>
   );
 }

@@ -55,7 +55,7 @@ await page.fill('#night-levantado', '07:05');
 await page.fill('#night-h', '7');
 await page.fill('#night-m', '25');
 await page.fill('#night-peso', '70,1');
-await page.click('.night-form [aria-label="Descanso de 1 a 5"] button:has-text("4")');
+await page.click('.night-form [aria-label="¿Te levantaste descansado?"] button:has-text("4")');
 await page.click('.night-form [aria-label="Entrenos de ayer"] button:has-text("1")');
 await page.click('button:has-text("Apuntar la noche")');
 await page.waitForSelector('.night-summary');
@@ -70,6 +70,35 @@ check(!JSON.stringify(g).includes('total_dormido_min'), 'y no viaja dentro de la
 await page.waitForTimeout(600);
 await page.screenshot({ path: `${out}/health-02-reino.png`, fullPage: true });
 
+// El diario completo: panel del día, historial y datos.
+await page.click('[data-testid="health-tab-diario"]');
+await page.waitForSelector('[data-testid="diary-today"]');
+check(await page.isVisible('.diary-stat:has-text("7h 25m")'), 'el diario muestra la última noche');
+check(await page.locator('.diary-table').first().locator('tbody tr').count() === 4, 'objetivos del plan: una fila por noche');
+check(await page.isVisible('.diary-chart .diary-col i.low'), 'gráfico de 14 días');
+await page.screenshot({ path: `${out}/health-04-diario.png`, fullPage: true });
+await page.click('[data-testid="health-tab-historial"]');
+check(await page.locator('.diary-night').count() === 4, 'el historial lista todas las noches');
+await page.click('[data-testid="health-tab-datos"]');
+const dl = page.waitForEvent('download');
+await page.click('button:has-text("Descargar CSV")');
+check((await dl).suggestedFilename().endsWith('.csv'), 'exportar a CSV');
+await page.click('[data-testid="health-tab-reino"]');
+
+// Datos que no cuadran: avisa una vez y el segundo «Guardar» guarda igualmente.
+await page.click('.health-days button:nth-child(5)');
+await page.fill('#night-cama', '23:00');
+await page.fill('#night-levantado', '07:00');
+await page.fill('#night-h', '9');
+await page.fill('#night-m', '00');
+await page.click('.night-more summary');
+await page.fill('#ph-rem-h', '1');
+await page.click('.night-form button[type=submit]');
+check(await page.isVisible('[data-testid="night-avisos"]') && await page.isVisible('.night-error'), 'si las fases no cuadran con el total, avisa');
+await page.click('.night-form button[type=submit]');
+await page.waitForSelector('.night-summary');
+check(JSON.parse(await page.evaluate(() => localStorage.getItem('excelsior:health'))).nights.length === 5, 'y al insistir, guarda');
+
 // El hábito del sistema no se marca a mano: lleva al reino.
 await page.evaluate(() => { location.hash = '#habitos'; });
 await page.waitForSelector('[data-habit="sys-salud"]');
@@ -77,13 +106,13 @@ check(await page.locator('[data-habit="sys-salud"] .edit-btn').count() === 0, 'e
 await page.click('[data-habit="sys-salud"] .check');
 await page.waitForSelector('#health-h');
 g = await game(page);
-check(g.habitCompletions.filter((c) => c.habitId === 'sys-salud').length === 4, 'pulsarlo no lo desmarca: abre el Reino de la Salud');
+check(g.habitCompletions.filter((c) => c.habitId === 'sys-salud').length === 5, 'pulsarlo no lo desmarca: abre el Reino de la Salud');
 
 // Borrar la noche de hoy devuelve el XP y desmarca.
 await page.click('.night-summary button:has-text("Editar")');
 await page.click('.night-form button:has-text("Borrar")');
 g = await game(page);
-check(g.habitCompletions.filter((c) => c.habitId === 'sys-salud').length === 3, 'borrar la noche desmarca el hábito');
+check(g.habitCompletions.filter((c) => c.habitId === 'sys-salud').length === 4, 'borrar la noche desmarca el hábito');
 
 const m = await open({ width: 390, height: 844 });
 await m.evaluate(() => { location.hash = '#reinos'; });

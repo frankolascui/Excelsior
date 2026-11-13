@@ -42,6 +42,11 @@ export interface Stats {
   dawnSessions: number;
   nightSessions: number;
   perfectHour: number;
+  healthWorks: number;
+  healthStreak: number;
+  studyCards: number;
+  studyClearDays: number;
+  studyStreak: number;
 }
 
 export function stats(s: GameState, now: number): Stats {
@@ -73,6 +78,11 @@ export function stats(s: GameState, now: number): Stats {
     dawnSessions: s.sessions.filter((x) => x.minutes >= 25 && hour(x.startedAt) >= 4 && hour(x.startedAt) < 7).length,
     nightSessions: s.sessions.filter((x) => x.minutes >= 25 && (hour(x.startedAt) >= 23 || hour(x.startedAt) < 3)).length,
     perfectHour: s.sessions.filter((x) => x.minutes >= 60 && (x.focusPct ?? 100) === 100).length,
+    healthWorks: s.health?.works.length ?? 0,
+    healthStreak: s.habits.some((h) => h.id === 'sys-salud') ? habitStreakDays(s, 'sys-salud', now) : 0,
+    studyCards: s.sessions.reduce((n, x) => n + (x.study?.cards ?? 0), 0),
+    studyClearDays: new Set(s.sessions.filter((x) => x.study?.cleared).map((x) => dayKey(x.endedAt))).size,
+    studyStreak: s.habits.some((h) => h.id === 'sys-academy') ? habitStreakDays(s, 'sys-academy', now) : 0,
   };
 }
 
@@ -138,6 +148,18 @@ const DEFS: Def[] = [
   { id: 'days-100', name: 'Centenario', icon: 'laurels', desc: '100 días con progreso.', tier: 'oro', category: 'Constancia', stat: 'activeDays', goal: 100 },
   { id: 'log-7', name: 'Cronista', icon: 'quill', desc: 'Guarda el estado del día 7 veces.', tier: 'bronce', category: 'Constancia', stat: 'dayLogs', goal: 7 },
   { id: 'log-30', name: 'Escriba de Mnemósine', icon: 'open-book', desc: 'Guarda el estado del día 30 veces.', tier: 'plata', category: 'Constancia', stat: 'dayLogs', goal: 30 },
+
+  // Cuerpo y mente (V3): el Reino de la Salud y Academy
+  { id: 'salud-racha-7', name: 'Guardián de Hipnos', icon: 'moon', desc: 'Apunta la noche 7 días seguidos.', tier: 'bronce', category: 'Cuerpo y mente', stat: 'healthStreak', goal: 7 },
+  { id: 'salud-racha-30', name: 'Hijo de Nyx', icon: 'moon', desc: 'Apunta la noche 30 días seguidos.', tier: 'oro', category: 'Cuerpo y mente', stat: 'healthStreak', goal: 30 },
+  { id: 'salud-obra-1', name: 'Primera Piedra de Asclepio', icon: 'caduceus', desc: 'Levanta tu primera obra en el Reino de la Salud.', tier: 'bronce', category: 'Cuerpo y mente', stat: 'healthWorks', goal: 1 },
+  { id: 'salud-obra-12', name: 'Arquitecto de Higía', icon: 'greek-temple', desc: 'Levanta 12 obras en el Reino de la Salud.', tier: 'plata', category: 'Cuerpo y mente', stat: 'healthWorks', goal: 12 },
+  { id: 'salud-obra-40', name: 'Ciudadela de Panacea', icon: 'castle', desc: 'Levanta 40 obras en el Reino de la Salud.', tier: 'oro', category: 'Cuerpo y mente', stat: 'healthWorks', goal: 40 },
+  { id: 'estudio-100', name: 'Lector de Atenea', icon: 'spell-book', desc: 'Repasa 100 tarjetas en Academy.', tier: 'bronce', category: 'Cuerpo y mente', stat: 'studyCards', goal: 100 },
+  { id: 'estudio-1000', name: 'Biblioteca de Alejandría', icon: 'open-book', desc: 'Repasa 1000 tarjetas en Academy.', tier: 'plata', category: 'Cuerpo y mente', stat: 'studyCards', goal: 1000 },
+  { id: 'estudio-5000', name: 'Memoria de Mnemósine', icon: 'brain', desc: 'Repasa 5000 tarjetas en Academy.', tier: 'oro', category: 'Cuerpo y mente', stat: 'studyCards', goal: 5000 },
+  { id: 'estudio-cola-7', name: 'Domador de la Cola', icon: 'graduate-cap', desc: 'Vacía la cola de repaso 7 días.', tier: 'bronce', category: 'Cuerpo y mente', stat: 'studyClearDays', goal: 7 },
+  { id: 'estudio-racha-30', name: 'Discípulo del Liceo', icon: 'graduate-cap', desc: 'Repasa tus tarjetas 30 días seguidos.', tier: 'oro', category: 'Cuerpo y mente', stat: 'studyStreak', goal: 30 },
 
   // Arena, reinos y tienda
   { id: 'boss-1', name: 'Primera Sangre', icon: 'bloody-sword', desc: 'Derrota a tu primer boss.', tier: 'bronce', category: 'Arena y reinos', stat: 'bosses', goal: 1 },
