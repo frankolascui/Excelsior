@@ -32,6 +32,16 @@ export const NEWS: NewsEntry[] = [
         'Repasar cuenta como foco de estudio (1 XP por minuto) y vaciar la cola del día da un bonus.',
         'Nuevo hábito automático «Repasar las tarjetas»: se marca solo al vaciar la cola o al repasar 20 tarjetas.',
       ] },
+      { name: 'Misiones y prioridades', items: [
+        'Cada misión tiene un impacto (alto, medio o bajo) que decide su orden y su XP. Ya no hay que elegir tipo.',
+        '«Las 3 de hoy»: elige tus tres prioridades; cerrar las tres da un bonus de XP. Lo que no llegues, pásalo a mañana sin penalización.',
+        'Misiones dentro de misiones: parte un objetivo grande en pasos tan pequeños como quieras y reparte sesiones hasta la fecha.',
+        'Cierre del día y revisión semanal en la crónica de Hiperión, y limpieza de misiones olvidadas.',
+      ] },
+      { name: 'Más cómodo', items: [
+        'El reloj del sueño también en Hoy: cuánto falta para acostarte y qué toca ahora.',
+        'Desplegables, horas y fechas propios en toda la app, en lugar de los del navegador.',
+      ] },
       { name: 'Logros y arreglos', items: [
         '10 logros nuevos de Cuerpo y mente, de Guardián de Hipnos a Memoria de Mnemósine.',
         'Un enlace de invitación ya no manda la solicitud de amistad solo: primero te pregunta.',

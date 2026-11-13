@@ -437,3 +437,4 @@ button.tg-session { font-family: inherit; justify-content: flex-start; align-ite
 .pop-tcol { max-height: 240px; overflow-y: auto; display: grid; align-content: start; gap: 1px; scrollbar-width: thin; }
 .pop-tcol .pop-t { justify-content: center; }
 .pop-tcol .pop-t .mono { color: var(--fg); }
+@media (max-width: 480px) { .ritual-cta .ritual-long { display: none; } }
