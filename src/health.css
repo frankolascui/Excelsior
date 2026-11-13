@@ -142,3 +142,14 @@
 .diary-clock-mini .diary-ring-center small { font-size: 11px; }
 .diary-clock-mini .diary-clock-side { min-width: 180px; gap: 4px; }
 .diary-clock-mini .diary-tip { margin: 0; }
+
+/* «Pesado en las condiciones de siempre» (no usar la clase .check: es el aro de «hecho») */
+.night-cond { display: flex; align-items: flex-start; gap: 10px; color: var(--muted); line-height: 1.4; cursor: pointer; margin: 2px 0 4px; }
+.night-cond input { flex: none; width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--c2); }
+/* Las escalas (1–5, entrenos) ocupan la fila entera y sus botones se reparten sin partirse */
+.night-grid .field:has(> .segmented) { grid-column: 1 / -1; }
+.night-grid .field > .segmented { display: flex; flex-wrap: nowrap; width: 100%; }
+.night-grid .field > .segmented .seg { flex: 1; justify-content: center; min-width: 0; }
+.night-hm input { flex: 1; min-width: 0; width: auto; }
+.night-grid .field > .segmented { max-width: 440px; }
+.night-form, .diary { font-variant-numeric: lining-nums; }

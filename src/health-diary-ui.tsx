@@ -131,7 +131,7 @@ export function NightForm({ game, day, onDone }: { game: Game; day: string; onDo
           onChange={(e) => { setRawPeso(e.target.value); setConfirmSig(null); saveDraft(n, e.target.value); }} /></label>
       </div>
       {rawPeso.trim() !== '' && (
-        <label className="check small-text"><input type="checkbox" checked={n.cuerpo.mismas_condiciones !== false} onChange={(e) => update((x) => ({ ...x, cuerpo: { ...x.cuerpo, mismas_condiciones: e.target.checked } }))} />
+        <label className="night-cond small-text"><input type="checkbox" checked={n.cuerpo.mismas_condiciones !== false} onChange={(e) => update((x) => ({ ...x, cuerpo: { ...x.cuerpo, mismas_condiciones: e.target.checked } }))} />
           <span>Pesado en las condiciones de siempre: al levantarte, tras ir al baño, antes de comer, misma ropa y báscula</span></label>
       )}
       <div className="night-grid">
