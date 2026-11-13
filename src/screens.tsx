@@ -26,7 +26,7 @@ import {
 } from './game';
 import {
   AttributeList, AvatarCard, ConfirmButton, deadlineLabel, formatClock, shortDate, formatMinutes, HabitItem, LevelBar, QuestItem,
-  QuickAddQuest, RewardTags, useNow,
+  QuickAddQuest, RewardTags, useHabitFlip, useNow,
 } from './ui';
 import { HeroJournal, ReviewBanner, TimedGoals } from './ritual';
 import { QuestCalendar } from './calendar';
@@ -125,6 +125,7 @@ export function Dashboard({
   const prioQs = priorityQuests(state, today);
   const prioDone = prioQs.filter((q) => q.completedAt).length;
   const [picking, setPicking] = useState(false);
+  const habitList = useHabitFlip<HTMLUListElement>();
   const hero = s.kind === 'quest' ? s.quest : null;
   const heroIsPrio = !!hero && prio.includes(hero.id);
   const heroPath = hero ? pathLabel(state, hero) : '';
@@ -255,7 +256,7 @@ export function Dashboard({
             <h3>Hábitos de hoy</h3>
             <button className="link" onClick={() => go('habitos')}>Gestionar <Icon name="arrow-right" /></button>
           </header>
-          <ul className="list">
+          <ul className="list" ref={habitList}>
             {habitsInOrder(state, now).map((h) => (
               <HabitItem key={h.id} state={state} habit={h} now={now} compact onToggle={() => act((st) => toggleHabit(st, h.id, Date.now()), CAP_HABIT, { sound: 'habit' })}
                 onToggleDay={(d) => act((st) => toggleHabit(st, h.id, Date.now(), d), CAP_HABIT, { sound: 'habit' })} onShield={(d) => spendHabitShield(game, h.id, d)} />
@@ -732,6 +733,7 @@ export function Habits({ game, guide }: { game: Game; guide: string }) {
   const [prog, setProg] = useState<ProgressionDraft>(() => progressionDraft());
   const [perDay, setPerDay] = useState(1);
   const ordered = habitsInOrder(state, now);
+  const habitList = useHabitFlip<HTMLUListElement>();
   const doneIds = new Set(ordered.filter((h) => habitCleared(state, h, now)).map((h) => h.id));
   async function shareWeek() {
     const text = weekShareText(state, Date.now());
@@ -814,7 +816,7 @@ export function Habits({ game, guide }: { game: Game; guide: string }) {
             </div>
           </div>
         ) : (
-          <ul className="list">
+          <ul className="list" ref={habitList}>
             {ordered.map((h) => {
               // solo se ordena entre los del mismo grupo (pendientes o ya hechos)
               const group = ordered.filter((x) => doneIds.has(x.id) === doneIds.has(h.id)).map((x) => x.id);

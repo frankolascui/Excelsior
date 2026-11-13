@@ -135,6 +135,7 @@ export function DragHandle({ name, group, onDrop }: { name: string; group: strin
       if (to !== from) {
         const order = [...group];
         order.splice(to, 0, ...order.splice(from, 1));
+        list.dataset.dropped = '1'; // ya se vio moverse: la lista no lo anima otra vez
         onDrop(order);
       }
     };

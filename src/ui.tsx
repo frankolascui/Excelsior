@@ -1,5 +1,5 @@
 // Piezas de interfaz compartidas entre pantallas.
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import type { AttributeRewards, GameState, Habit, Impact, Quest, QuestType } from './types';
 import { ATTRIBUTES, attributeHistory, attributeLevel, attributeXp, avatarInfo, formatAttrXp, habitRewards, questRewards } from './attributes';
 import {
@@ -298,6 +298,54 @@ export function QuickAddQuest({
       )}
     </form>
   );
+}
+
+/**
+ * Lista de hábitos que se reordena sola (los hechos bajan al final): cada fila que cambia de puesto se desliza
+ * hasta el nuevo en vez de saltar. Solo se animan las filas que cambian de orden, no las que se mueven porque
+ * otra se abre.
+ */
+export function useHabitFlip<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const prev = useRef<{ order: string[]; tops: Map<string, number> }>({ order: [], tops: new Map() });
+  useLayoutEffect(() => {
+    const list = ref.current;
+    if (!list) return;
+    const rows = [...list.querySelectorAll<HTMLElement>(':scope > [data-habit]')];
+    const order = rows.map((r) => r.dataset.habit!);
+    const tops = new Map(rows.map((r) => [r.dataset.habit!, r.getBoundingClientRect().top]));
+    const before = prev.current;
+    const moved = before.order.length === order.length && before.order.some((id, i) => order[i] !== id);
+    const still = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const dropped = list.dataset.dropped === '1';
+    delete list.dataset.dropped;
+    if (moved && !still && !dropped) {
+      rows.forEach((r, i) => {
+        const id = order[i];
+        const was = before.tops.get(id);
+        if (was == null || before.order.indexOf(id) === i) return;
+        const dy = was - tops.get(id)!;
+        if (Math.abs(dy) < 2 || typeof r.animate !== 'function') return;
+        r.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 320, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' });
+      });
+      // Mientras se recoloca, la fila que sube no se puede marcar sin querer con un segundo toque.
+      // (Reloj del navegador, no setTimeout: así no depende de temporizadores.)
+      const t = Number(document.timeline?.currentTime ?? 0);
+      if (t) list.dataset.settleUntil = String(t + 340);
+    }
+    prev.current = { order, tops };
+  });
+  useEffect(() => {
+    const list = ref.current;
+    if (!list) return;
+    const guard = (e: MouseEvent) => {
+      const until = Number(list.dataset.settleUntil ?? 0);
+      if (until && e.timeStamp < until && (e.target as Element | null)?.closest?.('button.check')) { e.preventDefault(); e.stopPropagation(); }
+    };
+    list.addEventListener('click', guard, true);
+    return () => list.removeEventListener('click', guard, true);
+  }, []);
+  return ref;
 }
 
 export function HabitItem({

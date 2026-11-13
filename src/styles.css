@@ -228,8 +228,11 @@ p { margin: 0; }
   clip-path: inset(0 100% 0 0); transition: opacity 0.15s ease, clip-path 0.2s ease;
 }
 .check::after { content: ''; position: absolute; inset: -2px; border-radius: 50%; pointer-events: none; }
-button.check:hover { box-shadow: 0 0 0 3px color-mix(in srgb, var(--c1) 16%, transparent), 0 0 16px color-mix(in srgb, var(--c1) 30%, transparent); }
-button.check:not(.checked):hover::before { opacity: 0.4; clip-path: inset(0 0 0 0); background: var(--c1); }
+/* Solo con ratón: en el móvil el :hover se queda pegado y, al bajar el hábito hecho, la fila que sube parecía marcada */
+@media (hover: hover) {
+  button.check:hover { box-shadow: 0 0 0 3px color-mix(in srgb, var(--c1) 16%, transparent), 0 0 16px color-mix(in srgb, var(--c1) 30%, transparent); }
+  button.check:not(.checked):hover::before { opacity: 0.4; clip-path: inset(0 0 0 0); background: var(--c1); }
+}
 button.check:focus-visible { outline: 2px solid var(--c1); outline-offset: 2px; }
 .check.checked {
   background: linear-gradient(135deg, var(--c1), var(--c3)) padding-box, linear-gradient(135deg, var(--c1), var(--c3)) border-box;
