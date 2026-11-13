@@ -1,0 +1,748 @@
+/* Generado por scripts-academy-css.mjs desde Excelsior Academy: no editar a mano (ajustes en academy-extra.css). */
+/* Mismo look que Excelsior RPG: negro puro, degradado rosa → morado → violeta,
+   Alegreya SC para los títulos, Alegreya Sans para el texto e IBM Plex Mono para los números. */
+.acad {
+  --bg: #000000;
+  --surface: #0b0b11;
+  --surface-2: #16161f;
+  --line: #24242f;
+  --fg: #ffffff;
+  --muted: #8e8ea6;
+  --c1: #ff5ccf;
+  --c2: #c056ff;
+  --c3: #6d3df5;
+  --grad: linear-gradient(120deg, var(--c1) 0%, var(--c2) 55%, var(--c3) 100%);
+  --gold: #f5c2ff;
+  --ok: #34d399;
+  --danger: #fb7185;
+  --warn: #fbbf24;
+  --glow: 0 0 0 1px color-mix(in srgb, var(--c1) 25%, transparent), 0 12px 40px color-mix(in srgb, var(--c1) 18%, transparent);
+  --display: 'Alegreya SC', 'Palatino Linotype', Palatino, Georgia, serif;
+  --body: 'Alegreya Sans', 'Segoe UI', system-ui, sans-serif;
+  --serif: 'Alegreya', Georgia, serif;
+  --mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+  --spine: var(--c2);
+  color-scheme: dark;
+}
+
+.acad, .acad * { box-sizing: border-box; }
+.acad, .acad { margin: 0; }
+.acad {
+  color: var(--fg);
+  font-family: var(--body);
+  font-size: 17px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  background:
+    radial-gradient(60% 40% at 85% -5%, color-mix(in srgb, var(--c3) 22%, transparent), transparent 70%),
+    radial-gradient(50% 35% at 5% 0%, color-mix(in srgb, var(--c1) 14%, transparent), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+.acad a { color: inherit; }
+.acad h1, .acad h2, .acad h3 { margin: 0; text-wrap: balance; }
+.acad p { margin: 0; }
+.acad :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.acad ::selection { background: color-mix(in srgb, var(--c2) 45%, transparent); }
+.acad .muted { color: var(--muted); }
+.acad .small { font-size: 0.85rem; }
+.acad .mono { font-family: var(--mono); }
+.acad .error { color: var(--danger); }
+.acad .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--c2); }
+.acad .page { max-width: 1180px; margin: 0 auto; padding: 22px 16px 64px; display: grid; gap: 22px; }
+.acad .stack { display: grid; gap: 16px; align-content: start; min-width: 0; }
+.acad .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.acad .section-title { font-family: var(--display); font-size: 30px; font-weight: 700; line-height: 1.15; }
+
+/* ---------- Paneles ---------- */
+.acad .panel, .acad .card {
+  background: linear-gradient(180deg, #0e0e15, #09090e);
+  border: 1px solid var(--line); border-radius: 16px; padding: 16px;
+}
+
+/* ---------- Botones y campos (como en el RPG) ---------- */
+.acad button, .acad .button { font: inherit; color: inherit; cursor: pointer; -webkit-appearance: none; appearance: none; -webkit-tap-highlight-color: transparent; }
+.acad button:disabled { cursor: not-allowed; opacity: 0.45; }
+.acad .primary, .acad .secondary, .acad .ghost, .acad .button {
+  border-radius: 10px; padding: 10px 16px; border: 1px solid transparent; font-weight: 700;
+  transition: transform 0.08s ease, filter 0.15s ease, box-shadow 0.15s ease, border-color 0.15s;
+}
+.acad .primary {
+  background: linear-gradient(120deg, var(--c1), var(--c3)); color: #fff;
+  box-shadow: 0 6px 22px color-mix(in srgb, var(--c1) 35%, transparent);
+}
+.acad .primary:hover:not(:disabled) { filter: brightness(1.08) saturate(1.1); box-shadow: 0 8px 30px color-mix(in srgb, var(--c1) 50%, transparent); }
+.acad .primary:disabled { box-shadow: none; }
+.acad .primary:active:not(:disabled), .acad .secondary:active, .acad .button:active { transform: translateY(1px); }
+.acad .secondary, .acad .button { background: var(--surface-2); border-color: var(--line); }
+.acad .secondary:hover, .acad .button:hover { border-color: var(--c2); }
+.acad .ghost { background: transparent; border-color: var(--line); font-weight: 500; }
+.acad .ghost:hover { border-color: var(--c2); }
+.acad .small.ghost, .acad .ghost.small { padding: 4px 10px; font-size: 14px; }
+.acad .link { background: none; border: 0; padding: 0; color: var(--c1); font-weight: 500; }
+.acad .link:hover { text-decoration: underline; }
+.acad .icon-round {
+  width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line);
+  background: rgba(16, 16, 24, 0.85); font-size: 16px; display: grid; place-items: center; padding: 0;
+}
+.acad .icon-round:hover, .acad .icon-round[aria-pressed='true'] { border-color: var(--c2); }
+.acad .row-actions { display: flex; gap: 4px; opacity: 0.7; transition: opacity 0.15s; }
+.acad *:hover > .row-actions, .acad .row-actions:focus-within { opacity: 1; }
+@media (hover: none) { .acad .row-actions { opacity: 1; } }
+
+.acad input, .acad textarea {
+  width: 100%; min-width: 0; font: inherit; color: inherit;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px;
+}
+.acad input::placeholder, .acad textarea::placeholder { color: var(--muted); }
+.acad input:focus, .acad textarea:focus { outline: none; border-color: var(--gold); }
+.acad input[type='date'] { width: auto; font-family: var(--mono); font-size: 14px; padding: 6px 10px; }
+
+/* ---------- Cabecera ---------- */
+.acad .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.acad .brand {
+  font-family: var(--display); font-weight: 700; font-size: 28px; letter-spacing: 0.02em; text-decoration: none;
+  background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.acad .brand span { font-weight: 500; opacity: 0.85; }
+.acad .top-right { display: flex; align-items: center; gap: 12px; }
+.acad .crumbs { display: flex; gap: 6px; flex-wrap: wrap; color: var(--muted); font-size: 15px; }
+.acad .crumbs a { text-decoration: none; }
+.acad .crumbs a:hover { color: var(--fg); }
+@media (max-width: 560px) { .acad .who { display: none; } }
+
+/* ---------- Login ---------- */
+.acad .login { max-width: 440px; display: grid; gap: 12px; margin: 6vh auto 0; padding: 24px; box-shadow: var(--glow); }
+.acad .login h2 { font-family: var(--display); font-size: 28px; }
+
+/* ---------- Estantería ---------- */
+.acad .shelf { list-style: none; padding: 0; margin: 0; display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+.acad .binder { display: grid; gap: 6px; }
+.acad .binder-cover {
+  display: flex; flex-direction: column; justify-content: flex-end; gap: 4px;
+  min-height: 210px; padding: 18px 16px 18px 34px; text-decoration: none; position: relative; overflow: hidden;
+  border-radius: 6px 14px 14px 6px;
+  background:
+    radial-gradient(120% 80% at 100% 0%, color-mix(in srgb, var(--spine) 40%, transparent), transparent 60%),
+    linear-gradient(160deg, color-mix(in srgb, var(--spine) 22%, #0e0e15), #09090e);
+  border: 1px solid color-mix(in srgb, var(--spine) 40%, var(--line));
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.acad .binder-cover::before { /* lomo */
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 18px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--spine) 70%, #000), var(--spine));
+  box-shadow: inset -2px 0 4px rgba(0, 0, 0, 0.35);
+}
+.acad .binder-cover::after { /* anillas */
+  content: ''; position: absolute; left: 24px; top: 28%; width: 8px; height: 44%;
+  background: radial-gradient(circle, #ffffff66 3px, transparent 4px) 0 0 / 8px 25%;
+}
+.acad .binder-cover:hover {
+  transform: translateY(-4px) rotate(-0.4deg);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--spine) 45%, transparent), 0 16px 40px color-mix(in srgb, var(--spine) 28%, transparent);
+}
+.acad .binder-name { font-family: var(--display); font-weight: 700; font-size: 22px; line-height: 1.1; overflow-wrap: anywhere; }
+.acad .binder-label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: color-mix(in srgb, var(--spine) 60%, white); }
+.acad .add { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.acad .add input { flex: 1 1 240px; }
+.acad .colors { display: flex; gap: 6px; flex-wrap: wrap; }
+.acad .swatch { width: 26px; height: 26px; padding: 0; border-radius: 50%; border: 2px solid transparent; transition: transform 0.1s; }
+.acad .swatch:hover { transform: scale(1.12); }
+.acad .swatch[aria-checked='true'] { border-color: var(--fg); box-shadow: 0 0 10px currentColor; }
+.acad .empty-state { text-align: center; padding: 28px 16px; border: 1px dashed var(--line); border-radius: 16px; color: var(--muted); }
+
+/* ---------- Archivador abierto ---------- */
+.acad .binder-title { font-family: var(--display); font-size: 30px; font-weight: 700; display: flex; align-items: center; gap: 12px; }
+.acad .binder-title::before { content: ''; width: 10px; height: 30px; border-radius: 4px; background: var(--spine); box-shadow: 0 0 14px var(--spine); }
+.acad .binder-open { display: grid; grid-template-columns: 260px 1fr; gap: 18px; align-items: start; }
+.acad .tabs { padding-right: 0; display: grid; gap: 10px; }
+.acad .tabs ol { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.acad .tab a {
+  display: flex; gap: 10px; align-items: center; text-decoration: none; padding: 10px 12px;
+  border-radius: 12px; border: 1px solid var(--line); background: var(--surface);
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+}
+.acad .tab a:hover { background: var(--surface-2); border-color: color-mix(in srgb, var(--spine) 35%, var(--line)); transform: translateX(2px); }
+/* Separador activo: borde del color de la asignatura y una franja a la izquierda, como un marcapáginas. */
+.acad .tab.active a {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--spine) 22%, var(--surface)), var(--surface) 85%);
+  border-color: color-mix(in srgb, var(--spine) 60%, var(--line));
+  box-shadow: inset 3px 0 0 var(--spine), 0 0 18px color-mix(in srgb, var(--spine) 18%, transparent);
+}
+.acad .tab-num {
+  flex: none; width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center;
+  font: 500 13px var(--mono); background: color-mix(in srgb, var(--spine) 25%, transparent); color: color-mix(in srgb, var(--spine) 50%, white);
+}
+.acad .tab.active .tab-num { background: var(--spine); color: #fff; box-shadow: 0 0 10px color-mix(in srgb, var(--spine) 60%, transparent); }
+.acad .tab-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acad .add-tab { display: flex; gap: 6px; }
+.acad .add-tab input { flex: 1; }
+.acad .add-tab button { padding: 8px 14px; }
+.acad .sheet-area {
+  position: relative; overflow: hidden;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--spine) 6%, #0e0e15), #09090e 220px);
+  border: 1px solid color-mix(in srgb, var(--spine) 30%, var(--line));
+  border-radius: 18px; padding: 22px; min-height: 320px;
+}
+/* Franja fina de color arriba, con los extremos difuminados. */
+.acad .sheet-area::before {
+  content: ''; position: absolute; inset: 0 0 auto; height: 3px;
+  background: linear-gradient(90deg, transparent, var(--spine) 15%, var(--spine) 85%, transparent);
+}
+.acad .topic-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.acad .topic-head h2 { font-family: var(--display); font-size: 26px; }
+.acad .pages { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.acad .page-row {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 14px;
+  background: var(--surface-2); border: 1px solid transparent; border-radius: 12px; transition: border-color 0.15s, transform 0.15s;
+}
+.acad .page-row:hover { border-color: color-mix(in srgb, var(--spine) 50%, transparent); transform: translateX(3px); }
+.acad .page-row a { text-decoration: none; flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.acad .page-row .page-name { font-weight: 500; overflow-wrap: anywhere; }
+.acad .page-row .page-meta { font: 500 11.5px var(--mono); color: var(--muted); }
+
+/* ---------- Hoja: lectura ---------- */
+/* La hoja va centrada en una columna de lectura, como un folio. */
+.acad .reader { max-width: 860px; width: 100%; margin: 0 auto; }
+.acad .paper {
+  padding: 32px clamp(18px, 4vw, 48px) 40px; border-radius: 18px; min-width: 0;
+  background:
+    radial-gradient(90% 60% at 100% 0%, color-mix(in srgb, var(--spine) 12%, transparent), transparent 60%) padding-box,
+    linear-gradient(180deg, #0f0f17, #0a0a10) padding-box,
+    linear-gradient(140deg, color-mix(in srgb, var(--spine) 70%, transparent), var(--line) 40%, var(--line) 70%, color-mix(in srgb, var(--spine) 40%, transparent)) border-box;
+  border: 1px solid transparent;
+}
+.acad .paper-head { display: grid; gap: 6px; padding-bottom: 18px; margin-bottom: 22px; border-bottom: 1px solid var(--line); position: relative; }
+.acad .paper-head .eyebrow { color: color-mix(in srgb, var(--spine) 60%, white); }
+.acad .paper-head button { position: absolute; top: 0; right: 0; }
+.acad .page-title {
+  font-family: var(--display); font-size: clamp(28px, 4vw, 38px); line-height: 1.1; padding-right: 90px;
+  background: linear-gradient(120deg, #fff 30%, color-mix(in srgb, var(--spine) 60%, white)); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.acad .toc { margin: -8px auto 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.acad .toc summary { cursor: pointer; padding: 8px 12px; font-weight: 700; font-size: 15px; list-style: none; }
+.acad .toc summary::-webkit-details-marker { display: none; }
+.acad .toc[open] summary { border-bottom: 1px solid var(--line); }
+.acad .toc ol { list-style: none; margin: 0; padding: 8px; columns: 2 220px; column-gap: 12px; }
+.acad .toc li { break-inside: avoid; }
+.acad .toc a { display: block; text-decoration: none; color: var(--muted); padding: 4px 8px; border-radius: 8px; border-left: 2px solid transparent; font-size: 15px; line-height: 1.3; }
+.acad .toc a:hover { color: var(--fg); background: var(--surface-2); border-left-color: var(--spine); }
+.acad .toc .sub a { padding-left: 20px; font-size: 14px; }
+
+/* ---------- El resumen (Markdown) ---------- */
+.acad .md { display: grid; gap: 12px; overflow-wrap: anywhere; font-size: 18px; line-height: 1.65; max-width: 74ch; }
+.acad .paper .md, .acad .paper-head, .acad .paper .toc { max-width: 760px; margin-inline: auto; }
+.acad .md > :first-child { margin-top: 0; }
+.acad .md h1 { font-family: var(--display); font-size: 30px; margin-top: 18px; }
+.acad .md h2 {
+  font-family: var(--display); font-size: 25px; line-height: 1.2; margin-top: 22px; padding: 4px 0 4px 14px;
+  border-left: 4px solid var(--spine); scroll-margin-top: 20px;
+}
+.acad .md h3 { font-size: 19px; font-weight: 700; margin-top: 10px; color: color-mix(in srgb, var(--spine) 55%, white); scroll-margin-top: 20px; }
+.acad .md h4 { font-size: 17px; margin: 6px 0 0; color: var(--gold); }
+.acad .md p, .acad .md ul, .acad .md ol, .acad .md table, .acad .md pre, .acad .md blockquote { margin: 0; }
+.acad .md strong { color: #fff; font-weight: 700; background: linear-gradient(transparent 58%, color-mix(in srgb, var(--spine) 30%, transparent) 58%, color-mix(in srgb, var(--spine) 30%, transparent) 92%, transparent 92%); padding: 0 2px; border-radius: 2px; }
+.acad .md em { color: var(--gold); }
+.acad .md ul, .acad .md ol { padding-left: 1.4em; display: grid; gap: 4px; }
+.acad .md ul { list-style: none; padding-left: 1.2em; }
+.acad .md ul > li { position: relative; }
+.acad .md ul > li::before { content: '◆'; position: absolute; left: -1.25em; top: 0.85em; transform: translateY(-50%); font-size: 0.6em; line-height: 1; color: var(--spine); }
+.acad .md ul ul > li::before { content: '◇'; }
+.acad .md ol > li::marker { color: color-mix(in srgb, var(--spine) 60%, white); font-family: var(--mono); font-size: 0.85em; }
+.acad .md li > ul, .acad .md li > ol { margin-top: 4px; }
+.acad .md blockquote {
+  padding: 12px 16px 12px 44px; border-radius: 12px; position: relative; color: var(--fg);
+  background: color-mix(in srgb, var(--spine) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--spine) 35%, transparent);
+}
+.acad .md blockquote::before { content: '💡'; position: absolute; left: 14px; top: 12px; }
+.acad .md .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+.acad .md table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 16px; }
+.acad .md th, .acad .md td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+.acad .md th { background: color-mix(in srgb, var(--spine) 22%, var(--surface)); font-weight: 700; white-space: nowrap; }
+.acad .md tr:nth-child(even) td { background: color-mix(in srgb, var(--surface-2) 60%, transparent); }
+.acad .md tr:last-child td { border-bottom: 0; }
+.acad .md code { font-family: var(--mono); font-size: 0.85em; background: var(--surface-2); padding: 1px 5px; border-radius: 6px; }
+.acad .md pre { background: var(--surface-2); padding: 12px; border-radius: 12px; overflow-x: auto; }
+.acad .md pre code { background: none; padding: 0; }
+.acad .md hr { border: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--spine), transparent); margin: 10px 0; }
+.acad .md a { color: var(--c1); }
+.acad .md .katex-display { overflow-x: auto; overflow-y: hidden; padding: 10px 0; margin: 0; border-radius: 12px; background: color-mix(in srgb, var(--surface-2) 70%, transparent); }
+.acad .md input[type='checkbox'] { width: auto; accent-color: var(--spine); margin-right: 6px; }
+.acad .md li:has(> input[type='checkbox'])::before { content: none; }
+
+/* ---------- Hoja: editor ---------- */
+.acad .title-input { flex: 1 1 260px; font-family: var(--display); font-size: 22px; font-weight: 700; }
+.acad .toolbar { gap: 10px; }
+.acad .cheats summary { cursor: pointer; }
+.acad .cheats p { margin-top: 6px; color: var(--muted); }
+.acad .editor { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.acad .editor textarea { min-height: 65vh; resize: vertical; font-family: var(--mono); font-size: 14px; line-height: 1.6; background: #07070b; }
+.acad .preview { max-height: 75vh; overflow: auto; }
+.acad .preview .md { font-size: 16px; }
+
+/* ---------- Móvil ---------- */
+@media (max-width: 760px) {
+  .acad { font-size: 16px; }
+  .acad .binder-open, .acad .editor { grid-template-columns: 1fr; }
+  .acad .tabs ol { display: flex; overflow-x: auto; gap: 6px; padding-bottom: 4px; scroll-snap-type: x mandatory; }
+  .acad .tab { flex: none; scroll-snap-align: start; max-width: 220px; }
+  .acad .tab.active a { box-shadow: inset 0 -3px 0 var(--spine); }
+  .acad .add-tab { margin: 0 0 10px; }
+  .acad .sheet-area { padding: 16px; }
+  .acad .editor textarea { min-height: 45vh; }
+  .acad .md { font-size: 17px; }
+  .acad .paper { padding: 22px 16px 28px; }
+  .acad .page-title { padding-right: 0; }
+  .acad .paper-head button { position: static; justify-self: start; }
+  .acad .shelf { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .acad .binder-cover { min-height: 160px; }
+  .acad .binder-name { font-size: 19px; }
+}
+
+/* ---------- Flashcards ---------- */
+.acad a.button { text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+.acad .pill { font: 500 12px var(--mono); padding: 2px 8px; border-radius: 99px; white-space: nowrap; background: var(--surface-2); color: var(--muted); }
+.acad .pill.new, .acad .pill.s0 { background: color-mix(in srgb, #3fb6ff 18%, transparent); color: #7dd0ff; }
+.acad .pill.learn, .acad .pill.s1, .acad .pill.s3 { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); }
+.acad .pill.due, .acad .pill.s2 { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }
+
+.acad .mode-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+.acad .mode-tabs button {
+  background: none; border: 0; border-bottom: 2px solid transparent; padding: 8px 14px; color: var(--muted); font-weight: 700; margin-bottom: -1px;
+}
+.acad .mode-tabs button[aria-selected='true'] { color: var(--fg); border-bottom-color: var(--spine); }
+.acad .mode-tabs button:hover { color: var(--fg); }
+
+.acad .review-cta {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 12px 14px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--spine) 35%, var(--line));
+  background: color-mix(in srgb, var(--spine) 7%, var(--surface));
+}
+.acad .card-form { display: grid; gap: 8px; }
+.acad .card-form textarea { width: 100%; resize: vertical; font: inherit; }
+.acad .cards { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.acad .card-row {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px;
+  background: var(--surface); border: 1px solid var(--line);
+}
+.acad .card-row.editing { display: block; }
+.acad .card-text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.acad .card-front { font-weight: 700; overflow-wrap: anywhere; }
+.acad .card-back { color: var(--muted); font-size: 15px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: pre-line; }
+
+/* Sesión de repaso */
+.acad .review { max-width: 760px; width: 100%; margin: 0 auto; display: grid; gap: 18px; }
+.acad .review .crumbs { justify-content: space-between; align-items: center; }
+.acad .counts { display: flex; gap: 6px; }
+.acad .flashcard {
+  min-height: 260px; padding: 28px 30px; border-radius: 20px; cursor: pointer;
+  background: linear-gradient(180deg, #12121b, #0a0a10); border: 1px solid var(--line); box-shadow: var(--glow);
+  display: grid; gap: 14px; align-content: start;
+}
+.acad .flashcard hr { border: 0; border-top: 1px dashed color-mix(in srgb, var(--c2) 50%, var(--line)); width: 100%; margin: 4px 0; }
+.acad .fc-front .md { font-size: 22px; font-weight: 600; }
+.acad .fc-back { animation: ac-fc-in 0.18s ease-out; }
+@keyframes ac-fc-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.acad kbd { font: 500 11px var(--mono); padding: 1px 6px; border-radius: 6px; border: 1px solid color-mix(in srgb, currentColor 35%, transparent); opacity: 0.7; margin-left: 6px; }
+.acad .reveal { justify-self: center; min-width: 260px; padding: 14px 20px; font-size: 18px; }
+.acad .grades { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.acad .grade {
+  display: grid; gap: 2px; justify-items: center; padding: 10px 6px; border-radius: 12px; font-weight: 700;
+  background: var(--surface-2); border: 1px solid var(--line); transition: transform 0.08s, border-color 0.15s;
+}
+.acad .grade:active { transform: translateY(1px); }
+.acad .grade .when { font: 500 12px var(--mono); color: var(--muted); }
+.acad .grade kbd { margin: 0; }
+.acad .g1 { border-color: color-mix(in srgb, var(--danger) 50%, var(--line)); } .acad .g1:hover { background: color-mix(in srgb, var(--danger) 15%, var(--surface-2)); }
+.acad .g2 { border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); } .acad .g2:hover { background: color-mix(in srgb, var(--warn) 13%, var(--surface-2)); }
+.acad .g3 { border-color: color-mix(in srgb, var(--ok) 50%, var(--line)); } .acad .g3:hover { background: color-mix(in srgb, var(--ok) 13%, var(--surface-2)); }
+.acad .g4 { border-color: color-mix(in srgb, #3fb6ff 50%, var(--line)); } .acad .g4:hover { background: color-mix(in srgb, #3fb6ff 13%, var(--surface-2)); }
+.acad .review-done { max-width: 560px; margin: 24px auto; display: grid; gap: 14px; justify-items: center; text-align: center; padding: 30px 20px; }
+.acad .stats { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+.acad .stats div { display: grid; padding: 12px 18px; border-radius: 14px; background: var(--surface-2); min-width: 110px; }
+.acad .stats strong { font-family: var(--display); font-size: 28px; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.acad .stats span { color: var(--muted); font-size: 14px; }
+
+/* Panel «Hoy» de la estantería */
+.acad .today { display: grid; gap: 12px; border-color: color-mix(in srgb, var(--c1) 30%, var(--line)); }
+.acad .today-main { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.acad .today-num { font-family: var(--display); font-size: 26px; font-weight: 700; margin: 2px 0 6px; }
+.acad .today-list { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; }
+.acad .today-list a { display: flex; gap: 8px; align-items: center; text-decoration: none; padding: 6px 12px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--line); }
+.acad .today-list a:hover { border-color: var(--spine); }
+.acad .today-list .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--spine); }
+
+@media (max-width: 560px) {
+  .acad .flashcard { padding: 20px 18px; min-height: 220px; }
+  .acad .fc-front .md { font-size: 19px; }
+  .acad .grades { gap: 6px; }
+  .acad .grade { padding: 10px 2px; font-size: 15px; }
+  .acad .grade kbd, .acad .reveal kbd { display: none; }
+  .acad .reveal { width: 100%; min-width: 0; }
+  .acad .card-row { flex-wrap: wrap; }
+}
+/* Un enlace con aspecto de botón principal (p. ej. «Repasar») */
+.acad .button.primary { background: linear-gradient(120deg, var(--c1), var(--c3)); border-color: transparent; color: #fff; }
+/* ---------- Iconos y botones de icono ---------- */
+.acad .icon { flex: none; display: block; }
+.acad .primary, .acad .secondary, .acad .ghost, .acad .button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+.acad .icon-btn {
+  width: 34px; height: 34px; padding: 0; display: grid; place-items: center; border-radius: 10px;
+  background: var(--surface-2); border: 1px solid var(--line); color: var(--muted);
+  transition: color 0.15s, border-color 0.15s, background 0.15s, transform 0.08s;
+}
+.acad .icon-btn:hover { color: var(--fg); border-color: var(--c2); background: color-mix(in srgb, var(--c2) 14%, var(--surface-2)); }
+.acad .icon-btn:active { transform: translateY(1px); }
+.acad .icon-btn.danger:hover { color: var(--danger); border-color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, var(--surface-2)); }
+.acad .icon-only { padding: 0; width: 42px; height: 42px; }
+.acad .page-name { display: inline-flex; align-items: center; gap: 8px; }
+.acad .page-name .icon { color: var(--spine); }
+
+/* Botón «Volver» */
+.acad .crumbs { align-items: center; }
+.acad .back-btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px 6px 9px; border-radius: 99px;
+  background: var(--surface-2); border: 1px solid var(--line); color: var(--fg); font-weight: 700; font-size: 15px;
+  transition: border-color 0.15s, transform 0.08s;
+}
+.acad .back-btn:hover { border-color: var(--c2); }
+.acad .back-btn:active { transform: translateX(-2px); }
+.acad .crumbs .back-btn { color: var(--fg); margin-right: 4px; }
+
+/* Repasar mezclando temas */
+.acad .mix { margin: 4px 0 0; border: 1px dashed var(--line); border-radius: 14px; padding: 10px 12px; display: grid; gap: 10px; }
+.acad .mix summary { cursor: pointer; font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 8px; color: var(--muted); list-style: none; }
+.acad .mix summary::-webkit-details-marker { display: none; }
+.acad .mix[open] summary, .acad .mix summary:hover { color: var(--fg); }
+.acad .mix ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.acad .mix label { display: flex; gap: 8px; align-items: center; font-size: 15px; cursor: pointer; }
+.acad .mix input[type='checkbox'] { width: 16px; height: 16px; accent-color: var(--spine); }
+.acad .button.disabled { opacity: 0.45; cursor: not-allowed; }
+@media (max-width: 760px) { .acad .mix { margin: 0 0 10px; } }
+.acad .mode-tabs button { display: inline-flex; align-items: center; gap: 7px; }
+
+/* ---------- Ventanas (confirmar / renombrar) ---------- */
+.acad .dialog-backdrop {
+  position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px;
+  background: rgba(0, 0, 0, 0.62); backdrop-filter: blur(4px); animation: ac-fade-in 0.12s ease-out;
+}
+.acad .dialog {
+  width: min(440px, 100%); display: grid; gap: 14px; padding: 24px; border-radius: 20px;
+  background: linear-gradient(180deg, #13131c, #0b0b11); border: 1px solid color-mix(in srgb, var(--c2) 45%, var(--line));
+  box-shadow: var(--glow), 0 30px 80px rgba(0, 0, 0, 0.6); animation: ac-pop-in 0.16s ease-out;
+}
+.acad .dialog.danger { border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--danger) 20%, transparent), 0 30px 80px rgba(0, 0, 0, 0.6); }
+.acad .dialog h2 { font-family: var(--display); font-size: 22px; line-height: 1.2; }
+.acad .dialog-icon { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); }
+.acad .dialog-field { display: grid; gap: 6px; }
+.acad .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.acad .danger-btn {
+  border-radius: 10px; padding: 10px 16px; font-weight: 700; border: 1px solid transparent; color: #fff;
+  background: linear-gradient(120deg, #fb7185, #e11d48); box-shadow: 0 6px 22px color-mix(in srgb, var(--danger) 35%, transparent);
+}
+.acad .danger-btn:hover { filter: brightness(1.08); }
+@keyframes ac-fade-in { from { opacity: 0; } }
+@keyframes ac-pop-in { from { opacity: 0; transform: translateY(8px) scale(0.97); } }
+
+
+/* Nivel de exigencia: control segmentado junto al título */
+.acad .binder-head { display: flex; justify-content: space-between; align-items: center; gap: 12px 20px; flex-wrap: wrap; }
+.acad .level-picker { display: grid; gap: 4px; justify-items: end; }
+.acad .segmented { display: inline-flex; padding: 3px; gap: 2px; border-radius: 99px; background: var(--surface); border: 1px solid var(--line); }
+.acad .segmented button {
+  border: 0; background: none; color: var(--muted); font-weight: 700; font-size: 14px; padding: 6px 14px; border-radius: 99px;
+  transition: color 0.15s, background 0.15s;
+}
+.acad .segmented button:hover { color: var(--fg); }
+.acad .segmented button[aria-checked='true'] { color: #fff; background: linear-gradient(120deg, color-mix(in srgb, var(--spine) 85%, var(--c1)), color-mix(in srgb, var(--spine) 70%, var(--c3))); box-shadow: 0 4px 14px color-mix(in srgb, var(--spine) 35%, transparent); }
+.acad .level-meta { font: 500 12px var(--mono); color: var(--muted); }
+@media (max-width: 760px) { .acad .level-picker { justify-items: start; } }
+
+/* Escribir una tarjeta: un solo bloque con pregunta y respuesta */
+.acad .composer { gap: 0; padding: 4px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); transition: border-color 0.15s; }
+.acad .composer:focus-within { border-color: color-mix(in srgb, var(--spine) 60%, var(--line)); }
+.acad .composer textarea { border: 0; background: transparent; border-radius: 10px; }
+.acad .composer textarea:focus { border: 0; }
+.acad .composer textarea + textarea { border-top: 1px dashed var(--line); border-radius: 0; }
+.acad .composer .card-form-foot { padding: 6px 6px 4px 12px; }
+
+/* ---------- Menú «⋯» ---------- */
+.acad .menu { position: relative; flex: none; }
+.acad .menu-list {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; min-width: 190px; margin: 0; padding: 6px; list-style: none;
+  background: linear-gradient(180deg, #15151f, #0d0d14); border: 1px solid color-mix(in srgb, var(--c2) 40%, var(--line));
+  border-radius: 14px; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), var(--glow); animation: ac-pop-in 0.12s ease-out;
+}
+.acad .menu-list button {
+  width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 10px; border: 0; border-radius: 9px;
+  background: none; color: var(--fg); font-size: 15px; text-align: left;
+}
+.acad .menu-list button:hover { background: color-mix(in srgb, var(--c2) 16%, transparent); }
+.acad .menu-list button.danger { color: var(--danger); }
+.acad .menu-list button.danger:hover { background: color-mix(in srgb, var(--danger) 14%, transparent); }
+.acad .menu-list .icon { opacity: 0.8; }
+.acad .binder { position: relative; }
+.acad .binder > .menu { position: absolute; top: 10px; right: 10px; }
+.acad .binder > .menu > .icon-btn { background: rgba(10, 10, 16, 0.6); backdrop-filter: blur(4px); }
+.acad .page-row > .menu, .acad .card-row > .menu { opacity: 0.55; transition: opacity 0.15s; }
+.acad .page-row:hover > .menu, .acad .card-row:hover > .menu, .acad .menu:focus-within { opacity: 1; }
+@media (hover: none) { .acad .page-row > .menu, .acad .card-row > .menu { opacity: 1; } }
+.acad .card-row { cursor: pointer; transition: border-color 0.15s; }
+.acad .card-row:hover { border-color: color-mix(in srgb, var(--spine) 45%, var(--line)); }
+.acad .card-row.editing { cursor: default; }
+.acad .card-form-foot { justify-content: space-between; }
+
+/* ---------- Ventana grande (importar) ---------- */
+.acad .dialog.modal { width: min(520px, 100%); gap: 16px; }
+.acad .modal-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.acad .modal-body { display: grid; gap: 12px; }
+.acad .modal-body textarea { width: 100%; resize: vertical; font: inherit; font-size: 15px; }
+.acad .drop {
+  display: grid; justify-items: center; gap: 4px; padding: 26px 16px; text-align: center; cursor: pointer;
+  border: 1.5px dashed color-mix(in srgb, var(--c2) 45%, var(--line)); border-radius: 16px;
+  background: color-mix(in srgb, var(--c2) 5%, transparent); transition: border-color 0.15s, background 0.15s, transform 0.15s;
+}
+.acad .drop:hover, .acad .drop.over { border-color: var(--c1); background: color-mix(in srgb, var(--c1) 9%, transparent); }
+.acad .drop.over { transform: scale(1.01); }
+.acad .drop-icon { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; margin-bottom: 6px; color: #fff; background: var(--grad); box-shadow: 0 6px 22px color-mix(in srgb, var(--c1) 35%, transparent); }
+.acad .or { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
+.acad .or::before, .acad .or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.acad .import-summary { display: grid; gap: 10px; }
+.acad .apkg-decks { list-style: none; margin: 0; padding: 10px 12px; display: grid; gap: 4px; max-height: 170px; overflow: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.acad .apkg-decks li { display: flex; justify-content: space-between; gap: 8px; font-size: 15px; }
+.acad .modal-body .link { justify-self: start; }
+
+/* Interruptor */
+.acad .toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 15px; }
+.acad .toggle input { position: absolute; opacity: 0; pointer-events: none; }
+.acad .toggle-track { flex: none; width: 38px; height: 22px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--line); position: relative; transition: background 0.15s; }
+.acad .toggle-track span { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--muted); transition: transform 0.15s, background 0.15s; }
+.acad .toggle input:checked + .toggle-track { background: var(--grad); border-color: transparent; }
+.acad .toggle input:checked + .toggle-track span { transform: translateX(16px); background: #fff; }
+.acad .toggle input:focus-visible + .toggle-track { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* Hueco para una asignatura nueva en la estantería */
+.acad .binder-new {
+  width: 100%; min-height: 210px; display: grid; place-content: center; justify-items: center; gap: 10px;
+  border-radius: 6px 14px 14px 6px; border: 1.5px dashed color-mix(in srgb, var(--c2) 40%, var(--line));
+  background: color-mix(in srgb, var(--c2) 4%, transparent); color: var(--muted); font-weight: 700;
+  transition: border-color 0.15s, color 0.15s, transform 0.18s;
+}
+.acad .binder-new:hover { border-color: var(--c1); color: var(--fg); transform: translateY(-3px); }
+.acad .new-subject { display: grid; gap: 14px; }
+.acad .new-subject .colors { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 760px) { .acad .binder-new { min-height: 160px; } }
+
+/* ---------- Simulacros (paso 8) ---------- */
+/* Pestaña aparte bajo los temas: los simulacros son de toda la asignatura. */
+.acad .exams-tab {
+  display: flex; gap: 10px; align-items: center; text-decoration: none; padding: 11px 12px; font-weight: 700;
+  border-radius: 12px; border: 1px solid color-mix(in srgb, var(--spine) 35%, var(--line));
+  background: color-mix(in srgb, var(--spine) 8%, var(--surface)); color: color-mix(in srgb, var(--spine) 40%, white);
+  transition: background 0.15s, transform 0.15s;
+}
+.acad .exams-tab:hover { transform: translateX(2px); background: color-mix(in srgb, var(--spine) 16%, var(--surface)); }
+.acad .exams-tab.active { background: var(--spine); color: #fff; border-color: transparent; box-shadow: 0 0 18px color-mix(in srgb, var(--spine) 45%, transparent); }
+.acad .pill.ex-pendiente { background: color-mix(in srgb, #3fb6ff 18%, transparent); color: #7dd0ff; }
+.acad .pill.ex-en-curso { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+.acad .pill.ex-sin-corregir { background: color-mix(in srgb, var(--c1) 18%, transparent); color: var(--c1); }
+.acad .grade-badge {
+  font: 700 17px var(--display); min-width: 46px; padding: 4px 10px; border-radius: 12px; text-align: center;
+  border: 1px solid currentColor; background: color-mix(in srgb, currentColor 12%, transparent);
+}
+.acad .grade-badge.big { font-size: 34px; padding: 6px 16px; border-radius: 16px; box-shadow: 0 0 24px color-mix(in srgb, currentColor 30%, transparent); }
+.acad .g-good { color: var(--ok); }
+.acad .g-mid { color: var(--warn); }
+.acad .g-bad { color: var(--danger); }
+.acad .trend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
+.acad .trend-step { display: inline-flex; align-items: center; gap: 8px; font-family: var(--display); font-size: 19px; }
+.acad .trend .up { color: var(--ok); } .acad .trend .down { color: var(--danger); }
+.acad .exam-import { display: grid; gap: 12px; }
+.acad .field { display: grid; gap: 5px; }
+.acad .field > span { font-size: 13px; color: var(--muted); font-weight: 500; }
+.acad .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.acad .chip { padding: 6px 12px; border-radius: 99px; border: 1px solid var(--line); background: var(--surface-2); font-size: 14px; }
+.acad .chip[aria-pressed='true'] { background: color-mix(in srgb, var(--c2) 25%, transparent); border-color: var(--c2); color: #fff; }
+
+.acad .exam-head { display: flex; align-items: center; gap: 14px; width: 100%; }
+.acad .exam-head .page-title { padding-right: 0; font-size: clamp(26px, 3.4vw, 34px); }
+.acad .exam-head > div:first-child { flex: 1; min-width: 0; }
+.acad .exam-head .eyebrow { color: color-mix(in srgb, var(--spine) 60%, white); }
+.acad .exam-start { display: grid; justify-items: center; text-align: center; gap: 14px; padding: 36px 22px; max-width: 560px; margin: 0 auto; width: 100%; }
+.acad .exam-start > .icon { color: var(--spine); }
+.acad .exam-start p { margin: 0; color: var(--muted); }
+.acad .primary.big { padding: 12px 30px; font-size: 18px; }
+.acad .exam-bar {
+  position: sticky; top: 8px; z-index: 5; display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px;
+  border-radius: 14px; background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(8px);
+  border: 1px solid color-mix(in srgb, var(--spine) 40%, var(--line));
+}
+.acad .exam-bar .clock { display: inline-flex; align-items: center; gap: 8px; font: 700 22px var(--mono); }
+.acad .exam-bar .muted { flex: 1; }
+.acad .exam-bar.over { border-color: var(--danger); }
+.acad .exam-bar.over .clock { color: var(--danger); }
+.acad .exam-work { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.acad .exam-paper { max-height: 78vh; overflow: auto; }
+.acad .exam-answers { display: grid; gap: 6px; position: sticky; top: 80px; }
+.acad .exam-answers textarea { min-height: 70vh; resize: vertical; font: 16px/1.6 var(--body); }
+.acad .steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; counter-reset: paso; }
+.acad .steps li {
+  counter-increment: paso; display: flex; align-items: center; gap: 14px; padding: 12px 14px;
+  border-radius: 14px; background: var(--surface); border: 1px solid var(--line);
+}
+.acad .steps li::before {
+  content: counter(paso); flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  font: 700 15px var(--mono); background: color-mix(in srgb, var(--spine) 25%, transparent); color: #fff;
+}
+.acad .steps li.done::before { content: '✓'; background: var(--ok); color: #000; }
+.acad .steps li > div { flex: 1; }
+.acad .steps p { margin: 2px 0 0; }
+.acad .correction-input { width: 100%; resize: vertical; font: inherit; }
+.acad .correction-foot { justify-content: space-between; }
+.acad .grade-field { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; }
+.acad .grade-field input { width: 70px; text-align: center; font: 700 18px var(--display); }
+.acad .fold { border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; background: var(--surface); }
+.acad .fold summary { cursor: pointer; font-weight: 700; display: flex; align-items: center; gap: 8px; color: var(--muted); list-style: none; }
+.acad .fold summary::-webkit-details-marker { display: none; }
+.acad .fold[open] summary { color: var(--fg); margin-bottom: 10px; }
+.acad .fold .paper { padding: 18px; }
+.acad .answers-text { white-space: pre-wrap; font: 16px/1.6 var(--body); margin: 0; }
+.acad .exam-meta::first-letter { text-transform: uppercase; }
+@media (max-width: 760px) {
+  .acad .exam-work { grid-template-columns: 1fr; }
+  .acad .exam-paper { max-height: none; }
+  .acad .exam-answers { position: static; }
+  .acad .exam-answers textarea { min-height: 40vh; }
+  .acad .exam-bar .muted { display: none; }
+  .acad .exam-bar .clock { flex: 1; }
+  .acad .steps li { flex-wrap: wrap; }
+  .acad .grade-badge.big { font-size: 26px; }
+}
+
+/* ---------- Fechas de examen y plan (paso 9) ---------- */
+.acad .exams-area { gap: 30px; }
+.acad .exam-date { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+.acad .exam-date[open] { border-color: color-mix(in srgb, var(--spine) 45%, var(--line)); }
+.acad .exam-date > summary { list-style: none; display: flex; align-items: center; gap: 14px; padding: 12px 14px; cursor: pointer; }
+.acad .exam-date > summary::-webkit-details-marker { display: none; }
+.acad .exam-date-main { flex: 1; display: grid; min-width: 0; }
+.acad .countdown {
+  flex: none; width: 54px; height: 54px; border-radius: 14px; display: grid; place-content: center; text-align: center; line-height: 1;
+  background: color-mix(in srgb, var(--spine) 18%, transparent); border: 1px solid color-mix(in srgb, var(--spine) 50%, transparent);
+}
+.acad .countdown strong { font: 700 22px var(--display); }
+.acad .countdown span { font: 500 10px var(--mono); color: var(--muted); text-transform: uppercase; }
+.acad .countdown.hot { background: color-mix(in srgb, var(--danger) 18%, transparent); border-color: var(--danger); box-shadow: 0 0 16px color-mix(in srgb, var(--danger) 30%, transparent); }
+.acad .countdown.small { width: 42px; height: 42px; border-radius: 11px; }
+.acad .countdown.small strong { font-size: 17px; }
+.acad .plan { list-style: none; margin: 0; padding: 0 14px 6px; display: grid; gap: 2px; }
+.acad .plan li { display: grid; grid-template-columns: 110px 1fr; gap: 12px; padding: 8px 0; border-top: 1px dashed var(--line); align-items: baseline; }
+.acad .plan-day { font: 500 12.5px var(--mono); color: var(--muted); text-transform: capitalize; }
+.acad .plan li.today .plan-day { color: var(--fg); font-weight: 700; }
+.acad .plan li.exam-day .plan-day, .acad .plan li.exam-day .plan-item:first-child { color: var(--danger); font-weight: 700; }
+.acad .plan-items { display: flex; flex-wrap: wrap; gap: 6px; }
+.acad .plan-item { font-size: 14.5px; padding: 2px 10px; border-radius: 99px; background: var(--surface-2); }
+.acad .plan-item.sim { background: color-mix(in srgb, var(--c1) 18%, transparent); color: var(--c1); font-weight: 700; }
+.acad .plan-note { padding: 0 14px 12px; margin: 0; }
+.acad .early-pill { margin-left: 8px; vertical-align: middle; }
+.acad .today-exams { list-style: none; margin: 12px 0 0; padding: 12px 0 0; border-top: 1px solid var(--line); display: grid; gap: 6px; }
+.acad .today-exams a { display: flex; align-items: center; gap: 12px; text-decoration: none; padding: 4px; border-radius: 12px; }
+.acad .today-exams a:hover { background: var(--surface-2); }
+.acad .today-exams a > span:nth-child(2) { flex: 1; }
+@media (max-width: 760px) {
+  .acad .plan li { grid-template-columns: 1fr; gap: 4px; }
+  .acad .today-exams .muted { display: none; }
+}
+
+/* ---------- Repaso diario (paso 10) ---------- */
+.acad .undo-btn { margin-left: auto; }
+.acad .review .crumbs .counts { margin-left: 8px; }
+.acad .pill.off { background: var(--surface-2); color: var(--muted); border: 1px dashed var(--line); }
+.acad .pill.leech { background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); }
+.acad .card-row.off .card-text { opacity: 0.5; }
+.acad .leech-note {
+  display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 14px;
+  background: color-mix(in srgb, var(--warn) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--line));
+}
+.acad .leech-note > span { font-size: 22px; line-height: 1; }
+.acad .leech-note p { margin: 0; flex: 1; font-size: 15px; }
+
+/* ---------- Estadísticas (paso 11) ---------- */
+.acad .shelf-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.acad .stats-filter .chip { text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+.acad .stats-filter .chip[aria-checked='true'] { background: color-mix(in srgb, var(--c2) 25%, transparent); border-color: var(--c2); color: #fff; }
+.acad .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+.acad .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.acad .tile { display: grid; gap: 2px; padding: 14px 16px; }
+.acad .tile-label { font-size: 13px; color: var(--muted); font-weight: 500; }
+.acad .tile-value { font: 600 30px/1.15 var(--body); color: var(--fg); }
+.acad .warn-note {
+  display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 14px;
+  background: color-mix(in srgb, var(--warn) 9%, var(--surface)); border: 1px solid color-mix(in srgb, var(--warn) 40%, var(--line));
+}
+.acad .warn-note > .icon { color: var(--warn); flex: none; margin-top: 2px; }
+.acad .warn-note p { margin: 0; font-size: 15px; }
+.acad .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.acad .chart { margin: 0; padding: 16px; display: grid; gap: 10px; }
+.acad .chart figcaption { display: grid; }
+.acad .block-title { font: 700 17px var(--body); margin: 0; }
+.acad .chart-plot { position: relative; height: 150px; margin-left: 30px; }
+.acad .chart-grid { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
+.acad .chart-grid span { border-top: 1px solid var(--line); position: relative; height: 0; }
+.acad .chart-grid em { position: absolute; right: calc(100% + 6px); top: -8px; font: 500 11px var(--mono); font-style: normal; color: var(--muted); font-variant-numeric: tabular-nums; }
+.acad .chart-cols { position: absolute; inset: 0; display: flex; align-items: flex-end; gap: 2px; }
+.acad .col { flex: 1; height: 100%; display: flex; align-items: flex-end; justify-content: center; outline: none; border-radius: 4px; }
+.acad .col:focus-visible { box-shadow: 0 0 0 2px var(--c1); }
+.acad .col .bar { width: 100%; max-width: 24px; background: var(--c2); border-radius: 4px 4px 0 0; transition: opacity 0.12s; }
+.acad .chart-cols:hover .col .bar { opacity: 0.55; }
+.acad .chart-cols .col.on .bar { opacity: 1; }
+.acad .chart-tip {
+  position: absolute; top: -6px; transform: translate(-50%, -100%); pointer-events: none; z-index: 3; white-space: nowrap;
+  display: grid; padding: 6px 10px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line); font-size: 13px;
+}
+.acad .chart-x { display: flex; gap: 2px; margin-left: 30px; font: 500 11px var(--mono); color: var(--muted); }
+.acad .chart-x span { flex: 1; text-align: center; white-space: nowrap; overflow: visible; }
+.acad .chart-x span:first-child { text-align: left; } .acad .chart-x span:last-child { text-align: right; }
+.acad .chart-table summary { cursor: pointer; }
+.acad .chart-table table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.acad .chart-table td, .acad .chart-table th { padding: 3px 6px; border-bottom: 1px solid var(--line); text-align: left; }
+.acad .stats-block { padding: 16px; display: grid; gap: 10px; }
+.acad .legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 14px; font-size: 13.5px; color: var(--muted); }
+.acad .legend li { display: inline-flex; align-items: center; gap: 6px; }
+.acad .swatch-key { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.acad .mastery { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.acad .mastery li { display: grid; grid-template-columns: minmax(120px, 1fr) 2fr 52px; gap: 12px; align-items: center; }
+.acad .mastery-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
+.acad .seg { display: flex; gap: 2px; height: 8px; }
+.acad .seg span { border-radius: 99px; min-width: 4px; }
+.acad .mastery-num { font: 500 13px var(--mono); color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.acad .weak-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.acad .weak-list li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: var(--surface-2); }
+.acad .weak-name { flex: 1; min-width: 0; }
+.acad .weak-pct { font-size: 14px; white-space: nowrap; }
+@media (max-width: 760px) {
+  .acad .tiles { grid-template-columns: 1fr 1fr; }
+  .acad .charts { grid-template-columns: 1fr; }
+  .acad .mastery li { grid-template-columns: 1fr 52px; }
+  .acad .mastery .seg { grid-column: 1 / -1; grid-row: 2; }
+  .acad .weak-list li { flex-wrap: wrap; }
+  .acad .weak-name { flex: 1 1 calc(100% - 30px); }
+  .acad .weak-pct { flex: 1; padding-left: 19px; }
+}
+
+/* ---------- Ajustar FSRS (paso 12) ---------- */
+.acad .tune { max-width: 760px; width: 100%; margin: 0 auto; }
+.acad .tune-intro, .acad .tune-wait, .acad .tune-result { padding: 18px; display: grid; gap: 10px; }
+.acad .tune-intro p, .acad .tune-wait p { margin: 0; }
+.acad .tune-status { padding-top: 10px; border-top: 1px solid var(--line); }
+.acad .meter { height: 8px; border-radius: 99px; background: color-mix(in srgb, var(--c2) 18%, var(--surface-2)); overflow: hidden; }
+.acad .meter span { display: block; height: 100%; border-radius: 99px; background: var(--c2); }
+.acad .tune-go { justify-self: center; }
+.acad .tune-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.acad .tune-table th, .acad .tune-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.acad .tune-table th { font-size: 13px; color: var(--muted); font-weight: 500; }
+.acad .tune-link { display: flex; align-items: center; gap: 14px; padding: 14px 16px; text-decoration: none; transition: border-color 0.15s; }
+.acad .tune-link:hover { border-color: var(--c2); }
+.acad .tune-link > span { flex: 1; display: grid; }
+.acad .tune-link > .icon:first-child { color: var(--c2); }

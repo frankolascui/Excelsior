@@ -1,5 +1,5 @@
 // Piezas de interfaz compartidas entre pantallas.
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import type { AttributeRewards, GameState, Habit, Impact, Quest, QuestType } from './types';
 import { ATTRIBUTES, attributeHistory, attributeLevel, attributeXp, avatarInfo, formatAttrXp, habitRewards, questRewards } from './attributes';
 import {
@@ -17,6 +17,7 @@ import { progressionText } from './progression';
 import { shieldableDay, shieldsLeft } from './economy';
 import { SubAdd } from './tree-ui';
 import { AvatarPortrait, initialOf } from './portrait';
+import { openSystemHabit } from './nav-state';
 import { Icon } from './icons';
 
 export function useNow(intervalMs = 1000): number {
@@ -299,6 +300,63 @@ export function QuickAddQuest({
   );
 }
 
+/**
+ * Lista de hábitos que se reordena sola (los hechos bajan al final): cada fila que cambia de puesto se desliza
+ * hasta el nuevo en vez de saltar. Solo se animan las filas que cambian de orden, no las que se mueven porque
+ * otra se abre.
+ */
+export function useHabitFlip<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const prev = useRef<{ order: string[]; tops: Map<string, number> }>({ order: [], tops: new Map() });
+  useLayoutEffect(() => {
+    const list = ref.current;
+    if (!list) return;
+    const rows = [...list.querySelectorAll<HTMLElement>(':scope > [data-habit]')];
+    const order = rows.map((r) => r.dataset.habit!);
+    // posición en la página (no en la ventana): si la página se desplaza a la vez, no cuenta como movimiento
+    const tops = new Map(rows.map((r) => [r.dataset.habit!, r.getBoundingClientRect().top + window.scrollY]));
+    const before = prev.current;
+    const moved = before.order.length === order.length && before.order.some((id, i) => order[i] !== id);
+    const still = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const dropped = list.dataset.dropped === '1';
+    delete list.dataset.dropped;
+    // Con una ventana encima (subida de nivel, ritual…) no se anima: no se vería y el navegador va cargado.
+    const covered = !!document.querySelector('.overlay');
+    // Si la ventana aparece justo después (subes de nivel al marcar), se para el deslizamiento: las filas, ya en su sitio.
+    if (covered) rows.forEach((r) => r.getAnimations().forEach((x) => { if (!(x instanceof CSSAnimation)) x.cancel(); }));
+    if (moved && !still && !dropped && !covered) {
+      rows.forEach((r, i) => {
+        const id = order[i];
+        const was = before.tops.get(id);
+        if (was == null || before.order.indexOf(id) === i) return;
+        const dy = was - tops.get(id)!;
+        if (Math.abs(dy) < 2 || Math.abs(dy) > 900 || typeof r.animate !== 'function') return;
+        r.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 320, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' });
+      });
+      // Mientras se recoloca, la fila que sube no se puede marcar sin querer con un segundo toque.
+      // (Reloj del navegador, no setTimeout: así no depende de temporizadores.)
+      const t = Number(document.timeline?.currentTime ?? 0);
+      if (t) list.dataset.settleUntil = String(t + 340);
+      // El cursor se queda encima de la fila que sube: sin vista previa del check hasta que se mueva el ratón.
+      list.dataset.nohover = '1';
+    }
+    prev.current = { order, tops };
+  });
+  useEffect(() => {
+    const list = ref.current;
+    if (!list) return;
+    const guard = (e: MouseEvent) => {
+      const until = Number(list.dataset.settleUntil ?? 0);
+      if (until && e.timeStamp < until && (e.target as Element | null)?.closest?.('button.check')) { e.preventDefault(); e.stopPropagation(); }
+    };
+    const moved = (e: PointerEvent) => { if (e.movementX || e.movementY) delete list.dataset.nohover; };
+    list.addEventListener('click', guard, true);
+    list.addEventListener('pointermove', moved);
+    return () => { list.removeEventListener('click', guard, true); list.removeEventListener('pointermove', moved); };
+  }, []);
+  return ref;
+}
+
 export function HabitItem({
   state, habit, now, onToggle, onDelete, onEdit, onToggleDay, onShield, onRetire, handle, compact = false,
 }: {
@@ -319,6 +377,13 @@ export function HabitItem({
   /** En Hoy: sin XP ni atributos (están en Hábitos). */
   compact?: boolean;
 }) {
+  // Hábitos del sistema (apuntar la noche, repasar): no se marcan ni se editan; pulsarlos te lleva a hacerlos.
+  if (habit.system) {
+    const kind = habit.system;
+    onToggle = () => openSystemHabit(kind);
+    if (onToggleDay) onToggleDay = () => openSystemHabit(kind);
+    onEdit = onDelete = onRetire = undefined;
+  }
   const [editing, setEditing] = useState(false);
   const [open, setOpen] = useState(false);
   const [minimum, setMinimum] = useState(habit.minimum ?? '');

@@ -5,6 +5,7 @@ import { GuidePortrait } from './tutorial';
 import { dailyStreakInfo, dayKey, habitDayCount, habitStreakDays, isHabitDone, maxPerWeek, MINIMUM_MAX, PER_DAY_MAX, shiftDay, weekStart } from './game';
 import { SHIELD } from './economy';
 import { Icon } from './icons';
+import { Select } from './pickers';
 
 const WD = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
@@ -67,10 +68,8 @@ export function PerDayInput({ id, value, onChange }: { id: string; value: number
   return (
     <label className="minimum-input" htmlFor={id}>
       <span className="small-text">Veces al día que se puede marcar (opcional)</span>
-      <select id={id} className="freq-select" value={value} onChange={(e) => onChange(Number(e.target.value))}>
-        <option value={1}>Una vez al día</option>
-        {Array.from({ length: PER_DAY_MAX - 1 }, (_, i) => i + 2).map((n) => <option key={n} value={n}>Hasta {n} veces al día (ej. doble entreno)</option>)}
-      </select>
+      <Select id={id} label="Veces al día" value={value} onChange={onChange}
+        options={[{ value: 1, label: 'Una vez al día' }, ...Array.from({ length: PER_DAY_MAX - 1 }, (_, i) => i + 2).map((n) => ({ value: n, label: `Hasta ${n} veces al día`, hint: n === 2 ? '(ej. doble entreno)' : undefined }))]} />
     </label>
   );
 }
@@ -136,6 +135,7 @@ export function DragHandle({ name, group, onDrop }: { name: string; group: strin
       if (to !== from) {
         const order = [...group];
         order.splice(to, 0, ...order.splice(from, 1));
+        list.dataset.dropped = '1'; // ya se vio moverse: la lista no lo anima otra vez
         onDrop(order);
       }
     };
@@ -204,12 +204,8 @@ export function ProgressionInput({ id, value: d, onChange, perWeek, perDay = 1 }
   return (
     <fieldset className="progression-input">
       <legend className="small-text">Sobrecarga progresiva (opcional)</legend>
-      <select id={`${id}-kind`} className="freq-select" value={d.kind} onChange={(e) => set({ kind: e.target.value as ProgressionDraft['kind'] })} aria-label="Qué sube">
-        <option value="none">Sin sobrecarga</option>
-        <option value="amount">Cantidad (minutos, páginas, kilos…)</option>
-        <option value="time">Hora (ej. irse a dormir)</option>
-        {freqOk && <option value="freq">Veces por semana</option>}
-      </select>
+      <Select<ProgressionDraft['kind']> id={`${id}-kind`} label="Qué sube" value={d.kind} onChange={(v) => set({ kind: v })}
+        options={[{ value: 'none', label: 'Sin sobrecarga' }, { value: 'amount', label: 'Cantidad', hint: '(minutos, páginas, kilos…)' }, { value: 'time', label: 'Hora', hint: '(ej. irse a dormir)' }, ...(freqOk ? [{ value: 'freq' as const, label: 'Veces por semana' }] : [])]} />
       {d.kind === 'amount' && (
         <div className="progression-row">
           <label>Empiezo en <input id={`${id}-value`} inputMode="decimal" value={d.value} onChange={(e) => set({ value: e.target.value })} placeholder="10" /></label>
@@ -221,19 +217,15 @@ export function ProgressionInput({ id, value: d, onChange, perWeek, perDay = 1 }
       {d.kind === 'time' && (
         <div className="progression-row">
           <label>Ahora a las <input id={`${id}-value`} value={d.value} onChange={(e) => set({ value: e.target.value })} placeholder="22:00" /></label>
-          <label><select id={`${id}-dir`} className="freq-select" value={d.dir} onChange={(e) => set({ dir: e.target.value as ProgressionDraft['dir'] })} aria-label="Hacia dónde">
-            <option value="earlier">adelantar</option>
-            <option value="later">retrasar</option>
-          </select> <input id={`${id}-step`} inputMode="numeric" value={d.step} onChange={(e) => set({ step: e.target.value })} placeholder="15" /> min</label>
+          <label><Select<ProgressionDraft['dir']> id={`${id}-dir`} label="Hacia dónde" value={d.dir} onChange={(v) => set({ dir: v })} options={[{ value: 'earlier', label: 'adelantar' }, { value: 'later', label: 'retrasar' }]} /> <input id={`${id}-step`} inputMode="numeric" value={d.step} onChange={(e) => set({ step: e.target.value })} placeholder="15" /> min</label>
           <label>hasta las <input id={`${id}-max`} value={d.max} onChange={(e) => set({ max: e.target.value })} placeholder="21:00" aria-label="Hasta qué hora quieres llegar" /></label>
         </div>
       )}
       {d.kind === 'freq' && freqOk && (
         <div className="progression-row">
           <span>Empieza en {perWeek} y sube de 1 en 1</span>
-          <label>hasta <select id={`${id}-max`} className="freq-select" value={d.max || String(cap)} onChange={(e) => set({ max: e.target.value })} aria-label="Hasta cuántas veces por semana">
-            {Array.from({ length: cap - perWeek }, (_, i) => perWeek + 1 + i).map((n) => <option key={n} value={n}>{n === 7 && cap === 7 ? 'cada día' : `${n} veces/sem`}</option>)}
-          </select></label>
+          <label>hasta <Select id={`${id}-max`} label="Hasta cuántas veces por semana" value={d.max || String(cap)} onChange={(v) => set({ max: v })}
+            options={Array.from({ length: cap - perWeek }, (_, i) => perWeek + 1 + i).map((n) => ({ value: String(n), label: n === 7 && cap === 7 ? 'cada día' : `${n} veces/sem` }))} /></label>
         </div>
       )}
       {d.kind !== 'none' && <p className="hint">«Hasta» es tu meta final (opcional): al llegar, deja de subir.</p>}

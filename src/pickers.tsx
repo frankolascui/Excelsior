@@ -1,6 +1,6 @@
 // Selectores propios de fecha, hora y duración (en lugar de los del navegador): un botón que dice lo elegido
 // en palabras («Mañana», «16:00») y un desplegable con atajos, un mes en miniatura o la lista de horas.
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { dayKey } from './game';
 import { fromMin, toMin } from './life';
@@ -281,5 +281,130 @@ export function ImpactPicker({ value, onChange, label, className = '', children,
         </Popover>
       )}
     </>
+  );
+}
+
+export interface SelectOption<T extends string | number> { value: T; label: ReactNode; text?: string; group?: string; hint?: string }
+
+/**
+ * Desplegable propio en lugar del <select> del navegador: un botón con lo elegido y una lista con grupos.
+ * Teclado: flechas para moverse, Enter para elegir, Escape para cerrar.
+ */
+export function Select<T extends string | number>({ value, onChange, options, label, id, className = '', placeholder, icon }: {
+  value: T; onChange: (v: T) => void; options: SelectOption<T>[]; label: string; id?: string; className?: string; placeholder?: string;
+  icon?: Parameters<typeof Icon>[0]['name'];
+}) {
+  const { open, setOpen, btn, toggle } = usePop();
+  const list = useRef<HTMLDivElement>(null);
+  const cur = options.find((o) => o.value === value);
+  useLayoutEffect(() => {
+    if (!open || !list.current) return;
+    const el = list.current.querySelector<HTMLElement>('.on') ?? list.current.querySelector<HTMLElement>('button');
+    el?.focus({ preventScroll: true });
+    if (el) list.current.scrollTop = el.offsetTop - list.current.clientHeight / 2 + el.offsetHeight / 2;
+  }, [open]);
+  const pick = (v: T) => { if (v !== value) onChange(v); setOpen(false); btn.current?.focus(); };
+  const onKey = (e: ReactKeyboardEvent) => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Home' && e.key !== 'End') return;
+    e.preventDefault();
+    const items = [...(list.current?.querySelectorAll<HTMLElement>('button[role=option]') ?? [])];
+    const i = items.indexOf(document.activeElement as HTMLElement);
+    const n = e.key === 'Home' ? 0 : e.key === 'End' ? items.length - 1 : Math.max(0, Math.min(items.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)));
+    items[n]?.focus();
+  };
+  // Con el botón cerrado, las flechas abren la lista (como un select).
+  const onBtnKey = (e: ReactKeyboardEvent) => { if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !open) { e.preventDefault(); setOpen(true); } };
+  let lastGroup: string | undefined;
+  return (
+    <>
+      <button type="button" ref={btn} id={id} className={`pick-btn select-btn${cur && cur.value !== '' ? ' set' : ''} ${className}`} onClick={toggle} onKeyDown={onBtnKey}
+        aria-label={`${label}: ${cur ? (cur.text ?? (typeof cur.label === 'string' ? cur.label : String(cur.value))) : placeholder ?? ''}`} aria-haspopup="listbox" aria-expanded={open} data-value={String(value)}>
+        {icon && <Icon name={icon} />}<span className="select-text">{cur ? cur.label : placeholder ?? '—'}</span><Icon name="chevron-down" className="select-chev" />
+      </button>
+      {open && (
+        <Popover anchor={btn.current} onClose={() => setOpen(false)} className="pop-select">
+          <div className="pop-tlist" ref={list} role="listbox" aria-label={label} onKeyDown={onKey}>
+            {options.map((o) => {
+              const head = o.group && o.group !== lastGroup ? o.group : null;
+              lastGroup = o.group;
+              return (
+                <Fragment key={String(o.value)}>
+                  {head && <p className="pop-group">{head}</p>}
+                  <button type="button" role="option" aria-selected={o.value === value} data-value={String(o.value)} className={`pop-t pop-opt${o.value === value ? ' on' : ''}`} onClick={() => pick(o.value)}>
+                    <span>{o.label}{o.hint && <small> {o.hint}</small>}</span>{o.value === value && <Icon name="check" />}
+                  </button>
+                </Fragment>
+              );
+            })}
+          </div>
+        </Popover>
+      )}
+    </>
+  );
+}
+
+const TIME_RE = /^([01]?\d|2[0-3]):?([0-5]\d)$/;
+/** «2310», «23:10» o «7:05» → «23:10» / «07:05»; si no es una hora, null. */
+export function parseTime(text: string): string | null {
+  const m = TIME_RE.exec(text.trim());
+  return m ? `${m[1].padStart(2, '0')}:${m[2]}` : null;
+}
+
+/**
+ * Hora exacta (al minuto) sin el control del navegador: se escribe («2310» vale) o se elige en dos columnas,
+ * horas y minutos. `onChange` recibe «HH:MM» o '' si se borra.
+ */
+export function TimeField({ value, onChange, id, label, placeholder = '--:--', clearable = true, near }: {
+  value: string; onChange: (v: string) => void; id?: string; label: string; placeholder?: string; clearable?: boolean;
+  /** Hora a la que se abre la lista si aún no hay ninguna (p. ej. la de acostarte). */
+  near?: string;
+}) {
+  const wrap = useRef<HTMLSpanElement>(null);
+  const [draft, setDraft] = useState(value);
+  const [focused, setFocused] = useState(false);
+  useEffect(() => { if (!focused) setDraft(value); }, [value, focused]);
+  const { open, setOpen, btn, toggle } = usePop();
+  const cols = useRef<HTMLDivElement>(null);
+  const [hh, mm] = value ? value.split(':') : ['', ''];
+  useLayoutEffect(() => {
+    if (!open || !cols.current) return;
+    cols.current.querySelectorAll<HTMLElement>('.pop-tcol').forEach((c) => {
+      const on = c.querySelector<HTMLElement>('.on') ?? (near ? c.querySelector<HTMLElement>(`[data-v="${c.getAttribute('aria-label') === 'Hora' ? near.slice(0, 2) : '00'}"]`) : null);
+      if (on) c.scrollTop = on.offsetTop - c.clientHeight / 2 + on.offsetHeight / 2;
+    });
+  }, [open]);
+  const typed = (t: string) => {
+    const clean = t.replace(/[^\d:]/g, '').slice(0, 5);
+    setDraft(clean);
+    if (!clean) { if (clearable) onChange(''); return; }
+    const p = parseTime(clean);
+    if (p && (clean.includes(':') || clean.length === 4)) onChange(p);
+  };
+  const mins = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'));
+  if (mm && !mins.includes(mm)) mins.push(mm), mins.sort();
+  return (
+    <span ref={wrap} className={`time-field${value ? ' set' : ''}`}>
+      <input id={id} type="text" inputMode="numeric" autoComplete="off" value={draft} placeholder={placeholder} aria-label={label} maxLength={5}
+        onChange={(e) => typed(e.target.value)} onFocus={() => setFocused(true)}
+        onBlur={() => { setFocused(false); const p = parseTime(draft); setDraft(p ?? value); if (p && p !== value) onChange(p); }} />
+      <button type="button" ref={btn} className="time-field-btn" onClick={toggle} aria-label={`Elegir ${label.toLowerCase()}`} aria-expanded={open}><Icon name="clock" /></button>
+      {open && (
+        <Popover anchor={wrap.current} onClose={() => setOpen(false)} className="pop-clock">
+          <div className="pop-tcols" ref={cols}>
+            <div className="pop-tcol" role="listbox" aria-label="Hora">
+              {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map((h) => (
+                <button type="button" key={h} data-v={h} role="option" aria-selected={h === hh} className={`pop-t${h === hh ? ' on' : ''}`} onClick={() => onChange(`${h}:${mm || '00'}`)}><span className="mono">{h}</span></button>
+              ))}
+            </div>
+            <div className="pop-tcol" role="listbox" aria-label="Minutos">
+              {mins.map((m) => (
+                <button type="button" key={m} data-v={m} role="option" aria-selected={m === mm} className={`pop-t${m === mm ? ' on' : ''}`} onClick={() => { onChange(`${hh || '00'}:${m}`); setOpen(false); }}><span className="mono">:{m}</span></button>
+              ))}
+            </div>
+          </div>
+          {clearable && value && <button type="button" className="link pop-clear" onClick={() => { onChange(''); setOpen(false); }}>Borrar</button>}
+        </Popover>
+      )}
+    </span>
   );
 }

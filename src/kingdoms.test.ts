@@ -35,7 +35,7 @@ describe('reinos', () => {
 
   it('migra reinos v3 (con progress) a v5', () => {
     const m = migrate({ ...emptyState(), version: 3, kingdoms: [{ id: 'k', name: 'X', progress: 0.2 }] } as never);
-    expect(m.version).toBe(5);
+    expect(m.version).toBe(6);
     expect(m.goals).toEqual([]);
     expect(Object.keys(m.kingdoms[0]).sort()).toEqual(['createdAt', 'id', 'name']);
   });

@@ -4,10 +4,14 @@ import type { DeepWorkArea, FocusPhase, GameState, Quest, QuestType } from './ty
 import { addGoal, avatarInfo, DEEP_WORK_AREA_HINT, deepWorkRewards, inferDeepWorkArea, deleteGoal, formatAttrXp, goalProgress, habitRewards, questRewards, updateGoal } from './attributes';
 import { CustomizeToggle, RewardEditor, sameRewards, type CustomValue } from './customize';
 import { addKingdom, BUILDINGS, buildings, deleteKingdom, kingdomName, kingdomProgress, nextStage, renameKingdom, setKingdomDeadline } from './kingdoms';
-import { DatePicker } from './pickers';
+import { DatePicker, Select } from './pickers';
 import { CityScene } from './city';
 import { kingdomBonus, spendShield } from './economy';
 import { RealmMap } from './realm';
+import { HealthKingdom } from './health-ui';
+import { healthFounded } from './health';
+import { SleepClockCard } from './health-diary-ui';
+import { HEALTH_KINGDOM, navState, openSystemHabit } from './nav-state';
 import { AmbientPanel } from './ambient-ui';
 import { WeeklyChronicle } from './settings';
 import { HeroPath } from './heropath';
@@ -22,7 +26,7 @@ import {
 } from './game';
 import {
   AttributeList, AvatarCard, ConfirmButton, deadlineLabel, formatClock, shortDate, formatMinutes, HabitItem, LevelBar, QuestItem,
-  QuickAddQuest, RewardTags, useNow,
+  QuickAddQuest, RewardTags, useHabitFlip, useNow,
 } from './ui';
 import { HeroJournal, ReviewBanner, TimedGoals } from './ritual';
 import { QuestCalendar } from './calendar';
@@ -121,6 +125,7 @@ export function Dashboard({
   const prioQs = priorityQuests(state, today);
   const prioDone = prioQs.filter((q) => q.completedAt).length;
   const [picking, setPicking] = useState(false);
+  const habitList = useHabitFlip<HTMLUListElement>();
   const hero = s.kind === 'quest' ? s.quest : null;
   const heroIsPrio = !!hero && prio.includes(hero.id);
   const heroPath = hero ? pathLabel(state, hero) : '';
@@ -180,7 +185,12 @@ export function Dashboard({
               <>
                 <h2>Hábito pendiente: {s.name}</h2>
                 <div className="row">
-                  <button className="primary big" onClick={() => act((st) => toggleHabit(st, s.habitId, Date.now()), CAP_HABIT, { sound: 'habit' })}><Icon name="check" /> Hecho</button>
+                  {(() => {
+                    const sys = state.habits.find((h) => h.id === s.habitId)?.system;
+                    return sys
+                      ? <button className="primary big" onClick={() => openSystemHabit(sys)}><Icon name="arrow-right" /> {sys === 'health' ? 'Apuntarla ahora' : 'Repasar ahora'}</button>
+                      : <button className="primary big" onClick={() => act((st) => toggleHabit(st, s.habitId, Date.now()), CAP_HABIT, { sound: 'habit' })}><Icon name="check" /> Hecho</button>;
+                  })()}
                 </div>
               </>
             )}
@@ -231,6 +241,8 @@ export function Dashboard({
         )}
       </section>
 
+      {healthFounded(state) && <SleepClockCard onRecord={() => openSystemHabit('health')} />}
+
       <div className={state.habits.length > 0 ? 'columns' : 'columns one'}>
         <div className="col-stack">
         {(pending.length > 0 || !fresh) && <TomorrowPanel game={game} now={now} />}
@@ -244,7 +256,7 @@ export function Dashboard({
             <h3>Hábitos de hoy</h3>
             <button className="link" onClick={() => go('habitos')}>Gestionar <Icon name="arrow-right" /></button>
           </header>
-          <ul className="list">
+          <ul className="list" ref={habitList}>
             {habitsInOrder(state, now).map((h) => (
               <HabitItem key={h.id} state={state} habit={h} now={now} compact onToggle={() => act((st) => toggleHabit(st, h.id, Date.now()), CAP_HABIT, { sound: 'habit' })}
                 onToggleDay={(d) => act((st) => toggleHabit(st, h.id, Date.now(), d), CAP_HABIT, { sound: 'habit' })} onShield={(d) => spendHabitShield(game, h.id, d)} />
@@ -721,6 +733,7 @@ export function Habits({ game, guide }: { game: Game; guide: string }) {
   const [prog, setProg] = useState<ProgressionDraft>(() => progressionDraft());
   const [perDay, setPerDay] = useState(1);
   const ordered = habitsInOrder(state, now);
+  const habitList = useHabitFlip<HTMLUListElement>();
   const doneIds = new Set(ordered.filter((h) => habitCleared(state, h, now)).map((h) => h.id));
   async function shareWeek() {
     const text = weekShareText(state, Date.now());
@@ -772,10 +785,8 @@ export function Habits({ game, guide }: { game: Game; guide: string }) {
       <section className="panel">
         <form className="quick-add inline" onSubmit={submit}>
           <input id="new-habit" value={name} onChange={(e) => setName(e.target.value)} placeholder="+ Nuevo hábito (ej. Leer 10 páginas)" maxLength={60} aria-label="Nombre del nuevo hábito" />
-          <select id="new-habit-freq" className="freq-select" value={perWeek} onChange={(e) => setPerWeek(Number(e.target.value))} aria-label="Frecuencia">
-            <option value={7}>Cada día</option>
-            {Array.from({ length: maxPerWeek(perDay) }, (_, i) => i + 1).filter((n) => n !== 7).map((n) => <option key={n} value={n}>{n} {n === 1 ? 'vez' : 'veces'} por semana</option>)}
-          </select>
+          <Select id="new-habit-freq" label="Frecuencia" icon="repeat" value={perWeek} onChange={setPerWeek}
+            options={[{ value: 7, label: 'Cada día' }, ...Array.from({ length: maxPerWeek(perDay) }, (_, i) => i + 1).filter((n) => n !== 7).map((n) => ({ value: n, label: `${n} ${n === 1 ? 'vez' : 'veces'} por semana` }))]} />
           <CustomizeToggle open={open} onToggle={() => setOpen(!open)} custom={custom.xp !== undefined || custom.rewards !== undefined} />
           <button type="submit" className="primary" disabled={!name.trim()}><Icon name="plus" /> Añadir</button>
         </form>
@@ -805,7 +816,7 @@ export function Habits({ game, guide }: { game: Game; guide: string }) {
             </div>
           </div>
         ) : (
-          <ul className="list">
+          <ul className="list" ref={habitList}>
             {ordered.map((h) => {
               // solo se ordena entre los del mismo grupo (pendientes o ya hechos)
               const group = ordered.filter((x) => doneIds.has(x.id) === doneIds.has(h.id)).map((x) => x.id);
@@ -900,13 +911,11 @@ export function Character({ game }: { game: Game }) {
 const BUILDING_TYPES: QuestType[] = ['side', 'daily', 'main'];
 
 // Reino abierto: se recuerda al cambiar de pestaña (p. ej. al volver de Deep Work) mientras dure la sesión.
-let openKingdom: string | null = null;
-
 export function Kingdoms({ game, focusQuest }: { game: Game; focusQuest: (q: Quest) => void }) {
   const { state, act } = game;
   const [name, setName] = useState('');
-  const [openId, setOpenId] = useState<string | null>(openKingdom);
-  const open = (id: string | null) => { openKingdom = id; setOpenId(id); window.scrollTo({ top: 0 }); };
+  const [openId, setOpenId] = useState<string | null>(navState.kingdom);
+  const open = (id: string | null) => { navState.kingdom = id; setOpenId(id); window.scrollTo({ top: 0 }); };
   const current = state.kingdoms.find((k) => k.id === openId);
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -916,14 +925,33 @@ export function Kingdoms({ game, focusQuest }: { game: Game; focusQuest: (q: Que
     setName('');
     open(next.kingdoms.at(-1)!.id);
   }
+  if (openId === HEALTH_KINGDOM) {
+    return (
+      <div className="screen">
+        <div className="kingdom-back">
+          <button className="ghost" onClick={() => open(null)}><Icon name="chevron-left" /> Mapa del reino</button>
+          {state.kingdoms.length > 0 && (
+            <div className="kingdom-tabs" role="tablist" aria-label="Tus reinos">
+              <button type="button" role="tab" aria-selected className="chip-btn on"><Icon name="caduceus" /> Salud</button>
+              {state.kingdoms.map((k) => (
+                <button key={k.id} type="button" role="tab" aria-selected={false} className="chip-btn" onClick={() => open(k.id)}>{k.name}</button>
+              ))}
+            </div>
+          )}
+        </div>
+        <HealthKingdom game={game} />
+      </div>
+    );
+  }
   if (current) {
     // Cada reino en su propia vista; el mapa queda a un botón.
     return (
       <div className="screen">
         <div className="kingdom-back">
           <button className="ghost" onClick={() => open(null)}><Icon name="chevron-left" /> Mapa del reino</button>
-          {state.kingdoms.length > 1 && (
+          {state.kingdoms.length > 0 && (
             <div className="kingdom-tabs" role="tablist" aria-label="Tus reinos">
+              <button type="button" role="tab" aria-selected={false} className="chip-btn" onClick={() => open(HEALTH_KINGDOM)}><Icon name="caduceus" /> Salud</button>
               {state.kingdoms.map((k) => (
                 <button key={k.id} type="button" role="tab" aria-selected={k.id === current.id} className={k.id === current.id ? 'chip-btn on' : 'chip-btn'} onClick={() => open(k.id)}>{k.name}</button>
               ))}
@@ -941,13 +969,12 @@ export function Kingdoms({ game, focusQuest }: { game: Game; focusQuest: (q: Que
         <InfoTip label="Cómo funcionan los reinos"><p>Un reino es un proyecto. Cada tarea es una construcción y tu ciudad crece al completarlas: campamento, aldea, villa, ciudad amurallada y reino glorioso. Pulsa un reino en el mapa para entrar.</p></InfoTip>
       </div>
       <RealmMap state={state} onSelect={(id) => open(id)} />
-      {state.kingdoms.length > 0 && (
-        <div className="kingdom-tabs kingdom-pick" aria-label="Entrar en un reino">
-          {state.kingdoms.map((k) => (
-            <button key={k.id} type="button" className="chip-btn" onClick={() => open(k.id)}><Icon name="castle" /> {k.name}</button>
-          ))}
-        </div>
-      )}
+      <div className="kingdom-tabs kingdom-pick" aria-label="Entrar en un reino">
+        <button type="button" className="chip-btn health-chip" onClick={() => open(HEALTH_KINGDOM)} data-testid="open-health" data-tour="health"><Icon name="caduceus" /> Reino de la Salud{!healthFounded(state) && <span className="muted small-text"> · nuevo</span>}</button>
+        {state.kingdoms.map((k) => (
+          <button key={k.id} type="button" className="chip-btn" onClick={() => open(k.id)}><Icon name="castle" /> {k.name}</button>
+        ))}
+      </div>
       <section className="panel" data-tour="kingdom-add">
         <form className="quick-add inline" onSubmit={submit}>
           <input id="new-kingdom" value={name} onChange={(e) => setName(e.target.value)} placeholder="+ Fundar un reino (ej. Reino de la Programación)" maxLength={50} aria-label="Nombre del nuevo reino" />

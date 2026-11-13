@@ -24,6 +24,7 @@ import { AvatarPortrait, initialOf } from './portrait';
 import './arena.css';
 import { Fold } from './fold';
 import { InfoTip } from './infotip';
+import { Select } from './pickers';
 
 const BOSS_ICONS: IconName[] = ['dragon-head', 'snake', 'bull', 'wolf', 'lion', 'evil-eye', 'vortex', 'tornado', 'scorpion', 'eagle', 'spider', 'death-skull', 'ogre', 'zombie', 'shark', 'octopus'];
 
@@ -761,10 +762,8 @@ function IconPicker({ value, onChange, icons = REWARD_ICONS, label = 'Símbolo' 
 
 function CategorySelect({ value, onChange, id }: { value: RewardCategory | ''; onChange: (v: RewardCategory | '') => void; id: string }) {
   return (
-    <select id={id} value={value} onChange={(e) => onChange(e.target.value as RewardCategory | '')} aria-label="Categoría" className="attr-select">
-      <option value="">Categoría: auto</option>
-      {REWARD_CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-    </select>
+    <Select<RewardCategory | ''> id={id} label="Categoría" className="attr-select" value={value} onChange={onChange}
+      options={[{ value: '', label: 'Categoría: auto' }, ...REWARD_CATEGORIES.map((c) => ({ value: c.id as RewardCategory | '', label: c.name }))]} />
   );
 }
 
@@ -849,9 +848,8 @@ function CustomBossForm({ onCreate }: { onCreate: (b: { name: string; icon: stri
     <form className="boss-form" onSubmit={submit}>
       <IconPicker value={form.icon} onChange={(icon) => setForm({ ...form, icon })} icons={BOSS_ICONS} label="Símbolo del boss" />
       <input id="boss-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nombre (ej. El Examen de Física)" maxLength={50} aria-label="Nombre del boss" />
-      <select value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value as BossSource })} aria-label="Qué le hace daño" className="attr-select">
-        {SOURCES.map((s) => <option key={s} value={s}>{SOURCE_LABEL[s].name}</option>)}
-      </select>
+      <Select<BossSource> label="Qué le hace daño" className="attr-select" value={form.source} onChange={(v) => setForm({ ...form, source: v })}
+        options={SOURCES.map((s) => ({ value: s, label: SOURCE_LABEL[s].name }))} />
       <input id="boss-hp" type="number" min={1} value={form.hp} onChange={(e) => setForm({ ...form, hp: e.target.value })} aria-label="Vida" title="Vida" />
       <input id="boss-days" type="number" min={1} max={90} value={form.days} onChange={(e) => setForm({ ...form, days: e.target.value })} aria-label="Días de plazo" title="Días" />
       <span className="muted small-text">Vida en {SOURCE_LABEL[form.source].unit} · botín {valid ? bossReward(form.source, hp) : 0} <Icon name="coin" className="coin-ico" /></span>

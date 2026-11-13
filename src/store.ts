@@ -19,15 +19,29 @@ import { pendingAchievements, recordAchievements, type AchievementDef } from './
 // En modo admin se juega sobre una partida de pruebas aparte.
 const KEY = ADMIN ? 'excelsior:admin-sandbox' : 'excelsior:v1';
 
+/** ¿Sabe esta versión de la app leer esa partida? (false = la guardó una versión más nueva) */
+export const supportsSave = (s: { version?: unknown } | null | undefined) =>
+  typeof s?.version === 'number' && s.version >= 1 && s.version <= emptyState().version;
+
 function load(): GameState {
+  let raw: string | null = null;
   try {
-    const raw = localStorage.getItem(KEY);
+    raw = localStorage.getItem(KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed?.version >= 1 && parsed?.version <= emptyState().version) return rebalance(ensureAscended(migrate(parsed), Date.now())); // primero se congela el avatar, luego se reequilibra
+      if (supportsSave(parsed)) return rebalance(ensureAscended(migrate(parsed), Date.now())); // primero se congela el avatar, luego se reequilibra
     }
   } catch {
-    /* almacenamiento no disponible: se juega sin guardar */
+    /* almacenamiento no disponible o partida ilegible */
+  }
+  // Había algo guardado que no se pudo leer (dañado o de una versión más nueva): se aparta una copia
+  // antes de que la partida vacía la pise, para poder recuperarla.
+  if (raw) {
+    try {
+      localStorage.setItem(`${KEY}:rescate`, raw);
+    } catch {
+      /* ignorado */
+    }
   }
   return emptyState();
 }
@@ -93,7 +107,10 @@ export function useGame() {
   useEffect(() => {
     if (!userId) return;
     reconciled.current = userId;
-    const sync = startSync({ get: () => latest.current, adopt: (remote) => adopt(remote), conflict: setConflict });
+    const sync = startSync({
+      get: () => latest.current, adopt: (remote) => adopt(remote), conflict: setConflict, supports: supportsSave,
+      outdated: () => toast('Tu partida de la nube es de una versión más nueva. Recarga la página para actualizar la app.', 'info', 9000),
+    });
     sync.ready
       .catch(() => { sfx.error(); toast('No se pudo leer tu partida de la nube', 'info'); })
       .finally(() => setCloudChecked(true));
@@ -130,7 +147,7 @@ export function useGame() {
       if (e.key !== KEY || !e.newValue || e.newValue === JSON.stringify(latest.current)) return;
       try {
         const parsed = JSON.parse(e.newValue);
-        if (parsed?.version >= 1 && parsed?.version <= emptyState().version) fromOtherTab.current = adopt(parsed, false);
+        if (supportsSave(parsed)) fromOtherTab.current = adopt(parsed, false);
       } catch {
         /* ignorado */
       }

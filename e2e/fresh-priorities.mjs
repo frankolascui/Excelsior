@@ -9,7 +9,7 @@ const page = await b.newPage({ viewport: { width: 390, height: 844 } });
 const errs = []; page.on('pageerror', (e) => errs.push(e.message));
 const NOW = Date.now();
 const q = (id, t) => ({ id, title: t, type: 'daily', impact: 'medio', createdAt: NOW - 1000, completedAt: null });
-const st = { version: 5, profile: { name: 'N', createdAt: NOW }, quests: [q('a', 'Uno'), q('b', 'Dos'), q('c', 'Tres')], habits: [], habitCompletions: [], sessions: [], activeTimer: null, kingdoms: [], goals: [], rewards: [], purchases: [], bosses: [], xp: [], tours: ['intro', 'reinos', 'arena', 'gremios'], newsSeen: '2.0', balance: 0, ascended: [] };
+const st = { version: 5, profile: { name: 'N', createdAt: NOW }, quests: [q('a', 'Uno'), q('b', 'Dos'), q('c', 'Tres')], habits: [], habitCompletions: [], sessions: [], activeTimer: null, kingdoms: [], goals: [], rewards: [], purchases: [], bosses: [], xp: [], tours: ['intro', 'reinos', 'arena', 'gremios', 'v3'], newsSeen: '3.0', balance: 0, ascended: [] };
 await page.goto(url);
 await page.evaluate((s) => { localStorage.setItem('excelsior:v1', s); localStorage.setItem('excelsior:guest', '1'); }, JSON.stringify(st));
 await page.reload(); await page.waitForSelector('.now');

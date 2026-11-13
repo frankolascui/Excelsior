@@ -26,7 +26,7 @@ const state = {
   ],
   habits: [], habitCompletions: [], sessions: [], activeTimer: null, kingdoms: [], goals: [], rewards: [], purchases: [], bosses: [],
   xp: [1, 2].map((d) => ({ id: `x${d}`, at: NOW - d * DAY, amount: 40, source: 'quest', sourceId: `old${d}`, label: 'Antes', attributes: { voluntad: 2 } })),
-  tours: ['intro', 'reinos', 'arena', 'gremios'], newsSeen: '2.0', balance: 2, ascended: [],
+  tours: ['intro', 'reinos', 'arena', 'gremios', 'v3'], newsSeen: '3.0', balance: 2, ascended: [],
 };
 
 async function open(viewport) {

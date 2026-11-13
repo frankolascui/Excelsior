@@ -1,0 +1,10 @@
+/* Academy dentro de Deep Work (V3): la franja del juego y ajustes para que Academy encaje en el RPG. */
+.deep-tabs-row { max-width: 960px; margin: 0 auto 14px; }
+.acad { background: none; min-height: 0; font-size: 17px; font-variant-numeric: lining-nums; display: grid; gap: 18px; width: 100%; max-width: 1180px; margin: 0 auto; }
+.screen.screen-wide { max-width: 1180px; }
+.acad .study-strip { display: flex; flex-direction: row; text-align: left; justify-items: start; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 14px; }
+.study-today-line { flex: 1; min-width: 0; color: var(--muted); font-size: 15px; }
+.study-today-line .ico:first-child { color: var(--ok, #34d399); }
+.study-streak { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 99px; border: 1px solid var(--line); font-size: 14px; color: var(--muted); }
+.study-streak.on { color: var(--fg, #fff); border-color: var(--c2); box-shadow: 0 0 12px color-mix(in srgb, var(--c2) 40%, transparent); }
+.deep-tabs-row.wide { max-width: 1180px; }

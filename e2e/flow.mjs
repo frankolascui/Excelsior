@@ -49,7 +49,7 @@ await page.click('text=Crear personaje');
 await page.waitForSelector('text=¿Qué hago ahora?');
 
 // 1b. Tutorial con guía: aparece solo, obliga a elegir hábitos y no vuelve tras saltarlo
-check(await seen('.tour .eyebrow:has-text("Hiperión · 1/6")'), 'el tutorial arranca con el guía');
+check(await seen('.tour .eyebrow:has-text("Hiperión · 1/7")'), 'el tutorial arranca con el guía');
 await page.click('.tour button:has-text("Siguiente")');
 check(await seen('.nav-item.on:has-text("Hábitos")') && await seen('.tour-chips'), 'paso 2: Hiperión pide elegir hábitos');
 check(!(await page.isVisible('.tour-chips .pick.on')), 'no hay hábitos predeterminados');
@@ -162,7 +162,7 @@ check(await seen('.toast:has-text("+20 XP")'), 'toast +20 XP');
 check(await seen('.achv-pop:has-text("Primer Juramento")'), 'logro épico al completar la primera misión');
 await page.screenshot({ path: `${out}/03b-logro.png` });
 await page.click('.achv-pop');
-check(await seen('.nav-version:has-text("Excelsior RPG") .ver-tag:has-text("V2.")'), 'la versión de la app se ve en una esquina');
+check(await seen('.nav-version:has-text("Excelsior RPG") .ver-tag:has-text("V3.")'), 'la versión de la app se ve en una esquina');
 await page.click('.nav-item:has-text("Hoy")');
 check((await page.textContent('.hero-line .levelbar-foot')).includes('20 / 100'), 'la fila del personaje en Hoy marca 20/100 XP');
 
@@ -264,6 +264,8 @@ await page.click('.levelup button:has-text("Ir a Reinos")');
 check(await seen('.tour .tour-title:has-text("Los Reinos")'), 'al abrir Reinos por primera vez, Hiperión la presenta');
 await page.click('.tour button:has-text("Siguiente")');
 check(await seen('[data-tour="kingdom-add"].tour-target'), 'el tutorial de Reinos señala dónde fundar');
+await page.click('.tour button:has-text("Siguiente")');
+check(await seen('[data-tour="health"].tour-target'), 'y presenta el Reino de la Salud');
 await page.click('.tour button:has-text("¡A por ello!")');
 await page.fill('#new-kingdom', 'Reino de la Programación');
 await page.click('button:has-text("Fundar")');
@@ -401,7 +403,7 @@ check(await seen('.news-dialog h2:has-text("La era social")'), 'el aviso de nove
 await page.screenshot({ path: `${out}/20-news.png` });
 await page.click('.news-dialog button.primary');
 await page.click('.app-version .version-btn');
-check(await seen('.news-dialog h2:has-text("La era social")'), 'pulsar la versión de la app vuelve a abrir las novedades');
+check(await seen('.news-dialog h2:has-text("Cuerpo y mente")'), 'pulsar la versión de la app vuelve a abrir las novedades');
 await page.click('.news-dialog button.primary');
 check(!(await quick('.news-dialog')), 'y se cierra');
 await page.click('.theme-swatch:has-text("Olimpo")');
@@ -592,7 +594,7 @@ await page.click('.nav-item:has-text("Personaje")');
 check(await seen('.attr-desc:has-text("disciplina")'), 'los atributos tienen descripción');
 await page.click('.nav-item:has-text("Hábitos")');
 await page.fill('#new-habit', 'Gimnasio');
-await page.selectOption('#new-habit-freq', '3');
+await page.click('#new-habit-freq'); await page.click('.pop-select [data-value="3"]');
 await page.click('[data-tour="habits"] button:has-text("Añadir")');
 check(await seen('.item:has-text("Gimnasio") .freq-tag:has-text("0/3 esta semana")'), 'hábito 3 veces por semana');
 await page.click('button[aria-label="Completar Gimnasio"]');
@@ -641,7 +643,7 @@ check(await seen('section:has(h3:text("Hábitos de hoy")) button.dot[aria-label^
 await page.click('.nav-item:has-text("Misiones")');
 if (!(await page.isVisible('.calendar'))) await page.click('[role=radio]:has-text("Calendario")');
 await page.click('.cal-add-fold .fold-btn');
-await page.selectOption('.ev-form select', 'examen');
+await page.click('.ev-form .ev-kind'); await page.click('.pop-select [data-value="examen"]');
 await page.fill('#ev-title', 'Examen de cálculo');
 await page.click('.ev-form #ev-time');
 await page.click('.pop-time .pop-t[data-t="10:00"]');
@@ -685,7 +687,7 @@ await page.evaluate(() => { document.querySelector('.tg-scroll').scrollTop = 14 
 await page.click('.tg-day .tg-col', { position: { x: 60, y: 16 * 52 + 10 } });
 check(await seen('.sheet .eyebrow:has-text("16:00")'), 'pulsar una hora libre abre «Nuevo» a esa hora');
 await page.fill('.sheet #ev-title', 'Estudiar física');
-await page.selectOption('.sheet select[aria-label=Repetir]', 'daily');
+await page.click('.sheet button[aria-label^="Repetir"]'); await page.click('.pop-select [data-value="daily"]');
 await page.click('.sheet button:has-text("Añadir")');
 check(await seen('.tg-day .tg-block:has-text("Estudiar física")') && await seen('.tg-block:has-text("16:00 – 17:00")'), 'el bloque de tiempo aparece de 16:00 a 17:00');
 // arrastrar el bloque una hora abajo y estirarlo media hora
