@@ -67,6 +67,11 @@ export function nextStage(built: number) {
   return { name: next.name, icon: next.icon, missing: next.min - built, ratio: (built - from) / (next.min - from) };
 }
 
+/** Etapa de un reino con `built` construcciones levantadas (lo usa también el Reino de la Salud). */
+export function stageFor(built: number, planned = built) {
+  return planned === 0 && built === 0 ? WASTELAND : STAGES.find((x) => built >= x.min)!;
+}
+
 export function kingdomProgress(s: GameState, kingdomId: string) {
   const all = buildings(s, kingdomId);
   const built = all.filter((q) => q.completedAt).length;

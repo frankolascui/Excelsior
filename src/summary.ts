@@ -3,6 +3,7 @@ import type { AttributeId, GameState } from './types';
 import { dayKey, shiftDay } from './game';
 import { ATTRIBUTES } from './attributes';
 import { bossStatus } from './bosses';
+import { priorityWeek } from './priorities';
 
 /** Lunes (00:00) de la semana de `ts`. */
 export function weekStart(ts: number): number {
@@ -40,6 +41,7 @@ export function weekSummary(s: GameState, now: number) {
 
   return {
     weekKey: dayKey(from),
+    priorities: priorityWeek(s, from),
     from,
     to: shiftDay(thisWeek, -1),
     xp,

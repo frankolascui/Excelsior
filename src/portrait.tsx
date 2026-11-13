@@ -295,6 +295,8 @@ export function AvatarPortrait({
   const id = useId().replace(/:/g, '');
   const g = (n: string) => `url(#${id}-${n})`;
   const t = Math.max(0, Math.min(9, tier));
+  // Las fotos de otros jugadores vienen de la nube: solo se pinta una imagen incrustada, nunca una dirección externa.
+  if (photo && !/^data:image\/(jpeg|png|webp);base64,/.test(photo)) photo = undefined;
 
   /* Detrás de la cara: aura, halo de rayos, alas y flechas */
   const back = (

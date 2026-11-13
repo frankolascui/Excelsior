@@ -6,6 +6,7 @@ import { XP_RULES } from './game';
 import { ConfirmButton, formatMinutes } from './ui';
 import { Icon } from './icons';
 import { sfx } from './sfx';
+import { TimeField } from './pickers';
 
 const hhmm = (t: number) => new Date(t).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 
@@ -48,7 +49,7 @@ export function SessionEdit({ game, id, onDone }: { game: Game; id: string; onDo
       <div className="session-edit-fields">
         <label>
           <span>Terminé a las</span>
-          <input id="session-end" type="time" value={end} onChange={(e) => pickEnd(e.target.value)} />
+          <TimeField id="session-end" label="Terminé a las" clearable={false} value={end} onChange={(v) => v && pickEnd(v)} />
         </label>
         <label>
           <span>Minutos de foco</span>

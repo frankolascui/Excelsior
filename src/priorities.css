@@ -1,0 +1,173 @@
+/* Priorización estratégica: impacto, «Las 3 de hoy», limpieza y revisión semanal. */
+.impact-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+.impact-tag.imp-alto { color: var(--gold); }
+.impact-tag.imp-medio { color: var(--c2, var(--c1)); }
+.impact-tag.imp-bajo { color: var(--muted); font-weight: 500; }
+.pick-btn.impact-tag { padding: 1px 8px; border-radius: 99px; background: none; border-color: currentColor; }
+.pick-btn.impact-add { padding: 6px; border: 0; background: none; }
+.prio-tag {
+  display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 99px; font-size: 11.5px; font-weight: 700;
+  color: var(--gold); background: color-mix(in srgb, var(--gold) 14%, transparent);
+}
+
+.pop-impact { width: 280px; }
+.pop-impacts { display: grid; gap: 6px; margin: 6px 0; }
+.pop-impact-opt {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 7px 10px; border-radius: 10px; text-align: left;
+  background: var(--surface-2); border: 1px solid var(--line); color: var(--fg); font-size: 13.5px;
+}
+.pop-impact-opt span { font-size: 12px; color: var(--muted); }
+.pop-impact-opt:hover, .pop-impact-opt.on { border-color: var(--c1); }
+.pop-impact-opt.on { background: color-mix(in srgb, var(--c1) 16%, var(--surface-2)); }
+.pop-impact-opt.imp-alto b { color: var(--gold); }
+
+/* Las 3 de hoy */
+.top-three h3 { display: inline-flex; align-items: center; gap: 6px; }
+.top3-empty { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.top3-empty p { margin: 0; }
+.top3-list { list-style: none; margin: 0 0 6px; padding: 0; display: grid; gap: 6px; }
+.top3-list li { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 12px; background: var(--surface-2); }
+.top3-list .check { width: 30px; height: 30px; }
+.top3-title { flex: 1; min-width: 0; font-weight: 600; }
+.top3-list li.done .top3-title { text-decoration: line-through; color: var(--muted); font-weight: 500; }
+.top3-change { margin: 6px 0 0; font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: baseline; }
+.top3-change em { color: var(--fg); font-style: normal; }
+
+.prio-picker .hint { margin: 0 0 8px; }
+.prio-options { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 5px; }
+.prio-option {
+  width: 100%; display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 10px; text-align: left;
+  background: var(--surface-2); border: 1px solid var(--line); color: var(--fg); font-size: 14px;
+}
+.prio-option:hover:not(:disabled) { border-color: var(--c1); }
+.prio-option.on { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, var(--surface-2)); }
+.prio-option:disabled { opacity: 0.45; cursor: not-allowed; }
+.prio-box {
+  flex: none; width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; font-family: var(--mono); font-size: 12px; font-weight: 700;
+  border: 1.5px solid var(--line);
+}
+.prio-option.on .prio-box { background: var(--gold); border-color: var(--gold); color: var(--gold-ink, #000); }
+.prio-title { flex: 1; min-width: 0; }
+
+/* Cierre del día: las de mañana */
+.tomorrow { margin: 4px 0 10px; padding: 10px 12px; border-radius: 12px; border: 1px dashed var(--line); }
+.tomorrow-head { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; }
+.tomorrow-head .link { margin-left: auto; }
+.tomorrow-list { margin: 0; padding-left: 22px; font-size: 14px; }
+.day-close .field { display: grid; gap: 4px; margin-bottom: 8px; }
+.day-close .field > span { font-size: 13px; color: var(--muted); }
+
+/* Limpieza */
+.cleanup-item .item-meta { font-size: 12.5px; }
+.cleanup-item .item-actions { flex-wrap: wrap; justify-content: flex-end; }
+.ghost.danger { color: var(--danger); }
+
+/* Revisión semanal (dentro de la crónica) */
+.weekly-review { display: grid; gap: 10px; margin: 12px 0 4px; padding: 12px; border-radius: 12px; background: var(--surface-2); }
+.weekly-review .eyebrow { margin: 0; }
+.weekly-review .field { display: grid; gap: 4px; }
+.weekly-review .field > span { font-size: 13px; font-weight: 600; }
+.weekly-review .primary { justify-self: start; }
+.wr-prev { display: grid; gap: 6px; }
+.wr-prev p { margin: 0; }
+.wr-prev em { font-style: normal; font-weight: 600; }
+@media (max-width: 600px) {
+  .cleanup-item { flex-wrap: wrap; }
+  .cleanup-item .item-actions { width: 100%; justify-content: flex-start; }
+}
+
+/* Hoy simplificado: una tarjeta para Las 3 de hoy y ¿Qué hago ahora? */
+.now-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.now-top .eyebrow { display: inline-flex; align-items: center; gap: 6px; margin: 0; }
+.now .now-sub { margin: 2px 0 0; }
+.now-rest { margin: 12px 0 0; }
+.now-rest li { background: color-mix(in srgb, var(--surface-2) 80%, transparent); }
+.now-note { margin: 8px 0 0; font-size: 13.5px; color: var(--gold); display: flex; gap: 6px; align-items: center; }
+.now-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 12px; }
+.now-foot .link { font-size: 14px; }
+.capture { display: flex; gap: 8px; flex: 1 1 220px; min-width: 0; }
+.capture input { flex: 1; min-width: 0; padding: 7px 12px; font-size: 14px; border-radius: 10px; background: transparent; border: 1px dashed var(--line); color: var(--fg); }
+.capture input:focus { border-style: solid; border-color: var(--c1); outline: none; }
+.now-week { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+.now-week .top3-change { margin: 2px 0; }
+.rem-add { justify-self: start; font-size: 14px; }
+
+.panel.hero-line { display: flex; flex-direction: row; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 14px; }
+.hero-line-main { flex: 1 1 260px; display: flex; align-items: center; gap: 12px; background: none; border: 0; padding: 0; color: var(--fg); text-align: left; cursor: pointer; min-width: 0; }
+.hero-line-txt { flex: 1; display: grid; gap: 4px; min-width: 0; }
+.hero-line-name { font-size: 14.5px; }
+.hero-line .xpbar { height: 6px; }
+.hero-line .levelbar-foot { font-size: 11.5px; }
+.hero-line .ritual-cta { flex: none; }
+
+/* La barra de cifras en una sola fila también en el móvil */
+@media (max-width: 760px) {
+  .today-strip { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)) !important; gap: 6px !important; }
+  .today-tile { padding: 6px 8px !important; gap: 0 !important; justify-content: center; text-align: center; }
+  .today-tile:last-child:nth-child(odd) { grid-column: auto !important; }
+  .today-ico, .today-bar { display: none !important; }
+  .today-val { font-size: 15px !important; }
+  .today-lbl { font-size: 10.5px !important; }
+  .today-lbl .muted { display: none; }
+}
+
+/* Filas de misión: acciones detrás de «⋯» */
+.more-btn .dots { display: inline-flex; gap: 3px; align-items: center; }
+.more-btn .dots i { width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
+.more-btn.on { color: var(--c1); }
+.item-tools { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.item-tools .pick-btn.ghost { border: 1px solid var(--line); background: none; }
+.quick-add-more { padding-top: 2px; }
+.more-opts.set { color: var(--c1); border-color: var(--c1); }
+
+/* Barra de desplazamiento casi invisible: fina, sin carril, y solo se nota al pasar por encima */
+html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted) 22%, transparent) transparent; }
+* { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted) 22%, transparent) transparent; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--muted) 18%, transparent); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--c1) 55%, transparent); }
+::-webkit-scrollbar-corner { background: transparent; }
+
+/* Pasar a mañana y bloque «Mañana» en Misiones */
+.now .link.now-push { margin-top: 8px; color: var(--muted); font-size: 14px; font-weight: 500; }
+.now .link.now-push:hover { color: var(--text); }
+.now-rest .push-btn { color: var(--muted); }
+.now-rest .push-btn:hover { color: var(--text); }
+@media (max-width: 600px) { .now-rest .push-label { display: none; } }
+.tomorrow-panel .tomorrow { margin: 0; padding: 0; border: 0; }
+.tomorrow-more { margin: 8px 0 0; font-size: 14px; display: flex; gap: 6px; align-items: baseline; }
+
+/* Árbol de misiones: submisiones dentro de su misión, ruta en las listas planas */
+.item.has-sub { flex-wrap: wrap; }
+.item.has-sub > .sub { flex-basis: 100%; padding-left: 22px; margin-left: 15px; border-left: 2px solid color-mix(in srgb, var(--c2) 35%, var(--line)); display: flex; flex-direction: column; gap: 6px; }
+.sub-list { gap: 6px; }
+.sub-list > .item { background: color-mix(in srgb, var(--surface-2) 70%, transparent); }
+.check.tree-count { font-size: 11px; font-weight: 700; letter-spacing: -0.02em; color: var(--muted); border-style: dashed; }
+.check.tree-count:hover { color: var(--text); }
+.sub-more { align-self: flex-start; color: var(--muted); }
+.sub-add { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.split-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 14px; }
+.split-n { width: 56px; padding: 4px 6px; text-align: center; }
+.item-path { display: block; font-size: 12px; font-weight: 500; color: var(--muted); letter-spacing: 0.01em; overflow-wrap: anywhere; }
+.now-path { margin: 0 0 2px; font-size: 13px; color: var(--muted); }
+.due.inherited { opacity: 0.8; border-style: dashed; }
+@media (max-width: 600px) {
+  .item.has-sub > .sub { padding-left: 10px; margin-left: 6px; }
+}
+/* al pasar por una submisión no se iluminan todas las de arriba: solo la fila sobre la que estás */
+@media (hover: hover) {
+  .item.has-sub:hover { border-color: transparent; box-shadow: none; }
+  .item.has-sub:hover::before { opacity: 0; }
+}
+
+/* Las 3 de mañana: cada una con su número, su ruta y una ✕ para quitarla */
+.tomorrow-list { list-style: none; padding-left: 0; counter-reset: tm; display: grid; gap: 4px; }
+.tomorrow-list li { counter-increment: tm; display: flex; align-items: center; gap: 8px; }
+.tomorrow-list li::before { content: counter(tm); flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; background: var(--surface-2); color: var(--muted); }
+.tomorrow-list .tomorrow-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.tomorrow-list .icon-btn { flex: none; width: 28px; height: 28px; color: var(--muted); }
+.tomorrow-list .icon-btn:hover { color: var(--text); }
+.tomorrow-list li.done .tomorrow-title { text-decoration: line-through; color: var(--muted); }
+/* Móvil: los dos botones de «¿Qué hago ahora?» a lo ancho, uno debajo del otro (antes uno largo y otro corto) */
+@media (max-width: 560px) { .now-actions > * { flex: 1 1 100%; } }

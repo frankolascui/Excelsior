@@ -67,6 +67,9 @@ const MAP = {
   // Reinos
   cabin: 'g:wood-cabin', 'stone-tower': 'g:stone-tower', village: 'g:village', hut: 'g:hut', fort: 'g:hill-fort', tent: 'g:camping-tent',
   wheat: 'g:wheat', 'castle-flag': 'g:tower-flag',
+  // Reino de la Salud y Academy (V3)
+  sundial: 'g:sundial', 'weight-lifting-up': 'g:weight-lifting-up', 'weight-scale': 'g:weight-scale', caduceus: 'g:caduceus',
+  'spell-book': 'g:spell-book', 'card-play': 'g:card-play', brain: 'g:brain', 'graduate-cap': 'g:graduate-cap', bed: 'l:bed',
 };
 
 const out = {};

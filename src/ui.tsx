@@ -1,20 +1,23 @@
 // Piezas de interfaz compartidas entre pantallas.
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import type { AttributeRewards, GameState, Habit, Quest, QuestType } from './types';
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import type { AttributeRewards, GameState, Habit, Impact, Quest, QuestType } from './types';
 import { ATTRIBUTES, attributeHistory, attributeLevel, attributeXp, avatarInfo, formatAttrXp, habitRewards, questRewards } from './attributes';
 import {
-  daysUntil, CUSTOM_LIMITS, dayKey, habitAtRisk, habitDayCount, habitStreak, habitWeekCount, habitXp, isHabitDone, levelInfo, QUEST_LABEL, questAttributeRewards, repeatLabel, questXp, shiftDay, totalXp, XP_RULES,
+  daysUntil, CUSTOM_LIMITS, dayKey, habitAtRisk, impactOf, TYPE_IMPACT, habitDayCount, habitStreak, habitWeekCount, habitXp, isHabitDone, levelInfo, QUEST_LABEL, repeatLabel, questXp, shiftDay, totalXp, XP_RULES,
 } from './game';
 import { CustomizeToggle, InlineEdit, RewardEditor, sameRewards, type CustomValue } from './customize';
 import { RitualCTA } from './ritual';
-import { DatePicker, dayWords, RepeatPicker } from './pickers';
+import { DatePicker, dayWords, ImpactPicker, RepeatPicker } from './pickers';
+import { IMPACTS } from './priorities';
+
+const impactName = (v: Impact) => IMPACTS.find((x) => x.id === v)!.name;
 import './core.css';
 import { HabitHistory, habitShields, MinimumInput, PerDayInput, ProgressionInput, progressionDraft, type ProgressionDraft } from './habits-ui';
 import { progressionText } from './progression';
 import { shieldableDay, shieldsLeft } from './economy';
-import { QuestSteps, type StepActions } from './steps-ui';
-import { nextStepDue } from './core';
+import { SubAdd } from './tree-ui';
 import { AvatarPortrait, initialOf } from './portrait';
+import { openSystemHabit } from './nav-state';
 import { Icon } from './icons';
 
 export function useNow(intervalMs = 1000): number {
@@ -104,7 +107,8 @@ export function deadlineLabel(day: string, now: number): { text: string; tone: '
 }
 
 export function QuestItem({
-  quest, kingdom, onComplete, onStart, onDelete, onUndo, onEdit, onDeadline, onRepeat, steps,
+  quest, kingdom, onComplete, onStart, onDelete, onUndo, onEdit, onDeadline, onRepeat, onImpact, priority,
+  path, progress, inherited, onAddChild, onSplit, children,
 }: {
   quest: Quest;
   kingdom?: string;
@@ -115,16 +119,35 @@ export function QuestItem({
   onEdit?: (title: string, v: CustomValue) => void;
   onDeadline?: (day: string | null) => void;
   onRepeat?: (days: number[] | null) => void;
-  /** Con él, la misión puede tener pasos (subtareas) con casillas. */
-  steps?: StepActions;
+  /** Con él, el impacto (y con él el XP) se puede cambiar. */
+  onImpact?: (v: Impact) => void;
+  /** Es una de «Las 3 de hoy». */
+  priority?: boolean;
+  /** «Mates › Examen tema 4»: de dónde cuelga (en listas planas). */
+  path?: string;
+  /** Con él es una misión con submisiones: hojas hechas / total. Solo se cierra cuando todas están hechas. */
+  progress?: { done: number; total: number };
+  /** Fecha heredada de la misión de arriba (si no tiene una propia). */
+  inherited?: string;
+  /** Con ellos se puede partir en submisiones o repartir sesiones. */
+  onAddChild?: (title: string) => void;
+  onSplit?: (n: number) => void;
+  /** Las submisiones, debajo de la fila. */
+  children?: ReactNode;
 }) {
   const done = !!quest.completedAt;
   const [editing, setEditing] = useState(false);
-  const [showSteps, setShowSteps] = useState(false);
-  const sp = { done: quest.steps?.filter((x) => x.done).length ?? 0, total: quest.steps?.length ?? 0 };
+  const [adding, setAdding] = useState(false);
+  const [tools, setTools] = useState(false);
+  const [open, setOpen] = useState(true);
+  const container = !!progress && progress.total > 0;
+  const blocked = container && progress.done < progress.total; // con hojas pendientes no se cierra
   const due = quest.deadline && !done ? deadlineLabel(quest.deadline, Date.now()) : null;
-  const nextStep = done ? undefined : nextStepDue(quest);
-  const stepDue = nextStep ? deadlineLabel(nextStep.deadline!, Date.now()) : null;
+  const inheritedDue = !quest.deadline && inherited && !done ? deadlineLabel(inherited, Date.now()) : null;
+  const imp = impactOf(quest);
+  const impLabel = <><Icon name="target" /> {impactName(imp)} · +{questXp(quest)} XP</>;
+  const canSplit = !done && !!onAddChild;
+  const hasTools = !done && !!(onDeadline || canSplit || onRepeat || onEdit || onDelete);
   if (editing && onEdit) {
     const initial: CustomValue = { xp: quest.xp, rewards: quest.rewards ?? (quest.focus ? questRewards(quest.type, quest.title, quest.focus) : undefined) };
     return (
@@ -138,79 +161,104 @@ export function QuestItem({
     );
   }
   return (
-    <li className={done ? 'item done' : 'item'}>
+    <li className={`item${done ? ' done' : ''}${container ? ' has-sub' : ''}`}>
       {done ? (
         <span className="check checked" aria-hidden="true">✓</span>
+      ) : blocked ? (
+        <button className="check tree-count mono" onClick={() => setOpen(!open)} aria-expanded={open} aria-label={`${open ? 'Plegar' : 'Desplegar'} ${quest.title}: ${progress.done} de ${progress.total} hechas`} title="Se cierra cuando todas sus submisiones estén hechas">
+          {progress.done}/{progress.total}
+        </button>
       ) : (
-        <button className="check" onClick={onComplete} aria-label={`Completar ${quest.title}`} title="Completar misión">✓</button>
+        <button className="check" onClick={onComplete} aria-label={`Completar ${quest.title}`} title={container ? 'Todas sus submisiones están hechas: ciérrala' : 'Completar misión'}>✓</button>
       )}
       <div className="item-body">
+        {path && <span className="item-path">{path}</span>}
         <span className="item-title">{quest.title}</span>
         <span className="item-meta">
-          <TypeChip type={quest.type} />
+          {priority && !done && <span className="prio-tag" title="Una de las 3 de hoy"><Icon name="flag" /> Hoy</span>}
+          {onImpact && !done
+            ? <ImpactPicker value={imp} onChange={onImpact} label={`Impacto de ${quest.title}`} className={`impact-tag imp-${imp}`}>{impLabel}</ImpactPicker>
+            : <span className={`impact-tag imp-${imp}`}>{impLabel}</span>}
           {due && (onDeadline
             ? <DatePicker value={quest.deadline ?? null} onChange={onDeadline} label={`Fecha límite de ${quest.title}`} clearLabel="Quitar fecha límite" className={`due due-${due.tone}`}><Icon name="calendar" /> {due.text}</DatePicker>
             : <span className={`due due-${due.tone}`}><Icon name="calendar" /> {due.text}</span>)}
-          {sp.total > 0 && (steps && !done
-            ? <button type="button" className={sp.done === sp.total ? 'steps-tag full' : 'steps-tag'} aria-expanded={showSteps} onClick={() => setShowSteps(!showSteps)} title="Ver pasos"><Icon name="list" /> {sp.done}/{sp.total} pasos{stepDue && <span className={`step-next due-${stepDue.tone}`}> · paso {stepDue.text}</span>}</button>
-            : <span className="steps-tag"><Icon name="list" /> {sp.done}/{sp.total} pasos</span>)}
+          {inheritedDue && path && <span className={`due inherited due-${inheritedDue.tone}`} title="Fecha de la misión de la que cuelga"><Icon name="calendar" /> {inheritedDue.text}</span>}
+          {container && !blocked && !done && <span className="steps-tag full"><Icon name="check" /> todo hecho: ciérrala o añade más</span>}
           {quest.repeat && !done && (onRepeat
             ? <RepeatPicker value={quest.repeat} onChange={onRepeat} label={`Repetición de ${quest.title}`} describe={repeatLabel} className="repeat-tag"><Icon name="repeat" /> {repeatLabel(quest.repeat)}</RepeatPicker>
             : <span className="repeat-tag"><Icon name="repeat" /> {repeatLabel(quest.repeat)}</span>)}
           {quest.startsOn && !done && quest.startsOn > dayKey(Date.now()) && <span className="starts">sale {dayWords(quest.startsOn).toLowerCase()}</span>}
           {kingdom && <span className="kingdom-tag"><Icon name="castle" /> {kingdom}</span>}
-          <span className="mono xp-tag">+{questXp(quest)} XP</span>
-          <RewardTags rewards={questAttributeRewards(quest)} />
         </span>
-        {showSteps && steps && !done && <QuestSteps quest={quest} actions={steps} />}
+        {tools && hasTools && (
+          <div className="item-tools" role="group" aria-label={`Acciones de ${quest.title}`}>
+            {onDeadline && !quest.deadline && (
+              <DatePicker value={null} onChange={onDeadline} label={`Poner fecha límite a ${quest.title}`} className="ghost small due-add"><Icon name="calendar-plus" /> Fecha</DatePicker>
+            )}
+            {canSplit && (
+              <button className="ghost small split-btn" onClick={() => { setAdding(true); setOpen(true); setTools(false); }} aria-label={`Partir ${quest.title} en submisiones`}><Icon name="list" /> {container ? 'Submisión' : 'Partir'}</button>
+            )}
+            {onRepeat && !quest.repeat && !container && (
+              <RepeatPicker value={null} onChange={onRepeat} label={`Repetir ${quest.title}`} describe={repeatLabel} className="ghost small repeat-add"><Icon name="repeat" /> Repetir</RepeatPicker>
+            )}
+            {onEdit && (
+              <button className="ghost small edit-btn" onClick={() => setEditing(true)} aria-label={`Editar ${quest.title}`}><Icon name="pencil" /> Editar</button>
+            )}
+            {onDelete && (
+              <button className="ghost small danger" onClick={onDelete} aria-label={`Borrar ${quest.title}`}><Icon name="trash" /> Borrar</button>
+            )}
+          </div>
+        )}
+        {adding && canSplit && !container && <SubAdd quest={quest} inherited={quest.deadline ?? inherited} onAdd={onAddChild} onSplit={onSplit} onClose={() => setAdding(false)} />}
       </div>
       <div className="item-actions">
-        {onStart && !done && (
+        {onStart && !done && !container && (
           <button className="ghost small" onClick={onStart} title="Hacer Deep Work en esta misión"><Icon name="play" /> Foco</button>
         )}
         {onUndo && done && <button className="ghost small" onClick={onUndo}><Icon name="rotate-ccw" /> Deshacer</button>}
-        {onDeadline && !done && !quest.deadline && (
-          <DatePicker value={null} onChange={onDeadline} label={`Poner fecha límite a ${quest.title}`} className="icon-btn due-add"><Icon name="calendar-plus" /></DatePicker>
-        )}
-        {steps && !done && sp.total === 0 && (
-          <button className="icon-btn steps-add" onClick={() => setShowSteps(!showSteps)} aria-expanded={showSteps} aria-label={`Partir ${quest.title} en pasos`} title="Partir en pasos"><Icon name="list" /></button>
-        )}
-        {onRepeat && !done && !quest.repeat && (
-          <RepeatPicker value={null} onChange={onRepeat} label={`Repetir ${quest.title}`} describe={repeatLabel} className="icon-btn repeat-add"><Icon name="repeat" /></RepeatPicker>
-        )}
-        {onEdit && !done && (
-          <button className="icon-btn edit-btn" onClick={() => setEditing(true)} aria-label={`Editar ${quest.title}`} title="Editar XP y atributos"><Icon name="sliders" /></button>
-        )}
-        {onDelete && !done && (
-          <button className="icon-btn" onClick={onDelete} aria-label={`Borrar ${quest.title}`} title="Borrar"><Icon name="trash" /></button>
+        {hasTools && (
+          <button className={tools ? 'icon-btn more-btn on' : 'icon-btn more-btn'} onClick={() => setTools(!tools)} aria-expanded={tools} aria-label={`Más acciones de ${quest.title}`} title="Fecha, partir, repetir, editar o borrar">
+            <span className="dots" aria-hidden="true"><i /><i /><i /></span>
+          </button>
         )}
       </div>
+      {container && open && (
+        <div className="sub">
+          {children}
+          {canSplit && (adding
+            ? <SubAdd quest={quest} inherited={quest.deadline ?? inherited} onAdd={onAddChild} onSplit={onSplit} onClose={() => setAdding(false)} />
+            : <button type="button" className="link small sub-more" onClick={() => setAdding(true)} aria-label={`Añadir submisión a ${quest.title}`}><Icon name="plus" /> Submisión</button>)}
+        </div>
+      )}
     </li>
   );
 }
 
-const TYPES: QuestType[] = ['daily', 'main', 'side'];
+const TYPES: QuestType[] = ['main', 'daily', 'side'];
 
 export function QuickAddQuest({
   onAdd, autoFocus = false, fixedDeadline,
-}: { onAdd: (title: string, type: QuestType, custom: CustomValue & { deadline?: string; repeat?: number[] }) => void; autoFocus?: boolean; fixedDeadline?: string }) {
+}: { onAdd: (title: string, type: QuestType, custom: CustomValue & { deadline?: string; repeat?: number[]; impact?: Impact }) => void; autoFocus?: boolean; fixedDeadline?: string }) {
   const [title, setTitle] = useState('');
   const [deadline, setDeadline] = useState('');
   const [repeat, setRepeat] = useState<number[] | null>(null);
   const [type, setType] = useState<QuestType>('daily');
   const [custom, setCustom] = useState<CustomValue>({});
+  const [more, setMore] = useState(false);
   const [open, setOpen] = useState(false);
   const isCustom = custom.xp !== undefined || custom.rewards !== undefined;
+  const extras = !!deadline || !!repeat || isCustom;
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
     const rewards = custom.rewards && !sameRewards(custom.rewards, questRewards(type, title)) ? custom.rewards : undefined;
-    onAdd(title, type, { xp: custom.xp, rewards, deadline: fixedDeadline ?? (deadline || undefined), repeat: repeat ?? undefined });
+    onAdd(title, type, { xp: custom.xp, rewards, deadline: fixedDeadline ?? (deadline || undefined), repeat: repeat ?? undefined, impact: TYPE_IMPACT[type] });
     setTitle('');
     setDeadline('');
     setRepeat(null);
     setCustom({});
     setOpen(false);
+    setMore(false);
   }
   return (
     <form className="quick-add" onSubmit={submit}>
@@ -224,36 +272,93 @@ export function QuickAddQuest({
         aria-label="Nombre de la nueva misión"
       />
       <div className="quick-add-row">
-        <div className="segmented" role="radiogroup" aria-label="Tipo de misión">
+        <div className="segmented" role="radiogroup" aria-label="Impacto de la misión" title="¿Cuánto te acerca a lo que de verdad quieres?">
           {TYPES.map((t) => (
-            <button
-              type="button"
-              key={t}
-              role="radio"
-              aria-checked={type === t}
-              className={type === t ? 'seg on' : 'seg'}
-              onClick={() => setType(t)}
-            >
+            <button type="button" key={t} role="radio" aria-checked={type === t} className={type === t ? 'seg on' : 'seg'} onClick={() => setType(t)}>
               {QUEST_LABEL[t]} <span className="mono">{XP_RULES.quest[t]}</span>
             </button>
           ))}
         </div>
-        {!fixedDeadline && (
-          <DatePicker id="new-quest-deadline" value={deadline || null} onChange={(d) => setDeadline(d ?? '')} label="Fecha límite (opcional)" clearLabel="Sin fecha límite" placeholder="Fecha límite" />
-        )}
-        <RepeatPicker id="new-quest-repeat" value={repeat} onChange={setRepeat} label="Repetir" describe={repeatLabel} />
-        <CustomizeToggle open={open} onToggle={() => setOpen(!open)} custom={isCustom} />
+        <button type="button" className={`ghost small more-opts${extras ? ' set' : ''}`} aria-expanded={more} onClick={() => setMore(!more)}>
+          <Icon name="sliders" /> {extras ? 'Opciones puestas' : 'Más opciones'}
+        </button>
         <button type="submit" className="primary" disabled={!title.trim()}><Icon name="plus" /> Crear</button>
       </div>
-      {open && (
+      {more && (
+        <div className="quick-add-row quick-add-more">
+          {!fixedDeadline && (
+            <DatePicker id="new-quest-deadline" value={deadline || null} onChange={(d) => setDeadline(d ?? '')} label="Fecha límite (opcional)" clearLabel="Sin fecha límite" placeholder="Fecha límite" />
+          )}
+          <RepeatPicker id="new-quest-repeat" value={repeat} onChange={setRepeat} label="Repetir" describe={repeatLabel} />
+          <CustomizeToggle open={open} onToggle={() => setOpen(!open)} custom={isCustom} />
+        </div>
+      )}
+      {more && open && (
         <RewardEditor autoXp={XP_RULES.quest[type]} autoRewards={questRewards(type, title)} value={custom} onChange={setCustom} maxXp={CUSTOM_LIMITS.questXp} idPrefix="new-quest" />
       )}
     </form>
   );
 }
 
+/**
+ * Lista de hábitos que se reordena sola (los hechos bajan al final): cada fila que cambia de puesto se desliza
+ * hasta el nuevo en vez de saltar. Solo se animan las filas que cambian de orden, no las que se mueven porque
+ * otra se abre.
+ */
+export function useHabitFlip<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const prev = useRef<{ order: string[]; tops: Map<string, number> }>({ order: [], tops: new Map() });
+  useLayoutEffect(() => {
+    const list = ref.current;
+    if (!list) return;
+    const rows = [...list.querySelectorAll<HTMLElement>(':scope > [data-habit]')];
+    const order = rows.map((r) => r.dataset.habit!);
+    // posición en la página (no en la ventana): si la página se desplaza a la vez, no cuenta como movimiento
+    const tops = new Map(rows.map((r) => [r.dataset.habit!, r.getBoundingClientRect().top + window.scrollY]));
+    const before = prev.current;
+    const moved = before.order.length === order.length && before.order.some((id, i) => order[i] !== id);
+    const still = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const dropped = list.dataset.dropped === '1';
+    delete list.dataset.dropped;
+    // Con una ventana encima (subida de nivel, ritual…) no se anima: no se vería y el navegador va cargado.
+    const covered = !!document.querySelector('.overlay');
+    // Si la ventana aparece justo después (subes de nivel al marcar), se para el deslizamiento: las filas, ya en su sitio.
+    if (covered) rows.forEach((r) => r.getAnimations().forEach((x) => { if (!(x instanceof CSSAnimation)) x.cancel(); }));
+    if (moved && !still && !dropped && !covered) {
+      rows.forEach((r, i) => {
+        const id = order[i];
+        const was = before.tops.get(id);
+        if (was == null || before.order.indexOf(id) === i) return;
+        const dy = was - tops.get(id)!;
+        if (Math.abs(dy) < 2 || Math.abs(dy) > 900 || typeof r.animate !== 'function') return;
+        r.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 320, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' });
+      });
+      // Mientras se recoloca, la fila que sube no se puede marcar sin querer con un segundo toque.
+      // (Reloj del navegador, no setTimeout: así no depende de temporizadores.)
+      const t = Number(document.timeline?.currentTime ?? 0);
+      if (t) list.dataset.settleUntil = String(t + 340);
+      // El cursor se queda encima de la fila que sube: sin vista previa del check hasta que se mueva el ratón.
+      list.dataset.nohover = '1';
+    }
+    prev.current = { order, tops };
+  });
+  useEffect(() => {
+    const list = ref.current;
+    if (!list) return;
+    const guard = (e: MouseEvent) => {
+      const until = Number(list.dataset.settleUntil ?? 0);
+      if (until && e.timeStamp < until && (e.target as Element | null)?.closest?.('button.check')) { e.preventDefault(); e.stopPropagation(); }
+    };
+    const moved = (e: PointerEvent) => { if (e.movementX || e.movementY) delete list.dataset.nohover; };
+    list.addEventListener('click', guard, true);
+    list.addEventListener('pointermove', moved);
+    return () => { list.removeEventListener('click', guard, true); list.removeEventListener('pointermove', moved); };
+  }, []);
+  return ref;
+}
+
 export function HabitItem({
-  state, habit, now, onToggle, onDelete, onEdit, onToggleDay, onShield, onRetire, handle,
+  state, habit, now, onToggle, onDelete, onEdit, onToggleDay, onShield, onRetire, handle, compact = false,
 }: {
   state: GameState;
   habit: Habit;
@@ -269,7 +374,16 @@ export function HabitItem({
   onRetire?: () => void;
   /** Asa para ordenar arrastrando (la pone la lista). */
   handle?: ReactNode;
+  /** En Hoy: sin XP ni atributos (están en Hábitos). */
+  compact?: boolean;
 }) {
+  // Hábitos del sistema (apuntar la noche, repasar): no se marcan ni se editan; pulsarlos te lleva a hacerlos.
+  if (habit.system) {
+    const kind = habit.system;
+    onToggle = () => openSystemHabit(kind);
+    if (onToggleDay) onToggleDay = () => openSystemHabit(kind);
+    onEdit = onDelete = onRetire = undefined;
+  }
   const [editing, setEditing] = useState(false);
   const [open, setOpen] = useState(false);
   const [minimum, setMinimum] = useState(habit.minimum ?? '');
@@ -338,8 +452,8 @@ export function HabitItem({
             })}
           </span>
           <span className="mono streak">{streak > 0 ? `racha ${streak}${weekly ? ' sem' : ''}` : 'sin racha'}</span>
-          <span className="mono xp-tag">+{habitXp(habit)} XP</span>
-          <RewardTags rewards={habit.rewards} />
+          {!compact && <span className="mono xp-tag">+{habitXp(habit)} XP</span>}
+          {!compact && <RewardTags rewards={habit.rewards} />}
         </span>
         {(risk || (savable && stock > 0)) && (
           <p className="habit-risk small-text">

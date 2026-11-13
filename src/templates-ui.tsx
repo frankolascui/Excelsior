@@ -11,7 +11,7 @@ import { Icon } from './icons';
 import { sfx } from './sfx';
 
 const MINE = 'mias';
-const TYPES: QuestType[] = ['daily', 'main', 'side'];
+const TYPES: QuestType[] = ['main', 'daily', 'side'];
 
 export function QuestTemplates({ game }: { game: Game }) {
   const { state, act } = game;
@@ -46,7 +46,7 @@ export function QuestTemplates({ game }: { game: Game }) {
                   <div className="template-main">
                     <span className="template-title">{tpl.title}</span>
                     <span className="template-meta">
-                      <span className={`chip chip-${tpl.type}`}>{QUEST_LABEL[tpl.type]}</span>
+                      <span className={`chip chip-${tpl.type}`}>Impacto {QUEST_LABEL[tpl.type].toLowerCase()}</span>
                       <span className="mono muted">+{tpl.xp ?? XP_RULES.quest[tpl.type]} XP</span>
                       <RewardTags rewards={tpl.rewards} />
                     </span>
@@ -86,7 +86,7 @@ function NewTemplate({ onSave }: { onSave: (tpl: Omit<QuestTemplate, 'id'>) => v
       <p className="eyebrow">Nueva plantilla</p>
       <input id="new-template" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={80} placeholder="Nombre (ej. Clase de violín)" aria-label="Nombre de la plantilla" />
       <div className="quick-add-row">
-        <div className="segmented" role="radiogroup" aria-label="Tipo de la plantilla">
+        <div className="segmented" role="radiogroup" aria-label="Impacto de la plantilla">
           {TYPES.map((t) => (
             <button type="button" key={t} role="radio" aria-checked={type === t} className={type === t ? 'seg on' : 'seg'} onClick={() => setType(t)}>
               {QUEST_LABEL[t]} <span className="mono">{XP_RULES.quest[t]}</span>

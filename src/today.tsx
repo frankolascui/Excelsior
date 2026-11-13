@@ -1,6 +1,6 @@
 // Barra de Hoy: lo que llevas hoy de un vistazo (XP, foco, misiones, hábitos) y tu racha de días activos.
 import type { GameState } from './types';
-import { dailyCap, dayKey, deepWorkMinutesOnDay, habitSatisfied, isHabitDone, pendingQuests, xpOnDay } from './game';
+import { dailyCap, dayKey, deepWorkMinutesOnDay, habitSatisfied, isHabitDone, xpOnDay } from './game';
 import { activeDayStreak } from './core';
 import { formatMinutes } from './ui';
 import { Icon, type IconName } from './icons';
@@ -26,8 +26,6 @@ export function TodayStrip({ state, now }: { state: GameState; now: number }) {
   const capQ = dailyCap(state, 'quest', now);
   const capH = dailyCap(state, 'habit', now);
   const minutes = deepWorkMinutesOnDay(state, today);
-  const questsDone = state.quests.filter((q) => q.completedAt && dayKey(q.completedAt) === today).length;
-  const questsLeft = pendingQuests(state, now).length;
   // hábitos de hoy: los diarios y los semanales que aún no has cumplido esta semana (o que marcaste hoy)
   const due = state.habits.filter((h) => h.frequency !== 'weekly' || isHabitDone(state, h.id, today) || !habitSatisfied(state, h, now));
   const habitsDone = due.filter((h) => isHabitDone(state, h.id, today)).length;
@@ -37,7 +35,6 @@ export function TodayStrip({ state, now }: { state: GameState; now: number }) {
     <section className="today-strip" aria-label="Tu día">
       <Tile icon="zap" value={`+${xp}`} label="XP hoy" sub={capped ? 'tope' : undefined} hot={xp > 0} />
       <Tile icon="hourglass" value={formatMinutes(minutes)} label="de foco" hot={minutes > 0} />
-      <Tile icon="check" value={questsLeft ? `${questsDone}/${questsDone + questsLeft}` : `${questsDone}`} label={questsLeft ? 'misiones' : questsDone === 1 ? 'misión hecha' : 'misiones hechas'} ratio={questsDone + questsLeft ? questsDone / (questsDone + questsLeft) : undefined} hot={questsDone > 0} />
       {due.length > 0 && <Tile icon="repeat" value={`${habitsDone}/${due.length}`} label="hábitos" ratio={habitsDone / due.length} hot={habitsDone === due.length} />}
       <Tile
         icon="flame"

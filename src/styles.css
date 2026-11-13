@@ -59,31 +59,8 @@ p { margin: 0; }
   color: var(--gold);
 }
 
-/* ---------- Botones ---------- */
-.primary, .secondary, .ghost, .danger-solid {
-  border-radius: 10px;
-  padding: 10px 16px;
-  border: 1px solid transparent;
-  font-weight: 700;
-  transition: transform 0.08s ease, background 0.15s ease;
-}
-.primary { background: var(--gold); color: var(--gold-ink); }
-.primary:hover:not(:disabled) { filter: brightness(1.06); }
-.primary:active:not(:disabled), .secondary:active { transform: translateY(1px); }
-.primary:disabled { opacity: 0.45; cursor: not-allowed; }
-.secondary { background: var(--surface-2); border-color: var(--line); }
-.ghost { background: transparent; border-color: var(--line); font-weight: 500; }
-.ghost.small { padding: 4px 10px; font-size: 14px; }
-.ghost.danger { color: var(--danger); }
-.danger-solid { background: var(--danger); color: var(--bg); }
-.big { padding: 13px 22px; font-size: 18px; }
+/* Los botones están al final del archivo («Botones: un solo sistema»). */
 .wide { width: 100%; }
-.link { background: none; border: 0; color: var(--gold); padding: 0; font-weight: 500; }
-.icon-btn {
-  background: none; border: 0; color: var(--muted);
-  font-size: 22px; line-height: 1; padding: 4px 8px; border-radius: 8px;
-}
-.icon-btn:hover { color: var(--danger); background: var(--surface-2); }
 .row { display: flex; flex-wrap: wrap; gap: 10px; }
 .row.center { justify-content: center; }
 .row-between { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
@@ -113,12 +90,27 @@ p { margin: 0; }
 .nav-item.on { background: var(--gold-soft); color: var(--fg); }
 .nav-item.on .nav-glyph { color: var(--gold); }
 .nav-glyph { width: 20px; text-align: center; font-size: 17px; }
-.nav-level { margin-top: auto; padding: 0 12px; color: var(--muted); font-size: 13px; }
-.nav-version { padding: 6px 12px 0; color: color-mix(in srgb, var(--muted) 70%, transparent); font-size: 11px; letter-spacing: 0.04em; }
-.version-btn { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-align: left; }
-.version-btn:hover, .version-btn:focus-visible { color: var(--text); text-decoration: underline; }
-.nav-version.version-btn { padding: 6px 12px 0; }
-.app-version { text-align: center; color: var(--muted); font-size: 12px; opacity: 0.75; margin: 8px 0 0; }
+.nav-foot { margin-top: auto; display: grid; gap: 8px; padding: 12px 4px 0; border-top: 1px solid var(--line); }
+.nav-level { padding: 0 8px; color: var(--muted); font-size: 13px; }
+/* La versión: una píldora discreta con el número en una etiqueta; al pulsarla salen las novedades. */
+.version-btn {
+  display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+  background: none; border: 1px solid transparent; border-radius: 10px; padding: 3px 6px;
+  font: inherit; font-size: 12px; color: var(--muted); letter-spacing: 0.02em;
+  transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease, box-shadow 0.2s ease;
+}
+.version-btn .ver-ico { width: 14px; height: 14px; color: var(--c1); opacity: 0.75; flex: none; transition: transform 0.4s ease, opacity 0.2s ease; }
+.version-btn .ver-name { font-family: var(--display); font-weight: 700; font-size: 12.5px; letter-spacing: 0.03em; white-space: nowrap; }
+.version-btn .ver-tag {
+  font-family: var(--mono); font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; line-height: 1;
+  padding: 3px 7px; border-radius: 99px; color: var(--c1);
+  background: color-mix(in srgb, var(--c1) 12%, transparent); border: 1px solid color-mix(in srgb, var(--c1) 35%, transparent);
+}
+.version-btn:hover, .version-btn:focus-visible { color: var(--fg); border-color: color-mix(in srgb, var(--c1) 40%, var(--line)); background: color-mix(in srgb, var(--c1) 7%, transparent); }
+.version-btn:hover .ver-ico { opacity: 1; transform: rotate(18deg) scale(1.1); }
+.nav-version.version-btn { width: 100%; padding: 8px 10px; border-color: var(--line); background: color-mix(in srgb, var(--fg) 3%, transparent); }
+.nav-version .ver-tag { margin-left: auto; }
+.app-version { text-align: center; margin: 8px 0 0; }
 .live-dot {
   width: 8px; height: 8px; border-radius: 50%; background: var(--ok);
   margin-left: auto; animation: pulse 1.6s ease-in-out infinite;
@@ -135,7 +127,7 @@ p { margin: 0; }
     padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
     border-right: 0; border-top: 1px solid var(--line); z-index: 10;
   }
-  .nav-brand, .nav-level, .nav-version { display: none; }
+  .nav-brand, .nav-foot { display: none; }
   .nav-item { flex-direction: column; gap: 2px; padding: 6px 1px; flex: 1 1 0; min-width: 0; font-size: 10px; text-align: center; }
   .nav-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .nav-glyph { font-size: 18px; }
@@ -236,8 +228,13 @@ p { margin: 0; }
   clip-path: inset(0 100% 0 0); transition: opacity 0.15s ease, clip-path 0.2s ease;
 }
 .check::after { content: ''; position: absolute; inset: -2px; border-radius: 50%; pointer-events: none; }
-button.check:hover { box-shadow: 0 0 0 3px color-mix(in srgb, var(--c1) 16%, transparent), 0 0 16px color-mix(in srgb, var(--c1) 30%, transparent); }
-button.check:not(.checked):hover::before { opacity: 0.4; clip-path: inset(0 0 0 0); background: var(--c1); }
+/* Solo con ratón: en el móvil el :hover se queda pegado y, al bajar el hábito hecho, la fila que sube parecía marcada */
+@media (hover: hover) {
+  [data-nohover] button.check:hover { box-shadow: none; }
+  [data-nohover] button.check:not(.checked):hover::before { opacity: 0; clip-path: inset(0 100% 0 0); }
+  button.check:hover { box-shadow: 0 0 0 3px color-mix(in srgb, var(--c1) 16%, transparent), 0 0 16px color-mix(in srgb, var(--c1) 30%, transparent); }
+  button.check:not(.checked):hover::before { opacity: 0.4; clip-path: inset(0 0 0 0); background: var(--c1); }
+}
 button.check:focus-visible { outline: 2px solid var(--c1); outline-offset: 2px; }
 .check.checked {
   background: linear-gradient(135deg, var(--c1), var(--c3)) padding-box, linear-gradient(135deg, var(--c1), var(--c3)) border-box;
@@ -278,7 +275,8 @@ input:focus, textarea:focus { outline: none; border-color: var(--gold); }
 .quick-add.inline { flex-direction: row; }
 /* en el móvil el nombre ocupa su línea y los selectores y el botón van debajo (antes el campo se quedaba en 20 px) */
 @media (max-width: 560px) { .quick-add.inline { flex-wrap: wrap; } .quick-add.inline > input:first-child { flex: 1 0 100%; } }
-.quick-add-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: space-between; }
+.quick-add-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.quick-add-row > [type="submit"]:last-child { margin-left: auto; }
 .segmented {
   display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px;
   background: var(--bg); border: 1px solid var(--line); border-radius: 12px;
@@ -409,13 +407,6 @@ body {
     var(--bg);
   background-attachment: fixed;
 }
-.primary {
-  background: linear-gradient(120deg, var(--btn-1), var(--c3));
-  color: var(--on-btn);
-  box-shadow: 0 6px 22px color-mix(in srgb, var(--btn-1) 35%, transparent);
-}
-.primary:hover:not(:disabled) { filter: brightness(1.08) saturate(1.1); box-shadow: 0 8px 30px color-mix(in srgb, var(--btn-1) 50%, transparent); }
-.primary:disabled { box-shadow: none; }
 .nav-brand, .brand {
   background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
 }
@@ -470,7 +461,6 @@ button.check:active { transform: scale(0.88); }
 .avatar-sigil { background: linear-gradient(140deg, color-mix(in srgb, var(--c2) 25%, transparent), color-mix(in srgb, var(--c3) 30%, transparent)); color: var(--fg); }
 .attr-level, .hero-title, .levelbar-title { color: var(--c1); }
 .eyebrow { color: var(--c2); }
-.link { color: var(--c1); }
 .onboarding { background: radial-gradient(70% 50% at 50% 0%, color-mix(in srgb, var(--c3) 25%, transparent), transparent 70%), var(--bg); }
 .top-actions { position: fixed; z-index: 20; top: calc(14px + env(safe-area-inset-top, 0px)); right: 16px; display: flex; gap: 8px; }
 .icon-round {
@@ -496,6 +486,7 @@ button.mode-card:hover { transform: translateY(-2px); box-shadow: 0 0 0 1px colo
 .mode-icon { font-size: 26px; display: flex; }
 .mode-card > :not(.mode-icon, .mode-title) { grid-column: 1 / -1; }
 .mode-card > .wide { justify-self: stretch; }
+
 .mode-title { font-family: var(--display); font-size: 24px; font-weight: 700; }
 .mode-sub { color: var(--muted); }
 .linked { color: var(--muted); }
@@ -540,7 +531,6 @@ button.mode-card:hover { transform: translateY(-2px); box-shadow: 0 0 0 1px colo
   .main > .screen > :first-child:not(.screen-title, .with-info, .title-row, .arena-top) { margin-top: 46px; }
 }
 
-.primary { color: var(--on-btn); }
 .phase-pill { color: #fff; }
 .mid .mono { color: var(--gold) !important; }
 
@@ -871,6 +861,7 @@ button.mode-card:hover { transform: translateY(-2px); box-shadow: 0 0 0 1px colo
 .overlay-card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow); padding: 24px; width: min(440px, 100%); display: flex; flex-direction: column; gap: 10px; }
 .conflict-options { display: grid; gap: 10px; }
 .conflict-options button { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; padding: 12px 14px; }
+.invite-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .or-divider { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; margin: 6px 0; }
 .or-divider::before, .or-divider::after { content: ''; flex: 1; height: 1px; background: var(--line); }
 .require-account h3 { margin-bottom: 4px; }
@@ -1158,7 +1149,7 @@ i.q-side { background: var(--side); }
 .sheet-hint { font-size: 12.5px; margin: 12px 0 0; }
 
 /* Recordatorios */
-.reminders .panel-head .link { margin-left: auto; font-size: 14px; }
+.reminders .panel-head .link { margin-left: auto; }
 .rem-item.late:not(.done) { border-left: 3px solid var(--danger); }
 .rem-item.late:not(.done) .small-text { color: var(--danger); }
 .rem-later { margin: 6px 0 10px; }
@@ -1305,7 +1296,6 @@ i.q-side { background: var(--side); }
 @media (prefers-reduced-motion: reduce) { .achv-pop, .achv-pop .medal { animation: none; } }
 
 /* ---------- Amigos (V2) ---------- */
-.primary.small, .secondary.small { padding: 5px 12px; font-size: 14px; }
 .profile-head { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .profile-head h2 { font-family: var(--display); font-size: 26px; margin: 0; overflow-wrap: anywhere; }
 .photo-btn { position: relative; padding: 0; background: none; border: 0; border-radius: 50%; flex: none; }
@@ -1575,23 +1565,32 @@ svg .node-icon { color: var(--fg); }
 .locked-icon .ico, .mode-icon .ico { width: 1em; height: 1em; }
 
 /* ---------- Botones: un solo sistema ----------
-   Todos con icono + texto alineados, alto mínimo cómodo para el dedo, foco visible, «hundirse» al pulsar
-   y un brillo que sigue al ratón en los principales. */
+   Cuatro tipos y tres tamaños, iguales en toda la app (2026-11-09):
+   · .primary   la acción principal de un panel (degradado del tema). Una por panel.
+   · .secondary cualquier otra acción con borde. .ghost es el mismo botón (alias de siempre).
+   · .link      acción de texto dentro de una línea (Cambiar, Elegir, + Recordatorio).
+   · .icon-btn  solo icono (editar, ajustes, arrastrar, borrar).
+   Tamaños: normal 38 px, .small 30 px, .big 48 px. El rojo solo para borrar (.danger, .danger-text, .danger-solid). */
 :is(.primary, .secondary, .ghost, .danger-solid, .chip-btn, .phase-btn, .link, .seg, .pick-btn, .pick, .pop-chip) {
   display: inline-flex; align-items: center; justify-content: center; gap: 0.45em; line-height: 1.15;
 }
-.link { justify-content: flex-start; }
 :is(.primary, .secondary, .ghost, .danger-solid) {
-  min-height: 40px; border-radius: 12px; letter-spacing: 0.01em;
+  min-height: 38px; padding: 7px 16px; border: 1px solid transparent; border-radius: 11px;
+  font-size: 15px; font-weight: 600; letter-spacing: 0.01em; color: var(--fg);
   transition: transform 0.12s cubic-bezier(0.3, 1.4, 0.5, 1), box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, filter 0.2s ease, color 0.2s ease;
 }
-:is(.primary, .secondary, .ghost, .danger-solid).small { min-height: 32px; border-radius: 10px; }
-:is(.primary, .secondary, .ghost, .danger-solid).big { min-height: 50px; border-radius: 14px; }
-:is(.primary, .secondary, .ghost, .danger-solid) .ico { width: 1.1em; height: 1.1em; }
+:is(.primary, .secondary, .ghost, .danger-solid).small { min-height: 30px; padding: 4px 11px; border-radius: 9px; font-size: 13.5px; gap: 0.4em; }
+:is(.primary, .secondary, .ghost, .danger-solid).big { min-height: 48px; padding: 10px 22px; border-radius: 13px; font-size: 16.5px; font-weight: 700; }
+:is(.primary, .secondary, .ghost, .danger-solid) .ico { width: 1.1em; height: 1.1em; flex: none; }
+/* En formularios en línea (campo + botón) el botón nunca se encoge ni parte su texto */
+:is(.quick-add, .row, .row-between, .form-row, .item-actions) > :is(.primary, .secondary, .ghost, .danger-solid) { white-space: nowrap; flex-shrink: 0; }
+
 .primary {
   position: relative; isolation: isolate; overflow: hidden;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), inset 0 -2px 0 rgba(0, 0, 0, 0.18), 0 6px 22px color-mix(in srgb, var(--btn-1) 32%, transparent);
+  background: linear-gradient(120deg, var(--btn-1), var(--c3)); color: var(--on-btn);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), inset 0 -2px 0 rgba(0, 0, 0, 0.16), 0 4px 16px color-mix(in srgb, var(--btn-1) 28%, transparent);
 }
+.primary.small { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 2px 10px color-mix(in srgb, var(--btn-1) 22%, transparent); }
 .primary::after {
   content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
   background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.2) 48%, transparent 66%);
@@ -1599,22 +1598,39 @@ svg .node-icon { color: var(--fg); }
 }
 .primary:hover:not(:disabled)::after { transform: translateX(110%); }
 .primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -2px 0 rgba(0, 0, 0, 0.18), 0 10px 30px color-mix(in srgb, var(--btn-1) 48%, transparent);
+  transform: translateY(-1px); filter: brightness(1.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -2px 0 rgba(0, 0, 0, 0.16), 0 8px 26px color-mix(in srgb, var(--btn-1) 42%, transparent);
 }
-.secondary { background: linear-gradient(180deg, color-mix(in srgb, var(--fg) 6%, var(--surface-2)), var(--surface-2)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05); }
-.secondary:hover:not(:disabled) { border-color: color-mix(in srgb, var(--c2) 55%, var(--line)); transform: translateY(-1px); box-shadow: 0 6px 18px color-mix(in srgb, var(--c2) 18%, transparent); }
-.ghost:hover:not(:disabled) { background: color-mix(in srgb, var(--fg) 6%, transparent); border-color: color-mix(in srgb, var(--fg) 22%, var(--line)); }
-.ghost.danger:hover:not(:disabled), .ghost.danger-text:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 12%, transparent); border-color: color-mix(in srgb, var(--danger) 50%, var(--line)); }
+/* Secundario (= ghost): superficie apenas levantada, borde fino y el icono en el color del tema */
+:is(.secondary, .ghost) {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--fg) 5%, var(--surface-2)), var(--surface-2));
+  border-color: var(--line); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+:is(.secondary, .ghost):not(.danger, .danger-text) > .ico:first-child { color: var(--c1); }
+:is(.secondary, .ghost):hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--c1) 50%, var(--line)); transform: translateY(-1px);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c1) 9%, var(--surface-2)), var(--surface-2));
+  box-shadow: 0 5px 16px color-mix(in srgb, var(--c1) 16%, transparent);
+}
+:is(.secondary, .ghost):is(.danger, .danger-text) { color: var(--danger); }
+:is(.secondary, .ghost):is(.danger, .danger-text):hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 12%, var(--surface-2)); border-color: color-mix(in srgb, var(--danger) 50%, var(--line)); box-shadow: none; }
+.danger-solid { background: var(--danger); color: #fff; }
 .danger-solid:hover:not(:disabled) { filter: brightness(1.08); box-shadow: 0 6px 20px color-mix(in srgb, var(--danger) 35%, transparent); }
 :is(.primary, .secondary, .ghost, .danger-solid, .chip-btn, .phase-btn, .icon-btn, .icon-round, .seg, .pick, .icon-pick, .emblem-opt):active:not(:disabled) {
   transform: translateY(1px) scale(0.97); transition-duration: 0.05s;
 }
 :is(.primary, .secondary, .ghost, .danger-solid, .chip-btn, .phase-btn):disabled { opacity: 0.42; cursor: not-allowed; box-shadow: none; filter: saturate(0.6); }
 :is(button, .pick-btn):focus-visible { outline: 2px solid var(--c1); outline-offset: 2px; }
-.link { border-radius: 6px; text-underline-offset: 3px; }
+
+/* Enlace: texto del color del tema, mismo tamaño en todas partes */
+.link {
+  justify-content: flex-start; background: none; border: 0; padding: 0; border-radius: 6px;
+  color: var(--c1); font-size: 14.5px; font-weight: 600; text-underline-offset: 3px;
+}
+.link:is(.small, .small-text) { font-size: 13px; }
+:is(.hint, .small-text, .muted, .eyebrow) .link { font-size: inherit; }
 .link:hover:not(:disabled) { text-decoration: underline; text-decoration-thickness: 1px; }
-.link .ico { transition: transform 0.15s ease; }
+.link .ico { width: 1.05em; height: 1.05em; transition: transform 0.15s ease; }
 .link:hover .ico:last-child:not(:first-child) { transform: translateX(2px); }
 .chip-btn { min-height: 36px; transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, transform 0.12s ease; }
 .chip-btn:hover:not(.on) { border-color: color-mix(in srgb, var(--c2) 45%, var(--line)); }
@@ -1622,7 +1638,8 @@ svg .node-icon { color: var(--fg); }
 
 /* Botones de solo icono: cuadrados, centrados; rojo solo cuando borran. */
 .icon-btn {
-  display: inline-grid; place-items: center; min-width: 34px; min-height: 34px; padding: 6px; font-size: 18px; border-radius: 10px;
+  display: inline-grid; place-items: center; min-width: 34px; min-height: 34px; padding: 6px;
+  background: none; border: 0; color: var(--muted); font-size: 18px; line-height: 1; border-radius: 10px;
   transition: color 0.15s ease, background 0.15s ease, transform 0.12s ease;
 }
 .icon-btn:hover:not(:disabled) { color: var(--fg); background: var(--surface-2); }
@@ -1637,3 +1654,11 @@ svg .node-icon { color: var(--fg); }
   .primary::after { display: none; }
   :is(.primary, .secondary, .ghost, .danger-solid, .chip-btn, .icon-btn):hover { transform: none !important; }
 }
+
+/* Deep Work conserva sus botones de antes (Nicolas, 2026-11-10): más grandes y en negrita, con el borde de 12 px */
+.dw-screen :is(.primary, .secondary, .ghost, .danger-solid):not(.small, .big) { min-height: 40px; padding: 10px 16px; border-radius: 12px; font-size: 17px; font-weight: 700; }
+.dw-screen .ghost:not(.small, .big) { font-weight: 500; }
+.dw-screen :is(.primary, .secondary, .ghost).small { min-height: 32px; padding: 4px 10px; border-radius: 10px; font-size: 14px; }
+.dw-screen :is(.primary, .secondary, .ghost, .danger-solid).big { min-height: 50px; padding: 13px 22px; border-radius: 14px; font-size: 18px; }
+.dw-screen .ghost { background: transparent; box-shadow: none; }
+.dw-screen .ghost > .ico:first-child { color: inherit; }

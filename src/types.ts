@@ -33,6 +33,8 @@ export interface Quest {
   createdAt: number;
   completedAt: number | null;
   kingdomId?: string; // si existe, la misión es una construcción de ese reino
+  /** Misión de la que es submisión (árbol sin límite de niveles; ver tree.ts). */
+  parentId?: string;
   focus?: AttributeId; // (v4) atributo elegido a mano; sin él se deduce del título
   xp?: number; // XP a medida; sin él, el del tipo
   rewards?: AttributeRewards; // atributos a medida (varios); sin él, se deducen
@@ -41,6 +43,31 @@ export interface Quest {
   startsOn?: string; // repetición programada: no sale en pendientes hasta ese día (YYYY-MM-DD local)
   spawnedId?: string; // la repetición que creó al completarse (para deshacer)
   steps?: QuestStep[]; // pasos (subtareas) para partir una misión grande; no dan XP por separado
+  /** Impacto que esperas de ella. No da XP: sirve para decidir qué hacer primero. */
+  impact?: Impact;
+  /** Cuándo decidiste conservarla en la limpieza (no vuelve a preguntar en 14 días). */
+  keptAt?: number;
+}
+
+export type Impact = 'alto' | 'medio' | 'bajo';
+
+/** Las misiones que elegiste como prioridad de un día (máx. 3). */
+export interface DayPriorities {
+  day: string; // YYYY-MM-DD
+  ids: string[];
+}
+
+/** Revisión semanal: lo que funcionó, lo que no y el cambio que pruebas la semana siguiente. */
+export interface WeeklyReview {
+  week: string; // lunes de la semana revisada (YYYY-MM-DD)
+  at: number;
+  worked?: string;
+  failed?: string;
+  change?: string;
+  /** Lo más importante de la semana que empieza (la previsión). */
+  focus?: string;
+  /** Si el cambio de la semana anterior sirvió. */
+  prevVerdict?: 'si' | 'medias' | 'no';
 }
 
 export interface QuestStep {
@@ -68,6 +95,11 @@ export interface Habit {
   snooze?: { level?: string; auto?: string };
   /** Cuándo se retiró por automatizado (solo en GameState.retiredHabits). */
   retiredAt?: number;
+  /**
+   * Hábito del sistema (V3): no se marca a mano. Lo marca la app cuando haces la cosa de verdad:
+   * 'health' al apuntar la noche en el Reino de la Salud, 'academy' al repasar tus tarjetas.
+   */
+  system?: 'health' | 'academy';
 }
 
 /**
@@ -112,6 +144,8 @@ export interface DeepWorkSession {
   measured?: { minutes: number; endedAt: number };
   /** Nota al terminar (1–5): cuánto y qué tal rendiste, y con qué mentalidad. Da las horas productivas (productivity.ts). */
   rating?: { performance: number; mindset: number };
+  /** Sesión de repaso de Academy (V3): tarjetas repasadas y si la cola del día quedó vacía. */
+  study?: { cards: number; cleared: boolean };
 }
 
 export type XPSource = 'quest' | 'habit' | 'deepwork' | 'admin' | 'guild';
@@ -216,7 +250,7 @@ export interface Boss {
 }
 
 export interface GameState {
-  version: 5;
+  version: 6;
   profile: Profile | null;
   quests: Quest[];
   habits: Habit[];
@@ -227,6 +261,8 @@ export interface GameState {
   xp: XPTransaction[];
   activeTimer: ActiveTimer | null;
   kingdoms: Kingdom[];
+  /** Reino de la Salud (V3): obras levantadas por constancia. Las noches viven aparte (health.ts). */
+  health?: { works: { id: string; kind: 'templo' | 'reloj' | 'palestra' | 'balanza'; week: string; at: number }[] };
   goals: Goal[];
   /** Plantillas de misión propias (las prehechas viven en el código). */
   questTemplates?: QuestTemplate[];
@@ -248,6 +284,10 @@ export interface GameState {
   /** Medidas de tu vida real (dinero, peso…): ya no salen en la app (2026-10-24); se conservan en partidas antiguas sin usarse. */
   metrics?: Metric[];
   metricEntries?: MetricEntry[];
+  /** Prioridades del día («Las 3 de hoy»), las más recientes. */
+  priorities?: DayPriorities[];
+  /** Revisiones semanales. */
+  weeklyReviews?: WeeklyReview[];
   /** Cierre del día: energía, ánimo y nota. */
   dayLogs?: DayLog[];
   /** Eventos del calendario: exámenes, lanzamientos, llamadas, bloques de tiempo… */
@@ -303,6 +343,10 @@ export interface DayLog {
   mood?: number; // 1–5
   sleep?: number; // horas; ya no se pide (2026-10-24), queda en partidas antiguas
   note?: string;
+  /** ¿Qué has avanzado hoy? */
+  advanced?: string;
+  /** ¿Qué mejorarías mañana? */
+  improve?: string;
 }
 
 export type EventKind = 'bloque' | 'examen' | 'lanzamiento' | 'llamada' | 'reunion' | 'otro';

@@ -7,7 +7,7 @@ import { dailyReport, dayLog, eventColor, eventIcon, isKeyEvent, priorityEvents,
 import { saveFile } from './download';
 import { sfx } from './sfx';
 import { shortDate } from './ui';
-import { Icon, type IconName } from './icons';
+import { Icon } from './icons';
 import { InfoTip } from './infotip';
 
 /** Cuenta atrás para lo importante: «hoy», «mañana», «en 12 días». */
@@ -27,33 +27,16 @@ export function relDay(day: string, now: number): string {
 
 // ---------- Cierre del día ----------
 
-function Scale({ label, value, onChange, icons }: { label: string; value?: number; onChange: (n: number) => void; icons: IconName[] }) {
-  return (
-    <div className="scale">
-      <span className="scale-label">{label}</span>
-      <div className="segmented" role="radiogroup" aria-label={label}>
-        {icons.map((ic, i) => (
-          <button key={i} type="button" role="radio" aria-checked={value === i + 1} aria-label={`${label} ${i + 1} de 5`}
-            className={value === i + 1 ? 'seg on' : 'seg'} onClick={() => onChange(i + 1)}><Icon name={ic} /></button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-const ENERGY: IconName[] = ['energy-1', 'energy-2', 'energy-3', 'energy-4', 'energy-5'];
-const MOOD: IconName[] = ['mood-1', 'mood-2', 'mood-3', 'mood-4', 'mood-5'];
-
 function DayCloseForm({ game, now }: { game: Game; now: number }) {
   const { state, act, toast } = game;
   const today = dayKey(now);
   const saved = dayLog(state, today);
-  const [energy, setEnergy] = useState(saved?.energy);
-  const [mood, setMood] = useState(saved?.mood);
   const [note, setNote] = useState(saved?.note ?? '');
+  const [advanced, setAdvanced] = useState(saved?.advanced ?? '');
+  const [improve, setImprove] = useState(saved?.improve ?? '');
 
   function save(): GameState {
-    return saveDayLog(state, { energy, mood, note: note.trim() || undefined }, Date.now());
+    return saveDayLog(state, { energy: saved?.energy, mood: saved?.mood, note: note.trim() || undefined, advanced: advanced.trim() || undefined, improve: improve.trim() || undefined }, Date.now());
   }
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -81,12 +64,16 @@ function DayCloseForm({ game, now }: { game: Game; now: number }) {
 
   return (
     <form className="day-close" onSubmit={submit}>
-      <div className="scales">
-        <Scale label="Energía" value={energy} onChange={setEnergy} icons={ENERGY} />
-        <Scale label="Ánimo" value={mood} onChange={setMood} icons={MOOD} />
-      </div>
-      <textarea id="day-note" value={note} onChange={(e) => setNote(e.target.value)} rows={3} maxLength={1200}
-        placeholder="¿Qué ha ido bien? ¿Qué te ha frenado? ¿Qué harás distinto mañana?" aria-label="Nota del día" />
+      <label className="field"><span>¿Qué has avanzado hoy?</span>
+        <textarea id="day-advanced" value={advanced} onChange={(e) => setAdvanced(e.target.value)} rows={2} maxLength={600}
+          placeholder="Resultados, no horas: qué está más cerca que ayer" /></label>
+      <label className="field"><span>¿Qué mejorarías mañana?</span>
+        <textarea id="day-improve" value={improve} onChange={(e) => setImprove(e.target.value)} rows={2} maxLength={600}
+          placeholder="Una cosa concreta" /></label>
+      {/* la nota libre de antes solo sale si ya la usabas ese día */}
+      {saved?.note && (
+        <textarea id="day-note" value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={1200} aria-label="Nota del día" />
+      )}
       <div className="row">
         <button type="submit" className="primary"><Icon name="save" /> {saved ? 'Actualizar el día' : 'Guardar el día'}</button>
         <button type="button" className="secondary" onClick={copy}><Icon name="copy" /> Copiar informe para la IA</button>
@@ -103,7 +90,7 @@ export function DayClose({ game, now }: { game: Game; now: number }) {
   // antes de las 18:00 y sin cierre guardado hoy, se queda en una línea para no alargar Hoy
   if (!open && new Date(now).getHours() < 18 && !dayLog(game.state, today)) {
     return (
-      <section className="panel dayclose-folded" aria-label="Estado del día">
+      <section className="panel dayclose-folded" aria-label="Cierre del día">
         <p><Icon name="moon" /> El cierre del día se abre solo a partir de las 18:00.</p>
         <button className="ghost small" onClick={() => setOpen(true)}>Hacerlo ahora</button>
       </section>
@@ -113,8 +100,8 @@ export function DayClose({ game, now }: { game: Game; now: number }) {
     <section className="panel" aria-labelledby="dayclose-h">
       <header className="panel-head">
         <div className="with-info">
-          <h3 id="dayclose-h">Estado del día</h3>
-          <InfoTip label="Para qué sirve"><p>Un minuto al final del día: cómo estás y qué ha pasado. El informe lo resume todo (XP, misiones, hábitos, estado y nota) para pedirle feedback a una IA.</p></InfoTip>
+          <h3 id="dayclose-h">Cierre del día</h3>
+          <InfoTip label="Para qué sirve"><p>Un minuto al final del día: qué has avanzado y qué mejorarías. El informe lo resume todo (XP, misiones, hábitos y tus respuestas) para pedirle feedback a una IA.</p></InfoTip>
         </div>
       </header>
       <DayCloseForm key={today} game={game} now={now} />

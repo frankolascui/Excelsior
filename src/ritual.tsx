@@ -90,7 +90,7 @@ export function RitualCTA({ state, now }: { state: GameState; now: number }) {
   if (!a.ready || !a.next) return null;
   return (
     <button className="primary ritual-cta" onClick={() => openRitual()}>
-      <Icon name="candle" /> Ritual de ascensión: {a.next.name}
+      <Icon name="candle" /> Ritual<span className="ritual-long"> de ascensión</span>: {a.next.name}
     </button>
   );
 }

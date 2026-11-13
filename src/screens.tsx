@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { useGame } from './store';
-import type { DeepWorkArea, FocusPhase, Quest, QuestType } from './types';
-import { addGoal, attributeXp, avatarInfo, DEEP_WORK_AREA_HINT, deepWorkRewards, inferDeepWorkArea, deleteGoal, formatAttrXp, goalProgress, habitRewards, questRewards, updateGoal } from './attributes';
+import type { DeepWorkArea, FocusPhase, GameState, Quest, QuestType } from './types';
+import { addGoal, avatarInfo, DEEP_WORK_AREA_HINT, deepWorkRewards, inferDeepWorkArea, deleteGoal, formatAttrXp, goalProgress, habitRewards, questRewards, updateGoal } from './attributes';
 import { CustomizeToggle, RewardEditor, sameRewards, type CustomValue } from './customize';
 import { addKingdom, BUILDINGS, buildings, deleteKingdom, kingdomName, kingdomProgress, nextStage, renameKingdom, setKingdomDeadline } from './kingdoms';
-import { DatePicker } from './pickers';
+import { DatePicker, Select } from './pickers';
 import { CityScene } from './city';
 import { kingdomBonus, spendShield } from './economy';
 import { RealmMap } from './realm';
+import { HealthKingdom } from './health-ui';
+import { healthFounded } from './health';
+import { SleepClockCard } from './health-diary-ui';
+import { HEALTH_KINGDOM, navState, openSystemHabit } from './nav-state';
 import { AmbientPanel } from './ambient-ui';
 import { WeeklyChronicle } from './settings';
 import { HeroPath } from './heropath';
@@ -18,11 +22,11 @@ import { XpChart } from './charts';
 import {
   addHabit, addQuest, cancelTimer, CUSTOM_LIMITS, maxPerWeek, updateHabit, updateQuest, completeQuest, createProfile, dayKey, deepWorkMinutesOnDay,
   deleteHabit, deleteQuest, focusPercent, habitStreakDays, levelInfo, pendingQuests, scheduledQuests, setQuestDeadline, setQuestRepeat, setPhase, timerTotals,
-  pomodoroStatus, pomodoroStep, startTimer, stopTimer, suggest, toggleHabit, habitCleared, habitsInOrder, reorderHabits, totalXp, undoQuest, XP_RULES,
+  pomodoroStatus, pomodoroStep, startTimer, stopTimer, suggest, questXp, PRIORITY_BONUS, impactOf, toggleHabit, habitCleared, habitsInOrder, reorderHabits, totalXp, undoQuest, XP_RULES,
 } from './game';
 import {
   AttributeList, AvatarCard, ConfirmButton, deadlineLabel, formatClock, shortDate, formatMinutes, HabitItem, LevelBar, QuestItem,
-  QuickAddQuest, RewardTags, useNow,
+  QuickAddQuest, RewardTags, useHabitFlip, useNow,
 } from './ui';
 import { HeroJournal, ReviewBanner, TimedGoals } from './ritual';
 import { QuestCalendar } from './calendar';
@@ -33,8 +37,9 @@ import { AchievementsPanel } from './achievements-ui';
 import { Inventory } from './inventory';
 import { Icon } from './icons';
 import { TodayStrip } from './today';
-import { addStep, deleteStep, setStepDeadline, toggleStep } from './core';
-import type { StepActions } from './steps-ui';
+import { QuestNode } from './tree-ui';
+import { effectiveDeadline, pathLabel } from './tree';
+import { addSubQuest, rootsInOrder, splitIntoSessions } from './tree-actions';
 import { SessionEdit } from './session-ui';
 import { RateDialog, SessionRating } from './productivity-ui';
 import { formatHours, productivityWeek, sessionProductivity } from './productivity';
@@ -43,17 +48,19 @@ import { DragHandle, draftToProgression, HabitHints, MinimumInput, PerDayInput, 
 import { atMax, levelUp, restoreHabit, retireHabit, setProgression, snoozeHint } from './progression';
 import { InfoTip } from './infotip';
 import { QuestHistory } from './quest-history';
+import { CleanupPanel, PriorityPicker, TomorrowPanel } from './priorities-ui';
+import { currentChange, weekFocus } from './review';
+import { RitualCTA } from './ritual';
+import { IMPACTS, priorityIds, priorityQuests, pushToTomorrow, setQuestImpact } from './priorities';
 import { ACHIEVEMENTS } from './achievements';
 
 export type Game = ReturnType<typeof useGame>;
 
-/** Acciones de los pasos de una misión para QuestItem. */
-function stepActions(act: Game['act'], questId: string): StepActions {
+/** Partir una misión: submisiones a mano o sesiones repartidas hasta su fecha. */
+function treeActions(act: Game['act'], questId: string) {
   return {
-    add: (t) => act((st) => addStep(st, questId, t)),
-    toggle: (id) => act((st) => toggleStep(st, questId, id)),
-    remove: (id) => act((st) => deleteStep(st, questId, id)),
-    deadline: (id, day) => act((st) => setStepDeadline(st, questId, id, day)),
+    onAddChild: (t: string) => act((st) => addSubQuest(st, questId, t, Date.now())),
+    onSplit: (n: number) => act((st) => splitIntoSessions(st, questId, n, Date.now())),
   };
 }
 export type Tab = 'hoy' | 'misiones' | 'reinos' | 'arena' | 'gremios' | 'amigos' | 'deepwork' | 'habitos' | 'personaje' | 'ajustes';
@@ -110,13 +117,31 @@ export function Dashboard({
 }: { game: Game; go: (t: Tab) => void; focusQuest: (q: Quest | null) => void; guide: string }) {
   const { state, act } = game;
   const now = useNow(30_000);
+  const today = dayKey(now);
   const pending = pendingQuests(state, now);
   const s = suggest(state, now);
-  // la misión de «¿Qué hago ahora?» no se repite en la lista de debajo
-  const others = s.kind === 'quest' ? pending.filter((q) => q.id !== s.quest.id) : pending;
-  const [adding, setAdding] = useState(false);
   const fresh = totalXp(state) === 0; // partida nueva: se esconde lo que aún estaría vacío
-  const anyAttr = Object.values(attributeXp(state)).some((v) => v > 0);
+  const prio = priorityIds(state, today);
+  const prioQs = priorityQuests(state, today);
+  const prioDone = prioQs.filter((q) => q.completedAt).length;
+  const [picking, setPicking] = useState(false);
+  const habitList = useHabitFlip<HTMLUListElement>();
+  const hero = s.kind === 'quest' ? s.quest : null;
+  const heroIsPrio = !!hero && prio.includes(hero.id);
+  const heroPath = hero ? pathLabel(state, hero) : '';
+  const heroDue = hero ? effectiveDeadline(state, hero) : undefined;
+  // el resto de «Las 3 de hoy» va debajo de la principal; las demás misiones, en Misiones
+  const restPrio = prioQs.filter((q) => q.id !== hero?.id);
+  const more = pending.filter((q) => q.id !== hero?.id && !prio.includes(q.id)).length;
+  const focus = weekFocus(state, now);
+  const change = currentChange(state, now);
+  const complete = (q: Quest) => act((st) => completeQuest(st, q.id, Date.now()), CAP_QUEST, questOpts(q));
+  // «Pasar a mañana»: sale de Las 3 de hoy y entra en las de mañana (si mañana aún tiene hueco)
+  const toTomorrow = (q: Quest) => {
+    if (!pushToTomorrow(state, q.id, Date.now()).ok) { game.toast('Mañana ya tiene 3 prioridades. Cámbialas en Misiones → Mañana.', 'info'); return; }
+    act((st) => pushToTomorrow(st, q.id, Date.now()).state);
+    game.toast('Pasada a mañana', 'info');
+  };
 
   return (
     <div className="screen">
@@ -125,111 +150,154 @@ export function Dashboard({
       <ReviewBanner state={state} now={now} guide={guide} />
       <UpcomingEvents state={state} now={now} />
       <section className="now" aria-labelledby="now-h" data-tour="now">
-        <p className="eyebrow" id="now-h">¿Qué hago ahora?</p>
-        {s.kind === 'timer' && (
+        <div className="now-top">
+          <p className="eyebrow" id="now-h">
+            {heroIsPrio && !picking ? <><Icon name="flag" /> Las 3 de hoy · {prioDone}/{prioQs.length}</> : '¿Qué hago ahora?'}
+          </p>
+          {prioQs.length > 0 && !picking && <button className="link" onClick={() => setPicking(true)}>Cambiar</button>}
+        </div>
+        {picking ? (
+          <PriorityPicker game={game} day={today} onDone={() => setPicking(false)} compact />
+        ) : (
           <>
-            <h2>Tienes una sesión de foco en marcha.</h2>
-            <button className="primary big" onClick={() => go('deepwork')}>Volver al temporizador</button>
-          </>
-        )}
-        {s.kind === 'quest' && (
-          <>
-            <h2>{s.quest.title}</h2>
-            <p className="now-sub">Misión {s.quest.type === 'main' ? 'principal' : s.quest.type === 'daily' ? 'diaria' : 'secundaria'} · +{XP_RULES.quest[s.quest.type]} XP al completarla, +1 XP por minuto de foco</p>
-            <div className="row">
-              <button className="primary big" onClick={() => focusQuest(s.quest)}><Icon name="play" /> Empezar Deep Work</button>
-              <button className="secondary big" onClick={() => act((st) => completeQuest(st, s.quest.id, Date.now()), CAP_QUEST, questOpts(s.quest))}><Icon name="check" /> Ya la terminé</button>
-            </div>
-            {others.length === 0 && (adding
-              ? <QuickAddQuest autoFocus onAdd={(t, ty, c) => { act((st) => addQuest(st, t, ty, Date.now(), c)); setAdding(false); }} />
-              : <button className="link now-add" onClick={() => setAdding(true)}><Icon name="plus" /> Añadir otra misión</button>)}
-          </>
-        )}
-        {s.kind === 'habit' && (
-          <>
-            <h2>Hábito pendiente: {s.name}</h2>
-            <p className="now-sub">No tienes misiones pendientes. Marca el hábito cuando lo hagas.</p>
-            <div className="row">
-              <button className="primary big" onClick={() => act((st) => toggleHabit(st, s.habitId, Date.now()), CAP_HABIT, { sound: 'habit' })}><Icon name="check" /> Hecho</button>
-              <button className="secondary big" onClick={() => go('misiones')}><Icon name="plus" /> Crear misión</button>
-            </div>
-          </>
-        )}
-        {s.kind === 'create' && (
-          <>
-            <h2>Crea tu primera misión.</h2>
-            <p className="now-sub">Algo concreto que quieras hacer hoy. Una sola línea basta.</p>
-            <QuickAddQuest onAdd={(t, ty, c) => act((st) => addQuest(st, t, ty, Date.now(), c))} />
-          </>
-        )}
-        {s.kind === 'done' && (
-          <>
-            <h2>Todo hecho por hoy.</h2>
-            <p className="now-sub">Una sesión extra de foco sigue sumando XP. O prepara la misión de mañana.</p>
-            <div className="row">
-              <button className="primary big" onClick={() => focusQuest(null)}><Icon name="play" /> Deep Work libre</button>
-              <button className="secondary big" onClick={() => go('misiones')}><Icon name="plus" /> Nueva misión</button>
-            </div>
+            {s.kind === 'timer' && (
+              <>
+                <h2>Tienes una sesión de foco en marcha.</h2>
+                <button className="primary big" onClick={() => go('deepwork')}>Volver al temporizador</button>
+              </>
+            )}
+            {hero && (
+              <>
+                {heroPath && <p className="now-path">{heroPath}</p>}
+                <h2>{hero.title}</h2>
+                <p className="now-sub">
+                  Impacto {IMPACTS.find((x) => x.id === impactOf(hero))!.name.toLowerCase()} · 
+                  +{questXp(hero)} XP{heroDue && <> · {deadlineLabel(heroDue, now).text}</>}
+                </p>
+                <div className="row now-actions">
+                  <button className="primary big" onClick={() => focusQuest(hero)}><Icon name="play" /> Empezar Deep Work</button>
+                  <button className="secondary big" onClick={() => complete(hero)}><Icon name="check" /> Ya la terminé</button>
+                </div>
+                {heroIsPrio && <button className="link small now-push" onClick={() => toTomorrow(hero)}><Icon name="sunrise" /> Hoy no llego: pasar a mañana</button>}
+              </>
+            )}
+            {s.kind === 'habit' && (
+              <>
+                <h2>Hábito pendiente: {s.name}</h2>
+                <div className="row">
+                  {(() => {
+                    const sys = state.habits.find((h) => h.id === s.habitId)?.system;
+                    return sys
+                      ? <button className="primary big" onClick={() => openSystemHabit(sys)}><Icon name="arrow-right" /> {sys === 'health' ? 'Apuntarla ahora' : 'Repasar ahora'}</button>
+                      : <button className="primary big" onClick={() => act((st) => toggleHabit(st, s.habitId, Date.now()), CAP_HABIT, { sound: 'habit' })}><Icon name="check" /> Hecho</button>;
+                  })()}
+                </div>
+              </>
+            )}
+            {s.kind === 'create' && (
+              <>
+                <h2>Crea tu primera misión.</h2>
+                <p className="now-sub">Algo concreto que quieras hacer hoy. Una sola línea basta.</p>
+                <QuickAddQuest onAdd={(t, ty, c) => act((st) => addQuest(st, t, ty, Date.now(), c))} />
+              </>
+            )}
+            {s.kind === 'done' && (
+              <>
+                <h2>Todo hecho por hoy.</h2>
+                <div className="row">
+                  <button className="primary big" onClick={() => focusQuest(null)}><Icon name="play" /> Deep Work libre</button>
+                </div>
+              </>
+            )}
+            {restPrio.length > 0 && (
+              <ol className="top3-list now-rest">
+                {restPrio.map((q) => (
+                  <li key={q.id} className={q.completedAt ? 'done' : ''}>
+                    {q.completedAt
+                      ? <span className="check checked" aria-hidden="true">✓</span>
+                      : <button className="check" aria-label={`Completar ${q.title}`} title="Completar misión" onClick={() => complete(q)}>✓</button>}
+                    <span className="top3-title">{pathLabel(state, q) && <span className="item-path">{pathLabel(state, q)}</span>}{q.title}</span>
+                    {!q.completedAt && <button className="ghost small push-btn" onClick={() => toTomorrow(q)} aria-label={`Pasar a mañana ${q.title}`} title="Pasar a mañana"><Icon name="sunrise" /><span className="push-label"> Mañana</span></button>}
+                    {!q.completedAt && <button className="ghost small" onClick={() => focusQuest(q)} title="Hacer Deep Work en esta misión"><Icon name="play" /> Foco</button>}
+                  </li>
+                ))}
+              </ol>
+            )}
+            {prioQs.length === 3 && prioDone === 3 && <p className="now-note"><Icon name="check" /> Las 3 de hoy, hechas: +{PRIORITY_BONUS} XP.</p>}
+            {s.kind !== 'create' && (
+              <div className="now-foot">
+                {prioQs.length === 0 && pending.length > 0 && <button className="link" onClick={() => setPicking(true)}><Icon name="flag" /> Elegir las 3 de hoy</button>}
+                {more > 0 && <button className="link" onClick={() => go('misiones')}>{more} {more === 1 ? 'misión más' : 'misiones más'} <Icon name="arrow-right" /></button>}
+                <QuickCapture onAdd={(t) => act((st) => addQuest(st, t, 'daily', Date.now()))} />
+              </div>
+            )}
+            {(focus || change) && (
+              <div className="now-week">
+                {focus && <p className="top3-change"><Icon name="target" /> Lo importante de la semana: <em>{focus}</em></p>}
+                {change && <p className="top3-change"><Icon name="sparkles" /> Esta semana pruebas: <em>{change}</em></p>}
+              </div>
+            )}
           </>
         )}
       </section>
 
+      {healthFounded(state) && <SleepClockCard onRecord={() => openSystemHabit('health')} />}
+
       <div className={state.habits.length > 0 ? 'columns' : 'columns one'}>
         <div className="col-stack">
-        {(others.length > 0 || (s.kind !== 'create' && s.kind !== 'quest')) && <section className="panel">
-          <header className="panel-head">
-            <h3>{s.kind === 'quest' ? 'Más misiones' : 'Misiones pendientes'}</h3>
-            <button className="link" onClick={() => go('misiones')}>Ver todas <Icon name="arrow-right" /></button>
-          </header>
-          {others.length === 0 ? (
-            <p className="empty">Sin misiones pendientes.</p>
-          ) : (
-            <ul className="list">
-              {others.slice(0, 5).map((q) => (
-                <QuestItem key={q.id} quest={q} kingdom={kingdomName(state, q.kingdomId)} onComplete={() => act((st) => completeQuest(st, q.id, Date.now()), CAP_QUEST, questOpts(q))} onStart={() => focusQuest(q)} onDeadline={(d) => act((st) => setQuestDeadline(st, q.id, d))} steps={stepActions(act, q.id)} />
-              ))}
-            </ul>
-          )}
-          {s.kind !== 'create' && <QuickAddQuest onAdd={(t, ty, c) => act((st) => addQuest(st, t, ty, Date.now(), c))} />}
-        </section>}
-
+        {(pending.length > 0 || !fresh) && <TomorrowPanel game={game} now={now} />}
         <RemindersPanel game={game} now={now} />
-        {/* en escritorio llena el hueco bajo misiones y recordatorios; en el móvil baja tras los hábitos (CSS) */}
+        {/* en escritorio llena el hueco bajo los recordatorios; en el móvil baja tras los hábitos (CSS) */}
         {!fresh && <div className="today-dayclose"><DayClose game={game} now={now} /></div>}
         </div>
 
-        {state.habits.length > 0 && <section className="panel">
+        {state.habits.length > 0 && <section className="panel today-habits">
           <header className="panel-head">
             <h3>Hábitos de hoy</h3>
             <button className="link" onClick={() => go('habitos')}>Gestionar <Icon name="arrow-right" /></button>
           </header>
-          {state.habits.length === 0 ? (
-            <p className="empty">Aún no tienes hábitos.</p>
-          ) : (
-            <ul className="list">
-              {habitsInOrder(state, now).map((h) => (
-                <HabitItem key={h.id} state={state} habit={h} now={now} onToggle={() => act((st) => toggleHabit(st, h.id, Date.now()), CAP_HABIT, { sound: 'habit' })}
-                  onToggleDay={(d) => act((st) => toggleHabit(st, h.id, Date.now(), d), CAP_HABIT, { sound: 'habit' })} onShield={(d) => spendHabitShield(game, h.id, d)} />
-              ))}
-            </ul>
-          )}
+          <ul className="list" ref={habitList}>
+            {habitsInOrder(state, now).map((h) => (
+              <HabitItem key={h.id} state={state} habit={h} now={now} compact onToggle={() => act((st) => toggleHabit(st, h.id, Date.now()), CAP_HABIT, { sound: 'habit' })}
+                onToggleDay={(d) => act((st) => toggleHabit(st, h.id, Date.now(), d), CAP_HABIT, { sound: 'habit' })} onShield={(d) => spendHabitShield(game, h.id, d)} />
+            ))}
+          </ul>
         </section>}
       </div>
 
-      <AvatarCard state={state} now={now} />
-
-      {anyAttr && <section className="panel" aria-labelledby="attrs-h">
-        <header className="panel-head">
-          <h3 id="attrs-h">Atributos</h3>
-          <button className="link" onClick={() => go('personaje')}>Ver detalle <Icon name="arrow-right" /></button>
-        </header>
-        <AttributeList state={state} />
-      </section>}
-
-      <section className="panel" aria-label="XP y nivel global">
-        <LevelBar state={state} />
-      </section>
+      {!fresh && <HeroLine state={state} now={now} onOpen={() => go('personaje')} />}
     </div>
+  );
+}
+
+/** Apuntar una misión en una línea (sin opciones): se completa en Misiones si hace falta. */
+function QuickCapture({ onAdd }: { onAdd: (title: string) => void }) {
+  const [title, setTitle] = useState('');
+  return (
+    <form className="capture" onSubmit={(e) => { e.preventDefault(); if (!title.trim()) return; onAdd(title); setTitle(''); }}>
+      <input id="capture" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={80} placeholder="+ Apuntar una misión" aria-label="Apuntar una misión" />
+      {title.trim() && <button type="submit" className="primary small"><Icon name="plus" /> Añadir</button>}
+    </form>
+  );
+}
+
+/** Tu personaje en una fila: avatar, nivel y el ritual si toca. El detalle vive en Personaje. */
+function HeroLine({ state, now, onOpen }: { state: GameState; now: number; onOpen: () => void }) {
+  const a = avatarInfo(state, now);
+  const info = levelInfo(totalXp(state));
+  return (
+    <section className={a.ready ? 'panel hero-line ritual-ready' : 'panel hero-line'} aria-label="Tu personaje" data-tour="avatar">
+      <button className="hero-line-main" onClick={onOpen} title="Ver tu personaje">
+        <AvatarPortrait tier={a.index} photo={state.profile?.photo} label={initialOf(state.profile?.name)} size={44} title={a.current.name} />
+        <span className="hero-line-txt">
+          <span className="hero-line-name"><b>{a.current.name}</b> · Nv {info.level}</span>
+          <span className="xpbar" aria-hidden="true"><span className="xpbar-fill" style={{ width: `${Math.min(100, info.progress * 100)}%` }} /></span>
+          <span className="levelbar-foot mono">{info.current} / {info.needed} XP</span>
+        </span>
+        <Icon name="arrow-right" />
+      </button>
+      <RitualCTA state={state} now={now} />
+    </section>
   );
 }
 
@@ -251,7 +319,9 @@ export function Quests({ game, focusQuest, startFocus }: { game: Game; focusQues
   const { state, act } = game;
   const now = useNow(60_000);
   const pending = pendingQuests(state, now);
+  const roots = rootsInOrder(state, now);
   const scheduled = scheduledQuests(state, now);
+  const prio = priorityIds(state, dayKey(now));
   const [showScheduled, setShowScheduled] = useState(false);
   const [view, setView] = useState<'list' | 'calendar'>(() => {
     try {
@@ -281,7 +351,7 @@ export function Quests({ game, focusQuest, startFocus }: { game: Game; focusQues
     <div className="title-row">
       <div className="with-info">
         <h1 className="screen-title">Misiones</h1>
-        <InfoTip label="Cómo funcionan las misiones"><p>Principal = lo importante. Diaria = para hoy. Secundaria = si sobra tiempo. Con «Misiones prehechas» las añades ya listas, con su XP y atributos.</p></InfoTip>
+        <InfoTip label="Cómo funcionan las misiones"><p>El impacto decide el orden y el XP: alto (50) mueve de verdad un objetivo, medio (20) ayuda, bajo (15) se podría posponer o eliminar. Con «Misiones prehechas» las añades ya listas.</p></InfoTip>
       </div>
       {toggle}
     </div>
@@ -301,23 +371,31 @@ export function Quests({ game, focusQuest, startFocus }: { game: Game; focusQues
         <QuickAddQuest autoFocus onAdd={(t, ty, c) => act((st) => addQuest(st, t, ty, Date.now(), c))} />
         <QuestTemplates game={game} />
       </section>
+      <CleanupPanel game={game} now={now} />
+      <TomorrowPanel game={game} now={now} />
       <section className="panel">
         <header className="panel-head"><h3>Pendientes</h3><span className="count mono">{pending.length}</span></header>
-        {pending.length === 0 ? <p className="empty">Nada pendiente. Crea una misión arriba.</p> : (
+        {roots.length === 0 ? <p className="empty">Nada pendiente. Crea una misión arriba.</p> : (
           <ul className="list">
-            {pending.map((q) => (
-              <QuestItem
-                key={q.id}
-                quest={q}
-                kingdom={kingdomName(state, q.kingdomId)}
-                onComplete={() => act((st) => completeQuest(st, q.id, Date.now()), CAP_QUEST, questOpts(q))}
-                onStart={() => focusQuest(q)}
-                onEdit={(t, v) => act((st) => updateQuest(st, q.id, { title: t, ...v }))}
-                onDeadline={(d) => act((st) => setQuestDeadline(st, q.id, d))}
-                onRepeat={q.kingdomId ? undefined : (d) => act((st) => setQuestRepeat(st, q.id, d))}
-                steps={stepActions(act, q.id)}
-                onDelete={() => act((st) => deleteQuest(st, q.id))}
-              />
+            {roots.map((root) => (
+              <QuestNode key={root.id} state={state} quest={root} render={(q, extra) => (
+                <QuestItem
+                  key={q.id}
+                  quest={q}
+                  {...extra}
+                  kingdom={kingdomName(state, q.kingdomId)}
+                  onComplete={() => act((st) => completeQuest(st, q.id, Date.now()), CAP_QUEST, questOpts(q))}
+                  onUndo={() => act((st) => undoQuest(st, q.id))}
+                  onStart={() => focusQuest(q)}
+                  onEdit={(t, v) => act((st) => updateQuest(st, q.id, { title: t, ...v }))}
+                  onDeadline={(d) => act((st) => setQuestDeadline(st, q.id, d))}
+                  onRepeat={q.kingdomId ? undefined : (d) => act((st) => setQuestRepeat(st, q.id, d))}
+                  onImpact={(v) => act((st) => setQuestImpact(st, q.id, v))}
+                  priority={prio.includes(q.id)}
+                  {...treeActions(act, q.id)}
+                  onDelete={() => act((st) => deleteQuest(st, q.id))}
+                />
+              )} />
             ))}
           </ul>
         )}
@@ -472,7 +550,7 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
     const R = 120;
     const C = 2 * Math.PI * R;
     return (
-      <div className={`screen focus-screen phase-${totals.phase}`}>
+      <div className={`screen dw-screen focus-screen phase-${totals.phase}`}>
         <p className="eyebrow">{eyebrow}</p>
         {title && <h1 className="focus-label">{title}</h1>}
         {timer.pomodoro && (
@@ -529,7 +607,7 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
   const shown = result && result.id && !live ? null : result && live ? { ...result, minutes: live.minutes, xp: live.minutes * XP_RULES.deepWorkPerMinute } : result;
 
   return (
-    <div className="screen">
+    <div className="screen dw-screen">
       {asking && !game.levelUp && <RateDialog game={game} id={asking} onClose={() => setAsking(null)} />}
       <div className="with-info">
         <h1 className="screen-title">Deep Work</h1>
@@ -559,7 +637,7 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
               {linked && (
                 <div className="row">
                   <button className="primary" onClick={() => { act((s) => completeQuest(s, linked.id, Date.now()), CAP_QUEST, questOpts(linked)); setResult({ ...result, questId: null }); }}>
-                    <Icon name="check" /> Completar «{linked.title}» (+{XP_RULES.quest[linked.type]} XP)
+                    <Icon name="check" /> Completar «{linked.title}» (+{questXp(linked)} XP)
                   </button>
                 </div>
               )}
@@ -655,6 +733,7 @@ export function Habits({ game, guide }: { game: Game; guide: string }) {
   const [prog, setProg] = useState<ProgressionDraft>(() => progressionDraft());
   const [perDay, setPerDay] = useState(1);
   const ordered = habitsInOrder(state, now);
+  const habitList = useHabitFlip<HTMLUListElement>();
   const doneIds = new Set(ordered.filter((h) => habitCleared(state, h, now)).map((h) => h.id));
   async function shareWeek() {
     const text = weekShareText(state, Date.now());
@@ -706,10 +785,8 @@ export function Habits({ game, guide }: { game: Game; guide: string }) {
       <section className="panel">
         <form className="quick-add inline" onSubmit={submit}>
           <input id="new-habit" value={name} onChange={(e) => setName(e.target.value)} placeholder="+ Nuevo hábito (ej. Leer 10 páginas)" maxLength={60} aria-label="Nombre del nuevo hábito" />
-          <select id="new-habit-freq" className="freq-select" value={perWeek} onChange={(e) => setPerWeek(Number(e.target.value))} aria-label="Frecuencia">
-            <option value={7}>Cada día</option>
-            {Array.from({ length: maxPerWeek(perDay) }, (_, i) => i + 1).filter((n) => n !== 7).map((n) => <option key={n} value={n}>{n} {n === 1 ? 'vez' : 'veces'} por semana</option>)}
-          </select>
+          <Select id="new-habit-freq" label="Frecuencia" icon="repeat" value={perWeek} onChange={setPerWeek}
+            options={[{ value: 7, label: 'Cada día' }, ...Array.from({ length: maxPerWeek(perDay) }, (_, i) => i + 1).filter((n) => n !== 7).map((n) => ({ value: n, label: `${n} ${n === 1 ? 'vez' : 'veces'} por semana` }))]} />
           <CustomizeToggle open={open} onToggle={() => setOpen(!open)} custom={custom.xp !== undefined || custom.rewards !== undefined} />
           <button type="submit" className="primary" disabled={!name.trim()}><Icon name="plus" /> Añadir</button>
         </form>
@@ -739,7 +816,7 @@ export function Habits({ game, guide }: { game: Game; guide: string }) {
             </div>
           </div>
         ) : (
-          <ul className="list">
+          <ul className="list" ref={habitList}>
             {ordered.map((h) => {
               // solo se ordena entre los del mismo grupo (pendientes o ya hechos)
               const group = ordered.filter((x) => doneIds.has(x.id) === doneIds.has(h.id)).map((x) => x.id);
@@ -834,13 +911,11 @@ export function Character({ game }: { game: Game }) {
 const BUILDING_TYPES: QuestType[] = ['side', 'daily', 'main'];
 
 // Reino abierto: se recuerda al cambiar de pestaña (p. ej. al volver de Deep Work) mientras dure la sesión.
-let openKingdom: string | null = null;
-
 export function Kingdoms({ game, focusQuest }: { game: Game; focusQuest: (q: Quest) => void }) {
   const { state, act } = game;
   const [name, setName] = useState('');
-  const [openId, setOpenId] = useState<string | null>(openKingdom);
-  const open = (id: string | null) => { openKingdom = id; setOpenId(id); window.scrollTo({ top: 0 }); };
+  const [openId, setOpenId] = useState<string | null>(navState.kingdom);
+  const open = (id: string | null) => { navState.kingdom = id; setOpenId(id); window.scrollTo({ top: 0 }); };
   const current = state.kingdoms.find((k) => k.id === openId);
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -850,14 +925,33 @@ export function Kingdoms({ game, focusQuest }: { game: Game; focusQuest: (q: Que
     setName('');
     open(next.kingdoms.at(-1)!.id);
   }
+  if (openId === HEALTH_KINGDOM) {
+    return (
+      <div className="screen">
+        <div className="kingdom-back">
+          <button className="ghost" onClick={() => open(null)}><Icon name="chevron-left" /> Mapa del reino</button>
+          {state.kingdoms.length > 0 && (
+            <div className="kingdom-tabs" role="tablist" aria-label="Tus reinos">
+              <button type="button" role="tab" aria-selected className="chip-btn on"><Icon name="caduceus" /> Salud</button>
+              {state.kingdoms.map((k) => (
+                <button key={k.id} type="button" role="tab" aria-selected={false} className="chip-btn" onClick={() => open(k.id)}>{k.name}</button>
+              ))}
+            </div>
+          )}
+        </div>
+        <HealthKingdom game={game} />
+      </div>
+    );
+  }
   if (current) {
     // Cada reino en su propia vista; el mapa queda a un botón.
     return (
       <div className="screen">
         <div className="kingdom-back">
           <button className="ghost" onClick={() => open(null)}><Icon name="chevron-left" /> Mapa del reino</button>
-          {state.kingdoms.length > 1 && (
+          {state.kingdoms.length > 0 && (
             <div className="kingdom-tabs" role="tablist" aria-label="Tus reinos">
+              <button type="button" role="tab" aria-selected={false} className="chip-btn" onClick={() => open(HEALTH_KINGDOM)}><Icon name="caduceus" /> Salud</button>
               {state.kingdoms.map((k) => (
                 <button key={k.id} type="button" role="tab" aria-selected={k.id === current.id} className={k.id === current.id ? 'chip-btn on' : 'chip-btn'} onClick={() => open(k.id)}>{k.name}</button>
               ))}
@@ -875,13 +969,12 @@ export function Kingdoms({ game, focusQuest }: { game: Game; focusQuest: (q: Que
         <InfoTip label="Cómo funcionan los reinos"><p>Un reino es un proyecto. Cada tarea es una construcción y tu ciudad crece al completarlas: campamento, aldea, villa, ciudad amurallada y reino glorioso. Pulsa un reino en el mapa para entrar.</p></InfoTip>
       </div>
       <RealmMap state={state} onSelect={(id) => open(id)} />
-      {state.kingdoms.length > 0 && (
-        <div className="kingdom-tabs kingdom-pick" aria-label="Entrar en un reino">
-          {state.kingdoms.map((k) => (
-            <button key={k.id} type="button" className="chip-btn" onClick={() => open(k.id)}><Icon name="castle" /> {k.name}</button>
-          ))}
-        </div>
-      )}
+      <div className="kingdom-tabs kingdom-pick" aria-label="Entrar en un reino">
+        <button type="button" className="chip-btn health-chip" onClick={() => open(HEALTH_KINGDOM)} data-testid="open-health" data-tour="health"><Icon name="caduceus" /> Reino de la Salud{!healthFounded(state) && <span className="muted small-text"> · nuevo</span>}</button>
+        {state.kingdoms.map((k) => (
+          <button key={k.id} type="button" className="chip-btn" onClick={() => open(k.id)}><Icon name="castle" /> {k.name}</button>
+        ))}
+      </div>
       <section className="panel" data-tour="kingdom-add">
         <form className="quick-add inline" onSubmit={submit}>
           <input id="new-kingdom" value={name} onChange={(e) => setName(e.target.value)} placeholder="+ Fundar un reino (ej. Reino de la Programación)" maxLength={50} aria-label="Nombre del nuevo reino" />
@@ -958,15 +1051,19 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
       <CityScene quests={all} progress={p.progress} complete={p.complete} stage={p.stage} icon={p.icon} />
       {pending.length > 0 && (
         <ul className="list">
-          {pending.map((q) => (
-            <QuestItem
-              key={q.id} quest={q}
-              onComplete={() => act((s) => completeQuest(s, q.id, Date.now()), CAP_QUEST, questOpts(q))}
-              onStart={() => focusQuest(q)}
-              onDelete={() => act((s) => deleteQuest(s, q.id))}
-              onEdit={(t, v) => act((s) => updateQuest(s, q.id, { title: t, ...v }))}
-              steps={stepActions(act, q.id)}
-            />
+          {pending.map((root) => (
+            <QuestNode key={root.id} state={state} quest={root} render={(q, extra) => (
+              <QuestItem
+                key={q.id} quest={q} {...extra}
+                onComplete={() => act((s) => completeQuest(s, q.id, Date.now()), CAP_QUEST, questOpts(q))}
+                onUndo={() => act((s) => undoQuest(s, q.id))}
+                onStart={() => focusQuest(q)}
+                onDelete={() => act((s) => deleteQuest(s, q.id))}
+                onEdit={(t, v) => act((s) => updateQuest(s, q.id, { title: t, ...v }))}
+                onDeadline={q.kingdomId ? undefined : (d) => act((s) => setQuestDeadline(s, q.id, d))}
+                {...treeActions(act, q.id)}
+              />
+            )} />
           ))}
         </ul>
       )}

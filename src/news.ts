@@ -14,6 +14,43 @@ export interface NewsEntry {
 /** La más nueva primero. Al publicar una versión, añade su entrada arriba y sube APP_VERSION en version.ts. */
 export const NEWS: NewsEntry[] = [
   {
+    version: '3.0', date: '2026-11-13', title: 'Cuerpo y mente',
+    groups: [
+      { name: 'Una sola app', items: [
+        'Excelsior Health y Excelsior Academy viven ahora dentro de Excelsior RPG: una cuenta, una web, todo junto.',
+        'Tus noches, apuntes y tarjetas son los mismos de antes: están en tu cuenta y aparecen solos al entrar.',
+      ] },
+      { name: 'Reino de la Salud', items: [
+        'Un reino que se construye durmiendo y entrenando con constancia. Cada semana levantas obras: Templo del Sueño, Reloj de Sol, Palestra y Balanza. Dan monedas y hacen crecer el reino.',
+        'El diario de sueño entero: lo esencial en menos de un minuto y «Más detalles» con fases, percepción y hábitos. Avisa si algo no cuadra.',
+        'Diario: cuenta atrás para acostarte, metas del plan, esta semana frente a la anterior y el sueño de 14 días. También historial y exportar a JSON o CSV.',
+        'Nuevo hábito automático «Apuntar la noche»: se marca solo al guardarla.',
+      ] },
+      { name: 'Academy en Deep Work', items: [
+        'Pestaña Academy dentro de Deep Work: tu estantería de asignaturas, hojas de apuntes con fórmulas, tarjetas, simulacros, fechas de examen, estadísticas e importar mazos de Anki.',
+        'Repaso espaciado FSRS: la tarjeta vuelve justo cuando la ibas a olvidar. Puedes ajustarlo a tu memoria con tu historial.',
+        'Repasar cuenta como foco de estudio (1 XP por minuto) y vaciar la cola del día da un bonus.',
+        'Nuevo hábito automático «Repasar las tarjetas»: se marca solo al vaciar la cola o al repasar 20 tarjetas.',
+      ] },
+      { name: 'Misiones y prioridades', items: [
+        'Cada misión tiene un impacto (alto, medio o bajo) que decide su orden y su XP. Ya no hay que elegir tipo.',
+        '«Las 3 de hoy»: elige tus tres prioridades; cerrar las tres da un bonus de XP. Lo que no llegues, pásalo a mañana sin penalización.',
+        'Misiones dentro de misiones: parte un objetivo grande en pasos tan pequeños como quieras y reparte sesiones hasta la fecha.',
+        'Cierre del día y revisión semanal en la crónica de Hiperión, y limpieza de misiones olvidadas.',
+      ] },
+      { name: 'Más cómodo', items: [
+        'El reloj del sueño también en Hoy: cuánto falta para acostarte y qué toca ahora.',
+        'Desplegables, horas y fechas propios en toda la app, en lugar de los del navegador.',
+      ] },
+      { name: 'Logros y arreglos', items: [
+        '10 logros nuevos de Cuerpo y mente, de Guardián de Hipnos a Memoria de Mnemósine.',
+        'Un enlace de invitación ya no manda la solicitud de amistad solo: primero te pregunta.',
+        'Los aportes al gremio se guardan bien y una partida antigua de la nube ya no pisa la nueva.',
+        'Si tu partida local se estropea, se guarda una copia de rescate antes de sustituirla.',
+      ] },
+    ],
+  },
+  {
     version: '2.0', date: '2026-11-03', title: 'La era social',
     groups: [
       { name: 'Social', items: [

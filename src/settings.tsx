@@ -1,5 +1,7 @@
 // Ajustes (tema, guía, tutorial, copia de seguridad), escalera de avatares y crónica semanal.
 import { NewsHistory, VersionButton } from './news-ui';
+import { WeeklyReviewForm } from './priorities-ui';
+import { weeklyReview } from './review';
 import { XpHistory } from './history-ui';
 import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import type { Game, Tab } from './screens';
@@ -44,7 +46,7 @@ export function SettingsScreen({
         <ConfirmButton label="Borrar personaje" confirmLabel="Sí, borrar todo" onConfirm={game.reset} />
         <DeleteAccount game={game} />
       </section>
-      <p className="app-version"><VersionButton className="mono" label={APP_VERSION_LABEL} /></p>
+      <p className="app-version"><VersionButton className="" label={APP_VERSION_LABEL} /></p>
     </div>
   );
 }
@@ -179,7 +181,7 @@ function SettingsPanel({
 
   return (
     <section className="panel" aria-labelledby="settings-h" data-tour="settings">
-      <h3 id="settings-h">Ajustes</h3>
+      <h3 id="settings-h">Preferencias</h3>
 
       <h4 className="sub-h">Tema</h4>
       <div className="themes" role="radiogroup" aria-label="Tema de color">
@@ -254,7 +256,9 @@ export function WeeklyChronicle({ game, guide, now, go }: { game: Game; guide: s
   const { state, act } = game;
   const w = weekSummary(state, now);
   const [hidden, setHidden] = useState(() => seenWeek() === w.weekKey);
-  if (hidden || (w.xp === 0 && w.prevXp === 0)) return null;
+  const [reviewing, setReviewing] = useState(false);
+  // revisada en cualquier dispositivo = cerrada (la revisión viaja con la partida)
+  if (hidden || weeklyReview(state, w.weekKey) || (w.xp === 0 && w.prevXp === 0)) return null;
   // El reto respeta la escalera: si el boss de tu punto débil aún está bloqueado, se propone otro disponible.
   const preferred = BOSS_TEMPLATES.find((t) => t.id === w.challenge);
   const challenge = isUnlocked(state, 'arena') ? [preferred, ...BOSS_TEMPLATES].find((t) => t && summonCheck(state, t.id, now).ok) ?? null : null;
@@ -284,6 +288,7 @@ export function WeeklyChronicle({ game, guide, now, go }: { game: Game; guide: s
         <span><b className="mono">{formatMinutes(w.deepWork)}</b> de Deep Work{w.focusPct !== null && ` · ${w.focusPct} % foco`}</span>
         <span><b className="mono">{w.quests}</b> misiones · <b className="mono">{w.habits}</b> hábitos</span>
         {w.bossesDefeated > 0 && <span><b className="mono">{w.bossesDefeated}</b> bosses caídos</span>}
+        {w.priorities.planned > 0 && <span><b className="mono">{w.priorities.closed}/{w.priorities.planned}</b> días con las 3 cerradas</span>}
       </div>
       <p className="chron-attrs">
         {ATTRIBUTES.map((a) => (
@@ -294,13 +299,15 @@ export function WeeklyChronicle({ game, guide, now, go }: { game: Game; guide: s
         Tu punto débil fue <strong><Icon name={w.weakest.icon} /> {w.weakest.name}</strong>.{challenge && <> Reto: derrota a <strong><Icon name={challenge.icon} /> {challenge.name}</strong> esta semana.</>}
       </p>
       <ChronicleOath state={state} />
+      {reviewing && <WeeklyReviewForm game={game} week={w.weekKey} onSaved={close} />}
       <div className="settings-row">
+        {!reviewing && <button className="primary" onClick={() => setReviewing(true)}><Icon name="scroll" /> Revisar la semana</button>}
         {canSummon && (
-          <button className="primary" onClick={() => { act((s) => summonBoss(s, challenge!.id, Date.now()).state); sfx.summon(); go('arena'); close(); }}>
+          <button className="secondary" onClick={() => { act((s) => summonBoss(s, challenge!.id, Date.now()).state); sfx.summon(); go('arena'); close(); }}>
             Aceptar el reto
           </button>
         )}
-        <button className="ghost" onClick={close}>Entendido</button>
+        <button className="ghost" onClick={close}>{reviewing ? 'Ahora no' : 'Entendido'}</button>
       </div>
     </section>
   );

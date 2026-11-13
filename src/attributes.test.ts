@@ -151,7 +151,7 @@ describe('migración de datos guardados', () => {
       xp: s.xp.map(({ attributes: _t, ...t }) => t),
     }));
     const m = migrate(v1);
-    expect(m.version).toBe(5);
+    expect(m.version).toBe(6);
     expect(m.kingdoms).toEqual([]);
     expect(m.rewards.length).toBeGreaterThan(0);
     expect(m.bosses).toEqual([]);

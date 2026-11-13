@@ -10,6 +10,7 @@ import { clearGuild } from './guilds';
 import { clearInvite } from './invite';
 import { sfx } from './sfx';
 import { Icon } from './icons';
+import { clearDraft, clearHealthLocal } from './health-store';
 
 export const DELETE_WORD = 'BORRAR';
 
@@ -43,6 +44,8 @@ export function DeleteAccount({ game }: { game: Game }) {
     clearSocial();
     clearGuild();
     clearInvite();
+    clearHealthLocal(); // las noches de este navegador (las de la nube se van con la cuenta)
+    clearDraft();
     game.reset(); // y la partida de este dispositivo
     game.toast('Tu cuenta se ha borrado. Gracias por jugar.', 'info');
   }

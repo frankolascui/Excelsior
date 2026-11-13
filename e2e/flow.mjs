@@ -25,6 +25,17 @@ async function deepWork(minutes, keepLevelUp = false) {
   if (!keepLevelUp && await seen('.tour')) await page.click('.tour button:has-text("Saltar")');
   if (!keepLevelUp && await quick('#rate-h')) await page.click('[aria-labelledby="rate-h"] button:has-text("Omitir")');
 }
+/** Acción de una misión que vive tras «⋯» (fecha, pasos, repetir, editar, borrar). */
+async function questAction(title, label) {
+  const sel = `button[aria-label="${label} ${title}"]`;
+  if (!(await page.isVisible(sel))) await page.click(`button[aria-label="Más acciones de ${title}"]`);
+  await page.click(sel);
+}
+/** Abre «Más opciones» del formulario de misión si está cerrado. */
+async function moreOpts(scope = '[data-tour="quest-add"]') {
+  const b = `${scope} button.more-opts[aria-expanded=false]`;
+  if (await page.isVisible(b)) await page.click(b);
+}
 const quick = (sel) => page.waitForSelector(sel, { timeout: 800 }).then(() => true, () => false);
 
 const seen = (sel) => page.waitForSelector(sel, { timeout: 3000 }).then(() => true, () => false);
@@ -38,7 +49,7 @@ await page.click('text=Crear personaje');
 await page.waitForSelector('text=¿Qué hago ahora?');
 
 // 1b. Tutorial con guía: aparece solo, obliga a elegir hábitos y no vuelve tras saltarlo
-check(await seen('.tour .eyebrow:has-text("Hiperión · 1/6")'), 'el tutorial arranca con el guía');
+check(await seen('.tour .eyebrow:has-text("Hiperión · 1/7")'), 'el tutorial arranca con el guía');
 await page.click('.tour button:has-text("Siguiente")');
 check(await seen('.nav-item.on:has-text("Hábitos")') && await seen('.tour-chips'), 'paso 2: Hiperión pide elegir hábitos');
 check(!(await page.isVisible('.tour-chips .pick.on')), 'no hay hábitos predeterminados');
@@ -75,17 +86,18 @@ await page.screenshot({ path: `${out}/01-empty.png`, fullPage: true });
 
 // 2. Crear misiones
 await page.fill('#new-quest', 'Terminar el tema 3 de Física');
-await page.click('[role=radio]:has-text("Principal")');
+await page.click('[role=radio]:has-text("Alto")');
 await page.click('button:has-text("Crear")');
 check(await seen('h2:has-text("Terminar el tema 3 de Física")'), '¿Qué hago ahora? sugiere la misión principal');
 check(!(await page.$('.today-strip')) && !(await page.$('#attrs-h')), 'Hoy de una partida nueva esconde lo que aún estaría vacío');
-await page.click('button.now-add');
-await page.fill('#new-quest', 'Responder emails');
-await page.click('button:has-text("Crear")');
+await page.fill('#capture', 'Responder emails');
+await page.press('#capture', 'Enter');
+check(await seen('.now-foot .link:has-text("1 misión más")') && !(await page.$('.item:has-text("Responder emails")')), 'Hoy apunta misiones en una línea y no repite la lista: enlaza con Misiones');
 
 // 2b. Fecha límite y calendario
 await page.click('.nav-item:has-text("Misiones")');
 await page.fill('#new-quest', 'Entregar el trabajo de Historia');
+await moreOpts();
 await page.click('#new-quest-deadline');
 check(await seen('.pop-date .pop-chip:has-text("Mañana")'), 'la fecha límite abre su selector con atajos');
 await page.click('.pop-date .pop-chip:has-text("Mañana")');
@@ -105,25 +117,29 @@ await page.click('.cal-add button:has-text("Crear")');
 check(await seen('.cal-tasks .item:has-text("Repasar Física")'), 'crear una misión desde el calendario le pone esa fecha');
 await page.screenshot({ path: `${out}/02b-calendar.png`, fullPage: true });
 await page.click('[role=radio]:has-text("Lista")');
-for (const t of ['Entregar el trabajo de Historia', 'Repasar Física']) await page.click(`button[aria-label="Borrar ${t}"]`);
+for (const t of ['Entregar el trabajo de Historia', 'Repasar Física']) await questAction(t, 'Borrar');
 await page.fill('#new-quest', 'Leer la prensa');
+await moreOpts();
 await page.click('#new-quest-repeat');
 await page.click('.pop-repeat .pop-chip:has-text("Lunes a viernes")');
 check(await seen('#new-quest-repeat:has-text("Lunes a viernes")'), 'repetir: el botón dice los días');
 await page.click('[data-tour="quest-add"] button:has-text("Crear")');
 check(await seen('.item:has-text("Leer la prensa") .repeat-tag:has-text("Lunes a viernes")'), 'la misión muestra que se repite');
-await page.click('button[aria-label="Partir Leer la prensa en pasos"]');
-await page.fill('[aria-label="Nuevo paso de Leer la prensa"]', 'Titulares');
-await page.press('[aria-label="Nuevo paso de Leer la prensa"]', 'Enter');
-await page.fill('[aria-label="Nuevo paso de Leer la prensa"]', 'Opinión');
-await page.press('[aria-label="Nuevo paso de Leer la prensa"]', 'Enter');
-await page.click('button[aria-label="Marcar paso Titulares"]');
-check(await seen('.item:has-text("Leer la prensa") .steps-tag:has-text("1/2 pasos")'), 'una misión se puede partir en pasos con casillas');
-await page.click('button[aria-label^="Fecha límite del paso Opinión"]', { force: true });
-await page.click('.pop-date .pop-chip:has-text("Mañana")');
-check(await seen('.step:has-text("Opinión") .step-due:has-text("vence mañana")') && await seen('.item:has-text("Leer la prensa") .steps-tag:has-text("paso vence mañana")'), 'un paso puede tener fecha límite y la misión lo avisa');
+await page.click('button[aria-label="Más acciones de Leer la prensa"]');
+await page.click('button[aria-label="Partir Leer la prensa en submisiones"]');
+await page.fill('[aria-label="Nueva submisión de Leer la prensa"]', 'Titulares');
+await page.press('[aria-label="Nueva submisión de Leer la prensa"]', 'Enter');
+await page.fill('[aria-label="Nueva submisión de Leer la prensa"]', 'Opinión');
+await page.press('[aria-label="Nueva submisión de Leer la prensa"]', 'Enter');
+check(await seen('.item.has-sub:has-text("Leer la prensa") .tree-count:has-text("0/2")'), 'una misión se parte en submisiones');
+await page.click('button[aria-label="Completar Titulares"]');
+check(await seen('.item.has-sub:has-text("Leer la prensa") .tree-count:has-text("1/2")'), 'cerrar una submisión cuenta en la de arriba');
+check(!(await page.isVisible('.item:has-text("Leer la prensa") .repeat-tag')), 'una misión con submisiones deja de repetirse');
+// deshacerla devuelve su XP (las cuentas de XP de más abajo no la incluyen)
+await page.click('.item:has-text("Titulares") button:has-text("Deshacer")');
+check(await seen('.item.has-sub:has-text("Leer la prensa") .tree-count:has-text("0/2")'), 'deshacer una submisión la vuelve a abrir');
 await page.screenshot({ path: `${out}/02d-step-due.png` });
-await page.click('button[aria-label="Borrar Leer la prensa"]');
+await questAction('Leer la prensa', 'Borrar');
 // Misiones prehechas: añadir una con un toque y guardar una propia
 await page.click('button.templates-open');
 await page.click('.templates-tabs [role=tab]:has-text("Personas")');
@@ -135,18 +151,20 @@ await page.click('.template-new button:has-text("Guardar plantilla")');
 check(await seen('.templates-list .template-row:has-text("Clase de violín")') && await seen('[role=tab]:has-text("Mías · 1")'), 'se puede guardar una plantilla propia');
 await page.screenshot({ path: `${out}/02c-templates.png`, fullPage: true });
 await page.click('button[aria-label="Borrar plantilla Clase de violín"]');
-await page.click('button[aria-label="Borrar Hablar con alguien nuevo"]');
+await questAction('Hablar con alguien nuevo', 'Borrar');
 await page.click('button.templates-open');
 await page.click('.nav-item:has-text("Hoy")');
 
 // 3. Completar misión → XP
+await page.click('.nav-item:has-text("Misiones")');
 await page.click('button[aria-label="Completar Responder emails"]');
 check(await seen('.toast:has-text("+20 XP")'), 'toast +20 XP');
 check(await seen('.achv-pop:has-text("Primer Juramento")'), 'logro épico al completar la primera misión');
 await page.screenshot({ path: `${out}/03b-logro.png` });
 await page.click('.achv-pop');
-check(await seen('.nav-version:has-text("Excelsior RPG V2.")'), 'la versión de la app se ve en una esquina');
-check((await page.textContent('.levelbar .levelbar-foot')).includes('20 / 100'), 'barra de XP en 20/100');
+check(await seen('.nav-version:has-text("Excelsior RPG") .ver-tag:has-text("V3.")'), 'la versión de la app se ve en una esquina');
+await page.click('.nav-item:has-text("Hoy")');
+check((await page.textContent('.hero-line .levelbar-foot')).includes('20 / 100'), 'la fila del personaje en Hoy marca 20/100 XP');
 
 // 4. Deep Work vinculado a la misión principal (45 min simulados)
 await page.click('button:has-text("Empezar Deep Work")');
@@ -181,6 +199,7 @@ await page.screenshot({ path: `${out}/04-dashboard.png`, fullPage: true });
 await page.emulateMedia({ colorScheme: 'light' });
 
 // 5b. Atributos y avatar: Diaria ⚔️3 + 45 min de «Terminar el tema 3» (teoría: ⚔️11,3 🧠22,5) + Principal (⚔️5 🔨5) + Leer (🧠3)
+await page.click('.nav-item:has-text("Personaje")');
 const attr = async (name) => (await page.textContent(`.attr:has-text("${name}") .attr-xp`)).trim();
 check(await attr('Voluntad') === '19,3 XP', 'Voluntad 19,3 XP (con decimales)');
 check(await attr('Maestría') === '5 XP', 'Maestría 5 XP (el Deep Work de un tema es teoría)');
@@ -245,6 +264,8 @@ await page.click('.levelup button:has-text("Ir a Reinos")');
 check(await seen('.tour .tour-title:has-text("Los Reinos")'), 'al abrir Reinos por primera vez, Hiperión la presenta');
 await page.click('.tour button:has-text("Siguiente")');
 check(await seen('[data-tour="kingdom-add"].tour-target'), 'el tutorial de Reinos señala dónde fundar');
+await page.click('.tour button:has-text("Siguiente")');
+check(await seen('[data-tour="health"].tour-target'), 'y presenta el Reino de la Salud');
 await page.click('.tour button:has-text("¡A por ello!")');
 await page.fill('#new-kingdom', 'Reino de la Programación');
 await page.click('button:has-text("Fundar")');
@@ -382,7 +403,7 @@ check(await seen('.news-dialog h2:has-text("La era social")'), 'el aviso de nove
 await page.screenshot({ path: `${out}/20-news.png` });
 await page.click('.news-dialog button.primary');
 await page.click('.app-version .version-btn');
-check(await seen('.news-dialog h2:has-text("La era social")'), 'pulsar la versión de la app vuelve a abrir las novedades');
+check(await seen('.news-dialog h2:has-text("Cuerpo y mente")'), 'pulsar la versión de la app vuelve a abrir las novedades');
 await page.click('.news-dialog button.primary');
 check(!(await quick('.news-dialog')), 'y se cierra');
 await page.click('.theme-swatch:has-text("Olimpo")');
@@ -573,7 +594,7 @@ await page.click('.nav-item:has-text("Personaje")');
 check(await seen('.attr-desc:has-text("disciplina")'), 'los atributos tienen descripción');
 await page.click('.nav-item:has-text("Hábitos")');
 await page.fill('#new-habit', 'Gimnasio');
-await page.selectOption('#new-habit-freq', '3');
+await page.click('#new-habit-freq'); await page.click('.pop-select [data-value="3"]');
 await page.click('[data-tour="habits"] button:has-text("Añadir")');
 check(await seen('.item:has-text("Gimnasio") .freq-tag:has-text("0/3 esta semana")'), 'hábito 3 veces por semana');
 await page.click('button[aria-label="Completar Gimnasio"]');
@@ -610,10 +631,11 @@ await page.click('.nav-item:has-text("Hoy")');
 check(await seen('.today-strip .today-tile'), 'Hoy empieza con la barra del día');
 check(await seen('.dayclose-folded'), 'el cierre del día va plegado antes de las 18:00');
 await page.click('.dayclose-folded button:has-text("Hacerlo ahora")');
-await page.click('[aria-label="Energía 4 de 5"]');
-await page.click('[aria-label="Ánimo 5 de 5"]');
+check(!(await page.$('[aria-label="Energía 4 de 5"]')), 'el cierre del día ya no pide energía ni ánimo (irán en Health)');
 check(!(await page.$('#day-sleep')), 'el cierre del día ya no pide horas de sueño');
-await page.fill('#day-note', 'Mañana empiezo antes.');
+await page.fill('#day-advanced', 'Terminé el tema 3.');
+await page.fill('#day-improve', 'Mañana empiezo antes.');
+check(await seen('.tomorrow-panel:has-text("Las 3 de mañana")') && !(await page.isVisible('.day-close .tomorrow')), 'Hoy tiene el panel de las 3 de mañana (y el cierre del día no lo repite)');
 await page.click('.day-close button:has-text("Guardar el día")');
 check(await seen('.day-close >> text=Guardado a las'), 'estado del día guardado');
 await page.click('section:has(h3:text("Hábitos de hoy")) button.dot[aria-label^="Marcar Leer (ayer)"]');
@@ -621,7 +643,7 @@ check(await seen('section:has(h3:text("Hábitos de hoy")) button.dot[aria-label^
 await page.click('.nav-item:has-text("Misiones")');
 if (!(await page.isVisible('.calendar'))) await page.click('[role=radio]:has-text("Calendario")');
 await page.click('.cal-add-fold .fold-btn');
-await page.selectOption('.ev-form select', 'examen');
+await page.click('.ev-form .ev-kind'); await page.click('.pop-select [data-value="examen"]');
 await page.fill('#ev-title', 'Examen de cálculo');
 await page.click('.ev-form #ev-time');
 await page.click('.pop-time .pop-t[data-t="10:00"]');
@@ -665,7 +687,7 @@ await page.evaluate(() => { document.querySelector('.tg-scroll').scrollTop = 14 
 await page.click('.tg-day .tg-col', { position: { x: 60, y: 16 * 52 + 10 } });
 check(await seen('.sheet .eyebrow:has-text("16:00")'), 'pulsar una hora libre abre «Nuevo» a esa hora');
 await page.fill('.sheet #ev-title', 'Estudiar física');
-await page.selectOption('.sheet select[aria-label=Repetir]', 'daily');
+await page.click('.sheet button[aria-label^="Repetir"]'); await page.click('.pop-select [data-value="daily"]');
 await page.click('.sheet button:has-text("Añadir")');
 check(await seen('.tg-day .tg-block:has-text("Estudiar física")') && await seen('.tg-block:has-text("16:00 – 17:00")'), 'el bloque de tiempo aparece de 16:00 a 17:00');
 // arrastrar el bloque una hora abajo y estirarlo media hora

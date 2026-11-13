@@ -10,7 +10,7 @@ import {
   cleanRule, laterReminders, layoutLanes, editOccurrence, isKeyEvent, moveEvent, REPEAT_NAMES, skipEventDay, todayReminders, toggleReminder, toMin, updateEvent,
 } from './life';
 import { relDay } from './life-ui';
-import { DatePicker, DurationChips, TimePicker, durationWords } from './pickers';
+import { DatePicker, DurationChips, Select, TimePicker, durationWords } from './pickers';
 import { sfx } from './sfx';
 import { Icon, plain } from './icons';
 import { shortDate } from './ui';
@@ -131,7 +131,9 @@ export function RemindersPanel({ game, now }: { game: Game; now: number }) {
           <ul className="list">{later.map((r) => <ReminderRow key={r.id} r={r} now={now} game={game} />)}</ul>
         </details>
       )}
-      <ReminderForm game={game} now={now} />
+      {adding || (list.length === 0 && later.length === 0)
+        ? <ReminderForm game={game} now={now} />
+        : <button className="link rem-add" onClick={() => setAdding(true)}><Icon name="plus" /> Recordatorio</button>}
     </section>
   );
 }
@@ -185,20 +187,15 @@ function RepeatEditor({ value, day, onChange }: { value: RepeatValue; day: strin
   const setRule = (p: Partial<RepeatRule>) => rule && onChange({ rule: cleanRule({ ...rule, ...p }, day) });
   return (
     <div className="repeat-editor">
-      <select className="freq-select" value={value.repeat ?? ''} onChange={(e) => pick(e.target.value)} aria-label="Repetir">
-        <option value="">No se repite</option>
-        {(Object.keys(REPEAT_NAMES) as EventRepeat[]).map((r) => <option key={r} value={r}>{REPEAT_NAMES[r]}</option>)}
-      </select>
+      <Select label="Repetir" icon="repeat" value={value.repeat ?? ''} onChange={(v) => pick(v)}
+        options={[{ value: '', label: 'No se repite' }, ...(Object.keys(REPEAT_NAMES) as EventRepeat[]).map((r) => ({ value: r as string, label: REPEAT_NAMES[r] }))]} />
       {rule && (
         <div className="repeat-custom">
           <span className="muted">Cada</span>
           <input type="number" min={1} max={99} className="repeat-every" value={rule.every} aria-label="Cada cuántos"
             onChange={(e) => e.target.value !== '' && setRule({ every: Number(e.target.value) })} />
-          <select className="freq-select" value={rule.unit} aria-label="Unidad" onChange={(e) => setRule({ unit: e.target.value as RepeatRule['unit'] })}>
-            <option value="day">{rule.every === 1 ? 'día' : 'días'}</option>
-            <option value="week">{rule.every === 1 ? 'semana' : 'semanas'}</option>
-            <option value="month">{rule.every === 1 ? 'mes' : 'meses'}</option>
-          </select>
+          <Select<RepeatRule['unit']> label="Unidad" value={rule.unit} onChange={(v) => setRule({ unit: v })}
+            options={[{ value: 'day', label: rule.every === 1 ? 'día' : 'días' }, { value: 'week', label: rule.every === 1 ? 'semana' : 'semanas' }, { value: 'month', label: rule.every === 1 ? 'mes' : 'meses' }]} />
           {rule.unit === 'week' && (
             <span className="repeat-days" role="group" aria-label="Días de la semana">
               {RULE_DAYS.map(([d, t]) => {
@@ -254,10 +251,8 @@ export function AgendaForm({ game, day, time, end: initialEnd, onDone, compact, 
   return (
     <form className={`ev-form${compact ? ' compact' : ''}`} onSubmit={submit} style={evStyle({ color })}>
       <div className="ev-form-top">
-        <select className="freq-select" value={kind} onChange={(e) => setKind(e.target.value as Kind)} aria-label="Tipo">
-          {EVENT_KINDS.filter((k) => !onlyKey || isKeyEvent({ kind: k.id })).map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
-          {!onlyKey && <option value="recordatorio">Recordatorio</option>}
-        </select>
+        <Select<Kind> label="Tipo" className="ev-kind" value={kind} onChange={setKind}
+          options={[...EVENT_KINDS.filter((k) => !onlyKey || isKeyEvent({ kind: k.id })).map((k) => ({ value: k.id as Kind, label: k.name })), ...(onlyKey ? [] : [{ value: 'recordatorio' as Kind, label: 'Recordatorio' }])]} />
         <input id="ev-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={placeholder} maxLength={80} aria-label="Nombre" autoFocus={compact} />
       </div>
       <div className="ev-form-when">
@@ -328,9 +323,7 @@ function EventSheet({ game, id: firstId, day, onClose, startFocus }: { game: Gam
     <Sheet label={ev.title} onClose={() => { saveTitle(); onClose(); }}>
       <div className="sheet-edit" style={evStyle(ev)}>
         <p className="eyebrow">
-          <select className="kind-select" value={ev.kind} onChange={(e) => set({ kind: e.target.value as EventKind })} aria-label="Tipo">
-            {EVENT_KINDS.map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
-          </select>
+          <Select<EventKind> label="Tipo" className="kind-select" value={ev.kind} onChange={(v) => set({ kind: v })} options={EVENT_KINDS.map((k) => ({ value: k.id, label: k.name }))} />
         </p>
         {ev.repeat && (
           <div className="segmented ev-scope" role="radiogroup" aria-label="Qué cambiar">
@@ -412,11 +405,8 @@ function BlockTasks({ game, eventId, ev, day }: { game: Game; eventId: string; e
         </ul>
       )}
       {(quests.length > 0 || habits.length > 0) && (
-        <select className="freq-select" value={adding} onChange={(e) => add(e.target.value)} aria-label="Añadir una misión o un hábito al bloque">
-          <option value="">+ Añadir una misión o un hábito</option>
-          {habits.length > 0 && <optgroup label="Hábitos">{habits.map((h) => <option key={h.id} value={`habit:${h.id}`}>{h.name}</option>)}</optgroup>}
-          {quests.length > 0 && <optgroup label="Misiones pendientes">{quests.map((q) => <option key={q.id} value={`quest:${q.id}`}>{q.title}</option>)}</optgroup>}
-        </select>
+        <Select label="Añadir una misión o un hábito al bloque" icon="plus" className="block-add" value={adding} onChange={add} placeholder="Añadir una misión o un hábito"
+          options={[...habits.map((h) => ({ value: `habit:${h.id}`, label: h.name, group: 'Hábitos' })), ...quests.map((q) => ({ value: `quest:${q.id}`, label: q.title, group: 'Misiones pendientes' }))]} />
       )}
     </div>
   );

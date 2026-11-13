@@ -13,7 +13,6 @@ import { InfoTip } from './infotip';
 /** Si el panel de misiones y recordatorios del calendario está abierto (se recuerda). */
 const TASKS_KEY = 'excelsior:cal-tasks';
 import { Icon } from './icons';
-import { stepsDueOn, toggleStep } from './core';
 
 type CalView = 'month' | 'week' | 'four' | 'day';
 const CAL_VIEW_KEY = 'excelsior:cal-view';
@@ -73,7 +72,6 @@ export function QuestCalendar({
       : view === 'four' ? `${shortDate(four[0])} – ${shortDate(four[3])}`
       : cap(new Date(`${selected}T12:00:00`).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }));
 
-  const selSteps = stepsDueOn(state, selected);
   const selRems = remindersOn(state, selected);
   const [tasksOpen, setTasksOpen] = useState(() => {
     try {
@@ -174,15 +172,15 @@ export function QuestCalendar({
           <h3 id="cal-tasks-h">Misiones y recordatorios · {selected === today ? 'hoy' : shortDate(selected)}</h3>
           <span className="cal-tasks-count mono">
             {overdue.length > 0 && <span className="late"><Icon name="alert" /> {overdue.length}</span>}
-            {selDue.length + selSteps.length > 0 && <span><Icon name="list" /> {selDue.length + selSteps.length}</span>}
+            {selDue.length > 0 && <span><Icon name="list" /> {selDue.length}</span>}
             {selRems.length > 0 && <span><Icon name="bell" /> {selRems.length}</span>}
-            {overdue.length + selDue.length + selSteps.length + selRems.length === 0 && <span className="muted">nada</span>}
+            {overdue.length + selDue.length + selRems.length === 0 && <span className="muted">nada</span>}
           </span>
           <Icon name={tasksOpen ? 'chevron-down' : 'chevron-right'} />
         </button>
         {tasksOpen && (
           <div className="cal-tasks-body">
-            {overdue.length + selDue.length + selDone.length + selSteps.length + selRems.length === 0 && <p className="empty">Nada para este día.</p>}
+            {overdue.length + selDue.length + selDone.length + selRems.length === 0 && <p className="empty">Nada para este día.</p>}
             {overdue.length > 0 && (
               <div className="cal-group overdue">
                 <h4 className="cal-sub"><Icon name="alert" /> Atrasadas <span className="count mono">{overdue.length}</span></h4>
@@ -193,19 +191,6 @@ export function QuestCalendar({
               <div className="cal-group">
                 <h4 className="cal-sub"><Icon name="target" /> Misiones que vencen {selected === today ? 'hoy' : `el ${shortDate(selected)}`} <span className="count mono">{selDue.length}</span></h4>
                 <ul className="list">{selDue.map(pendingItem)}</ul>
-              </div>
-            )}
-            {selSteps.length > 0 && (
-              <div className="cal-group">
-                <h4 className="cal-sub"><Icon name="list" /> Pasos <span className="count mono">{selSteps.length}</span></h4>
-                <ul className="list plain cal-steps" aria-label="Pasos con fecha este día">
-                  {selSteps.map(({ quest, step }) => (
-                    <li key={step.id} className="step">
-                      <button type="button" className="step-check" aria-pressed={false} aria-label={`Marcar paso ${step.title}`} onClick={() => act((st) => toggleStep(st, quest.id, step.id))} />
-                      <span className="step-title">{step.title} <span className="muted small-text">· paso de {quest.title}</span></span>
-                    </li>
-                  ))}
-                </ul>
               </div>
             )}
             {selRems.length > 0 && (
