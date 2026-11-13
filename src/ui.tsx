@@ -313,25 +313,32 @@ export function useHabitFlip<T extends HTMLElement>() {
     if (!list) return;
     const rows = [...list.querySelectorAll<HTMLElement>(':scope > [data-habit]')];
     const order = rows.map((r) => r.dataset.habit!);
-    const tops = new Map(rows.map((r) => [r.dataset.habit!, r.getBoundingClientRect().top]));
+    // posición en la página (no en la ventana): si la página se desplaza a la vez, no cuenta como movimiento
+    const tops = new Map(rows.map((r) => [r.dataset.habit!, r.getBoundingClientRect().top + window.scrollY]));
     const before = prev.current;
     const moved = before.order.length === order.length && before.order.some((id, i) => order[i] !== id);
     const still = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
     const dropped = list.dataset.dropped === '1';
     delete list.dataset.dropped;
-    if (moved && !still && !dropped) {
+    // Con una ventana encima (subida de nivel, ritual…) no se anima: no se vería y el navegador va cargado.
+    const covered = !!document.querySelector('.overlay');
+    // Si la ventana aparece justo después (subes de nivel al marcar), se para el deslizamiento: las filas, ya en su sitio.
+    if (covered) rows.forEach((r) => r.getAnimations().forEach((x) => { if (!(x instanceof CSSAnimation)) x.cancel(); }));
+    if (moved && !still && !dropped && !covered) {
       rows.forEach((r, i) => {
         const id = order[i];
         const was = before.tops.get(id);
         if (was == null || before.order.indexOf(id) === i) return;
         const dy = was - tops.get(id)!;
-        if (Math.abs(dy) < 2 || typeof r.animate !== 'function') return;
+        if (Math.abs(dy) < 2 || Math.abs(dy) > 900 || typeof r.animate !== 'function') return;
         r.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 320, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' });
       });
       // Mientras se recoloca, la fila que sube no se puede marcar sin querer con un segundo toque.
       // (Reloj del navegador, no setTimeout: así no depende de temporizadores.)
       const t = Number(document.timeline?.currentTime ?? 0);
       if (t) list.dataset.settleUntil = String(t + 340);
+      // El cursor se queda encima de la fila que sube: sin vista previa del check hasta que se mueva el ratón.
+      list.dataset.nohover = '1';
     }
     prev.current = { order, tops };
   });
@@ -342,8 +349,10 @@ export function useHabitFlip<T extends HTMLElement>() {
       const until = Number(list.dataset.settleUntil ?? 0);
       if (until && e.timeStamp < until && (e.target as Element | null)?.closest?.('button.check')) { e.preventDefault(); e.stopPropagation(); }
     };
+    const moved = (e: PointerEvent) => { if (e.movementX || e.movementY) delete list.dataset.nohover; };
     list.addEventListener('click', guard, true);
-    return () => list.removeEventListener('click', guard, true);
+    list.addEventListener('pointermove', moved);
+    return () => { list.removeEventListener('click', guard, true); list.removeEventListener('pointermove', moved); };
   }, []);
   return ref;
 }
