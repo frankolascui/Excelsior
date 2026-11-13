@@ -71,7 +71,7 @@ export type Route =
   | { view: 'repasar'; subjectId?: string; topicIds?: string[] };
 
 export function parseRoute(hash: string): Route {
-  const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean);
+  const parts = hash.replace(/^#(academy)?\/?/, '').split('/').filter(Boolean);
   if (parts[0] === 'repasar') {
     const subjectId = parts[1] === 'a' ? parts[2] : undefined;
     // Varios temas van separados por comas: #/repasar/a/<asignatura>/t/<tema1>,<tema2>
@@ -93,14 +93,14 @@ export function parseRoute(hash: string): Route {
 }
 
 export function routeToHash(r: Route): string {
-  if (r.view === 'asignatura') return `#/a/${r.subjectId}${r.topicId ? `/t/${r.topicId}` : ''}`;
-  if (r.view === 'repasar') return `#/repasar${r.subjectId ? `/a/${r.subjectId}` : ''}${r.subjectId && r.topicIds?.length ? `/t/${r.topicIds.join(',')}` : ''}`;
-  if (r.view === 'ajustar') return '#/ajustar';
-  if (r.view === 'estadisticas') return `#/estadisticas${r.subjectId ? `/a/${r.subjectId}` : ''}`;
-  if (r.view === 'simulacros') return `#/a/${r.subjectId}/simulacros`;
-  if (r.view === 'simulacro') return `#/a/${r.subjectId}/simulacros/${r.examId}`;
-  if (r.view === 'hoja') return `#/a/${r.subjectId}/t/${r.topicId}/h/${r.pageId}${r.edit ? '/editar' : ''}`;
-  return '#/';
+  if (r.view === 'asignatura') return `#academy/a/${r.subjectId}${r.topicId ? `/t/${r.topicId}` : ''}`;
+  if (r.view === 'repasar') return `#academy/repasar${r.subjectId ? `/a/${r.subjectId}` : ''}${r.subjectId && r.topicIds?.length ? `/t/${r.topicIds.join(',')}` : ''}`;
+  if (r.view === 'ajustar') return '#academy/ajustar';
+  if (r.view === 'estadisticas') return `#academy/estadisticas${r.subjectId ? `/a/${r.subjectId}` : ''}`;
+  if (r.view === 'simulacros') return `#academy/a/${r.subjectId}/simulacros`;
+  if (r.view === 'simulacro') return `#academy/a/${r.subjectId}/simulacros/${r.examId}`;
+  if (r.view === 'hoja') return `#academy/a/${r.subjectId}/t/${r.topicId}/h/${r.pageId}${r.edit ? '/editar' : ''}`;
+  return '#academy/';
 }
 
 /**

@@ -31,7 +31,7 @@ const db = {
   study_subjects: [{ id: 's1', name: 'Matemáticas', color: '#a855f7', position: 0, level: 'equilibrado' }],
   study_topics: [{ id: 't1', subject_id: 's1', title: 'Derivadas', position: 0, exam_date: null }],
   study_cards: [card('c1', 't1', '¿Derivada de $x^2$?', '$2x$'), card('c2', 't1', '¿Derivada de $\\sin x$?', '$\\cos x$'), card('c3', 't1', 'Regla de la cadena', "$(f\\circ g)' = f'(g)\\,g'$", 0)],
-  study_reviews: [], study_exam_dates: [], study_settings: [], nights: [], settings: [],
+  study_reviews: [], study_exam_dates: [], study_settings: [], study_pages: [], study_exams: [], nights: [], settings: [],
 };
 
 function filter(rows, params) {
@@ -108,23 +108,26 @@ const game = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('exce
 const page = await login({ width: 1280, height: 900 });
 await page.evaluate(() => { location.hash = '#deepwork'; });
 await page.click('[data-testid="tab-academy"]');
-await page.waitForSelector('[data-testid="study-start"]', { timeout: 8000 });
-check(await page.locator('[data-testid="study-start"]').innerText().then((t) => /3 tarjetas/.test(t)), 'la cola de hoy junta repaso y nuevas (3)');
+await page.waitForSelector('[data-testid="academy-panel"] .shelf', { timeout: 8000 });
+check(page.url().includes('#academy'), 'la pestaña Academy tiene su dirección (#academy)');
+check(await page.isVisible('[data-testid="study-strip"]'), 'encima, la franja del juego: racha y hábito');
+check(await page.isVisible('.today-num:has-text("3 tarjetas")'), 'la estantería dice cuántas tocan hoy (repaso y nuevas)');
 let g = await game(page);
 check(g.habits.some((h) => h.system === 'academy'), 'abrir Academy con cuenta crea el hábito «Repasar las tarjetas»');
 await page.screenshot({ path: `${out}/academy-01-inicio.png` });
 
-await page.click('[data-testid="study-start"]');
-await page.waitForSelector('[data-testid="study-review"] .katex', { timeout: 8000 });
+await page.click('.today a:has-text("Repasar todo")');
+await page.waitForSelector('.flashcard .katex', { timeout: 8000 });
 check(true, 'las fórmulas se pintan con KaTeX');
 for (let i = 0; i < 3; i++) {
   await page.waitForTimeout(150);
   await page.keyboard.press('Space');
-  await page.waitForSelector('.study-grades');
+  await page.waitForSelector('.grades');
   if (i === 0) await page.screenshot({ path: `${out}/academy-02-tarjeta.png` });
   await page.keyboard.press('4'); // Fácil: no vuelve hoy
 }
-await page.waitForSelector('[data-testid="academy-panel"] .study-last', { timeout: 5000 });
+await page.waitForSelector('.review-done', { timeout: 5000 });
+await page.waitForTimeout(800);
 g = await game(page);
 check(db.study_reviews.length === 3, 'cada respuesta se guarda en study_reviews');
 check(db.study_cards.every((c) => c.state !== 0 && c.due > iso(Date.now())), 'las tarjetas se reprograman con FSRS');
@@ -132,15 +135,27 @@ const s = g.sessions.find((x) => x.study);
 check(s && s.area === 'estudio' && s.study.cards === 3 && s.study.cleared, 'el repaso se guarda como Deep Work de estudio');
 check(g.habitCompletions.some((c) => c.habitId === 'sys-academy'), 'vaciar la cola marca el hábito del día');
 check(g.xp.some((t) => t.sourceId.startsWith('study-clear:')), 'y da el bonus de cola vacía');
+check(await page.isVisible('[data-testid="study-strip"]:has-text("Hábito de hoy cumplido")'), 'la franja lo celebra');
 await page.screenshot({ path: `${out}/academy-03-hecho.png` });
 
-// Añadir tarjetas pegando «pregunta;respuesta».
-await page.click('button:has-text("Añadir tarjetas")');
-await page.selectOption('#study-topic', 't1');
-await page.fill('#study-cards', '¿Integral de 2x?;x² + C\n¿Derivada de eˣ?;eˣ');
-await page.click('button:has-text("Añadir 2 tarjetas")');
-await page.waitForSelector('[data-testid="study-start"]', { timeout: 5000 });
-check(db.study_cards.length === 5 && db.study_cards.at(-1).topic_id === 't1', 'las tarjetas nuevas van al tema elegido');
+// La carpeta de la asignatura, las estadísticas y el ajuste de FSRS: Academy entera, sin salir del juego.
+await page.click('.review-done a:has-text("Volver")');
+await page.click('.binder-cover:has-text("Matemáticas")');
+await page.waitForSelector('text=Derivadas', { timeout: 5000 });
+check(page.url().includes('#academy/a/s1'), 'la carpeta de la asignatura se abre dentro de Deep Work');
+await page.screenshot({ path: `${out}/academy-05-carpeta.png` });
+await page.goBack();
+await page.waitForSelector('.shelf', { timeout: 5000 });
+check(true, '«atrás» del navegador vuelve a la estantería');
+await page.evaluate(() => { location.hash = '#academy/estadisticas'; });
+await page.waitForSelector('.acad h1:has-text("Estadísticas"), .acad .section-title', { timeout: 5000 });
+await page.screenshot({ path: `${out}/academy-06-estadisticas.png` });
+await page.evaluate(() => { location.hash = '#academy/ajustar'; });
+await page.waitForSelector('.tune', { timeout: 5000 });
+check(await page.isVisible('.tune-wait:has-text("Aún es pronto")'), 'ajustar FSRS espera a tener historial');
+await page.evaluate(() => { location.hash = '#hoy'; });
+await page.waitForSelector('text=¿Qué hago ahora?');
+check(true, 'salir de Academy a otra pestaña funciona');
 
 // Reino de la Salud con cuenta: la noche sube a health.nights.
 await page.evaluate(() => { location.hash = '#reinos'; });

@@ -15,6 +15,6 @@ export function openSystemHabit(kind: 'health' | 'academy') {
     location.hash = '#reinos';
   } else {
     navState.deepPanel = 'academy';
-    location.hash = '#deepwork';
+    location.hash = '#academy/';
   }
 }

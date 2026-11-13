@@ -46,6 +46,7 @@ const MOBILE_SOCIAL: Tab[] = ['amigos', 'gremios'];
 function tabFromHash(): Tab {
   const h = location.hash.slice(1);
   if (h === 'ajustes') return 'ajustes';
+  if (h.startsWith('academy')) return 'deepwork'; // Academy vive dentro de Deep Work
   return (TABS.find((t) => t.id === h)?.id ?? 'hoy') as Tab;
 }
 

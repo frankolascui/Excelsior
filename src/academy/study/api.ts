@@ -1,7 +1,7 @@
 // Todo lo que el archivador lee y escribe en Supabase.
 // No hace falta enviar user_id: la base de datos lo pone sola (default auth.uid())
 // y las reglas por fila impiden tocar filas de otro alumno.
-import { cloudClient as sb } from '../cloud';
+import { sb } from '../cloud';
 import type { CardRow, Exam, ExamDate, Page, Subject, Topic } from './types';
 
 function check<T>(res: { data: T | null; error: { message: string } | null }): T {
