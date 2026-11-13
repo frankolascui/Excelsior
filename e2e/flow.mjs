@@ -594,7 +594,7 @@ await page.click('.nav-item:has-text("Personaje")');
 check(await seen('.attr-desc:has-text("disciplina")'), 'los atributos tienen descripción');
 await page.click('.nav-item:has-text("Hábitos")');
 await page.fill('#new-habit', 'Gimnasio');
-await page.selectOption('#new-habit-freq', '3');
+await page.click('#new-habit-freq'); await page.click('.pop-select [data-value="3"]');
 await page.click('[data-tour="habits"] button:has-text("Añadir")');
 check(await seen('.item:has-text("Gimnasio") .freq-tag:has-text("0/3 esta semana")'), 'hábito 3 veces por semana');
 await page.click('button[aria-label="Completar Gimnasio"]');
@@ -643,7 +643,7 @@ check(await seen('section:has(h3:text("Hábitos de hoy")) button.dot[aria-label^
 await page.click('.nav-item:has-text("Misiones")');
 if (!(await page.isVisible('.calendar'))) await page.click('[role=radio]:has-text("Calendario")');
 await page.click('.cal-add-fold .fold-btn');
-await page.selectOption('.ev-form select', 'examen');
+await page.click('.ev-form .ev-kind'); await page.click('.pop-select [data-value="examen"]');
 await page.fill('#ev-title', 'Examen de cálculo');
 await page.click('.ev-form #ev-time');
 await page.click('.pop-time .pop-t[data-t="10:00"]');
@@ -687,7 +687,7 @@ await page.evaluate(() => { document.querySelector('.tg-scroll').scrollTop = 14 
 await page.click('.tg-day .tg-col', { position: { x: 60, y: 16 * 52 + 10 } });
 check(await seen('.sheet .eyebrow:has-text("16:00")'), 'pulsar una hora libre abre «Nuevo» a esa hora');
 await page.fill('.sheet #ev-title', 'Estudiar física');
-await page.selectOption('.sheet select[aria-label=Repetir]', 'daily');
+await page.click('.sheet button[aria-label^="Repetir"]'); await page.click('.pop-select [data-value="daily"]');
 await page.click('.sheet button:has-text("Añadir")');
 check(await seen('.tg-day .tg-block:has-text("Estudiar física")') && await seen('.tg-block:has-text("16:00 – 17:00")'), 'el bloque de tiempo aparece de 16:00 a 17:00');
 // arrastrar el bloque una hora abajo y estirarlo media hora

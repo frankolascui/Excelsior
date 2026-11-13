@@ -7,6 +7,7 @@ import { sfx } from '../sfx';
 import { askConfirm } from './Dialog';
 import { Icon } from './Icon';
 import { Menu, Modal } from './Kit';
+import { DatePicker } from '../../pickers';
 
 const fmtDay = (d: Date) => d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
 export const inDays = (n: number) => (n === 0 ? 'hoy' : n === 1 ? 'mañana' : `en ${n} días`);
@@ -115,7 +116,7 @@ function ExamDateForm({ subjectId, topics, exam, onClose, onDone }: { subjectId:
     </>}>
       <div className="exam-import">
         <label className="field"><span>Nombre</span><input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="p. ej. Parcial de la 1.ª evaluación" maxLength={200} /></label>
-        <label className="field"><span>Fecha</span><input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
+        <div className="field"><span>Fecha</span><DatePicker label="Fecha del examen" placeholder="Elegir fecha" value={date || null} onChange={(d) => setDate(d ?? '')} /></div>
         {topics.length > 0 && (
           <div className="field">
             <span>Temas que entran (si no marcas ninguno, todos)</span>

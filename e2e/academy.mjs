@@ -109,6 +109,7 @@ const page = await login({ width: 1280, height: 900 });
 await page.evaluate(() => { location.hash = '#deepwork'; });
 await page.click('[data-testid="tab-academy"]');
 await page.waitForSelector('[data-testid="academy-panel"] .shelf', { timeout: 8000 });
+check((await page.locator('[data-testid="academy-panel"]').boundingBox()).width > 900, 'Academy usa todo el ancho en escritorio');
 check(page.url().includes('#academy'), 'la pestaña Academy tiene su dirección (#academy)');
 check(await page.isVisible('[data-testid="study-strip"]'), 'encima, la franja del juego: racha y hábito');
 check(await page.isVisible('.today-num:has-text("3 tarjetas")'), 'la estantería dice cuántas tocan hoy (repaso y nuevas)');

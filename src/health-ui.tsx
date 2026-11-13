@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Game } from './screens';
 import { dayKey } from './game';
+import { navState } from './nav-state';
 import { stageFor, nextStage } from './kingdoms';
 import { CityScene } from './city';
 import { Icon } from './icons';
@@ -66,6 +67,15 @@ export function HealthKingdom({ game }: { game: Game }) {
       toast(`${n} ${n === 1 ? 'noche traída' : 'noches traídas'} de tu antiguo Diario de Sueño`, 'info');
     }
   }, [founded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Desde Hoy («Apuntar la noche»): entrar directo al formulario de hoy.
+  useEffect(() => {
+    if (!founded || !navState.healthRecord) return;
+    navState.healthRecord = false;
+    if (healthNights().some((n) => n.fecha === today)) return; // ya apuntada: se ve el resumen
+    setEditing(true);
+    requestAnimationFrame(() => document.getElementById('night-title')?.scrollIntoView({ block: 'start' }));
+  }, [founded]);
 
   if (!founded) {
     return (

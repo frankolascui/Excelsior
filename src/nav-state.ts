@@ -6,12 +6,15 @@ export const navState = {
   kingdom: null as string | null,
   /** Panel abierto en Deep Work: el temporizador de siempre o Academy. */
   deepPanel: 'foco' as 'foco' | 'academy',
+  /** Al entrar en el Reino de la Salud, abrir el formulario de la noche de hoy (botón de Hoy). */
+  healthRecord: false,
 };
 
 /** Los hábitos del sistema no se marcan: te llevan al sitio donde se hacen. */
 export function openSystemHabit(kind: 'health' | 'academy') {
   if (kind === 'health') {
     navState.kingdom = HEALTH_KINGDOM;
+    navState.healthRecord = true;
     location.hash = '#reinos';
   } else {
     navState.deepPanel = 'academy';

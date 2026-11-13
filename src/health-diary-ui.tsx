@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent,
 import type { Game } from './screens';
 import { dayKey } from './game';
 import { Icon } from './icons';
+import { Select, TimeField } from './pickers';
 import { InfoTip } from './infotip';
 import { sfx } from './sfx';
 import { shortDate } from './ui';
@@ -53,7 +54,7 @@ function Scale({ label, hint, value, onChange }: { label: string; hint: string; 
  */
 export function NightForm({ game, day, onDone }: { game: Game; day: string; onDone: () => void }) {
   const { act, toast } = game;
-  const { nights } = useHealth();
+  const { nights, settings } = useHealth();
   const saved = nights.find((n) => n.fecha === day);
   const [n, setN] = useState<Night>(() => {
     const d = loadDraft();
@@ -120,10 +121,10 @@ export function NightForm({ game, day, onDone }: { game: Game; day: string; onDo
     <form className="night-form" onSubmit={submit} data-testid="night-form" autoComplete="off">
       <p className="eyebrow">Lo esencial · menos de 1 minuto</p>
       <div className="night-grid">
-        <label className="field"><span>Me metí en la cama</span><input id="night-cama" type="time" value={n.percibido.cama ?? ''} onChange={(e) => P('cama', e.target.value)} /></label>
-        <label className="field"><span>Me levanté</span><input id="night-levantado" type="time" value={n.percibido.levantado ?? ''} onChange={(e) => P('levantado', e.target.value)} /></label>
-        <label className="field"><span>Me dormí (reloj)</span><input id="night-dormido" type="time" value={n.reloj.dormido ?? ''} onChange={(e) => R('dormido', e.target.value)} /></label>
-        <label className="field"><span>Me desperté (reloj)</span><input id="night-despertar" type="time" value={n.reloj.despertar ?? ''} onChange={(e) => R('despertar', e.target.value)} /></label>
+        <label className="field"><span>Me metí en la cama</span><TimeField id="night-cama" near={bedtimeGoal(settings)} label="Me metí en la cama" value={n.percibido.cama ?? ''} onChange={(v) => P('cama', v)} /></label>
+        <label className="field"><span>Me levanté</span><TimeField id="night-levantado" near={settings.levantar} label="Me levanté" value={n.percibido.levantado ?? ''} onChange={(v) => P('levantado', v)} /></label>
+        <label className="field"><span>Me dormí (reloj)</span><TimeField id="night-dormido" near={bedtimeGoal(settings)} label="Me dormí (reloj)" value={n.reloj.dormido ?? ''} onChange={(v) => R('dormido', v)} /></label>
+        <label className="field"><span>Me desperté (reloj)</span><TimeField id="night-despertar" near={settings.levantar} label="Me desperté (reloj)" value={n.reloj.despertar ?? ''} onChange={(v) => R('despertar', v)} /></label>
         <div className="field"><span>Total dormido (Salud)</span>
           <HM id="night" label="Total dormido" value={n.reloj.total_dormido_min} onChange={(v) => update((x) => ({ ...x, reloj: { ...x.reloj, total_dormido_min: v } }))} /></div>
         <label className="field"><span>Peso (kg)</span><input id="night-peso" type="text" inputMode="decimal" value={rawPeso} placeholder="opcional" maxLength={6}
@@ -161,8 +162,8 @@ export function NightForm({ game, day, onDone }: { game: Game; day: string; onDo
               <p className="q-label">Lo que tú crees, sin mirar el reloj</p>
               <p className="muted small-text">Solo las primeras {PERC_NOCHES} noches (llevas {Math.min(percDone, PERC_NOCHES)}), para medir cuánto se parece tu percepción a la realidad.</p>
               <div className="night-grid">
-                <label className="field"><span>Creo que me dormí</span><input id="night-dormido-perc" type="time" value={n.percibido.dormido ?? ''} onChange={(e) => P('dormido', e.target.value)} /></label>
-                <label className="field"><span>Creo que me desperté</span><input id="night-despertar-perc" type="time" value={n.percibido.despertar ?? ''} onChange={(e) => P('despertar', e.target.value)} /></label>
+                <label className="field"><span>Creo que me dormí</span><TimeField id="night-dormido-perc" near={bedtimeGoal(settings)} label="Creo que me dormí" value={n.percibido.dormido ?? ''} onChange={(v) => P('dormido', v)} /></label>
+                <label className="field"><span>Creo que me desperté</span><TimeField id="night-despertar-perc" near={settings.levantar} label="Creo que me desperté" value={n.percibido.despertar ?? ''} onChange={(v) => P('despertar', v)} /></label>
               </div>
             </div>
           )}
@@ -178,20 +179,14 @@ export function NightForm({ game, day, onDone }: { game: Game; day: string; onDo
             <label className="field"><span>Veces que te despertaste</span><input type="number" min={0} max={30} inputMode="numeric" value={n.preguntas.despertares ?? ''} onChange={(e) => Q('despertares', num(e.target.value))} /></label>
             <label className="field"><span>Minutos despierto en la noche</span><input type="number" min={0} max={600} inputMode="numeric" value={n.preguntas.despierto_noche_min ?? ''} onChange={(e) => Q('despierto_noche_min', num(e.target.value))} /></label>
             <label className="field"><span>Siesta ayer (min)</span><input type="number" min={0} max={300} inputMode="numeric" value={n.preguntas.siesta_min ?? ''} onChange={(e) => Q('siesta_min', num(e.target.value))} /></label>
-            <label className="field"><span>Última cafeína</span><input type="time" value={(n.preguntas.ultima_cafeina as string) ?? ''} onChange={(e) => Q('ultima_cafeina', e.target.value)} /></label>
-            <label className="field"><span>Última comida</span><input type="time" value={(n.preguntas.ultima_comida as string) ?? ''} onChange={(e) => Q('ultima_comida', e.target.value)} /></label>
+            <label className="field"><span>Última cafeína</span><TimeField label="Última cafeína" near="12:00" value={(n.preguntas.ultima_cafeina as string) ?? ''} onChange={(v) => Q('ultima_cafeina', v)} /></label>
+            <label className="field"><span>Última comida</span><TimeField label="Última comida" near="20:00" value={(n.preguntas.ultima_comida as string) ?? ''} onChange={(v) => Q('ultima_comida', v)} /></label>
             <label className="field"><span>Pantalla en la última hora</span>
-              <select value={(n.preguntas.pantalla_ultima_hora as string) ?? ''} onChange={(e) => Q('pantalla_ultima_hora', e.target.value)}>
-                <option value="">—</option><option value="no">No</option><option value="poco">Menos de 15 min</option><option value="si">Sí, bastante</option>
-              </select></label>
+              <Select label="Pantalla en la última hora" value={(n.preguntas.pantalla_ultima_hora as string) ?? ''} onChange={(v) => Q('pantalla_ultima_hora', v)} options={[{ value: '', label: '—' }, { value: 'no', label: 'No' }, { value: 'poco', label: 'Menos de 15 min' }, { value: 'si', label: 'Sí, bastante' }]} /></label>
             <label className="field"><span>Ejercicio ayer</span>
-              <select value={(n.preguntas.ejercicio as string) ?? ''} onChange={(e) => Q('ejercicio', e.target.value)}>
-                <option value="">—</option><option value="no">No</option><option value="manana">Por la mañana</option><option value="tarde">Por la tarde</option><option value="noche">Por la noche</option>
-              </select></label>
+              <Select label="Ejercicio ayer" value={(n.preguntas.ejercicio as string) ?? ''} onChange={(v) => Q('ejercicio', v)} options={[{ value: '', label: '—' }, { value: 'no', label: 'No' }, { value: 'manana', label: 'Por la mañana' }, { value: 'tarde', label: 'Por la tarde' }, { value: 'noche', label: 'Por la noche' }]} /></label>
             <label className="field"><span>Luz natural ayer</span>
-              <select value={(n.preguntas.luz_natural as string) ?? ''} onChange={(e) => Q('luz_natural', e.target.value)}>
-                <option value="">—</option><option value="poca">Casi nada</option><option value="algo">Un rato</option><option value="mucha">Más de 1 h</option>
-              </select></label>
+              <Select label="Luz natural ayer" value={(n.preguntas.luz_natural as string) ?? ''} onChange={(v) => Q('luz_natural', v)} options={[{ value: '', label: '—' }, { value: 'poca', label: 'Casi nada' }, { value: 'algo', label: 'Un rato' }, { value: 'mucha', label: 'Más de 1 h' }]} /></label>
           </div>
           <label className="field"><span>Notas</span><textarea rows={3} value={(n.preguntas.notas as string) ?? ''} placeholder="Examen mañana, ruido en la calle, cené tarde…" onChange={(e) => Q('notas', e.target.value)} maxLength={2000} /></label>
         </div>
@@ -233,6 +228,30 @@ function Ring({ ratio, night }: { ratio: number; night: boolean }) {
     </svg>
   );
 }
+
+/** Reloj del diario en Hoy: cuánto falta para acostarte (o levantarte), el consejo del momento y apuntar la noche. */
+export function SleepClockCard({ onRecord }: { onRecord: () => void }) {
+  const { nights, settings } = useHealth();
+  const now = useNow(30_000);
+  const clock = clockAdvice(settings, now);
+  const done = nights.some((n) => n.fecha === dayKey(now.getTime()));
+  const h = Math.floor(clock.left / 60), m = clock.left % 60;
+  return (
+    <section className={`panel diary-clock diary-clock-mini${clock.awake && clock.left > 120 ? '' : ' is-night'}`} aria-label="Reloj del sueño" data-testid="hoy-sleep">
+      <div className="diary-ring-wrap">
+        <Ring ratio={clock.ratio} night={!clock.awake} />
+        <div className="diary-ring-center"><b className="mono">{h ? `${h} h ${String(m).padStart(2, '0')}` : `${m} min`}</b><small>{clock.awake ? 'para acostarte' : 'para levantarte'}</small></div>
+      </div>
+      <div className="diary-clock-side">
+        <span className="muted small-text"><Icon name="moon" /> Cama {bedtimeGoal(settings)} · Levantarte {settings.levantar}</span>
+        <p className="diary-tip">{clock.tip}</p>
+        {!done && <div className="row"><button className="secondary small" onClick={onRecord} data-testid="hoy-sleep-record"><Icon name="play" /> Apuntar la noche</button></div>}
+      </div>
+    </section>
+  );
+}
+
+const NUM_1_21 = Array.from({ length: 21 }, (_, i) => ({ value: i + 1, label: String(i + 1) }));
 
 function Panel({ title, info, children, action }: { title: ReactNode; info?: ReactNode; children: ReactNode; action?: ReactNode }) {
   return (
@@ -439,19 +458,14 @@ export function DiaryData({ game }: { game: Game }) {
         <p className="muted small-text">Lo usan el plan, el Reloj de Sol y la cuenta atrás. Cámbialo en cada escalón del plan.</p>
         <div className="night-grid">
           <label className="field"><span>Hora de levantarte</span>
-            <input id="health-levantar" type="time" value={settings.levantar} onChange={(e) => e.target.value && saveHealthSettings({ levantar: e.target.value })} /></label>
+            <TimeField id="health-levantar" label="Hora de levantarte" clearable={false} value={settings.levantar} onChange={(v) => v && saveHealthSettings({ levantar: v })} /></label>
           <label className="field"><span>Horas en la cama</span>
-            <select id="health-horas" value={settings.horas} onChange={(e) => saveHealthSettings({ horas: Number(e.target.value) })}>
-              {[6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11].map((v) => <option key={v} value={v}>{String(v).replace('.', ',')} h</option>)}
-            </select></label>
+            <Select id="health-horas" label="Horas en la cama" value={settings.horas} onChange={(v) => saveHealthSettings({ horas: v })}
+              options={[6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11].map((v) => ({ value: v, label: `${String(v).replace('.', ',')} h` }))} /></label>
           <label className="field"><span>Entrenos planeados por semana</span>
-            <select id="health-entrenos-plan" value={settings.entrenosPlan} onChange={(e) => saveHealthSettings({ entrenosPlan: Number(e.target.value), entrenosMin: Math.min(settings.entrenosMin, Number(e.target.value)) })}>
-              {Array.from({ length: 21 }, (_, i) => i + 1).map((v) => <option key={v} value={v}>{v}</option>)}
-            </select></label>
+            <Select id="health-entrenos-plan" label="Entrenos planeados por semana" value={settings.entrenosPlan} onChange={(v) => saveHealthSettings({ entrenosPlan: v, entrenosMin: Math.min(settings.entrenosMin, v) })} options={NUM_1_21} /></label>
           <label className="field"><span>Mínimo para cumplir (Palestra)</span>
-            <select id="health-entrenos" value={settings.entrenosMin} onChange={(e) => saveHealthSettings({ entrenosMin: Number(e.target.value), entrenosPlan: Math.max(settings.entrenosPlan, Number(e.target.value)) })}>
-              {Array.from({ length: 21 }, (_, i) => i + 1).map((v) => <option key={v} value={v}>{v}</option>)}
-            </select></label>
+            <Select id="health-entrenos" label="Mínimo para cumplir" value={settings.entrenosMin} onChange={(v) => saveHealthSettings({ entrenosMin: v, entrenosPlan: Math.max(settings.entrenosPlan, v) })} options={NUM_1_21} /></label>
         </div>
         <p className="muted small-text">Cama a las {bedtimeGoal(settings)}, levantarte a las {settings.levantar}.</p>
       </Panel>

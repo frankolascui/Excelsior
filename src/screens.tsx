@@ -4,12 +4,13 @@ import type { DeepWorkArea, FocusPhase, GameState, Quest, QuestType } from './ty
 import { addGoal, avatarInfo, DEEP_WORK_AREA_HINT, deepWorkRewards, inferDeepWorkArea, deleteGoal, formatAttrXp, goalProgress, habitRewards, questRewards, updateGoal } from './attributes';
 import { CustomizeToggle, RewardEditor, sameRewards, type CustomValue } from './customize';
 import { addKingdom, BUILDINGS, buildings, deleteKingdom, kingdomName, kingdomProgress, nextStage, renameKingdom, setKingdomDeadline } from './kingdoms';
-import { DatePicker } from './pickers';
+import { DatePicker, Select } from './pickers';
 import { CityScene } from './city';
 import { kingdomBonus, spendShield } from './economy';
 import { RealmMap } from './realm';
 import { HealthKingdom } from './health-ui';
 import { healthFounded } from './health';
+import { SleepClockCard } from './health-diary-ui';
 import { HEALTH_KINGDOM, navState, openSystemHabit } from './nav-state';
 import { AmbientPanel } from './ambient-ui';
 import { WeeklyChronicle } from './settings';
@@ -238,6 +239,8 @@ export function Dashboard({
           </>
         )}
       </section>
+
+      {healthFounded(state) && <SleepClockCard onRecord={() => openSystemHabit('health')} />}
 
       <div className={state.habits.length > 0 ? 'columns' : 'columns one'}>
         <div className="col-stack">
@@ -780,10 +783,8 @@ export function Habits({ game, guide }: { game: Game; guide: string }) {
       <section className="panel">
         <form className="quick-add inline" onSubmit={submit}>
           <input id="new-habit" value={name} onChange={(e) => setName(e.target.value)} placeholder="+ Nuevo hábito (ej. Leer 10 páginas)" maxLength={60} aria-label="Nombre del nuevo hábito" />
-          <select id="new-habit-freq" className="freq-select" value={perWeek} onChange={(e) => setPerWeek(Number(e.target.value))} aria-label="Frecuencia">
-            <option value={7}>Cada día</option>
-            {Array.from({ length: maxPerWeek(perDay) }, (_, i) => i + 1).filter((n) => n !== 7).map((n) => <option key={n} value={n}>{n} {n === 1 ? 'vez' : 'veces'} por semana</option>)}
-          </select>
+          <Select id="new-habit-freq" label="Frecuencia" icon="repeat" value={perWeek} onChange={setPerWeek}
+            options={[{ value: 7, label: 'Cada día' }, ...Array.from({ length: maxPerWeek(perDay) }, (_, i) => i + 1).filter((n) => n !== 7).map((n) => ({ value: n, label: `${n} ${n === 1 ? 'vez' : 'veces'} por semana` }))]} />
           <CustomizeToggle open={open} onToggle={() => setOpen(!open)} custom={custom.xp !== undefined || custom.rewards !== undefined} />
           <button type="submit" className="primary" disabled={!name.trim()}><Icon name="plus" /> Añadir</button>
         </form>
