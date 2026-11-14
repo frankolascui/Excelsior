@@ -1,7 +1,9 @@
 // Estadísticas: lógica pura a partir del historial (study_reviews) y de las tarjetas. Se prueba en stats.test.ts.
+import { default_w, forgetting_curve } from 'ts-fsrs';
+import { userParams } from './srs';
 
 export interface ReviewLog { rating: number; state: number; reviewed_at: string; duration_ms: number | null; topic_id: string | null }
-export interface CardStat { topic_id: string; state: number; due: string; stability: number; lapses: number; suspended?: boolean }
+export interface CardStat { topic_id: string; state: number; due: string; stability: number; lapses: number; suspended?: boolean; last_review?: string | null }
 
 /** Una tarjeta está «dominada» cuando FSRS calcula que tardarías 3 semanas o más en olvidarla. */
 export const MASTERED_DAYS = 21;
@@ -46,6 +48,22 @@ export function forecast(cards: readonly CardStat[], days: number, now = new Dat
 export function trueRetention(reviews: readonly ReviewLog[]) {
   const rs = reviews.filter((r) => r.state === 2);
   return { n: rs.length, pct: rs.length ? Math.round((rs.filter((r) => r.rating > 1).length / rs.length) * 100) : null };
+}
+
+/**
+ * Retención estimada por FSRS: probabilidad media de recordar AHORA las tarjetas ya estudiadas
+ * (no nuevas ni apartadas), según su estabilidad y los días desde el último repaso.
+ * Es una estimación del algoritmo, no lo que has acertado (eso es la retención real).
+ */
+export function estimatedRetention(cards: readonly CardStat[], now = new Date()) {
+  let sum = 0, n = 0;
+  for (const c of cards) {
+    if (c.state === 0 || c.suspended || !c.last_review || !(c.stability > 0)) continue;
+    const days = Math.max(0, (now.getTime() - new Date(c.last_review).getTime()) / 86_400_000);
+    sum += forgetting_curve(userParams() ?? default_w, days, c.stability);
+    n++;
+  }
+  return { n, pct: n ? Math.round((sum / n) * 100) : null };
 }
 
 /** Por tema: cuántas tarjetas son nuevas, están aprendiéndose o ya están dominadas. Las apartadas no cuentan. */

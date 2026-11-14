@@ -23,13 +23,16 @@ export const NEWS: NewsEntry[] = [
         'Ya no hay botón «Me distraje» durante la sesión: al terminar te pregunta si te distrajiste y cuánto, y esos minutos se restan del foco. Se puede cambiar después.',
       ] },
       { name: 'Academy', items: [
-        'Los 4 botones del repaso dan intervalos claramente distintos: «Otra vez» en 1 min, «Difícil» bastante antes que «Bien» y «Fácil» casi el doble que «Bien».',
+        'Tarjetas nuevas: «Otra vez» vuelve en 1 min y «Difícil» en 10 min, ya no salen los cuatro botones casi iguales. En repaso se usan tal cual las fechas de FSRS, que se separan más cuanto mejor te sabes la tarjeta.',
         '«Cambiar la anterior» junto a «Mostrar respuesta» (o la tecla Z): vuelve a la tarjeta que acabas de responder para elegir otra dificultad.',
-        'Botones del repaso más grandes.',
+        'Tarjeta de repaso más grande, con los mismos botones que el resto de la app.',
+        'Estadísticas: «Retención estimada» (lo que FSRS calcula que recordarías hoy) junto a la real (lo que acertaste).',
+        'El nivel «Mínimo» busca recordar el 85 % (antes 80 %).',
         'Academy sigue el color del tema que elijas, como el resto de la app.',
       ] },
       { name: 'Salud', items: [
         'Al fundar el Reino de la Salud eliges tu horario de sueño y tus entrenos antes de empezar.',
+        'Si borras o cambias la noche que completó una obra y deja de cumplirse, la obra se derriba (y sus monedas).',
         'El Reino de la Salud aparece en el mapa de los reinos.',
         'Nuevo reloj del sueño en Hoy: una esfera de 24 horas con tu noche marcada y la hora actual.',
         'Diario sin reloj repetido y con las 6 medidas en una sola línea.',

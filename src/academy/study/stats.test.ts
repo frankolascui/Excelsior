@@ -58,3 +58,15 @@ describe('estadísticas', () => {
     expect(streak([], today)).toBe(0);
   });
 });
+
+describe('retención estimada (FSRS)', () => {
+  it('media de lo que recordarías hoy; recién repasada ≈ 100 %, al cumplir su estabilidad ≈ 90 %', async () => {
+    const { estimatedRetention } = await import('./stats');
+    const now = new Date('2026-11-14T10:00:00Z');
+    const ago = (d: number) => new Date(now.getTime() - d * 86_400_000).toISOString();
+    const base = { topic_id: 't', state: 2, due: now.toISOString(), lapses: 0 };
+    expect(estimatedRetention([{ ...base, stability: 10, last_review: ago(0) }], now).pct).toBe(100);
+    expect(estimatedRetention([{ ...base, stability: 10, last_review: ago(10) }], now).pct).toBe(90);
+    expect(estimatedRetention([{ ...base, state: 0, stability: 0, last_review: null }], now).pct).toBeNull();
+  });
+});

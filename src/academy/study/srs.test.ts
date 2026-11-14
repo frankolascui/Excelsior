@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Rating, State, type Grade } from 'ts-fsrs';
 import { answer, buildQueue, countsFor, formatInterval, parseCardLines, previewIntervals, requeueIndex, dueLabel, sessionSummary, interleave, newRoom } from './srs';
-import { becomesLeech, burySiblings, byPriority, isLeech } from './srs';
+import { becomesLeech, burySiblings, byPriority, isLeech, schedulerFor, toCard } from './srs';
 import type { CardRow } from './types';
 
 const now = new Date('2026-11-09T10:00:00Z');
@@ -31,16 +31,19 @@ describe('FSRS', () => {
     expect(ms[1]).toBeLessThanOrEqual(ms[2]);
     expect(ms[2]).toBeLessThan(ms[3]);
   });
-  it('los 4 botones quedan claramente separados (tipo Anki)', () => {
+  it('aprendiendo: pasos fijos; en repaso, las fechas de FSRS sin tocar', () => {
     const days = (c: CardRow) => ([Rating.Again, Rating.Hard, Rating.Good, Rating.Easy] as Grade[]).map((g) => (new Date(answer(c, g, now).due).getTime() - now.getTime()) / 86_400_000);
     const [a, h, g, e] = days(card());
     expect(a * 1440).toBeCloseTo(1); // nueva: «Otra vez» 1 min
     expect(h * 1440).toBeGreaterThanOrEqual(10); // «Difícil» ≥ 10 min
-    expect(g).toBeGreaterThanOrEqual(1);
-    expect(e).toBeGreaterThanOrEqual(g * 1.8);
-    const r = days(card({ state: 2, stability: 10, difficulty: 5, reps: 5, last_review: '2026-10-30T10:00:00Z', scheduled_days: 10 }));
-    expect(r[1]).toBeLessThanOrEqual(r[2] * 0.6 + 0.01);
-    expect(r[3]).toBeGreaterThanOrEqual(r[2] * 1.8 - 0.01);
+    expect(g).toBeGreaterThan(h);
+    expect(e).toBeGreaterThan(g);
+    const c = card({ state: 2, stability: 10, difficulty: 5, reps: 5, last_review: '2026-10-30T10:00:00Z', scheduled_days: 10 });
+    const r = days(c);
+    const pure = schedulerFor('equilibrado').repeat(toCard(c), now);
+    expect(r[2]).toBeCloseTo((pure[Rating.Good].card.due.getTime() - now.getTime()) / 86_400_000);
+    expect(r[1]).toBeLessThan(r[2]);
+    expect(r[2]).toBeLessThan(r[3]);
   });
   it('fallar una tarjeta de repaso cuenta un olvido (lapse)', () => {
     const c = card({ state: 2, stability: 10, difficulty: 5, reps: 5, last_review: '2026-10-30T10:00:00Z', scheduled_days: 10 });

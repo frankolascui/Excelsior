@@ -17,7 +17,7 @@ export const NEW_PER_DAY = 20;
  * - newPerDay: tarjetas nuevas al día de esa asignatura.
  */
 export const LEVELS: Record<Level, { label: string; hint: string; retention: number; newPerDay: number }> = {
-  minimo: { label: 'Mínimo', hint: 'Aprobar con el menor tiempo posible', retention: 0.8, newPerDay: 10 },
+  minimo: { label: 'Mínimo', hint: 'Aprobar con el menor tiempo posible', retention: 0.85, newPerDay: 10 },
   equilibrado: { label: 'Equilibrado', hint: 'Lo importante de cada tema', retention: 0.9, newPerDay: 20 },
   detalle: { label: 'Al detalle', hint: 'Ir a por el 10, hasta el último detalle', retention: 0.95, newPerDay: 30 },
 };
@@ -84,39 +84,22 @@ export function fromCard(c: Card): Omit<CardRow, 'id' | 'topic_id' | 'front' | '
 }
 
 const MIN = 60_000;
-const DAY = 86_400_000;
 
 /**
- * FSRS calcula la fecha justa para el 90 % de recuerdo, pero sus botones a veces quedan casi pegados
- * (p. ej. «Difícil 8 d · Bien 11 d») o, en tarjetas nuevas, todos en minutos. Aquí se separan como en Anki:
- * - en minutos (aprendiendo): «Otra vez» 1 min y «Difícil» al menos 10 min;
- * - en días: «Difícil» ≤ 60 % de «Bien» (mínimo 1 día), «Bien» al menos un día más que «Difícil»
- *   y «Fácil» ≥ 1,8 × «Bien».
- * Solo se mueve la fecha: estabilidad y dificultad siguen siendo las de FSRS, que en el siguiente repaso
- * tiene en cuenta los días que pasaron de verdad.
+ * Solo en la fase de aprendizaje (minutos) se fija la política de pasos, como en Anki:
+ * «Otra vez» 1 min y «Difícil» al menos 10 min, para que no salgan los cuatro botones casi iguales.
+ * En repaso (días) se usan tal cual las fechas de FSRS: el documento de memoria de Nicolas
+ * (2026-11-14) pide no alterar sus cálculos. FSRS ya separa los botones (p. ej. 8 / 11 / 19 d) y
+ * la distancia crece con la estabilidad.
  */
 export function spread(cards: Record<Grade, Card>, now: Date): Record<Grade, Card> {
   const t = now.getTime();
   const ms = (g: Grade) => cards[g].due.getTime() - t;
   const out = { ...cards };
-  const set = (g: Grade, delta: number) => {
-    const days = delta >= DAY ? Math.round(delta / DAY) : 0;
-    out[g] = { ...out[g], due: new Date(t + (days ? days * DAY : delta)), scheduled_days: days };
-  };
+  const set = (g: Grade, delta: number) => { out[g] = { ...out[g], due: new Date(t + delta), scheduled_days: 0 }; };
   const review = (g: Grade) => cards[g].state === State.Review;
   if (!review(Rating.Again)) set(Rating.Again, Math.min(ms(Rating.Again), MIN));
   if (!review(Rating.Hard)) set(Rating.Hard, Math.max(ms(Rating.Hard), 10 * MIN));
-  const good = ms(Rating.Good);
-  if (review(Rating.Good) && good >= DAY) {
-    let g = Math.max(2, Math.round(good / DAY));
-    if (review(Rating.Hard)) {
-      const h = Math.max(1, Math.min(Math.round(ms(Rating.Hard) / DAY), Math.floor(g * 0.6)));
-      g = Math.max(g, h + 1);
-      set(Rating.Hard, h * DAY);
-    }
-    set(Rating.Good, g * DAY);
-    set(Rating.Easy, Math.max(Math.round(ms(Rating.Easy) / DAY), Math.ceil(g * 1.8), g + 1) * DAY);
-  }
   return out;
 }
 

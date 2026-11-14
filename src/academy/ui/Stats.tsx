@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { listAllTopics, listCardStats, listReviewsSince, listSubjects } from '../study/api';
 import { routeToHash } from '../study/logic';
 import { LEVELS } from '../study/srs';
-import { dailyCounts, forecast, loadWarning, mastery, MASTERED_DAYS, secondsPerCard, streak, trueRetention, weakTopics, type CardStat, type ReviewLog } from '../study/stats';
+import { dailyCounts, estimatedRetention, forecast, loadWarning, mastery, MASTERED_DAYS, secondsPerCard, streak, trueRetention, weakTopics, type CardStat, type ReviewLog } from '../study/stats';
 import type { Subject, Topic } from '../study/types';
 import { sfx } from '../sfx';
 import { friendly } from './CardsPanel';
@@ -40,6 +40,7 @@ export function Stats({ subjectId }: { subjectId?: string }) {
       reviews, cards, next,
       daily: dailyCounts(reviews, 30),
       retention: trueRetention(reviews),
+      estimated: estimatedRetention(cards),
       load: loadWarning(next, secondsPerCard(reviews)),
       streak: streak(data.reviews), // la racha es tuya, no de una asignatura
       mastery: mastery(cards),
@@ -77,7 +78,9 @@ export function Stats({ subjectId }: { subjectId?: string }) {
 
       <div className="tiles">
         <Tile label="Retención real" value={view.retention.pct === null ? '—' : `${view.retention.pct} %`}
-          note={view.retention.pct === null ? 'Aún no hay repasos de tarjetas maduras' : `${view.retention.n} repasos${target ? ` · objetivo ${target} %` : ''}`} />
+          note={view.retention.pct === null ? 'Aún no hay repasos de tarjetas maduras' : `lo que acertaste · ${view.retention.n} repasos${target ? ` · objetivo ${target} %` : ''}`} />
+        <Tile label="Retención estimada" value={view.estimated.pct === null ? '—' : `${view.estimated.pct} %`}
+          note={view.estimated.pct === null ? 'Aún no hay tarjetas estudiadas' : `lo que FSRS calcula que recordarías hoy · ${view.estimated.n} tarjetas`} />
         <Tile label="Respuestas hoy" value={String(view.today)} />
         <Tile label="Racha" value={`${view.streak} ${view.streak === 1 ? 'día' : 'días'}`} note="días seguidos repasando" />
         <Tile label="Carga prevista" value={`~${view.load.minutes} min`} note={`al día esta semana · ${view.load.avgCards} tarjetas`} />

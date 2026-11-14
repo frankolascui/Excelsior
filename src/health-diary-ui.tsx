@@ -102,11 +102,14 @@ export function NightForm({ game, day, onDone }: { game: Game; day: string; onDo
     saveNight(candidate);
     clearDraft();
     let built: string[] = [];
+    let lost: string[] = [];
     act((s) => {
       const r = syncHealth(s, healthNights(), healthSettings(), Date.now(), day);
       built = r.built.map((k) => workDef(k).name);
+      lost = r.lost.map((k) => workDef(k).name);
       return r;
     }, CAP_NOTE, { sound: 'habit' });
+    if (lost.length) toast(`Ya no cumples la obra: ${lost.join(', ')} · se derriba (−${lost.length * WORK_COINS} {i:coin})`, 'info', 5000);
     if (built.length) {
       sfx.victory();
       toast(`{i:greek-temple} Obra levantada: ${built.join(', ')} · +${built.length * WORK_COINS} {i:coin}`, 'level', 5000);
@@ -199,7 +202,13 @@ export function NightForm({ game, day, onDone }: { game: Game; day: string; onDo
           <button type="button" className="ghost" onClick={() => {
             deleteNight(day);
             clearDraft();
-            act((s) => syncHealth(s, healthNights(), healthSettings(), Date.now(), day));
+            let lost: string[] = [];
+            act((s) => {
+              const r = syncHealth(s, healthNights(), healthSettings(), Date.now(), day);
+              lost = r.lost.map((k) => workDef(k).name);
+              return r;
+            });
+            if (lost.length) toast(`Obra derribada al borrar la noche: ${lost.join(', ')} (−${lost.length * WORK_COINS} {i:coin})`, 'info', 5000);
             onDone();
           }}><Icon name="trash" /> Borrar</button>
         )}
