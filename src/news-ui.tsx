@@ -19,7 +19,7 @@ function NewsBody({ entry }: { entry: NewsEntry }) {
   );
 }
 
-function NewsDialog({ entry, onClose }: { entry: NewsEntry; onClose: () => void }) {
+function NewsDialog({ entry, onClose, onIndex }: { entry: NewsEntry; onClose: () => void; onIndex?: () => void }) {
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="news-h" onClick={onClose}>
       <div className="news-dialog" onClick={(e) => e.stopPropagation()}>
@@ -27,14 +27,53 @@ function NewsDialog({ entry, onClose }: { entry: NewsEntry; onClose: () => void 
         <h2 id="news-h">{entry.title}</h2>
         <div className="news-scroll"><NewsBody entry={entry} /></div>
         <button className="primary big" autoFocus onClick={onClose}>¡A por ello!</button>
+        {onIndex && <button type="button" className="link news-all" onClick={onIndex}>Ver todas las versiones</button>}
       </div>
     </div>
   );
 }
 
+/** Índice de todas las versiones (de la más nueva a la primera): al pulsar una se ve todo lo que trajo. */
+function NewsCenter({ initial, onClose }: { initial: string; onClose: () => void }) {
+  const [sel, setSel] = useState(initial);
+  const entry = NEWS.find((n) => n.version === sel) ?? NEWS[0];
+  return (
+    <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="news-center-h" onClick={onClose}>
+      <div className="news-dialog news-center" onClick={(e) => e.stopPropagation()}>
+        <div className="news-center-head">
+          <h2 id="news-center-h">Novedades y actualizaciones</h2>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Cerrar"><Icon name="x" /></button>
+        </div>
+        <div className="news-center-body">
+          <nav className="news-index" aria-label="Versiones">
+            {NEWS.map((n) => {
+              const upcoming = cmpVersion(n.version, APP_VERSION) > 0;
+              return (
+                <button key={n.version} type="button" aria-current={n.version === entry.version ? 'true' : undefined}
+                  className={n.version === entry.version ? 'news-index-item on' : 'news-index-item'} onClick={() => setSel(n.version)}>
+                  <b className="mono">v{n.version}</b>
+                  <span className="news-index-title">{n.title}</span>
+                  <span className="news-index-date">{upcoming ? 'Próximamente' : shortLong(n.date)}</span>
+                </button>
+              );
+            })}
+          </nav>
+          <article className="news-scroll news-center-detail" key={entry.version} aria-live="polite">
+            <p className="eyebrow">v{entry.version} · {longDate(entry.date)}{entry.version === APP_VERSION ? ' · la tuya' : ''}</p>
+            <h3 className="news-center-title">{entry.title}</h3>
+            <NewsBody entry={entry} />
+          </article>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const shortLong = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: '2-digit' });
+
 const OPEN_EVENT = 'excelsior:news-open';
 
-/** Abre el aviso de la versión actual (al pulsar la versión de la app). */
+/** Abre el índice de novedades en la versión actual (al pulsar la versión de la app). */
 export function openNews() {
   window.dispatchEvent(new Event(OPEN_EVENT));
 }
@@ -42,7 +81,7 @@ export function openNews() {
 /** La versión visible de la app: al pulsarla vuelve a salir el aviso de novedades. */
 export function VersionButton({ label, className, onClick }: { label: string; className: string; onClick?: () => void }) {
   return (
-    <button type="button" className={`${className} version-btn`} onClick={() => { onClick?.(); openNews(); }} title="Ver las novedades de esta versión" aria-label={`${label}: ver novedades`}>
+    <button type="button" className={`${className} version-btn`} onClick={() => { onClick?.(); openNews(); }} title="Novedades y actualizaciones" aria-label={`${label}: ver novedades y actualizaciones`}>
       <Icon name="sparkles" className="ver-ico" />
       <span className="ver-name">Excelsior RPG</span>
       <span className="ver-tag">V{APP_VERSION}</span>
@@ -71,9 +110,9 @@ export function NewsGate({ seen, createdAt, ready, blocked, markSeen }: {
   }, [fresh]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const current = NEWS.find((n) => n.version === APP_VERSION) ?? NEWS[0];
-  if (manual && current) return <NewsDialog entry={current} onClose={() => { setManual(false); if (auto) markSeen(); }} />;
+  if (manual && current) return <NewsCenter initial={current.version} onClose={() => { setManual(false); if (auto) markSeen(); }} />;
   if (!auto || fresh || blocked) return null;
-  return <NewsDialog entry={auto} onClose={markSeen} />;
+  return <NewsDialog entry={auto} onClose={markSeen} onIndex={() => { markSeen(); setManual(true); }} />;
 }
 
 /** Historial en Ajustes. Lo que aún no ha salido se marca como «Llega el …». */

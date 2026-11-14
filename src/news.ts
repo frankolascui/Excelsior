@@ -14,6 +14,30 @@ export interface NewsEntry {
 /** La más nueva primero. Al publicar una versión, añade su entrada arriba y sube APP_VERSION en version.ts. */
 export const NEWS: NewsEntry[] = [
   {
+    version: '3.1', date: '2026-11-14', title: 'Afinando',
+    groups: [
+      { name: 'Deep Work', items: [
+        'La productividad ya puede llegar a tu tiempo real entero: el Sentido es una pregunta más (viene propuesta según la sesión) y con 5 en rendimiento y sentido salen todas tus horas de foco.',
+        'Ya no hay botón «Me distraje» durante la sesión: al terminar te pregunta si te distrajiste y cuánto, y esos minutos se restan del foco. Se puede cambiar después.',
+      ] },
+      { name: 'Academy', items: [
+        'Los 4 botones del repaso dan intervalos claramente distintos: «Otra vez» en 1 min, «Difícil» bastante antes que «Bien» y «Fácil» casi el doble que «Bien».',
+        '«Cambiar la anterior» junto a «Mostrar respuesta» (o la tecla Z): vuelve a la tarjeta que acabas de responder para elegir otra dificultad.',
+        'Botones del repaso más grandes.',
+        'Academy sigue el color del tema que elijas, como el resto de la app.',
+      ] },
+      { name: 'Salud', items: [
+        'Al fundar el Reino de la Salud eliges tu horario de sueño y tus entrenos antes de empezar.',
+        'El Reino de la Salud aparece en el mapa de los reinos.',
+        'Nuevo reloj del sueño en Hoy: una esfera de 24 horas con tu noche marcada y la hora actual.',
+        'Diario sin reloj repetido y con las 6 medidas en una sola línea.',
+      ] },
+      { name: 'Novedades', items: [
+        'Índice de todas las versiones: pulsa una para ver todo lo que trajo.',
+      ] },
+    ],
+  },
+  {
     version: '3.0', date: '2026-11-13', title: 'Cuerpo y mente',
     groups: [
       { name: 'Una sola app', items: [
@@ -78,15 +102,60 @@ export const NEWS: NewsEntry[] = [
         'Reinos con nombre y fecha objetivo.',
         'Símbolos propios en vez de emojis y un menú nuevo en el móvil.',
       ] },
+      { name: 'Más de lo que llegó en la V2', items: [
+        'Gremios desde el nivel 5 (fundar uno, desde el 10), con rangos e invitaciones por enlace.',
+        'Bosses con ilustración propia y barras de vida en pixel art; máximo 2 bosses activos.',
+        'Actividad y XP diario en un solo panel, con calendario de actividad.',
+        'Cofre para usar los premios canjeados de la tienda.',
+        'Hábitos: mínimo para un día malo, aviso de no fallar dos días seguidos, escudo de racha en la tienda, compartir la semana, sobrecarga progresiva y ordenar arrastrando.',
+        'Deep Work: valoración al terminar con horas productivas.',
+        'Animaciones al entrar en cada pantalla, al cumplir y al subir de nivel.',
+        'Interfaz más compacta y ayudas en una ⓘ junto a cada título.',
+        'Historial de misiones completadas y borrar la cuenta desde Ajustes.',
+        'Novedades como esta al llegar cada versión.',
+      ] },
     ],
   },
   {
     version: '1.18', date: '2026-10-06', title: 'Logros y Arena', announce: false,
     groups: [
-      { name: 'Novedades', items: [
+      { name: 'Logros y Arena', items: [
         '55 logros con nombres épicos, de bronce a leyenda.',
         '15 bosses en 5 sagas que se desbloquean por nivel y uno tras otro.',
         'Tienda con categorías, historial y tus propias recompensas.',
+      ] },
+      { name: 'Cuenta', items: [
+        'Entrar con tu email (código de un solo uso) y partida guardada en la nube, o entrar como invitado.',
+      ] },
+      { name: 'Progresión', items: [
+        'Secciones que se desbloquean por nivel (3, 5 y 7), cada una con su tutorial.',
+        'Rituales de ascensión con Hiperión para los avatares.',
+        'Aros de avatar con minerales y gemas, animados.',
+        'Atributos descritos y Maestría equilibrada.',
+      ] },
+      { name: 'Planificación', items: [
+        'Calendario con fechas límite y el camino del héroe en el mapa.',
+        'Objetivos a 3 meses con revisiones a los 30, 60 y 90 días.',
+        'Hábitos semanales y estado del día.',
+      ] },
+      { name: 'Deep Work y reinos', items: [
+        '«¿Qué vas a hacer?» en vez de tipos fijos, y Pomodoro 50/10 y 90/30.',
+        'Reinos más bonitos, vista desde arriba y un castillo que mejora con cada construcción.',
+        'La versión de la app, visible en una esquina.',
+      ] },
+    ],
+  },
+  {
+    version: '1.0', date: '2026-10-04', title: 'El comienzo', announce: false,
+    groups: [
+      { name: 'La primera versión', items: [
+        'Misiones con XP, atributos y un avatar que sube de nivel.',
+        'Deep Work con cronómetro: cada minuto de foco da XP.',
+        'Hábitos con racha.',
+        'Reinos medievales con mapa y ciudades dibujadas que crecen con tus tareas.',
+        'Arena con bosses y tienda de recompensas.',
+        'Tutorial con guía, gráfica de XP y actividad en cuadraditos.',
+        'Temas de color, avatares, sonidos y exportar la partida.',
       ] },
     ],
   },

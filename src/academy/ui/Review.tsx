@@ -152,15 +152,18 @@ export function Review({ subjectId, topicIds }: { subjectId?: string; topicIds?:
     shownAt.current = Date.now();
   }, [card, queue, revealed]);
 
-  /** Deshacer la última respuesta: la tarjeta vuelve a la pantalla y a como estaba en la base de datos. */
-  const undo = useCallback(async () => {
+  /**
+   * Deshacer la última respuesta: la tarjeta vuelve a la pantalla y a como estaba en la base de datos.
+   * Con `change`, vuelve ya con la respuesta a la vista para elegir otro botón («Cambiar la anterior»).
+   */
+  const undo = useCallback(async (change = false) => {
     const last = history.current.pop();
     if (!last) return;
     setCanUndo(history.current.length > 0);
     setQueue(last.queue);
     setRatings((r) => r.slice(0, -1));
     if (!reported.current) durations.current.pop();
-    setRevealed(false);
+    setRevealed(change);
     setLeech(null);
     shownAt.current = Date.now();
     sfx.undo();
@@ -177,7 +180,7 @@ export function Review({ subjectId, topicIds }: { subjectId?: string; topicIds?:
         e.preventDefault();
         if (!revealed) reveal(); else rate(3 as Grade);
       }
-      if (e.key === 'z' || e.key === 'Z') { e.preventDefault(); undo(); return; }
+      if (e.key === 'z' || e.key === 'Z') { e.preventDefault(); void undo(true); return; }
       const g = GRADES.find((x) => x.key === e.key);
       if (g && revealed) rate(g.grade);
     };
@@ -216,7 +219,7 @@ export function Review({ subjectId, topicIds }: { subjectId?: string; topicIds?:
         )}
         <div className="row">
           <a className="button primary" href={back}><Icon name="left" /> Volver</a>
-          {canUndo && <button className="ghost" onClick={undo}><Icon name="undo" /> Deshacer la última</button>}
+          {canUndo && <button className="ghost" onClick={() => void undo(true)}><Icon name="undo" /> Cambiar la última respuesta</button>}
         </div>
         {leech && <LeechNote card={leech} onClose={() => setLeech(null)} />}
         {error && <p className="error">{error}</p>}
@@ -232,7 +235,7 @@ export function Review({ subjectId, topicIds }: { subjectId?: string; topicIds?:
     <section className="review">
       <nav className="crumbs">
         <a className="back-btn" href={back}><Icon name="left" size={16} /> Salir</a>
-        <button className="ghost small undo-btn" onClick={undo} disabled={!canUndo} title="Deshacer la última respuesta (Z)"><Icon name="undo" size={16} /> Deshacer</button>
+        <button className="ghost small undo-btn" onClick={() => void undo()} disabled={!canUndo} title="Deshacer la última respuesta"><Icon name="undo" size={16} /> Deshacer</button>
         <span className="counts" title="Nuevas · Aprendiendo · Repaso">
           <span className="pill new">{c.nuevas}</span>
           <span className="pill learn">{c.aprendiendo}</span>
@@ -250,7 +253,14 @@ export function Review({ subjectId, topicIds }: { subjectId?: string; topicIds?:
       </article>
 
       {!revealed ? (
-        <button className="primary reveal" onClick={reveal}>Mostrar respuesta <kbd>espacio</kbd></button>
+        <div className="reveal-row">
+          {canUndo && (
+            <button className="ghost change-answer" onClick={() => void undo(true)} title="Vuelve a la tarjeta anterior para elegir otra dificultad (Z)">
+              <Icon name="undo" /> Cambiar la anterior <kbd>Z</kbd>
+            </button>
+          )}
+          <button className="primary reveal" onClick={reveal}>Mostrar respuesta <kbd>espacio</kbd></button>
+        </div>
       ) : (
         <div className="grades">
           {GRADES.map((g) => (

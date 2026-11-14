@@ -8,11 +8,8 @@
   --line: #24242f;
   --fg: #ffffff;
   --muted: #8e8ea6;
-  --c1: #ff5ccf;
-  --c2: #c056ff;
-  --c3: #6d3df5;
+  /* --c1, --c2, --c3 y --gold no se redefinen: vienen del tema elegido en la app (theme.ts). */
   --grad: linear-gradient(120deg, var(--c1) 0%, var(--c2) 55%, var(--c3) 100%);
-  --gold: #f5c2ff;
   --ok: #34d399;
   --danger: #fb7185;
   --warn: #fbbf24;

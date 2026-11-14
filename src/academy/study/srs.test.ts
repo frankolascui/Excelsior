@@ -31,6 +31,17 @@ describe('FSRS', () => {
     expect(ms[1]).toBeLessThanOrEqual(ms[2]);
     expect(ms[2]).toBeLessThan(ms[3]);
   });
+  it('los 4 botones quedan claramente separados (tipo Anki)', () => {
+    const days = (c: CardRow) => ([Rating.Again, Rating.Hard, Rating.Good, Rating.Easy] as Grade[]).map((g) => (new Date(answer(c, g, now).due).getTime() - now.getTime()) / 86_400_000);
+    const [a, h, g, e] = days(card());
+    expect(a * 1440).toBeCloseTo(1); // nueva: «Otra vez» 1 min
+    expect(h * 1440).toBeGreaterThanOrEqual(10); // «Difícil» ≥ 10 min
+    expect(g).toBeGreaterThanOrEqual(1);
+    expect(e).toBeGreaterThanOrEqual(g * 1.8);
+    const r = days(card({ state: 2, stability: 10, difficulty: 5, reps: 5, last_review: '2026-10-30T10:00:00Z', scheduled_days: 10 }));
+    expect(r[1]).toBeLessThanOrEqual(r[2] * 0.6 + 0.01);
+    expect(r[3]).toBeGreaterThanOrEqual(r[2] * 1.8 - 0.01);
+  });
   it('fallar una tarjeta de repaso cuenta un olvido (lapse)', () => {
     const c = card({ state: 2, stability: 10, difficulty: 5, reps: 5, last_review: '2026-10-30T10:00:00Z', scheduled_days: 10 });
     const r = answer(c, Rating.Again, now);

@@ -21,6 +21,8 @@ root.walkRules((rule) => {
 root.walkDecls(/^(animation|animation-name)$/, (d) => {
   for (const f of frames) d.value = d.value.replace(new RegExp(`\\b${f}\\b`, 'g'), `ac-${f}`);
 });
+// Los colores del tema los pone la app (theme.ts): Academy no debe fijar su propia paleta.
+root.walkDecls(/^--(c1|c2|c3|gold)$/, (d) => { if (d.parent?.selector === '.acad') d.remove(); });
 const header = '/* Generado por scripts-academy-css.mjs desde Excelsior Academy: no editar a mano (ajustes en academy-extra.css). */\n';
 fs.writeFileSync('src/academy/academy.css', header + root.toString());
 console.log('ok', frames);

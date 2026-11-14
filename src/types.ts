@@ -142,8 +142,10 @@ export interface DeepWorkSession {
   pomodoros?: number; // pomodoros completados en la sesión
   /** Lo que midió el reloj antes de corregir la sesión a mano: tope de lo que se puede poner. */
   measured?: { minutes: number; endedAt: number };
-  /** Nota al terminar (1–5): cuánto y qué tal rendiste, y con qué mentalidad. Da las horas productivas (productivity.ts). */
-  rating?: { performance: number; mindset: number };
+  /** Nota al terminar (1–5): cuánto y qué tal rendiste, el sentido y con qué mentalidad. Da las horas productivas (productivity.ts). */
+  rating?: { performance: number; mindset: number; sense?: number };
+  /** Minutos de distracción que dijiste al terminar (ya restados del foco); se pueden cambiar después. */
+  distractionReported?: number;
   /** Sesión de repaso de Academy (V3): tarjetas repasadas y si la cola del día quedó vacía. */
   study?: { cards: number; cleared: boolean };
 }

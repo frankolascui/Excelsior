@@ -33,7 +33,7 @@ const state = {
   reminders: [{ id: 'r1', title: 'Comprar la cena', day: dk(NOW), createdAt: NOW - DAY }],
   priorities: [{ day: dk(NOW), ids: ['q1', 'q2', 'q4'] }],
   weeklyReviews: [{ week: '2026-11-02', at: NOW - DAY, change: 'Móvil fuera durante el foco', focus: 'Aprobar cálculo' }],
-  tours: ['intro', 'reinos', 'arena', 'gremios', 'v3'], newsSeen: '3.0', balance: 2, ascended: ['aprendiz'],
+  tours: ['intro', 'reinos', 'arena', 'gremios', 'v3'], newsSeen: (await import('node:fs')).readFileSync('src/version.ts', 'utf8').match(/APP_VERSION = '([^']+)'/)[1], balance: 2, ascended: ['aprendiz'],
 };
 const browser = await chromium.launch();
 const tabs = ['hoy', 'misiones', 'habitos', 'deepwork', 'reinos', 'arena', 'amigos', 'gremios', 'personaje', 'ajustes'];

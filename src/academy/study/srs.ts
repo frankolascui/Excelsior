@@ -7,7 +7,7 @@ import type { CardRow, Level } from './types';
  * Ajustes del algoritmo.
  * - request_retention 0.9: busca que recuerdes el 90 % de las tarjetas cuando te las pregunta (el valor por defecto de Anki con FSRS).
  * - enable_fuzz: mueve un poco las fechas para que las tarjetas creadas juntas no vuelvan todas el mismo día.
- * - learning_steps: una tarjeta nueva vuelve a los 1 y 10 minutos antes de pasar a días.
+ * - learning_steps: un solo paso de 10 min; después, `spread` deja los 4 botones claramente separados.
  */
 export const NEW_PER_DAY = 20;
 
@@ -38,7 +38,7 @@ export const userParams = () => userW;
 export function schedulerFor(level: Level = 'equilibrado') {
   let s = schedulers.get(level);
   if (!s) {
-    s = fsrs(generatorParameters({ request_retention: LEVELS[level].retention, enable_fuzz: true, learning_steps: ['1m', '10m'], relearning_steps: ['10m'], ...(userW ? { w: [...userW] } : {}) }));
+    s = fsrs(generatorParameters({ request_retention: LEVELS[level].retention, enable_fuzz: true, learning_steps: ['10m'], relearning_steps: ['10m'], ...(userW ? { w: [...userW] } : {}) }));
     schedulers.set(level, s);
   }
   return s;
@@ -83,17 +83,59 @@ export function fromCard(c: Card): Omit<CardRow, 'id' | 'topic_id' | 'front' | '
   };
 }
 
+const MIN = 60_000;
+const DAY = 86_400_000;
+
+/**
+ * FSRS calcula la fecha justa para el 90 % de recuerdo, pero sus botones a veces quedan casi pegados
+ * (p. ej. «Difícil 8 d · Bien 11 d») o, en tarjetas nuevas, todos en minutos. Aquí se separan como en Anki:
+ * - en minutos (aprendiendo): «Otra vez» 1 min y «Difícil» al menos 10 min;
+ * - en días: «Difícil» ≤ 60 % de «Bien» (mínimo 1 día), «Bien» al menos un día más que «Difícil»
+ *   y «Fácil» ≥ 1,8 × «Bien».
+ * Solo se mueve la fecha: estabilidad y dificultad siguen siendo las de FSRS, que en el siguiente repaso
+ * tiene en cuenta los días que pasaron de verdad.
+ */
+export function spread(cards: Record<Grade, Card>, now: Date): Record<Grade, Card> {
+  const t = now.getTime();
+  const ms = (g: Grade) => cards[g].due.getTime() - t;
+  const out = { ...cards };
+  const set = (g: Grade, delta: number) => {
+    const days = delta >= DAY ? Math.round(delta / DAY) : 0;
+    out[g] = { ...out[g], due: new Date(t + (days ? days * DAY : delta)), scheduled_days: days };
+  };
+  const review = (g: Grade) => cards[g].state === State.Review;
+  if (!review(Rating.Again)) set(Rating.Again, Math.min(ms(Rating.Again), MIN));
+  if (!review(Rating.Hard)) set(Rating.Hard, Math.max(ms(Rating.Hard), 10 * MIN));
+  const good = ms(Rating.Good);
+  if (review(Rating.Good) && good >= DAY) {
+    let g = Math.max(2, Math.round(good / DAY));
+    if (review(Rating.Hard)) {
+      const h = Math.max(1, Math.min(Math.round(ms(Rating.Hard) / DAY), Math.floor(g * 0.6)));
+      g = Math.max(g, h + 1);
+      set(Rating.Hard, h * DAY);
+    }
+    set(Rating.Good, g * DAY);
+    set(Rating.Easy, Math.max(Math.round(ms(Rating.Easy) / DAY), Math.ceil(g * 1.8), g + 1) * DAY);
+  }
+  return out;
+}
+
+/** Los 4 resultados posibles de responder ahora, ya separados. */
+function outcomes(row: CardRow, now: Date, level: Level): Record<Grade, Card> {
+  const preview = schedulerFor(level).repeat(toCard(row), now);
+  return spread({ 1: preview[Rating.Again].card, 2: preview[Rating.Hard].card, 3: preview[Rating.Good].card, 4: preview[Rating.Easy].card } as Record<Grade, Card>, now);
+}
+
 /** Qué pasa con la tarjeta si respondes `grade` ahora. */
 export function answer(row: CardRow, grade: Grade, now: Date, level: Level = 'equilibrado') {
-  const { card } = schedulerFor(level).next(toCard(row), now, grade);
-  return fromCard(card);
+  return fromCard(outcomes(row, now, level)[grade]);
 }
 
 /** Intervalo de cada botón, para enseñarlo encima («10 min», «3 d»…). */
 export function previewIntervals(row: CardRow, now: Date, level: Level = 'equilibrado'): Record<Grade, string> {
-  const preview = schedulerFor(level).repeat(toCard(row), now);
+  const o = outcomes(row, now, level);
   const out = {} as Record<Grade, string>;
-  for (const { grade } of GRADES) out[grade] = formatInterval(preview[grade].card.due.getTime() - now.getTime());
+  for (const { grade } of GRADES) out[grade] = formatInterval(o[grade].due.getTime() - now.getTime());
   return out;
 }
 

@@ -1,5 +1,5 @@
 // El diario de sueño completo dentro del Reino de la Salud: el formulario entero de la noche, el panel del día
-// (reloj, metas del plan, semana y gráfico), el historial y los datos (horario, exportar, importar).
+// (metas del plan, semana y gráfico), el historial y los datos (horario, exportar, importar).
 // Es lo que hacía la web de Excelsior Health, con las mismas reglas (health-diary.ts).
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
 import type { Game } from './screens';
@@ -120,7 +120,7 @@ export function NightForm({ game, day, onDone }: { game: Game; day: string; onDo
   return (
     <form className="night-form" onSubmit={submit} data-testid="night-form" autoComplete="off">
       <p className="eyebrow">Lo esencial · menos de 1 minuto</p>
-      <div className="night-grid">
+      <div className="night-grid night-essential">
         <label className="field"><span>Me metí en la cama</span><TimeField id="night-cama" near={bedtimeGoal(settings)} label="Me metí en la cama" value={n.percibido.cama ?? ''} onChange={(v) => P('cama', v)} /></label>
         <label className="field"><span>Me levanté</span><TimeField id="night-levantado" near={settings.levantar} label="Me levanté" value={n.percibido.levantado ?? ''} onChange={(v) => P('levantado', v)} /></label>
         <label className="field"><span>Me dormí (reloj)</span><TimeField id="night-dormido" near={bedtimeGoal(settings)} label="Me dormí (reloj)" value={n.reloj.dormido ?? ''} onChange={(v) => R('dormido', v)} /></label>
@@ -219,33 +219,74 @@ function useNow(ms: number) {
   return now;
 }
 
-function Ring({ ratio, night }: { ratio: number; night: boolean }) {
-  const R = 52, L = 2 * Math.PI * R;
+const toMinutes = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+
+/**
+ * Esfera de 24 h (las 0:00 arriba): el arco de la noche va de la hora de acostarte a la de levantarte,
+ * el punto brillante es la hora actual y en el centro, lo que falta.
+ */
+function SleepDial({ bed, wake, now, left, awake }: { bed: string; wake: string; now: Date; left: number; awake: boolean }) {
+  const C = 60, R = 46;
+  const pt = (min: number, r = R) => {
+    const a = (min / 1440) * 2 * Math.PI - Math.PI / 2;
+    return [C + r * Math.cos(a), C + r * Math.sin(a)] as const;
+  };
+  const b = toMinutes(bed), w = toMinutes(wake);
+  const span = (w - b + 1440) % 1440;
+  const [x1, y1] = pt(b), [x2, y2] = pt(w);
+  const arc = `M${x1.toFixed(2)},${y1.toFixed(2)} A${R},${R} 0 ${span > 720 ? 1 : 0} 1 ${x2.toFixed(2)},${y2.toFixed(2)}`;
+  const nm = now.getHours() * 60 + now.getMinutes();
+  const [nx, ny] = pt(nm);
+  const h = Math.floor(left / 60), m = left % 60;
   return (
-    <svg className="diary-ring" viewBox="0 0 120 120" aria-hidden="true">
-      <circle cx="60" cy="60" r={R} className="ring-bg" />
-      <circle cx="60" cy="60" r={R} className={night ? 'ring-fg night' : 'ring-fg'} strokeDasharray={L} strokeDashoffset={L * (1 - ratio)} />
-    </svg>
+    <div className="sleep-dial">
+      <svg viewBox="0 0 120 120" aria-hidden="true">
+        <defs>
+          <linearGradient id="sleep-arc" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" style={{ stopColor: 'var(--c3)' }} />
+            <stop offset="100%" style={{ stopColor: 'var(--c2)' }} />
+          </linearGradient>
+        </defs>
+        <circle cx={C} cy={C} r={R} className="sd-track" />
+        {Array.from({ length: 24 }, (_, i) => {
+          const [ax, ay] = pt(i * 60, R - 7), [bx, by] = pt(i * 60, R - (i % 6 ? 9 : 11));
+          return <line key={i} x1={ax} y1={ay} x2={bx} y2={by} className={i % 6 ? 'sd-tick' : 'sd-tick major'} />;
+        })}
+        <path d={arc} className="sd-night" />
+        <circle cx={x1} cy={y1} r={3.2} className="sd-end" />
+        <circle cx={x2} cy={y2} r={3.2} className="sd-end" />
+        <circle cx={nx} cy={ny} r={7} className="sd-now-halo" />
+        <circle cx={nx} cy={ny} r={4} className="sd-now" />
+      </svg>
+      <div className="sleep-dial-center">
+        <b className="mono">{h ? `${h}h ${String(m).padStart(2, '0')}` : `${m} min`}</b>
+        <small>{awake ? 'para acostarte' : 'para levantarte'}</small>
+      </div>
+    </div>
   );
 }
 
-/** Reloj del diario en Hoy: cuánto falta para acostarte (o levantarte), el consejo del momento y apuntar la noche. */
+/** Reloj del sueño en Hoy: esfera de 24 h, cuánto falta para acostarte (o levantarte), el consejo del momento y apuntar la noche. */
 export function SleepClockCard({ onRecord }: { onRecord: () => void }) {
   const { nights, settings } = useHealth();
   const now = useNow(30_000);
   const clock = clockAdvice(settings, now);
   const done = nights.some((n) => n.fecha === dayKey(now.getTime()));
-  const h = Math.floor(clock.left / 60), m = clock.left % 60;
+  const bed = bedtimeGoal(settings);
+  const night = !(clock.awake && clock.left > 120);
   return (
-    <section className={`panel diary-clock diary-clock-mini${clock.awake && clock.left > 120 ? '' : ' is-night'}`} aria-label="Reloj del sueño" data-testid="hoy-sleep">
-      <div className="diary-ring-wrap">
-        <Ring ratio={clock.ratio} night={!clock.awake} />
-        <div className="diary-ring-center"><b className="mono">{h ? `${h} h ${String(m).padStart(2, '0')}` : `${m} min`}</b><small>{clock.awake ? 'para acostarte' : 'para levantarte'}</small></div>
-      </div>
-      <div className="diary-clock-side">
-        <span className="muted small-text"><Icon name="moon" /> Cama {bedtimeGoal(settings)} · Levantarte {settings.levantar}</span>
-        <p className="diary-tip">{clock.tip}</p>
-        {!done && <div className="row"><button className="secondary small" onClick={onRecord} data-testid="hoy-sleep-record"><Icon name="play" /> Apuntar la noche</button></div>}
+    <section className={`panel sleep-card${night ? ' is-night' : ''}`} aria-label="Reloj del sueño" data-testid="hoy-sleep">
+      <SleepDial bed={bed} wake={settings.levantar} now={now} left={clock.left} awake={clock.awake} />
+      <div className="sleep-card-side">
+        <div className="sleep-card-times">
+          <span><Icon name="moon" /> <small>Cama</small> <b className="mono">{bed}</b></span>
+          <span><Icon name="sundial" /> <small>Arriba</small> <b className="mono">{settings.levantar}</b></span>
+          <span className="mono muted sleep-card-now">{now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
+        </div>
+        <p className="sleep-card-tip">{clock.tip}</p>
+        {done
+          ? <span className="muted small-text"><Icon name="check" /> Noche de hoy apuntada</span>
+          : <div className="row"><button className="primary small" onClick={onRecord} data-testid="hoy-sleep-record"><Icon name="play" /> Apuntar la noche</button></div>}
       </div>
     </section>
   );
@@ -267,9 +308,8 @@ function Panel({ title, info, children, action }: { title: ReactNode; info?: Rea
 
 export function DiaryToday({ onRecord, onHistory, onData }: { onRecord: () => void; onHistory: () => void; onData: () => void }) {
   const { nights, settings } = useHealth();
-  const now = useNow(1000);
+  const now = useNow(60_000);
   const today = dayKey(now.getTime());
-  const clock = clockAdvice(settings, now);
   const bed = bedtimeGoal(settings);
   const last = nights[0];
   const lc = last ? derive(last) : null;
@@ -286,7 +326,6 @@ export function DiaryToday({ onRecord, onHistory, onData }: { onRecord: () => vo
   const run = planRun(nights, settings);
   const cmp = weekCompare(nights, settings, today);
   const done = nights.some((n) => n.fecha === today);
-  const h = Math.floor(clock.left / 60), m = clock.left % 60;
 
   const tiles: { icon: Parameters<typeof Icon>[0]['name']; v: string; l: string; bar?: number }[] = [
     { icon: 'moon', v: fmtHm(lc?.sueno_real_min), l: `última noche (meta ${META.sueno / 60} h)`, bar: lc?.sueno_real_min ? Math.min(100, (lc.sueno_real_min / META.sueno) * 100) : 0 },
@@ -304,20 +343,10 @@ export function DiaryToday({ onRecord, onHistory, onData }: { onRecord: () => vo
 
   return (
     <div className="diary" data-testid="diary-today">
-      <section className={`panel diary-clock${clock.awake && clock.left > 120 ? '' : ' is-night'}`}>
-        <div className="diary-ring-wrap">
-          <Ring ratio={clock.ratio} night={!clock.awake} />
-          <div className="diary-ring-center"><b className="mono">{h ? `${h} h ${String(m).padStart(2, '0')}` : `${m} min`}</b><small>{clock.awake ? 'para acostarte' : 'para levantarte'}</small></div>
-        </div>
-        <div className="diary-clock-side">
-          <span className="diary-time mono">{now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
-          <span className="muted small-text">Cama {bed} · Levantarte {settings.levantar}</span>
-          <p className="diary-tip">{clock.tip}</p>
-          <div className="row">
-            <button className="primary" onClick={onRecord} data-testid="diary-record"><Icon name={done ? 'pencil' : 'play'} /> {done ? 'Editar la noche de hoy' : 'Apuntar la noche'}</button>
-            <span className="muted small-text">{done ? 'Noche de hoy apuntada' : 'Menos de 1 minuto'}</span>
-          </div>
-        </div>
+      <section className="panel diary-record-bar">
+        <span className="muted small-text"><Icon name="moon" /> Cama {bed} · Levantarte {settings.levantar}</span>
+        <span className="diary-record-state small-text">{done ? <><Icon name="check" /> Noche de hoy apuntada</> : 'Menos de 1 minuto'}</span>
+        <button className={done ? 'secondary small' : 'primary small'} onClick={onRecord} data-testid="diary-record"><Icon name={done ? 'pencil' : 'play'} /> {done ? 'Editar la noche de hoy' : 'Apuntar la noche'}</button>
       </section>
 
       <div className="diary-stats">
@@ -426,6 +455,24 @@ function download(name: string, text: string, type: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/** Horario objetivo y entrenos: en Datos y en el panel de configuración al fundar el reino. */
+export function ScheduleFields() {
+  const { settings } = useHealth();
+  return (
+    <div className="night-grid">
+      <label className="field"><span>Hora de levantarte</span>
+        <TimeField id="health-levantar" label="Hora de levantarte" clearable={false} value={settings.levantar} onChange={(v) => v && saveHealthSettings({ levantar: v })} /></label>
+      <label className="field"><span>Horas en la cama</span>
+        <Select id="health-horas" label="Horas en la cama" value={settings.horas} onChange={(v) => saveHealthSettings({ horas: v })}
+          options={[6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11].map((v) => ({ value: v, label: `${String(v).replace('.', ',')} h` }))} /></label>
+      <label className="field"><span>Entrenos planeados por semana</span>
+        <Select id="health-entrenos-plan" label="Entrenos planeados por semana" value={settings.entrenosPlan} onChange={(v) => saveHealthSettings({ entrenosPlan: v, entrenosMin: Math.min(settings.entrenosMin, v) })} options={NUM_1_21} /></label>
+      <label className="field"><span>Mínimo para cumplir (Palestra)</span>
+        <Select id="health-entrenos" label="Mínimo para cumplir" value={settings.entrenosMin} onChange={(v) => saveHealthSettings({ entrenosMin: v, entrenosPlan: Math.max(settings.entrenosPlan, v) })} options={NUM_1_21} /></label>
+    </div>
+  );
+}
+
 export function DiaryData({ game }: { game: Game }) {
   const { toast, act } = game;
   const { nights, settings, sync, error } = useHealth();
@@ -456,17 +503,7 @@ export function DiaryData({ game }: { game: Game }) {
     <div className="diary" data-testid="diary-data">
       <Panel title={<><Icon name="sundial" /> Tu horario objetivo</>}>
         <p className="muted small-text">Lo usan el plan, el Reloj de Sol y la cuenta atrás. Cámbialo en cada escalón del plan.</p>
-        <div className="night-grid">
-          <label className="field"><span>Hora de levantarte</span>
-            <TimeField id="health-levantar" label="Hora de levantarte" clearable={false} value={settings.levantar} onChange={(v) => v && saveHealthSettings({ levantar: v })} /></label>
-          <label className="field"><span>Horas en la cama</span>
-            <Select id="health-horas" label="Horas en la cama" value={settings.horas} onChange={(v) => saveHealthSettings({ horas: v })}
-              options={[6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11].map((v) => ({ value: v, label: `${String(v).replace('.', ',')} h` }))} /></label>
-          <label className="field"><span>Entrenos planeados por semana</span>
-            <Select id="health-entrenos-plan" label="Entrenos planeados por semana" value={settings.entrenosPlan} onChange={(v) => saveHealthSettings({ entrenosPlan: v, entrenosMin: Math.min(settings.entrenosMin, v) })} options={NUM_1_21} /></label>
-          <label className="field"><span>Mínimo para cumplir (Palestra)</span>
-            <Select id="health-entrenos" label="Mínimo para cumplir" value={settings.entrenosMin} onChange={(v) => saveHealthSettings({ entrenosMin: v, entrenosPlan: Math.max(settings.entrenosPlan, v) })} options={NUM_1_21} /></label>
-        </div>
+        <ScheduleFields />
         <p className="muted small-text">Cama a las {bedtimeGoal(settings)}, levantarte a las {settings.levantar}.</p>
       </Panel>
 

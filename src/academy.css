@@ -8,3 +8,21 @@
 .study-streak { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 99px; border: 1px solid var(--line); font-size: 14px; color: var(--muted); }
 .study-streak.on { color: var(--fg, #fff); border-color: var(--c2); box-shadow: 0 0 12px color-mix(in srgb, var(--c2) 40%, transparent); }
 .deep-tabs-row.wide { max-width: 1180px; }
+
+/* El texto sobre el degradado sigue al tema (oscuro en temas claros como Olimpo o Hades). */
+.acad .button.primary, .acad button.primary, .acad .tab.active .tab-num, .acad .drop-icon,
+.acad .segmented button[aria-checked='true'], .acad .exams-tab.active { color: var(--on-accent, #fff); }
+
+/* Repaso: botones más grandes y «Cambiar la anterior» junto a «Mostrar respuesta» */
+.acad .reveal-row { display: flex; gap: 10px; justify-content: center; align-items: stretch; flex-wrap: wrap; }
+.acad .reveal-row .reveal { justify-self: auto; min-width: 280px; padding: 18px 26px; font-size: 20px; }
+.acad .change-answer { padding: 14px 18px; font-size: 16px; display: inline-flex; align-items: center; gap: 8px; border-radius: 12px; }
+.acad .grades { gap: 10px; }
+.acad .grade { padding: 16px 8px; font-size: 18px; gap: 4px; min-height: 84px; align-content: center; }
+.acad .grade .when { font-size: 14px; color: var(--fg); opacity: 0.85; }
+@media (max-width: 640px) {
+  .acad .reveal-row { flex-direction: column-reverse; }
+  .acad .reveal-row .reveal { min-width: 0; width: 100%; padding: 16px; }
+  .acad .change-answer { justify-content: center; padding: 12px; }
+  .acad .grade { padding: 14px 2px; min-height: 76px; font-size: 16px; }
+}

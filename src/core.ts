@@ -62,6 +62,40 @@ export function editSession(s: GameState, id: string, patch: { endedAt: number; 
   };
 }
 
+/**
+ * «¿Te distrajiste?» al terminar: los minutos que digas pasan del foco a la distracción (y su XP se quita).
+ * Se puede cambiar después: siempre se parte del foco que había antes de decirlo. Deja al menos 1 min de foco.
+ */
+export function reportDistraction(s: GameState, id: string, minutes: number): { state: GameState; xp: number } {
+  const x = s.sessions.find((y) => y.id === id);
+  if (!x) return { state: s, xp: 0 };
+  const prev = x.distractionReported ?? 0;
+  const gross = x.minutes + prev;
+  const d = Math.max(0, Math.min(gross - 1, Math.round(minutes) || 0));
+  if (d === prev) return { state: s, xp: 0 };
+  const focus = gross - d;
+  const distractionMinutes = Math.max(0, (x.distractionMinutes ?? 0) - prev + d);
+  const distractions = Math.max(0, (x.distractions ?? 0) - (prev > 0 ? 1 : 0) + (d > 0 ? 1 : 0));
+  const next: DeepWorkSession = {
+    ...x,
+    minutes: focus,
+    distractionMinutes,
+    distractions,
+    distractionReported: d,
+    focusPct: Math.round((focus / (focus + distractionMinutes || 1)) * 100),
+    ...(x.measured ? { measured: { ...x.measured, minutes: Math.max(1, x.measured.minutes - (d - prev)) } } : {}),
+  };
+  if (!d) delete next.distractionReported;
+  const state: GameState = {
+    ...s,
+    sessions: s.sessions.map((y) => (y.id === id ? next : y)),
+    xp: s.xp.map((t) => (t.source === 'deepwork' && t.sourceId === id
+      ? { ...t, amount: focus * XP_RULES.deepWorkPerMinute, attributes: deepWorkRewards(focus, x.area) }
+      : t)),
+  };
+  return { state, xp: (focus - x.minutes) * XP_RULES.deepWorkPerMinute };
+}
+
 /** Borra una sesión (p. ej. la empezaste sin querer) y el XP que dio. */
 export function deleteSession(s: GameState, id: string): GameState {
   return {

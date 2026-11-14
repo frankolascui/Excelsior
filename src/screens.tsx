@@ -587,7 +587,6 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
           {totals.phase === 'focus' ? (
             <>
               <button className="phase-btn rest" onClick={() => phase('break')}><Icon name="coffee" /> Descanso</button>
-              <button className="phase-btn distract" onClick={() => phase('distraction')}><Icon name="alert" /> Me distraje</button>
             </>
           ) : (
             <button className="primary big" onClick={() => phase('focus')}><Icon name="play" /> {resting ? 'Siguiente pomodoro' : 'Volver al foco'}</button>
@@ -604,7 +603,12 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
   const linked = result?.questId ? state.quests.find((q) => q.id === result.questId && !q.completedAt) : null;
   // si corriges o borras la sesión recién guardada, la tarjeta lo refleja
   const live = result?.id ? state.sessions.find((x) => x.id === result.id) : undefined;
-  const shown = result && result.id && !live ? null : result && live ? { ...result, minutes: live.minutes, xp: live.minutes * XP_RULES.deepWorkPerMinute } : result;
+  const shown = result && result.id && !live ? null : result && live
+    ? {
+      ...result, minutes: live.minutes, xp: live.minutes * XP_RULES.deepWorkPerMinute,
+      focusPct: live.focusPct ?? 100, distractionMinutes: live.distractionMinutes ?? 0, distractions: live.distractions ?? 0,
+    }
+    : result;
 
   return (
     <div className="screen dw-screen">
@@ -612,7 +616,7 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
       <div className="with-info">
         <h1 className="screen-title">Deep Work</h1>
         <InfoTip label="Cómo funciona el Deep Work">
-          <p>Durante la sesión puedes marcar Descanso o Me distraje. Solo el foco da 1 XP por minuto.</p>
+          <p>Durante la sesión puedes marcar Descanso. Al terminar te pregunta si te distrajiste y cuánto: esos minutos se restan del foco. Solo el foco da 1 XP por minuto.</p>
           <p>Si dices qué vas a hacer, lo práctico (ejercicios, programar, crear) sube Maestría y lo teórico (estudiar, leer, repasar) sube Sabiduría; si no, un poco de las dos. Siempre sube algo de Voluntad.</p>
           <p>Foco real = foco ÷ (foco + distracción) × 100.</p>
         </InfoTip>
@@ -625,9 +629,9 @@ export function DeepWork({ game, preselect, presetIntent = '', clearPreselect }:
               <p className="eyebrow">Sesión registrada</p>
               <h2>{formatMinutes(shown.minutes)} de foco · +{shown.xp} XP</h2>
               <div className="focus-stats left">
-                <div className={result.focusPct >= 80 ? 'good' : result.focusPct >= 60 ? 'mid' : 'bad'}><span className="mono">{result.focusPct} %</span><span>Foco real</span></div>
-                <div><span className="mono">{formatMinutes(result.breakMinutes)}</span><span>Descanso</span></div>
-                <div><span className="mono">{formatMinutes(result.distractionMinutes)}</span><span>Distracción{result.distractions ? ` ×${result.distractions}` : ''}</span></div>
+                <div className={shown.focusPct >= 80 ? 'good' : shown.focusPct >= 60 ? 'mid' : 'bad'}><span className="mono">{shown.focusPct} %</span><span>Foco real</span></div>
+                <div><span className="mono">{formatMinutes(shown.breakMinutes)}</span><span>Descanso</span></div>
+                <div><span className="mono">{formatMinutes(shown.distractionMinutes)}</span><span>Distracción{shown.distractions ? ` ×${shown.distractions}` : ''}</span></div>
               </div>
               <p className="now-sub">{result.label} <RewardTags rewards={deepWorkRewards(shown.minutes, result.area)} /></p>
               {result.id && asking !== result.id && <SessionRating key={result.id} game={game} id={result.id} />}
@@ -981,7 +985,7 @@ export function Kingdoms({ game, focusQuest }: { game: Game; focusQuest: (q: Que
           <button type="submit" className="primary" disabled={!name.trim()}><Icon name="plus" /> Fundar</button>
         </form>
       </section>
-      {state.kingdoms.length === 0 && <p className="empty">Aún no has fundado ningún reino.</p>}
+      {state.kingdoms.length === 0 && !healthFounded(state) && <p className="empty">Aún no has fundado ningún reino.</p>}
     </div>
   );
 }
