@@ -30,8 +30,9 @@ const card = (id, topic, front, back, st = 2) => ({
 const db = {
   saves: { user_id: ME, state, updated_at: iso(now) },
   study_subjects: [{ id: 's1', name: 'Matemáticas', color: '#a855f7', position: 0, level: 'equilibrado' }],
-  study_topics: [{ id: 't1', subject_id: 's1', title: 'Derivadas', position: 0, exam_date: null }],
-  study_cards: [card('c1', 't1', '¿Derivada de $x^2$?', '$2x$'), card('c2', 't1', '¿Derivada de $\\sin x$?', '$\\cos x$'), card('c3', 't1', 'Regla de la cadena', "$(f\\circ g)' = f'(g)\\,g'$", 0)],
+  study_topics: [{ id: 't1', subject_id: 's1', title: 'Derivadas', position: 0, exam_date: null }, { id: 't2', subject_id: 's1', title: 'Repaso', position: 1, exam_date: null }],
+  study_cards: [card('c1', 't1', '¿Derivada de $x^2$?', '$2x$'), card('c2', 't1', '¿Derivada de $\\sin x$?', '$\\cos x$'), card('c3', 't1', 'Regla de la cadena', "$(f\\circ g)' = f'(g)\\,g'$", 0),
+    ...Array.from({ length: 9 }, (_, i) => card(`r${i}`, 't2', `Repaso ${i + 1}`, `R${i + 1}`))],
   study_reviews: [], study_exam_dates: [], study_settings: [], study_pages: [], study_exams: [], nights: [], settings: [],
 };
 
@@ -167,6 +168,22 @@ await page.click('[data-testid="draft-tray"] .draft-tray-head button.primary');
 await page.waitForTimeout(800);
 check(db.study_cards.length === before + 2, `aprobar mete solo las que no tienen aviso (${db.study_cards.length - before})`);
 check(await page.isVisible('[data-testid="draft-tray"]'), 'la duplicada se queda en la bandeja para que decidas');
+
+// Tandas de 8: tras 8 respuestas, una pausa con el resumen de la tanda.
+await page.evaluate(() => { location.hash = '#academy/repasar/a/s1/t/t2'; });
+await page.waitForSelector('.flashcard', { timeout: 8000 });
+for (let i = 0; i < 8; i++) {
+  await page.waitForSelector('.reveal-row .reveal');
+  await page.keyboard.press('Space');
+  await page.waitForSelector('.grades');
+  await page.keyboard.press('3');
+  await page.waitForTimeout(150);
+}
+check(await page.isVisible('[data-testid="batch-done"]:has-text("Tanda 1 hecha")'), 'repaso por tandas: a las 8 tarjetas sale el resumen de la tanda');
+await page.screenshot({ path: `${out}/v31b-tanda.png` });
+await page.keyboard.press('Space');
+await page.waitForTimeout(300);
+check(await page.isVisible('.flashcard'), 'espacio sigue con la siguiente tanda');
 
 // Deep Work: pregunta de distracción y valoración al terminar.
 await page.evaluate(() => { location.hash = '#deepwork'; });

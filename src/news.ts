@@ -28,6 +28,7 @@ export const NEWS: NewsEntry[] = [
         'Tarjeta de repaso más grande, con los mismos botones que el resto de la app.',
         'Minutos al día para Academy (en «Hoy» de la estantería): estima cuánto te espera con tu tiempo real por tarjeta, frena las tarjetas nuevas si no caben y avisa si ni los repasos te caben. Los repasos que tocan nunca se esconden.',
         'Bandeja de revisión: lo que pegas o importas en texto entra como borrador y no llega al repaso hasta que lo apruebas. Avisa de duplicadas, preguntas casi iguales, respuestas largas y sin respuesta. Se puede aprobar sin revisar si lo activas.',
+        'El repaso va por tandas de 8 tarjetas: al acabar cada una, un resumen corto y sigues (espacio) o terminas ahí.',
         'Exámenes: el repaso final empieza 7 días antes y se reparte día a día, sin tope de 60 tarjetas.',
         'Estadísticas: «Retención estimada» (lo que FSRS calcula que recordarías hoy) junto a la real (lo que acertaste).',
         'Academy sigue el color del tema que elijas, como el resto de la app.',

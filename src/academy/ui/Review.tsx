@@ -112,11 +112,15 @@ export async function loadQueue(subjectId?: string, topicIds?: string[]) {
   };
 }
 
+/** Tarjetas por tanda: entre tanda y tanda, una pausa con su resumen (Nicolas, 2026-11-14). */
+export const BATCH = 8;
+
 const SOUND: Record<number, () => void> = { 1: sfx.uncheck, 2: sfx.tick, 3: sfx.check, 4: sfx.confirm };
 
 /** La sesión de repaso: anverso → «Mostrar respuesta» → 4 botones con el intervalo de cada uno. */
 export function Review({ subjectId, topicIds }: { subjectId?: string; topicIds?: string[] }) {
   const [queue, setQueue] = useState<CardRow[] | null>(null);
+  const [pause, setPause] = useState(false);
   const [topics, setTopics] = useState<Map<string, Topic>>(new Map());
   const levelOf = useRef<(topicId: string) => Level>(() => 'equilibrado');
   const early = useRef<Set<string>>(new Set());
@@ -174,10 +178,12 @@ export function Review({ subjectId, topicIds }: { subjectId?: string; topicIds?:
     SOUND[grade]();
     if (rest.length === 0) setTimeout(() => { sfx.reward(); reportRef.current(true); }, 250);
     setRatings((r) => [...r, grade]);
+    // Tandas de 8: al acabar una, una pausa corta con su resumen (si aún quedan tarjetas).
+    if (rest.length > 0 && (ratings.length + 1) % BATCH === 0) setPause(true);
     setQueue(rest);
     setRevealed(false);
     shownAt.current = Date.now();
-  }, [card, queue, revealed]);
+  }, [card, queue, revealed, ratings.length]);
 
   /**
    * Deshacer la última respuesta: la tarjeta vuelve a la pantalla y a como estaba en la base de datos.
@@ -187,6 +193,7 @@ export function Review({ subjectId, topicIds }: { subjectId?: string; topicIds?:
     const last = history.current.pop();
     if (!last) return;
     setCanUndo(history.current.length > 0);
+    setPause(false);
     setQueue(last.queue);
     setRatings((r) => r.slice(0, -1));
     if (!reported.current) durations.current.pop();
@@ -203,6 +210,11 @@ export function Review({ subjectId, topicIds }: { subjectId?: string; topicIds?:
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLElement && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+      if (pause) {
+        if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setPause(false); shownAt.current = Date.now(); sfx.open(); }
+        if (e.key === 'z' || e.key === 'Z') { e.preventDefault(); void undo(true); }
+        return;
+      }
       if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault();
         if (!revealed) reveal(); else rate(3 as Grade);
@@ -213,7 +225,7 @@ export function Review({ subjectId, topicIds }: { subjectId?: string; topicIds?:
     };
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
-  }, [reveal, rate, revealed, undo]);
+  }, [reveal, rate, revealed, undo, pause]);
 
   const back = subjectId
     ? routeToHash({ view: 'asignatura', subjectId, topicId: topicIds?.length === 1 ? topicIds[0] : undefined })
@@ -254,6 +266,26 @@ export function Review({ subjectId, topicIds }: { subjectId?: string; topicIds?:
     );
   }
 
+  if (pause) {
+    const round = ratings.slice(-BATCH);
+    const s = sessionSummary(round);
+    const n = Math.round(ratings.length / BATCH);
+    return (
+      <section className="review-done panel batch-done" data-testid="batch-done">
+        <p className="eyebrow">Tanda {n} hecha</p>
+        <h1 className="section-title">{s.total - s.again} de {s.total} recordadas</h1>
+        <p className="muted">{s.again ? `Las ${s.again} que fallaste volverán dentro de un rato.` : 'Ni un fallo en esta tanda.'} {queue.length === 1 ? 'Queda 1 tarjeta' : `Quedan ${queue.length} tarjetas`} hoy.</p>
+        <div className="row">
+          <button className="primary" autoFocus onClick={() => { setPause(false); shownAt.current = Date.now(); sfx.open(); }}>
+            <Icon name="play" /> Siguiente tanda ({Math.min(BATCH, queue.length)}) <kbd>espacio</kbd>
+          </button>
+          <a className="ghost" href={back}><Icon name="left" /> Terminar aquí</a>
+          {canUndo && <button className="ghost" onClick={() => void undo(true)}><Icon name="undo" /> Cambiar la última</button>}
+        </div>
+      </section>
+    );
+  }
+
   const c = countsFor(queue);
   const topic = topics.get(card.topic_id);
   const intervals = revealed ? previewIntervals(card, new Date(), levelOf.current(card.topic_id)) : null;
@@ -263,6 +295,9 @@ export function Review({ subjectId, topicIds }: { subjectId?: string; topicIds?:
       <nav className="crumbs">
         <a className="back-btn" href={back}><Icon name="left" size={16} /> Salir</a>
         <button className="ghost small undo-btn" onClick={() => void undo()} disabled={!canUndo} title="Deshacer la última respuesta"><Icon name="undo" size={16} /> Deshacer</button>
+        <span className="batch-dots" aria-label={`Tanda: ${ratings.length % BATCH} de ${BATCH}`} title="Tanda de 8">
+          {Array.from({ length: BATCH }, (_, i) => <i key={i} className={i < ratings.length % BATCH ? 'on' : undefined} />)}
+        </span>
         <span className="counts" title="Nuevas · Aprendiendo · Repaso">
           <span className="pill new">{c.nuevas}</span>
           <span className="pill learn">{c.aprendiendo}</span>
