@@ -27,7 +27,6 @@ export const NEWS: NewsEntry[] = [
         '«Cambiar la anterior» junto a «Mostrar respuesta» (o la tecla Z): vuelve a la tarjeta que acabas de responder para elegir otra dificultad.',
         'Tarjeta de repaso más grande, con los mismos botones que el resto de la app.',
         'Estadísticas: «Retención estimada» (lo que FSRS calcula que recordarías hoy) junto a la real (lo que acertaste).',
-        'El nivel «Mínimo» busca recordar el 85 % (antes 80 %).',
         'Academy sigue el color del tema que elijas, como el resto de la app.',
       ] },
       { name: 'Salud', items: [

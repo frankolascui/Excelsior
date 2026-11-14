@@ -17,7 +17,7 @@ export const NEW_PER_DAY = 20;
  * - newPerDay: tarjetas nuevas al día de esa asignatura.
  */
 export const LEVELS: Record<Level, { label: string; hint: string; retention: number; newPerDay: number }> = {
-  minimo: { label: 'Mínimo', hint: 'Aprobar con el menor tiempo posible', retention: 0.85, newPerDay: 10 },
+  minimo: { label: 'Mínimo', hint: 'Aprobar con el menor tiempo posible', retention: 0.8, newPerDay: 10 },
   equilibrado: { label: 'Equilibrado', hint: 'Lo importante de cada tema', retention: 0.9, newPerDay: 20 },
   detalle: { label: 'Al detalle', hint: 'Ir a por el 10, hasta el último detalle', retention: 0.95, newPerDay: 30 },
 };
