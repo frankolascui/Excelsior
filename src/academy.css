@@ -9,20 +9,39 @@
 .study-streak.on { color: var(--fg, #fff); border-color: var(--c2); box-shadow: 0 0 12px color-mix(in srgb, var(--c2) 40%, transparent); }
 .deep-tabs-row.wide { max-width: 1180px; }
 
-/* El texto sobre el degradado sigue al tema (oscuro en temas claros como Olimpo o Hades). */
-.acad .button.primary, .acad button.primary, .acad .tab.active .tab-num, .acad .drop-icon,
+/* El texto sobre el color del tema sigue al tema (oscuro en temas claros como Olimpo o Hades).
+   Los botones (.primary, .secondary, .ghost, .link, .icon-btn) son los del RPG: styles.css, «Botones: un solo sistema». */
+.acad .tab.active .tab-num, .acad .drop-icon,
 .acad .segmented button[aria-checked='true'], .acad .exams-tab.active { color: var(--on-accent, #fff); }
+.acad a:is(.primary, .secondary, .ghost) { text-decoration: none; }
+.acad a.primary { color: var(--on-btn); }
+.acad a.link { color: var(--c1); }
+.acad .is-disabled { opacity: 0.42; cursor: not-allowed; filter: saturate(0.6); }
 
 /* Repaso: botones más grandes y «Cambiar la anterior» junto a «Mostrar respuesta» */
-.acad .reveal-row { display: flex; gap: 10px; justify-content: center; align-items: stretch; flex-wrap: wrap; }
-.acad .reveal-row .reveal { justify-self: auto; min-width: 280px; padding: 18px 26px; font-size: 20px; }
-.acad .change-answer { padding: 14px 18px; font-size: 16px; display: inline-flex; align-items: center; gap: 8px; border-radius: 12px; }
+.acad .reveal-row { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; }
+/* Botones de tamaño normal (Nicolas, 2026-11-14): lo grande es la tarjeta. */
+.acad .reveal-row .reveal { justify-self: auto; min-width: 220px; padding: 7px 18px; font-size: 15px; font-weight: 600; }
+.acad .reveal-row kbd { padding: 0 6px; line-height: 1.4; }
+.acad .review { max-width: 920px; }
+.acad .flashcard { min-height: clamp(320px, 50dvh, 560px); padding: 40px 44px; }
+.acad .fc-front .md { font-size: 27px; line-height: 1.35; }
+.acad .fc-back .md { font-size: 20px; line-height: 1.5; }
 .acad .grades { gap: 10px; }
-.acad .grade { padding: 16px 8px; font-size: 18px; gap: 4px; min-height: 84px; align-content: center; }
+.acad .grade {
+  padding: 12px 8px; font-size: 16.5px; gap: 3px; min-height: 70px; align-content: center; border-radius: 13px; color: var(--fg);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--fg) 5%, var(--surface-2)), var(--surface-2));
+  transition: transform 0.12s cubic-bezier(0.3, 1.4, 0.5, 1), box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+.acad .grade:hover { transform: translateY(-1px); box-shadow: 0 5px 16px color-mix(in srgb, var(--c1) 14%, transparent); }
+.acad .grade:active { transform: translateY(1px) scale(0.97); transition-duration: 0.05s; }
 .acad .grade .when { font-size: 14px; color: var(--fg); opacity: 0.85; }
 @media (max-width: 640px) {
   .acad .reveal-row { flex-direction: column-reverse; }
-  .acad .reveal-row .reveal { min-width: 0; width: 100%; padding: 16px; }
-  .acad .change-answer { justify-content: center; padding: 12px; }
+  .acad .reveal-row .reveal { min-width: 0; width: 100%; }
+  .acad .flashcard { min-height: 42dvh; padding: 26px 22px; }
+  .acad .fc-front .md { font-size: 22px; }
+  .acad .fc-back .md { font-size: 18px; }
   .acad .grade { padding: 14px 2px; min-height: 76px; font-size: 16px; }
 }
+.acad .primary.icon-only { padding: 0; width: 38px; min-width: 38px; }

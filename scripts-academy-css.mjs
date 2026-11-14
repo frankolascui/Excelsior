@@ -23,6 +23,15 @@ root.walkDecls(/^(animation|animation-name)$/, (d) => {
 });
 // Los colores del tema los pone la app (theme.ts): Academy no debe fijar su propia paleta.
 root.walkDecls(/^--(c1|c2|c3|gold)$/, (d) => { if (d.parent?.selector === '.acad') d.remove(); });
+// Los botones son los del RPG (styles.css, «Botones: un solo sistema»): fuera los de Academy.
+export const BUTTON_SEL = /^\.acad (\.button|\.primary|\.secondary|\.ghost|\.link|\.small\.ghost|\.ghost\.small|\.icon-btn|\.icon-btn\.danger|\.icon-only|a\.button)(:[\w-]+(\([^)]*\))?)*$/;
+root.walkRules((rule) => {
+  const keep = rule.selectors.filter((sel) => !BUTTON_SEL.test(sel.trim()));
+  if (keep.length === rule.selectors.length) return;
+  if (keep.length) rule.selectors = keep; else rule.remove();
+});
+// Sin `color: inherit` en los botones: si no, gana a .primary/.link del RPG (más específico) y el texto sale distinto.
+root.walkDecls('color', (d) => { if (d.parent?.selector === '.acad button' && d.value === 'inherit') d.remove(); });
 const header = '/* Generado por scripts-academy-css.mjs desde Excelsior Academy: no editar a mano (ajustes en academy-extra.css). */\n';
 fs.writeFileSync('src/academy/academy.css', header + root.toString());
 console.log('ok', frames);

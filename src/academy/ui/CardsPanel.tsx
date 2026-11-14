@@ -62,7 +62,7 @@ export function CardsPanel({ subjectId, topicId, onTopicsChanged }: { subjectId:
         <div className="row">
           <button className="ghost" onClick={() => { setImporting(true); sfx.open(); }}><Icon name="download" /> Importar</button>
           <a
-            className={dueNow + fresh ? 'button primary' : 'button'}
+            className={dueNow + fresh ? 'primary' : 'secondary'}
             href={routeToHash({ view: 'repasar', subjectId, topicIds: [topicId] })}
             onClick={() => sfx.open()}
           >

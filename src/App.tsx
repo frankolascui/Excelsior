@@ -10,7 +10,7 @@ import { isMuted, setMuted, sfx } from './sfx';
 import { Arena, CoinBadge } from './arena';
 import { AmbientDock } from './ambient-ui';
 import { NewsGate, VersionButton } from './news-ui';
-import { loadNewsSeen, markNewsSeen } from './news';
+import { latestVersion, loadNewsSeen, markNewsSeen } from './news';
 import { ConflictDialog, loadGuest, saveGuest, Welcome } from './account';
 import { Guilds } from './guilds-ui';
 import { cloudEnabled, useCloud } from './cloud';
@@ -285,10 +285,10 @@ export default function App() {
       {review && !tour && !ritual && <ReviewDialog game={game} guide={tutorial.guide} onClose={() => setReview(false)} />}
 
       <NewsGate
-        seen={state.newsSeen ?? loadNewsSeen()} createdAt={state.profile.createdAt}
+        seen={latestVersion(state.newsSeen, state.newsLatest, loadNewsSeen())} createdAt={state.profile.createdAt}
         ready={introSeen && (!cloud.email || game.cloudChecked)}
         blocked={!!tour || ritual || review || !!game.levelUp || !!game.conflict}
-        markSeen={() => { markNewsSeen(); game.act((s) => (s.newsSeen === APP_VERSION ? s : { ...s, newsSeen: APP_VERSION })); }}
+        markSeen={() => { markNewsSeen(); game.act((s) => (latestVersion(s.newsLatest, APP_VERSION) === s.newsLatest ? s : { ...s, newsLatest: APP_VERSION })); }}
       />
 
       {alerts.invite && !game.conflict && (

@@ -127,7 +127,7 @@ export function Stats({ subjectId }: { subjectId?: string }) {
                   <span className="dot" style={{ background: s?.color }} />
                   <span className="weak-name"><strong>{t?.title ?? 'Tema'}</strong>{s && <span className="muted small"> · {s.name}</span>}</span>
                   <span className="weak-pct">{w.failPct} % de fallos <span className="muted small">({w.n})</span></span>
-                  {t && <a className="button" href={routeToHash({ view: 'repasar', subjectId: t.subject_id, topicIds: [t.id] })} onClick={() => sfx.open()}><Icon name="play" /> Repasar</a>}
+                  {t && <a className="secondary" href={routeToHash({ view: 'repasar', subjectId: t.subject_id, topicIds: [t.id] })} onClick={() => sfx.open()}><Icon name="play" /> Repasar</a>}
                 </li>
               );
             })}

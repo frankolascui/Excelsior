@@ -93,7 +93,7 @@ export function Tune() {
         ) : state === 'otra-pagina' ? (
           <div className="panel tune-wait">
             <p>El cálculo se hace en una página aparte, para no interrumpir el sonido de fondo de Deep Work. Tu cuenta es la misma.</p>
-            <a className="button primary" href={OPTIMIZER_URL} onClick={() => sfx.open()}>Abrir el optimizador</a>
+            <a className="primary" href={OPTIMIZER_URL} onClick={() => sfx.open()}>Abrir el optimizador</a>
           </div>
         ) : state === 'preparar' ? (
           <div className="panel tune-wait">

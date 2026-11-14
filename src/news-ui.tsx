@@ -1,7 +1,7 @@
 // Panel de novedades: una vez por versión (al abrir la app) y el historial completo en Ajustes.
 import { useEffect, useState } from 'react';
 import { APP_VERSION } from './version';
-import { cmpVersion, NEWS, newsToAnnounce, type NewsEntry } from './news';
+import { cmpVersion, majorOf, NEWS, newsGroups, newsToAnnounce, type NewsEntry } from './news';
 import { Icon } from './icons';
 
 const longDate = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -46,20 +46,35 @@ function NewsCenter({ initial, onClose }: { initial: string; onClose: () => void
         </div>
         <div className="news-center-body">
           <nav className="news-index" aria-label="Versiones">
-            {NEWS.map((n) => {
-              const upcoming = cmpVersion(n.version, APP_VERSION) > 0;
-              return (
+            {newsGroups().map(({ major, updates }) => {
+              const openGroup = majorOf(entry.version) === majorOf(major.version);
+              const item = (n: NewsEntry, sub = false) => (
                 <button key={n.version} type="button" aria-current={n.version === entry.version ? 'true' : undefined}
-                  className={n.version === entry.version ? 'news-index-item on' : 'news-index-item'} onClick={() => setSel(n.version)}>
+                  className={`news-index-item${sub ? ' sub' : ''}${n.version === entry.version ? ' on' : ''}`} onClick={() => setSel(n.version)}>
                   <b className="mono">v{n.version}</b>
                   <span className="news-index-title">{n.title}</span>
-                  <span className="news-index-date">{upcoming ? 'Próximamente' : shortLong(n.date)}</span>
+                  <span className="news-index-date">{cmpVersion(n.version, APP_VERSION) > 0 ? 'Próximamente' : shortLong(n.date)}</span>
                 </button>
+              );
+              return (
+                <div key={major.version} className="news-index-group">
+                  {item(major)}
+                  {updates.length > 0 && (
+                    <div className="news-index-subs">
+                      <button type="button" className="news-index-subhead" aria-expanded={openGroup}
+                        onClick={() => setSel(openGroup ? major.version : updates[updates.length - 1].version)}>
+                        <Icon name={openGroup ? 'chevron-down' : 'chevron-right'} />
+                        Actualizaciones {major.version.replace('.0', '')}.x <span className="mono">({updates.length})</span>
+                      </button>
+                      {openGroup && updates.map((n) => item(n, true))}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </nav>
           <article className="news-scroll news-center-detail" key={entry.version} aria-live="polite">
-            <p className="eyebrow">v{entry.version} · {longDate(entry.date)}{entry.version === APP_VERSION ? ' · la tuya' : ''}</p>
+            <p className="eyebrow">v{entry.version} · {longDate(entry.date)}{entry.version === APP_VERSION ? ' · la tuya' : ''}{entry.note ? ` · ${entry.note}` : ''}</p>
             <h3 className="news-center-title">{entry.title}</h3>
             <NewsBody entry={entry} />
           </article>
@@ -119,28 +134,43 @@ export function NewsGate({ seen, createdAt, ready, blocked, markSeen }: {
 export function NewsHistory() {
   const [open, setOpen] = useState<string | null>(null);
   const [preview, setPreview] = useState<NewsEntry | null>(null);
+  const [subs, setSubs] = useState<string | null>(`${majorOf(APP_VERSION)}.0`);
+  const row = (n: NewsEntry) => {
+    const upcoming = cmpVersion(n.version, APP_VERSION) > 0;
+    return (
+      <>
+        <button type="button" className="news-row" aria-expanded={open === n.version} onClick={() => setOpen(open === n.version ? null : n.version)}>
+          <b className="mono">v{n.version}</b> {n.title}
+          <span className="muted small-text">{upcoming ? `Llega el ${longDate(n.date)}` : longDate(n.date)}{n.note ? ` · ${n.note}` : ''}</span>
+          <Icon name={open === n.version ? 'chevron-down' : 'chevron-right'} />
+        </button>
+        {open === n.version && (
+          <div className="news-detail">
+            <NewsBody entry={n} />
+            {n.announce !== false && <button type="button" className="link" onClick={() => setPreview(n)}>Ver el aviso tal como sale</button>}
+          </div>
+        )}
+      </>
+    );
+  };
   return (
     <section className="panel" aria-labelledby="news-hist-h">
       <header className="panel-head"><h3 id="news-hist-h">Novedades</h3><span className="count mono">v{APP_VERSION}</span></header>
       <ul className="news-list">
-        {NEWS.map((n) => {
-          const upcoming = cmpVersion(n.version, APP_VERSION) > 0;
-          return (
-            <li key={n.version}>
-              <button type="button" className="news-row" aria-expanded={open === n.version} onClick={() => setOpen(open === n.version ? null : n.version)}>
-                <b className="mono">v{n.version}</b> {n.title}
-                <span className="muted small-text">{upcoming ? `Llega el ${longDate(n.date)}` : longDate(n.date)}</span>
-                <Icon name={open === n.version ? 'chevron-down' : 'chevron-right'} />
-              </button>
-              {open === n.version && (
-                <div className="news-detail">
-                  <NewsBody entry={n} />
-                  {n.announce !== false && <button type="button" className="link" onClick={() => setPreview(n)}>Ver el aviso tal como sale</button>}
-                </div>
-              )}
-            </li>
-          );
-        })}
+        {newsGroups().map(({ major, updates }) => (
+          <li key={major.version}>
+            {row(major)}
+            {updates.length > 0 && (
+              <div className="news-subs">
+                <button type="button" className="news-subhead" aria-expanded={subs === major.version} onClick={() => setSubs(subs === major.version ? null : major.version)}>
+                  <Icon name={subs === major.version ? 'chevron-down' : 'chevron-right'} />
+                  Actualizaciones {major.version.replace('.0', '')}.x <span className="mono">({updates.length})</span>
+                </button>
+                {subs === major.version && <ul className="news-list">{updates.map((n) => <li key={n.version}>{row(n)}</li>)}</ul>}
+              </div>
+            )}
+          </li>
+        ))}
       </ul>
       {preview && <NewsDialog entry={preview} onClose={() => setPreview(null)} />}
     </section>

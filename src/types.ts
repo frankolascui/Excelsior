@@ -275,6 +275,12 @@ export interface GameState {
   tours?: string[];
   /** Última versión cuyo aviso de novedades ya viste. Viaja con la partida. */
   newsSeen?: string;
+  /**
+   * La versión más nueva cuyas novedades viste (desde la V3.1). Campo aparte de `newsSeen` porque
+   * la V3.0 compara `newsSeen` con su versión exacta: si la web de prueba escribiera ahí «3.1»,
+   * la web normal volvería a enseñar las novedades de la 3.0 cada vez.
+   */
+  newsLatest?: string;
   /** Avatares a los que ya has ascendido con su ritual. Sin el campo (partidas antiguas) se calculan como antes. */
   ascended?: string[];
   /** Respuestas que diste a Hiperión en cada ritual de ascensión. */

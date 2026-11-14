@@ -218,7 +218,7 @@ export function Review({ subjectId, topicIds }: { subjectId?: string; topicIds?:
           </>
         )}
         <div className="row">
-          <a className="button primary" href={back}><Icon name="left" /> Volver</a>
+          <a className="primary" href={back}><Icon name="left" /> Volver</a>
           {canUndo && <button className="ghost" onClick={() => void undo(true)}><Icon name="undo" /> Cambiar la última respuesta</button>}
         </div>
         {leech && <LeechNote card={leech} onClose={() => setLeech(null)} />}
@@ -326,7 +326,7 @@ export function TodayPanel() {
             </p>
           )}
         </div>
-        {sum > 0 && <a className="button primary" href={routeToHash({ view: 'repasar' })} onClick={() => sfx.open()}><Icon name="play" /> Repasar todo</a>}
+        {sum > 0 && <a className="primary" href={routeToHash({ view: 'repasar' })} onClick={() => sfx.open()}><Icon name="play" /> Repasar todo</a>}
       </div>
       {data.exams.length > 0 && (
         <ul className="today-exams">

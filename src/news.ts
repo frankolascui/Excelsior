@@ -9,6 +9,8 @@ export interface NewsEntry {
   groups: { name: string; items: string[] }[];
   /** false = ya publicada antes de que existiera este panel: solo sale en el historial. */
   announce?: boolean;
+  /** Aclaración corta junto a la fecha (p. ej. «Llegó a la web con la V3.0»). */
+  note?: string;
 }
 
 /** La más nueva primero. Al publicar una versión, añade su entrada arriba y sube APP_VERSION en version.ts. */
@@ -75,6 +77,27 @@ export const NEWS: NewsEntry[] = [
     ],
   },
   {
+    version: '2.2', date: '2026-11-12', title: 'Botones y revisión', announce: false, note: 'Llegó a la web con la V3.0',
+    groups: [
+      { name: 'Novedades', items: [
+        'Un solo sistema de botones en toda la app y la versión rediseñada.',
+        'Revisión: aportes del gremio que ya no se pierden, fotos de perfil más seguras y una partida más nueva de la nube que no se pisa.',
+      ] },
+    ],
+  },
+  {
+    version: '2.1', date: '2026-11-08', title: 'Prioridades', announce: false, note: 'Llegó a la web con la V3.0',
+    groups: [
+      { name: 'Novedades', items: [
+        'Impacto por misión (alto, medio o bajo), que decide su orden y su XP.',
+        '«Las 3 de hoy» y, en el cierre del día, las 3 de mañana; «Pasar a mañana» sin penalización.',
+        'Revisión semanal y limpieza de misiones olvidadas.',
+        'Misiones dentro de misiones, sin límite de niveles, y «Repartir sesiones» hasta la fecha.',
+        'Hoy más corto: una sola tarjeta para Las 3 y ¿Qué hago ahora?',
+      ] },
+    ],
+  },
+  {
     version: '2.0', date: '2026-11-03', title: 'La era social',
     groups: [
       { name: 'Social', items: [
@@ -119,47 +142,198 @@ export const NEWS: NewsEntry[] = [
   {
     version: '1.18', date: '2026-10-06', title: 'Logros y Arena', announce: false,
     groups: [
-      { name: 'Logros y Arena', items: [
+      { name: 'Novedades', items: [
         '55 logros con nombres épicos, de bronce a leyenda.',
-        '15 bosses en 5 sagas que se desbloquean por nivel y uno tras otro.',
-        'Tienda con categorías, historial y tus propias recompensas.',
-      ] },
-      { name: 'Cuenta', items: [
-        'Entrar con tu email (código de un solo uso) y partida guardada en la nube, o entrar como invitado.',
-      ] },
-      { name: 'Progresión', items: [
-        'Secciones que se desbloquean por nivel (3, 5 y 7), cada una con su tutorial.',
-        'Rituales de ascensión con Hiperión para los avatares.',
-        'Aros de avatar con minerales y gemas, animados.',
-        'Atributos descritos y Maestría equilibrada.',
-      ] },
-      { name: 'Planificación', items: [
-        'Calendario con fechas límite y el camino del héroe en el mapa.',
-        'Objetivos a 3 meses con revisiones a los 30, 60 y 90 días.',
-        'Hábitos semanales y estado del día.',
-      ] },
-      { name: 'Deep Work y reinos', items: [
-        '«¿Qué vas a hacer?» en vez de tipos fijos, y Pomodoro 50/10 y 90/30.',
-        'Reinos más bonitos, vista desde arriba y un castillo que mejora con cada construcción.',
+        '15 bosses en 5 sagas que se desbloquean por nivel y, dentro de cada saga, tras derrotar al anterior.',
+        'Tienda por categorías, recompensas propias con icono e historial de canjes.',
+        'Aros de avatar animados según su material.',
+        'Pomodoro 50/10 y 90/30 para entrar en flow.',
         'La versión de la app, visible en una esquina.',
+      ] },
+    ],
+  },
+  {
+    version: '1.17', date: '2026-10-06', title: 'Aros esculpidos', announce: false,
+    groups: [
+      { name: 'Novedades', items: [
+        'Cada aro de avatar es un único marco esculpido con una gema grande como foco.',
+      ] },
+    ],
+  },
+  {
+    version: '1.16', date: '2026-10-06', title: 'Deep Work con intención', announce: false,
+    groups: [
+      { name: 'Novedades', items: [
+        '«¿Qué vas a hacer?» en vez de tipos fijos: decide si la sesión sube Maestría (práctica) o Sabiduría (teoría).',
+        'Pomodoro con descanso automático.',
+      ] },
+    ],
+  },
+  {
+    version: '1.15', date: '2026-10-06', title: 'El castillo crece', announce: false,
+    groups: [
+      { name: 'Novedades', items: [
+        'El castillo de cada reino mejora con cada construcción: 12 niveles, de fortín de madera a castillo glorioso.',
+      ] },
+    ],
+  },
+  {
+    version: '1.14', date: '2026-10-06', title: 'Aros con gemas', announce: false,
+    groups: [
+      { name: 'Novedades', items: [
+        'Aros de avatar de minerales y gemas: de granito y cuarzo al aro Excelsior con todas las gemas.',
+      ] },
+    ],
+  },
+  {
+    version: '1.13', date: '2026-10-06', title: 'Atributos y estado del día', announce: false,
+    groups: [
+      { name: 'Novedades', items: [
+        'Cada atributo descrito; Creación pasa a Impacto, que se despierta en el nivel 10.',
+        'Hábitos de 1 a 6 veces por semana, con racha en semanas.',
+        'Estado del día con informe para copiar a una IA.',
+        'Eventos en el calendario (examen, lanzamiento, llamada, reunión).',
+      ] },
+    ],
+  },
+  {
+    version: '1.12', date: '2026-10-06', title: 'Reinos desde arriba', announce: false,
+    groups: [
+      { name: 'Novedades', items: [
+        'Ciudades más detalladas y una vista nueva desde arriba, además de la frontal.',
+      ] },
+    ],
+  },
+  {
+    version: '1.11', date: '2026-10-06', title: 'Calendario y camino del héroe', announce: false,
+    groups: [
+      { name: 'Novedades', items: [
+        'Misiones con fecha límite y vista Calendario.',
+        'Aro propio para cada avatar.',
+        'El camino del héroe como sendero que sube la montaña.',
+        'Hiperión revisa tus objetivos a 3 meses los días 30, 60 y 90.',
+      ] },
+    ],
+  },
+  {
+    version: '1.10', date: '2026-10-06', title: 'Objetivos flexibles', announce: false,
+    groups: [
+      { name: 'Novedades', items: [
+        'Los objetivos a 3 meses se pueden borrar para no bloquear el avance.',
+      ] },
+    ],
+  },
+  {
+    version: '1.9', date: '2026-10-06', title: 'Rituales de ascensión', announce: false,
+    groups: [
+      { name: 'Novedades', items: [
+        'Subir de avatar exige un ritual con Hiperión: preguntas, juramento y ceremonia.',
+        'Objetivos a 3 meses en Personaje.',
+        'Reinos se desbloquean en el nivel 3 y la Arena en el 5; el tope diario de XP crece con el nivel.',
+      ] },
+    ],
+  },
+  {
+    version: '1.8', date: '2026-10-06', title: 'Secciones por nivel', announce: false,
+    groups: [
+      { name: 'Novedades', items: [
+        'Secciones que se abren al subir de nivel, cada una con su tutorial.',
+        'Rueda de ajustes arriba a la derecha.',
+        'El tutorial visto ya no se repite en otro dispositivo, y si la nube y el dispositivo no coinciden, te pregunta con cuál quedarte.',
+      ] },
+    ],
+  },
+  {
+    version: '1.7', date: '2026-10-06', title: 'Entrar con email o como invitado', announce: false,
+    groups: [
+      { name: 'Novedades', items: [
+        'Pantalla de entrada: tu email o «Entrar como invitado».',
+        'Eliges tus hábitos en el tutorial.',
+        'Errores de inicio de sesión que se entienden.',
+      ] },
+    ],
+  },
+  {
+    version: '1.6', date: '2026-10-06', title: 'La nube, conectada', announce: false,
+    groups: [
+      { name: 'Novedades', items: [
+        'La cuenta se conecta a la nube de Excelsior.',
+      ] },
+    ],
+  },
+  {
+    version: '1.5', date: '2026-10-06', title: 'Cuenta por email (preparada)', announce: false,
+    groups: [
+      { name: 'Novedades', items: [
+        'Inicio de sesión con un código por email y partida en la nube, aún desactivado.',
+      ] },
+    ],
+  },
+  {
+    version: '1.4', date: '2026-10-06', title: 'Tutorial más claro', announce: false,
+    groups: [
+      { name: 'Novedades', items: [
+        'Tutorial más corto y claro.',
+        'Bosses y ciudades animados.',
+      ] },
+    ],
+  },
+  {
+    version: '1.3', date: '2026-10-04', title: 'Exportar desde Claude', announce: false,
+    groups: [
+      { name: 'Novedades', items: [
+        'Exportar la partida también funciona dentro de Claude.',
+      ] },
+    ],
+  },
+  {
+    version: '1.2', date: '2026-10-04', title: 'La Arena', announce: false,
+    groups: [
+      { name: 'Novedades', items: [
+        'Monedas, bosses griegos con vida y plazo, y tienda de recompensas propias.',
+        '10 avatares, de Aprendiz a Excelsior.',
+        'Crónica semanal con reto, exportar e importar partida, 6 temas y colores propios.',
+        'Sonidos, confeti y sonido de fondo en Deep Work.',
+        'Ciudad medieval dibujada y Hiperión como guía.',
+      ] },
+    ],
+  },
+  {
+    version: '1.1', date: '2026-10-04', title: 'Reinos medievales', announce: false,
+    groups: [
+      { name: 'Novedades', items: [
+        'Mapa del reino con tu fortaleza en el centro.',
+        'Construcciones y etapas medievales, de campamento a reino glorioso.',
+        'Tutorial con guía.',
+        'Gráfica de XP diario y actividad en cuadraditos.',
       ] },
     ],
   },
   {
     version: '1.0', date: '2026-10-04', title: 'El comienzo', announce: false,
     groups: [
-      { name: 'La primera versión', items: [
-        'Misiones con XP, atributos y un avatar que sube de nivel.',
+      { name: 'Novedades', items: [
+        'Misiones con XP y atributos.',
+        'Un avatar que sube de nivel.',
         'Deep Work con cronómetro: cada minuto de foco da XP.',
         'Hábitos con racha.',
-        'Reinos medievales con mapa y ciudades dibujadas que crecen con tus tareas.',
-        'Arena con bosses y tienda de recompensas.',
-        'Tutorial con guía, gráfica de XP y actividad en cuadraditos.',
-        'Temas de color, avatares, sonidos y exportar la partida.',
+        'Reinos para tus proyectos.',
       ] },
     ],
   },
 ];
+
+/** Versión entera de una entrada: «1.18» → «1». */
+export const majorOf = (v: string) => v.split('.')[0];
+
+/** Índice: cada versión entera (x.0) con sus actualizaciones (x.1, x.2…), de la más nueva a la más vieja. */
+export function newsGroups(news = NEWS): { major: NewsEntry; updates: NewsEntry[] }[] {
+  const majors = news.filter((n) => /\.0$/.test(n.version));
+  return majors.map((major) => ({
+    major,
+    updates: news.filter((n) => n !== major && majorOf(n.version) === majorOf(major.version)),
+  }));
+}
 
 const SEEN_KEY = 'excelsior:news-seen';
 
@@ -173,10 +347,18 @@ export function cmpVersion(a: string, b: string): number {
   return 0;
 }
 
-/** Entrada que anunciar ahora, si toca: la de la versión actual, aún no vista. */
+/** La más nueva de varias versiones vistas (ignora vacías). */
+export function latestVersion(...vs: (string | null | undefined)[]): string | null {
+  return vs.filter((v): v is string => !!v).sort(cmpVersion).pop() ?? null;
+}
+
+/**
+ * Entrada que anunciar ahora, si toca: la de la versión actual, si lo visto es más viejo.
+ * Si ya viste una versión más nueva (la web de prueba va por delante), no se anuncia nada.
+ */
 export function newsToAnnounce(seen: string | null, version = APP_VERSION, news = NEWS): NewsEntry | null {
   const entry = news.find((n) => n.version === version);
-  if (!entry || entry.announce === false || seen === version) return null;
+  if (!entry || entry.announce === false || (seen && cmpVersion(seen, version) >= 0)) return null;
   return entry;
 }
 
