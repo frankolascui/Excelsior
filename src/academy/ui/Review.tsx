@@ -274,7 +274,7 @@ export function Review({ subjectId, topicIds }: { subjectId?: string; topicIds?:
       <section className="review-done panel batch-done" data-testid="batch-done">
         <p className="eyebrow">Tanda {n} hecha</p>
         <h1 className="section-title">{s.total - s.again} de {s.total} recordadas</h1>
-        <p className="muted">{s.again ? `Las ${s.again} que fallaste volverán dentro de un rato.` : 'Ni un fallo en esta tanda.'} {queue.length === 1 ? 'Queda 1 tarjeta' : `Quedan ${queue.length} tarjetas`} hoy.</p>
+        <p className="muted">{s.again ? (s.again === 1 ? "La que fallaste volverá dentro de un rato." : `Las ${s.again} que fallaste volverán dentro de un rato.`) : 'Ni un fallo en esta tanda.'} {queue.length === 1 ? 'Queda 1 tarjeta' : `Quedan ${queue.length} tarjetas`} hoy.</p>
         <div className="row">
           <button className="primary" autoFocus onClick={() => { setPause(false); shownAt.current = Date.now(); sfx.open(); }}>
             <Icon name="play" /> Siguiente tanda ({Math.min(BATCH, queue.length)}) <kbd>espacio</kbd>
