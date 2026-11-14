@@ -281,6 +281,8 @@ export interface GameState {
    * la web normal volvería a enseñar las novedades de la 3.0 cada vez.
    */
   newsLatest?: string;
+  /** Minutos al día para repasar en Academy (sin campo = sin límite). */
+  academyBudgetMin?: number;
   /** Avatares a los que ya has ascendido con su ritual. Sin el campo (partidas antiguas) se calculan como antes. */
   ascended?: string[];
   /** Respuestas que diste a Hiperión en cada ritual de ascensión. */

@@ -71,6 +71,11 @@ export default function AcademyApp({ game }: { game: Game }) {
   // Sin limpiar al desmontar: salir de la pestaña a mitad de repaso también debe contar.
   const actRef = useRef(act);
   actRef.current = act;
+  studyBridge.budgetMin = game.state.academyBudgetMin ?? null;
+  studyBridge.setBudget = (min) => actRef.current((s) => {
+    const { academyBudgetMin: _old, ...rest } = s;
+    return min ? { ...rest, academyBudgetMin: min } : rest;
+  });
   studyBridge.onStudy = (r) => {
     const save = (cleared: boolean) => {
       actRef.current((s) => recordStudy(s, { ...r, cleared }, Date.now()), undefined, { sound: 'reward', party: cleared });

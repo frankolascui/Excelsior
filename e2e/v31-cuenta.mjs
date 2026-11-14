@@ -141,6 +141,33 @@ await page.waitForTimeout(400);
 check(await page.isVisible('.grades'), 'vuelve a la tarjeta anterior con la respuesta a la vista');
 await page.keyboard.press('4');
 
+// Minutos al día: se eligen en «Hoy» de la estantería y se guardan en la partida.
+await page.evaluate(() => { location.hash = '#academy/'; });
+await page.waitForSelector('[data-testid="academy-budget"]', { timeout: 8000 });
+await page.click('[data-testid="academy-budget"] button:has-text("Ponte minutos al día")');
+await page.click('[data-testid="academy-budget"] .budget-chips button:has-text("10 min")');
+await page.waitForTimeout(800);
+check(await page.isVisible('[data-testid="academy-budget"]:has-text("de tus 10 min")'), 'Academy: minutos al día con la estimación de hoy');
+check((await game(page)).academyBudgetMin === 10, 'los minutos al día se guardan en la partida');
+await page.screenshot({ path: `${out}/v31b-academy-minutos.png` });
+
+// Bandeja de revisión: lo pegado no entra al repaso hasta aprobarlo.
+await page.evaluate(() => { location.hash = '#academy/a/s1/t/t1'; });
+await page.click('.mode-tabs button:has-text("Tarjetas")');
+await page.waitForSelector('.review-cta');
+const before = db.study_cards.length;
+await page.click('.review-cta button:has-text("Importar")');
+await page.fill('.modal textarea', '¿Derivada de x^2?;2x\n¿Qué es una derivada?;La pendiente de la tangente\n¿Integral de 1/x?;ln|x| + C');
+await page.click('.modal button.primary:has-text("bandeja")');
+await page.waitForSelector('[data-testid="draft-tray"]');
+check(db.study_cards.length === before, 'lo pegado va a la bandeja: aún no hay tarjetas nuevas en el repaso');
+check(await page.isVisible('.draft .draft-flag:has-text("ya existe")'), 'la bandeja avisa de una duplicada');
+await page.screenshot({ path: `${out}/v31b-bandeja.png` });
+await page.click('[data-testid="draft-tray"] .draft-tray-head button.primary');
+await page.waitForTimeout(800);
+check(db.study_cards.length === before + 2, `aprobar mete solo las que no tienen aviso (${db.study_cards.length - before})`);
+check(await page.isVisible('[data-testid="draft-tray"]'), 'la duplicada se queda en la bandeja para que decidas');
+
 // Deep Work: pregunta de distracción y valoración al terminar.
 await page.evaluate(() => { location.hash = '#deepwork'; });
 await page.click('[data-testid="tab-focus"], .deep-tabs-row button:has-text("Foco")').catch(() => {});

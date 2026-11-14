@@ -9,4 +9,9 @@ export interface StudyReport {
   label: string;
 }
 
-export const studyBridge: { onStudy: ((r: StudyReport) => void) | null } = { onStudy: null };
+export const studyBridge: {
+  onStudy: ((r: StudyReport) => void) | null;
+  /** Minutos al día para Academy (null = sin límite). Vive en la partida del RPG, así viaja entre dispositivos. */
+  budgetMin: number | null;
+  setBudget: ((min: number | null) => void) | null;
+} = { onStudy: null, budgetMin: null, setBudget: null };

@@ -106,12 +106,12 @@ export function secondsPerCard(reviews: readonly ReviewLog[]) {
 }
 
 /** Aviso de carga: minutos de media que te esperan los próximos 7 días (sin contar las nuevas). */
-export function loadWarning(next: readonly { n: number }[], secPerCard: number) {
+export function loadWarning(next: readonly { n: number }[], secPerCard: number, limitMin = LOAD_WARN_MIN) {
   const week = next.slice(0, 7);
   const avg = week.reduce((a, d) => a + d.n, 0) / Math.max(1, week.length);
   const minutes = Math.round((avg * secPerCard) / 60);
   const peak = Math.max(0, ...week.map((d) => d.n));
-  return { avgCards: Math.round(avg), minutes, peak, heavy: minutes >= LOAD_WARN_MIN };
+  return { avgCards: Math.round(avg), minutes, peak, heavy: minutes >= limitMin };
 }
 
 /** Racha: días seguidos con al menos una respuesta, contando hasta hoy (o hasta ayer si hoy aún no has repasado). */

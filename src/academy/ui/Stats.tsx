@@ -7,6 +7,7 @@ import type { Subject, Topic } from '../study/types';
 import { sfx } from '../sfx';
 import { friendly } from './CardsPanel';
 import { Icon } from './Icon';
+import { studyBridge } from '../bridge';
 
 // Dominio: una sola gama (de oscuro a claro = de menos a más) porque es un orden, no tres cosas distintas.
 const MASTERY = [
@@ -41,7 +42,7 @@ export function Stats({ subjectId }: { subjectId?: string }) {
       daily: dailyCounts(reviews, 30),
       retention: trueRetention(reviews),
       estimated: estimatedRetention(cards),
-      load: loadWarning(next, secondsPerCard(reviews)),
+      load: loadWarning(next, secondsPerCard(reviews), studyBridge.budgetMin ?? undefined),
       streak: streak(data.reviews), // la racha es tuya, no de una asignatura
       mastery: mastery(cards),
       weak: weakTopics(reviews),
@@ -89,7 +90,7 @@ export function Stats({ subjectId }: { subjectId?: string }) {
       {view.load.heavy && (
         <div className="warn-note" role="status">
           <Icon name="clock" />
-          <p><strong>Vas cargado:</strong> los próximos 7 días te esperan unas {view.load.avgCards} tarjetas al día (~{view.load.minutes} min), con un pico de {view.load.peak}.
+          <p><strong>Vas cargado:</strong> los próximos 7 días te esperan unas {view.load.avgCards} tarjetas al día (~{view.load.minutes} min{studyBridge.budgetMin ? `, y tu tiempo es ${studyBridge.budgetMin} min` : ''}), con un pico de {view.load.peak}.
             Si es demasiado, pasa alguna asignatura a «Mínimo» o no añadas tarjetas nuevas unos días: los repasos bajarán solos.</p>
         </div>
       )}
