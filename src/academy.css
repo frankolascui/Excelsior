@@ -80,3 +80,7 @@
 .acad .batch-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); transition: background 0.2s ease, box-shadow 0.2s ease; }
 .acad .batch-dots i.on { background: var(--c1); box-shadow: 0 0 8px color-mix(in srgb, var(--c1) 60%, transparent); }
 .acad .batch-done .row { flex-wrap: wrap; justify-content: center; }
+
+/* Borrar tarjeta: en el repaso junto a Deshacer, y en el editor a la derecha */
+.acad .review .crumbs .delete-card { margin-left: 4px; }
+.acad .card-form .card-delete { margin-left: auto; }

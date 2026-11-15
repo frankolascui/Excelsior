@@ -1,4 +1,5 @@
 // Misiones prehechas: catálogo por categorías + «Mías» (plantillas propias), para añadir con un toque.
+import { sureThen } from './confirm';
 import { useState, type FormEvent } from 'react';
 import type { Game } from './screens';
 import type { QuestTemplate, QuestType } from './types';
@@ -52,7 +53,7 @@ export function QuestTemplates({ game }: { game: Game }) {
                     </span>
                   </div>
                   {tab === MINE && (
-                    <button type="button" className="icon-btn" onClick={() => act((s) => deleteTemplate(s, tpl.id))} aria-label={`Borrar plantilla ${tpl.title}`} title="Borrar plantilla"><Icon name="trash" /></button>
+                    <button type="button" className="icon-btn" onClick={() => sureThen({ title: `¿Borrar la plantilla «${tpl.title}»?`, confirmLabel: 'Borrar plantilla' }, () => act((s) => deleteTemplate(s, tpl.id)))} aria-label={`Borrar plantilla ${tpl.title}`} title="Borrar plantilla"><Icon name="trash" /></button>
                   )}
                   <button type="button" className={have ? 'ghost small' : 'primary small'} onClick={() => add(tpl)} aria-label={`Añadir ${tpl.title}`}
                     title={have ? 'Ya la tienes pendiente; se añadirá otra' : 'Añadir a tus misiones'}>

@@ -1,5 +1,6 @@
 // Priorización estratégica en pantalla: «Las 3 de hoy», elegir las de mañana, limpieza de misiones viejas
 // y la revisión semanal dentro de la crónica.
+import { sureThen } from './confirm';
 import { useState, type FormEvent } from 'react';
 import type { Game } from './screens';
 import type { Quest, WeeklyReview } from './types';
@@ -197,7 +198,7 @@ export function CleanupPanel({ game, now }: { game: Game; now: number }) {
             <div className="item-actions">
               <button className="ghost small" onClick={() => act((s) => keepQuest(s, q.id, Date.now()))} title="Se queda; no vuelve a preguntar en 14 días">La hago</button>
               <button className="ghost small" onClick={() => { act((s) => postponeQuest(s, q.id, Date.now())); toast('Vuelve dentro de una semana', 'info'); }}>Posponer</button>
-              <button className="ghost small danger" onClick={() => { act((s) => dropQuest(s, q.id)); sfx.undo(); toast('Eliminada: una cosa menos', 'info'); }}>Eliminar</button>
+              <button className="ghost small danger" onClick={() => sureThen({ title: `¿Eliminar «${q.title}»?`, message: 'La misión se borra: una cosa menos que hacer.', confirmLabel: 'Eliminar' }, () => { act((s) => dropQuest(s, q.id)); sfx.undo(); toast('Eliminada: una cosa menos', 'info'); })}>Eliminar</button>
             </div>
           </li>
         ))}

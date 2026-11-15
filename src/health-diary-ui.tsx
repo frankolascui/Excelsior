@@ -1,6 +1,7 @@
 // El diario de sueño completo dentro del Reino de la Salud: el formulario entero de la noche, el panel del día
 // (metas del plan, semana y gráfico), el historial y los datos (horario, exportar, importar).
 // Es lo que hacía la web de Excelsior Health, con las mismas reglas (health-diary.ts).
+import { sureThen } from './confirm';
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
 import type { Game } from './screens';
 import { dayKey } from './game';
@@ -199,7 +200,7 @@ export function NightForm({ game, day, onDone }: { game: Game; day: string; onDo
       <div className="row">
         <button type="submit" className="primary"><Icon name="check" /> {saved ? 'Guardar cambios' : 'Apuntar la noche'}</button>
         {saved && (
-          <button type="button" className="ghost" onClick={() => {
+          <button type="button" className="ghost danger" onClick={() => sureThen({ title: '¿Borrar la noche apuntada?', message: 'Si completaba una obra y deja de cumplirse, la obra se derriba.', confirmLabel: 'Borrar noche' }, () => {
             deleteNight(day);
             clearDraft();
             let lost: string[] = [];
@@ -210,7 +211,7 @@ export function NightForm({ game, day, onDone }: { game: Game; day: string; onDo
             });
             if (lost.length) toast(`Obra derribada al borrar la noche: ${lost.join(', ')} (−${lost.length * WORK_COINS} {i:coin})`, 'info', 5000);
             onDone();
-          }}><Icon name="trash" /> Borrar</button>
+          })}><Icon name="trash" /> Borrar</button>
         )}
       </div>
     </form>

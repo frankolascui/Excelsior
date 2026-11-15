@@ -106,6 +106,8 @@ export function CardsPanel({ subjectId, topicId, onTopicsChanged }: { subjectId:
             <CardEditor key={c.id} card={c} onCancel={() => setEditing(null)} onSave={(f, b) => {
               setEditing(null);
               act(() => updateCard(c.id, { front: f, back: b }), sfx.saved);
+            }} onDelete={async () => {
+              if (await askConfirm({ title: '¿Borrar esta tarjeta?', message: 'Se borra también su historial de repasos.', confirmLabel: 'Borrar tarjeta', danger: true })) { setEditing(null); act(() => deleteCard(c.id), sfx.remove); }
             }} />
           ) : (
             <li key={c.id} className={c.suspended ? 'card-row off' : 'card-row'} onClick={() => { sfx.tick(); setEditing(c.id); }} title="Pulsa para editar">
@@ -173,7 +175,7 @@ function DraftTray({ drafts, existing, onChange, onApprove }: {
                 {fl.map((f) => <span key={f} className={`pill draft-flag ${f}`} title={FLAG_HINT[f]}>{FLAG_LABEL[f]}</span>)}
                 <span className="muted small">{d.source}</span>
                 <div className="row">
-                  <button type="button" className="icon-btn" aria-label="Descartar borrador" title="Descartar" onClick={() => { onChange(drafts.filter((x) => x.id !== d.id)); sfx.remove(); }}><Icon name="trash" /></button>
+                  <button type="button" className="icon-btn" aria-label="Descartar borrador" title="Descartar" onClick={async () => { if (await askConfirm({ title: '¿Descartar este borrador?', message: plainPreview(d.front).slice(0, 120), confirmLabel: 'Descartar', danger: true })) { onChange(drafts.filter((x) => x.id !== d.id)); sfx.remove(); } }}><Icon name="trash" /></button>
                   <button type="button" className="secondary small" disabled={!d.front.trim()} onClick={() => onApprove([d])}><Icon name="check" /> Aprobar</button>
                 </div>
               </div>
@@ -185,7 +187,7 @@ function DraftTray({ drafts, existing, onChange, onApprove }: {
   );
 }
 
-function CardEditor({ card, onSave, onCancel }: { card: CardRow; onSave: (front: string, back: string) => void; onCancel: () => void }) {
+function CardEditor({ card, onSave, onCancel, onDelete }: { card: CardRow; onSave: (front: string, back: string) => void; onCancel: () => void; onDelete: () => void }) {
   const [f, setF] = useState(card.front);
   const [b, setB] = useState(card.back);
   return (
@@ -196,6 +198,7 @@ function CardEditor({ card, onSave, onCancel }: { card: CardRow; onSave: (front:
         <div className="row">
           <button className="primary" disabled={!f.trim()}><Icon name="check" /> Guardar</button>
           <button type="button" className="ghost" onClick={onCancel}>Cancelar</button>
+          <button type="button" className="ghost danger card-delete" onClick={onDelete}><Icon name="trash" /> Borrar tarjeta</button>
         </div>
       </form>
     </li>

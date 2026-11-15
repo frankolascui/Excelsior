@@ -111,6 +111,7 @@ check(g.habitCompletions.filter((c) => c.habitId === 'sys-salud').length === 5, 
 // Borrar la noche de hoy devuelve el XP y desmarca.
 await page.click('.night-summary button:has-text("Editar")');
 await page.click('.night-form button:has-text("Borrar")');
+await page.click('[data-testid="sure-dialog"] button.danger-solid');
 g = await game(page);
 check(g.habitCompletions.filter((c) => c.habitId === 'sys-salud').length === 4, 'borrar la noche desmarca el hábito');
 

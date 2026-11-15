@@ -130,6 +130,7 @@ await page.click('button[aria-label="Más acciones de Llamar al tutor del TFG"]'
 check(await seen(page, '.item-tools button:has-text("Borrar")') && !(await page.isVisible('.item:has-text("Responder correos") button:has-text("Borrar")')), 'las acciones de una misión salen solo al pulsar ⋯');
 await page.screenshot({ path: `${out}/p4-misiones-limpieza.png`, fullPage: true });
 await page.click('.cleanup-item:has-text("Ver el curso de Notion") button:has-text("Eliminar")');
+await page.click('[data-testid="sure-dialog"] button.danger-solid');
 check(!(await page.isVisible('.item:has-text("Ver el curso de Notion")')), 'eliminar la quita');
 await page.click('.cleanup-item:has-text("Ordenar el escritorio") button:has-text("Posponer")');
 check(!(await page.isVisible('.cleanup')), 'posponer la quita de la limpieza');

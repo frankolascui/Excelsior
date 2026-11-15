@@ -475,3 +475,12 @@ button.tg-session { font-family: inherit; justify-content: flex-start; align-ite
   .news-center-body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
   .news-index { max-height: 34dvh; }
 }
+
+/* «¿Seguro?» antes de borrar (confirm.tsx) */
+.sure-overlay { z-index: 80; }
+.sure-card { width: min(400px, 100%); gap: 10px; }
+.sure-card h3 { margin: 0; font-family: var(--display); font-size: 21px; line-height: 1.25; }
+.sure-card p { margin: 0; }
+.sure-icon { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); }
+.sure-icon .ico { width: 20px; height: 20px; }
+.sure-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; flex-wrap: wrap; }

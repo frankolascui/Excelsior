@@ -83,6 +83,11 @@ async function fake(ctx) {
       });
       return json(201, one ? added[0] : added);
     }
+    if (r.method() === 'DELETE') {
+      const gone = new Set(filter(rows, u.searchParams));
+      db[table] = rows.filter((x) => !gone.has(x));
+      return route.fulfill({ status: 204, headers: cors });
+    }
     if (r.method() === 'PATCH') {
       filter(rows, u.searchParams).forEach((x) => Object.assign(x, r.postDataJSON()));
       return route.fulfill({ status: 204, headers: cors });
@@ -184,6 +189,16 @@ await page.screenshot({ path: `${out}/v31b-tanda.png` });
 await page.keyboard.press('Space');
 await page.waitForTimeout(300);
 check(await page.isVisible('.flashcard'), 'espacio sigue con la siguiente tanda');
+const antes = db.study_cards.length;
+await page.click('.review .delete-card');
+await page.waitForSelector('.dialog-backdrop');
+check(await page.isVisible('.dialog-backdrop:has-text("¿Borrar esta tarjeta?")'), 'Borrar tarjeta en el repaso pide «¿Seguro?»');
+await page.click('.dialog-backdrop button:has-text("Cancelar")');
+check(db.study_cards.length === antes && await page.isVisible('.flashcard'), 'cancelar no borra la tarjeta');
+await page.click('.review .delete-card');
+await page.click('.dialog-backdrop button:has-text("Borrar tarjeta")');
+await page.waitForTimeout(600);
+check(!(await page.isVisible('.flashcard')) && db.study_cards.length === antes - 1, 'al borrar la tarjeta sale de la cola y de la base de datos');
 
 // Deep Work: pregunta de distracción y valoración al terminar.
 await page.evaluate(() => { location.hash = '#deepwork'; });

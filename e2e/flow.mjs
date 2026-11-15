@@ -30,6 +30,12 @@ async function questAction(title, label) {
   const sel = `button[aria-label="${label} ${title}"]`;
   if (!(await page.isVisible(sel))) await page.click(`button[aria-label="Más acciones de ${title}"]`);
   await page.click(sel);
+  if (label === 'Borrar') await sure();
+}
+/** Dice «sí» en la ventana «¿Seguro?» de borrar. */
+async function sure() {
+  await page.waitForSelector('[data-testid="sure-dialog"]', { timeout: 3000 });
+  await page.click('[data-testid="sure-dialog"] button.danger-solid');
 }
 /** Abre «Más opciones» del formulario de misión si está cerrado. */
 async function moreOpts(scope = '[data-tour="quest-add"]') {
@@ -151,6 +157,11 @@ await page.click('.template-new button:has-text("Guardar plantilla")');
 check(await seen('.templates-list .template-row:has-text("Clase de violín")') && await seen('[role=tab]:has-text("Mías · 1")'), 'se puede guardar una plantilla propia');
 await page.screenshot({ path: `${out}/02c-templates.png`, fullPage: true });
 await page.click('button[aria-label="Borrar plantilla Clase de violín"]');
+check(await seen('[data-testid="sure-dialog"]:has-text("¿Borrar la plantilla")'), 'borrar pide «¿Seguro?»');
+await page.click('[data-testid="sure-dialog"] button:has-text("Cancelar")');
+check(await seen('button[aria-label="Borrar plantilla Clase de violín"]'), 'cancelar no borra nada');
+await page.click('button[aria-label="Borrar plantilla Clase de violín"]');
+await sure();
 await questAction('Hablar con alguien nuevo', 'Borrar');
 await page.click('button.templates-open');
 await page.click('.nav-item:has-text("Hoy")');

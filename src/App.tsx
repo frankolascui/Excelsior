@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { SureHost } from './confirm';
 import { APP_VERSION, APP_VERSION_LABEL } from './version';
 import { AchievementPopup } from './achievements-ui';
 import { useHealthBridge } from './health-ui';
@@ -284,6 +285,7 @@ export default function App() {
       {ritual && !tour && <RitualDialog game={game} guide={tutorial.guide} onClose={() => setRitual(false)} />}
       {review && !tour && !ritual && <ReviewDialog game={game} guide={tutorial.guide} onClose={() => setReview(false)} />}
 
+      <SureHost />
       <NewsGate
         seen={latestVersion(state.newsSeen, state.newsLatest, loadNewsSeen())} createdAt={state.profile.createdAt}
         ready={introSeen && (!cloud.email || game.cloudChecked)}

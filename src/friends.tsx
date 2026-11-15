@@ -1,4 +1,5 @@
 // Pantalla de Amigos (V2): tu perfil con foto, biografía y tag; añadir por tag; solicitudes; amigos y recomendados.
+import { sureThen } from './confirm';
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import type { Game } from './screens';
 import { RequireAccount } from './account';
@@ -162,7 +163,7 @@ function MyProfile({ game }: { game: Game }) {
           ) : <p className="muted small-text">Creando tu tag…</p>}
           <InfoTip label="Cómo te añaden"><p>Tus amigos te añaden con este tag, o mándales tu enlace: al entrar con él te llega su solicitud sola.</p></InfoTip>
           {me && <button className="primary small invite-btn" onClick={() => void shareInvite()}><Icon name="send" /> Invitar a un amigo</button>}
-          {state.profile?.photo && <button className="link" onClick={() => act((s) => setPhoto(s, null))}>Quitar foto</button>}
+          {state.profile?.photo && <button className="link" onClick={() => sureThen({ title: '¿Quitar tu foto de perfil?', confirmLabel: 'Quitar foto' }, () => act((s) => setPhoto(s, null)))}>Quitar foto</button>}
         </div>
       </div>
       <form className="bio-form" onSubmit={save}>

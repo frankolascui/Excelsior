@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { countNew, hasCardExtras, listAllTopics, listExamDates, listReviewsSince, listSubjects, loadDue, loadNew, loadStarted, newTopicsToday, saveReview, undoReview } from '../study/api';
+import { countNew, deleteCard, hasCardExtras, listAllTopics, listExamDates, listReviewsSince, listSubjects, loadDue, loadNew, loadStarted, newTopicsToday, saveReview, undoReview } from '../study/api';
 import { ensureParams } from '../study/params';
 import { allocateNew, BUDGET_OPTIONS, dailyBudget, estimateMinutes } from '../study/budget';
 import { secondsPerCard } from '../study/stats';
@@ -12,6 +12,7 @@ import { sfx } from '../sfx';
 import { friendly } from './CardsPanel';
 import { Icon } from './Icon';
 import { studyBridge } from '../bridge';
+import { askConfirm } from './Dialog';
 
 const Markdown = lazy(() => import('./Markdown').then((m) => ({ default: m.Markdown })));
 
@@ -206,10 +207,29 @@ export function Review({ subjectId, topicIds }: { subjectId?: string; topicIds?:
     if (id) undoReview(last.card.id, { ...before, suspended: last.card.suspended ?? false }, id).catch((e) => setError(`No se ha podido deshacer: ${friendly(e.message)}`));
   }, []);
 
+  /** Borrar la tarjeta que está en pantalla (con «¿Seguro?»): sale de la cola y de la base de datos. */
+  const removeCard = useCallback(async () => {
+    if (!card) return;
+    const ok = await askConfirm({ title: '¿Borrar esta tarjeta?', message: 'Se borra para siempre, con su historial de repasos.', confirmLabel: 'Borrar tarjeta', danger: true });
+    if (!ok) return;
+    try {
+      await deleteCard(card.id);
+      history.current = history.current.filter((h) => h.card.id !== card.id).map((h) => ({ ...h, queue: h.queue.filter((c) => c.id !== card.id) }));
+      setCanUndo(history.current.length > 0);
+      setQueue((q) => (q ?? []).filter((c) => c.id !== card.id));
+      setRevealed(false);
+      shownAt.current = Date.now();
+      sfx.remove();
+    } catch (e) {
+      setError(`No se ha podido borrar: ${friendly((e as Error).message)}`);
+    }
+  }, [card]);
+
   // Teclado: espacio o Enter muestra la respuesta; 1-4 la puntúa; Z o Ctrl+Z deshace.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLElement && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+      if (document.querySelector('.dialog-backdrop, [data-testid="sure-dialog"]')) return; // con una ventana abierta, las teclas son suyas
       if (pause) {
         if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setPause(false); shownAt.current = Date.now(); sfx.open(); }
         if (e.key === 'z' || e.key === 'Z') { e.preventDefault(); void undo(true); }
@@ -295,6 +315,7 @@ export function Review({ subjectId, topicIds }: { subjectId?: string; topicIds?:
       <nav className="crumbs">
         <a className="back-btn" href={back}><Icon name="left" size={16} /> Salir</a>
         <button className="ghost small undo-btn" onClick={() => void undo()} disabled={!canUndo} title="Deshacer la última respuesta"><Icon name="undo" size={16} /> Deshacer</button>
+        <button className="ghost small danger delete-card" onClick={() => void removeCard()} title="Borrar esta tarjeta para siempre"><Icon name="trash" size={16} /> Borrar tarjeta</button>
         <span className="batch-dots" aria-label={`Tanda: ${ratings.length % BATCH} de ${BATCH}`} title="Tanda de 8">
           {Array.from({ length: BATCH }, (_, i) => <i key={i} className={i < ratings.length % BATCH ? 'on' : undefined} />)}
         </span>

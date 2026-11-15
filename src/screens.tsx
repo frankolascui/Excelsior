@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { sureThen } from './confirm';
 import type { useGame } from './store';
 import type { DeepWorkArea, FocusPhase, GameState, Quest, QuestType } from './types';
 import { addGoal, avatarInfo, DEEP_WORK_AREA_HINT, deepWorkRewards, inferDeepWorkArea, deleteGoal, formatAttrXp, goalProgress, habitRewards, questRewards, updateGoal } from './attributes';
@@ -1146,7 +1147,7 @@ function GoalsPanel({ game, now }: { game: Game; now: number }) {
                   <button className="ghost small" onClick={() => act((s) => updateGoal(s, g.id, g.current + (g.target >= g.start ? 1 : -1)))}>
                     {g.target >= g.start ? '+1' : '−1'}
                   </button>
-                  <button className="icon-btn" onClick={() => act((s) => deleteGoal(s, g.id))} aria-label={`Borrar ${g.name}`} title="Borrar"><Icon name="trash" /></button>
+                  <button className="icon-btn" onClick={() => sureThen({ title: `¿Borrar la meta «${g.name}»?`, confirmLabel: 'Borrar meta' }, () => act((s) => deleteGoal(s, g.id)))} aria-label={`Borrar ${g.name}`} title="Borrar"><Icon name="trash" /></button>
                 </div>
               </li>
             );

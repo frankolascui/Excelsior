@@ -1,5 +1,6 @@
 // Rituales de ascensión: para subir de avatar ya no basta con cumplir los requisitos.
 // Hiperión te hace unas preguntas (tu porqué, tus objetivos, un juramento) y entonces asciendes.
+import { sureThen } from './confirm';
 import { useState } from 'react';
 import type { Game } from './screens';
 import type { GameState, RitualAnswer } from './types';
@@ -246,7 +247,7 @@ export function TimedGoals({ game }: { game: Game }) {
               <div className="item-actions goal-actions">
                 <input type="number" step="any" className="goal-input" aria-label={`Valor actual de ${g.name}`} value={g.current}
                   onChange={(e) => e.target.value !== '' && act((s) => updateGoal(s, g.id, Number(e.target.value)))} />
-                <button className="icon-btn" onClick={() => act((s) => deleteGoal(s, g.id))} aria-label={`Borrar ${g.name}`} title="Borrar"><Icon name="trash" /></button>
+                <button className="icon-btn" onClick={() => sureThen({ title: `¿Borrar la meta «${g.name}»?`, confirmLabel: 'Borrar meta' }, () => act((s) => deleteGoal(s, g.id)))} aria-label={`Borrar ${g.name}`} title="Borrar"><Icon name="trash" /></button>
               </div>
             </li>
           );
@@ -370,7 +371,7 @@ export function ReviewDialog({ game, guide, onClose }: { game: Game; guide: stri
                           <button type="submit" className="ghost small">Guardar</button>
                         </form>
                       ) : <button className="ghost small" onClick={() => { setEditing(g.id); setTarget(String(g.target)); }}>Cambiar la meta</button>}
-                      <button className="ghost small danger" onClick={() => act((s) => deleteGoal(s, g.id))}>Abandonar meta</button>
+                      <button className="ghost small danger" onClick={() => sureThen({ title: `¿Abandonar la meta «${g.name}»?`, confirmLabel: 'Abandonar meta' }, () => act((s) => deleteGoal(s, g.id)))}>Abandonar meta</button>
                     </span>
                   )}
                 </div>
