@@ -22,6 +22,7 @@ import './guilds.css';
 import { canFoundGuild, GUILD_FOUND_LEVEL } from './unlocks';
 import { Glyph, Icon } from './icons';
 import { InfoTip } from './infotip';
+import { AdminSocialNote } from './friends';
 
 const fmt = (m: Metric, n: number) => (m === 'deep' ? formatMinutes(n) : `${n}${m === 'xp' ? ' XP' : ''}`);
 const DAY = 86_400_000;
@@ -525,6 +526,7 @@ function GuildBody({ game }: { game: Game }) {
   if (!g.loaded) return <section className="panel"><p className="hint">Cargando tu gremio…</p></section>;
   return (
     <>
+      <AdminSocialNote />
       {g.error && (
         <section className="panel">
           <p className="error-text" role="alert">{g.error}</p>

@@ -4,12 +4,35 @@ import { createClient, type RealtimeChannel, type SupabaseClient, type Session }
 import { useSyncExternalStore } from 'react';
 import type { GameState } from './types';
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from './cloud-config';
+import { ADMIN } from './admin';
 
 export const cloudEnabled = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 
+/**
+ * Modo admin: la partida de pruebas no puede escribir nada del juego en tu cuenta real
+ * (perfil público, amigos, gremios, partida, salud, borrar cuenta). Leer sí, para poder mirar.
+ * Academy (tus apuntes y tarjetas, tablas study_*) sigue funcionando normal.
+ */
+const ADMIN_WRITABLE = /^\/rest\/v1\/(study_[a-z_]+|rpc\/recommended_friends)$/;
+export const ADMIN_READONLY_MSG = 'En modo admin tu cuenta real es solo de lectura: sal del modo admin para hacer esto.';
+export function adminBlocks(method: string, url: string): boolean {
+  if (method.toUpperCase() === 'GET' || method.toUpperCase() === 'HEAD') return false;
+  const path = new URL(url, 'http://x').pathname;
+  if (path.startsWith('/auth/')) return false; // entrar y salir de la cuenta
+  return !ADMIN_WRITABLE.test(path);
+}
+const adminFetch: typeof fetch = (input, init) => {
+  const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+  const method = init?.method ?? (input instanceof Request ? input.method : 'GET');
+  if (adminBlocks(method, url)) {
+    return Promise.resolve(new Response(JSON.stringify({ code: 'ADMIN', message: ADMIN_READONLY_MSG }), { status: 403, headers: { 'content-type': 'application/json' } }));
+  }
+  return fetch(input, init);
+};
+
 let client: SupabaseClient | null = null;
 function sb(): SupabaseClient {
-  client ??= createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  client ??= createClient(SUPABASE_URL, SUPABASE_ANON_KEY, ADMIN ? { global: { fetch: adminFetch } } : undefined);
   return client;
 }
 export const cloudClient = sb;
