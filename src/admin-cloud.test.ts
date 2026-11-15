@@ -14,10 +14,13 @@ describe('modo admin: la cuenta real es solo de lectura', () => {
       expect(adminBlocks(m, `${U}/rest/v1/${p}`), `${m} ${p}`).toBe(true);
     }
   });
-  it('deja entrar y salir de la cuenta, buscar recomendados y usar Academy', () => {
+  it('Academy: tus tarjetas y repasos reales tampoco se tocan', () => {
+    expect(adminBlocks('POST', `${U}/rest/v1/study_reviews`)).toBe(true);
+    expect(adminBlocks('PATCH', `${U}/rest/v1/study_cards?id=eq.1`)).toBe(true);
+    expect(adminBlocks('DELETE', `${U}/rest/v1/study_subjects?id=eq.1`)).toBe(true);
+  });
+  it('deja entrar y salir de la cuenta y buscar recomendados', () => {
     expect(adminBlocks('POST', `${U}/auth/v1/logout`)).toBe(false);
     expect(adminBlocks('POST', `${U}/rest/v1/rpc/recommended_friends`)).toBe(false);
-    expect(adminBlocks('POST', `${U}/rest/v1/study_reviews`)).toBe(false);
-    expect(adminBlocks('PATCH', `${U}/rest/v1/study_cards?id=eq.1`)).toBe(false);
   });
 });

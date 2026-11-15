@@ -9,11 +9,10 @@ import { ADMIN } from './admin';
 export const cloudEnabled = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 
 /**
- * Modo admin: la partida de pruebas no puede escribir nada del juego en tu cuenta real
- * (perfil público, amigos, gremios, partida, salud, borrar cuenta). Leer sí, para poder mirar.
- * Academy (tus apuntes y tarjetas, tablas study_*) sigue funcionando normal.
+ * Modo admin: la partida de pruebas no puede escribir nada en tu cuenta real
+ * (perfil público, amigos, gremios, partida, salud, Academy, borrar cuenta). Leer sí, para poder mirar y probar.
  */
-const ADMIN_WRITABLE = /^\/rest\/v1\/(study_[a-z_]+|rpc\/recommended_friends)$/;
+const ADMIN_WRITABLE = /^\/rest\/v1\/rpc\/recommended_friends$/; // solo lee
 export const ADMIN_READONLY_MSG = 'En modo admin tu cuenta real es solo de lectura: sal del modo admin para hacer esto.';
 export function adminBlocks(method: string, url: string): boolean {
   if (method.toUpperCase() === 'GET' || method.toUpperCase() === 'HEAD') return false;
