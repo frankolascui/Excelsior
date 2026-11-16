@@ -238,7 +238,7 @@ function setLogged(s: GameState, day: string, logged: boolean, now: number): Act
  * Tras guardar o borrar una noche: marca el hábito de ese día (solo hoy y los 6 días anteriores dan XP,
  * como al marcar un hábito olvidado) y levanta las obras de la semana que ya se hayan ganado.
  */
-export function syncHealth(s: GameState, nights: Night[], settings: HealthSettings, now: number, changedDay?: string): ActionResult & { built: WorkKind[] } {
+export function syncHealth(s: GameState, nights: Night[], settings: HealthSettings, now: number, changedDay?: string): ActionResult & { built: WorkKind[]; lost: WorkKind[] } {
   let state = foundHealth(s, now);
   let xp = 0;
   let capped = false;
@@ -256,18 +256,30 @@ export function syncHealth(s: GameState, nights: Night[], settings: HealthSettin
     capped ||= !!r.capped;
   }
   // Obras: las de esta semana y la anterior (por si apuntas el lunes lo del domingo).
+  // Si cambias o borras una noche y una obra de su semana deja de cumplirse, la obra se derriba
+  // (como desmarcar un hábito). Solo con un día concreto: las noches que llegan de la nube nunca derriban.
   const built: WorkKind[] = [];
-  const works = [...(state.health?.works ?? [])];
+  const lost: WorkKind[] = [];
+  let works = [...(state.health?.works ?? [])];
+  // La noche de un día cuenta para su semana y, por los entrenos del día anterior, para la del día antes.
+  const touched = changedDay ? new Set([weekStart(changedDay), weekStart(addDays(changedDay, -1))]) : new Set<string>();
+  let changed = false;
   for (const monday of [weekStart(today), addDays(weekStart(today), -7)]) {
     for (const p of weekProgress(nights, settings, monday)) {
-      if (p.done && !works.some((w) => w.week === monday && w.kind === p.kind)) {
+      const has = works.some((w) => w.week === monday && w.kind === p.kind);
+      if (p.done && !has) {
         works.push({ id: uid(), kind: p.kind, week: monday, at: now });
+        changed = true;
         if (monday === weekStart(today)) built.push(p.kind);
+      } else if (!p.done && has && touched.has(monday)) {
+        works = works.filter((w) => !(w.week === monday && w.kind === p.kind));
+        changed = true;
+        lost.push(p.kind);
       }
     }
   }
-  if (works.length !== (state.health?.works.length ?? 0)) state = { ...state, health: { ...state.health, works } };
-  return { state, xp, capped, built };
+  if (changed) state = { ...state, health: { ...state.health, works } };
+  return { state, xp, capped, built, lost };
 }
 
 /** Monedas ganadas con las obras del Reino de la Salud. */

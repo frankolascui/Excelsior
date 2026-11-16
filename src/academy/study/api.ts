@@ -257,7 +257,7 @@ export async function listReviewsSince(days: number): Promise<import('./stats').
 /** Lo justo de cada tarjeta para las estadísticas (sin pregunta ni respuesta). */
 export async function listCardStats(): Promise<import('./stats').CardStat[]> {
   const rows = await selectCards((_c, extras) => paged(() => sb().from('study_cards')
-    .select(`id, topic_id, state, due, stability, lapses${extras ? ', suspended' : ''}`).order('id')));
+    .select(`id, topic_id, state, due, stability, lapses, last_review${extras ? ', suspended' : ''}`).order('id')));
   return rows as unknown as import('./stats').CardStat[];
 }
 

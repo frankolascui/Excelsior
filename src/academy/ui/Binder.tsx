@@ -249,7 +249,7 @@ function MixReview({ subjectId, topics }: { subjectId: string; topics: Topic[] }
         ))}
       </ul>
       <a
-        className={ids.length ? 'button primary' : 'button disabled'}
+        className={ids.length ? 'primary' : 'secondary is-disabled'}
         aria-disabled={!ids.length}
         href={ids.length ? routeToHash({ view: 'repasar', subjectId, topicIds: ids }) : undefined}
         onClick={() => ids.length && sfx.open()}

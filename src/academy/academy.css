@@ -8,11 +8,8 @@
   --line: #24242f;
   --fg: #ffffff;
   --muted: #8e8ea6;
-  --c1: #ff5ccf;
-  --c2: #c056ff;
-  --c3: #6d3df5;
+  /* --c1, --c2, --c3 y --gold no se redefinen: vienen del tema elegido en la app (theme.ts). */
   --grad: linear-gradient(120deg, var(--c1) 0%, var(--c2) 55%, var(--c3) 100%);
-  --gold: #f5c2ff;
   --ok: #34d399;
   --danger: #fb7185;
   --warn: #fbbf24;
@@ -62,26 +59,8 @@
 }
 
 /* ---------- Botones y campos (como en el RPG) ---------- */
-.acad button, .acad .button { font: inherit; color: inherit; cursor: pointer; -webkit-appearance: none; appearance: none; -webkit-tap-highlight-color: transparent; }
+.acad button { font: inherit; cursor: pointer; -webkit-appearance: none; appearance: none; -webkit-tap-highlight-color: transparent; }
 .acad button:disabled { cursor: not-allowed; opacity: 0.45; }
-.acad .primary, .acad .secondary, .acad .ghost, .acad .button {
-  border-radius: 10px; padding: 10px 16px; border: 1px solid transparent; font-weight: 700;
-  transition: transform 0.08s ease, filter 0.15s ease, box-shadow 0.15s ease, border-color 0.15s;
-}
-.acad .primary {
-  background: linear-gradient(120deg, var(--c1), var(--c3)); color: #fff;
-  box-shadow: 0 6px 22px color-mix(in srgb, var(--c1) 35%, transparent);
-}
-.acad .primary:hover:not(:disabled) { filter: brightness(1.08) saturate(1.1); box-shadow: 0 8px 30px color-mix(in srgb, var(--c1) 50%, transparent); }
-.acad .primary:disabled { box-shadow: none; }
-.acad .primary:active:not(:disabled), .acad .secondary:active, .acad .button:active { transform: translateY(1px); }
-.acad .secondary, .acad .button { background: var(--surface-2); border-color: var(--line); }
-.acad .secondary:hover, .acad .button:hover { border-color: var(--c2); }
-.acad .ghost { background: transparent; border-color: var(--line); font-weight: 500; }
-.acad .ghost:hover { border-color: var(--c2); }
-.acad .small.ghost, .acad .ghost.small { padding: 4px 10px; font-size: 14px; }
-.acad .link { background: none; border: 0; padding: 0; color: var(--c1); font-weight: 500; }
-.acad .link:hover { text-decoration: underline; }
 .acad .icon-round {
   width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line);
   background: rgba(16, 16, 24, 0.85); font-size: 16px; display: grid; place-items: center; padding: 0;
@@ -301,7 +280,6 @@
 }
 
 /* ---------- Flashcards ---------- */
-.acad a.button { text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
 .acad .pill { font: 500 12px var(--mono); padding: 2px 8px; border-radius: 99px; white-space: nowrap; background: var(--surface-2); color: var(--muted); }
 .acad .pill.new, .acad .pill.s0 { background: color-mix(in srgb, #3fb6ff 18%, transparent); color: #7dd0ff; }
 .acad .pill.learn, .acad .pill.s1, .acad .pill.s3 { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); }
@@ -383,19 +361,8 @@
   .acad .card-row { flex-wrap: wrap; }
 }
 /* Un enlace con aspecto de botón principal (p. ej. «Repasar») */
-.acad .button.primary { background: linear-gradient(120deg, var(--c1), var(--c3)); border-color: transparent; color: #fff; }
 /* ---------- Iconos y botones de icono ---------- */
 .acad .icon { flex: none; display: block; }
-.acad .primary, .acad .secondary, .acad .ghost, .acad .button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
-.acad .icon-btn {
-  width: 34px; height: 34px; padding: 0; display: grid; place-items: center; border-radius: 10px;
-  background: var(--surface-2); border: 1px solid var(--line); color: var(--muted);
-  transition: color 0.15s, border-color 0.15s, background 0.15s, transform 0.08s;
-}
-.acad .icon-btn:hover { color: var(--fg); border-color: var(--c2); background: color-mix(in srgb, var(--c2) 14%, var(--surface-2)); }
-.acad .icon-btn:active { transform: translateY(1px); }
-.acad .icon-btn.danger:hover { color: var(--danger); border-color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, var(--surface-2)); }
-.acad .icon-only { padding: 0; width: 42px; height: 42px; }
 .acad .page-name { display: inline-flex; align-items: center; gap: 8px; }
 .acad .page-name .icon { color: var(--spine); }
 
@@ -418,7 +385,7 @@
 .acad .mix ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .acad .mix label { display: flex; gap: 8px; align-items: center; font-size: 15px; cursor: pointer; }
 .acad .mix input[type='checkbox'] { width: 16px; height: 16px; accent-color: var(--spine); }
-.acad .button.disabled { opacity: 0.45; cursor: not-allowed; }
+.acad .is-disabled { opacity: 0.45; cursor: not-allowed; }
 @media (max-width: 760px) { .acad .mix { margin: 0 0 10px; } }
 .acad .mode-tabs button { display: inline-flex; align-items: center; gap: 7px; }
 

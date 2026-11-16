@@ -1,5 +1,6 @@
 // Agenda: recordatorios (cosas pequeñas), el formulario para añadir al calendario, la vista por horas (día o semana)
 // con eventos que se arrastran y se alargan como en Google Calendar, y los avisos cuando llega la hora.
+import { sureThen } from './confirm';
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import type { Game } from './screens';
 import type { CalendarEvent, EventKind, EventRepeat, GameState, Reminder, RepeatRule } from './types';
@@ -61,7 +62,7 @@ export function ReminderRow({ r, now, game }: { r: Reminder; now: number; game: 
         <span className="item-title">{r.title}</span>
         <span className="muted small-text"><Icon name="bell" /> {remWhen(r, now)}</span>
       </div>
-      <button className="icon-btn" onClick={() => { sfx.remove(); game.act((s) => deleteReminder(s, r.id)); }} aria-label={`Borrar recordatorio ${r.title}`} title="Borrar"><Icon name="trash" /></button>
+      <button className="icon-btn" onClick={() => sureThen({ title: `¿Borrar el recordatorio «${r.title}»?`, confirmLabel: 'Borrar recordatorio' }, () => { sfx.remove(); game.act((s) => deleteReminder(s, r.id)); })} aria-label={`Borrar recordatorio ${r.title}`} title="Borrar"><Icon name="trash" /></button>
     </li>
   );
 }
@@ -354,7 +355,7 @@ function EventSheet({ game, id: firstId, day, onClose, startFocus }: { game: Gam
       <div className="row sheet-actions">
         {focusFn && <button className="primary" onClick={() => { saveTitle(); onClose(); focusFn(title.trim() || ev.title); }}><Icon name="play" /> Empezar Deep Work</button>}
         {ev.repeat && <button className="ghost" onClick={() => { sfx.remove(); game.act((s) => skipEventDay(s, ev.id, onDay)); onClose(); }}><Icon name="x" /> Quitar solo este día</button>}
-        <button className="ghost danger-text" onClick={() => { sfx.remove(); game.act((s) => deleteEvent(s, ev.id)); onClose(); }}><Icon name="trash" /> {ev.repeat ? 'Borrar la serie' : 'Borrar'}</button>
+        <button className="ghost danger-text" onClick={() => sureThen({ title: ev.repeat ? `¿Borrar toda la serie «${ev.title}»?` : `¿Borrar «${ev.title}»?`, message: ev.repeat ? 'Se borran todas sus repeticiones.' : undefined, confirmLabel: ev.repeat ? 'Borrar la serie' : 'Borrar' }, () => { sfx.remove(); game.act((s) => deleteEvent(s, ev.id)); onClose(); })}><Icon name="trash" /> {ev.repeat ? 'Borrar la serie' : 'Borrar'}</button>
       </div>
       <p className="hint sheet-hint"><Icon name="info" /> Consejo: en la vista Día o Semana puedes arrastrar el evento para moverlo y estirar su borde de abajo para cambiar lo que dura.</p>
     </Sheet>

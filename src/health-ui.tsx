@@ -15,7 +15,7 @@ import {
   weekProgress, weekStart, workDef, WORK_COINS, WORKS,
 } from './health';
 import { healthNights, healthSettings, importLegacyDiary, onHealthChange, syncHealthCloud, useHealth } from './health-store';
-import { CAP_NOTE, DiaryData, DiaryHistory, DiaryToday, NightForm } from './health-diary-ui';
+import { CAP_NOTE, DiaryData, DiaryHistory, DiaryToday, NightForm, ScheduleFields } from './health-diary-ui';
 import './health.css';
 
 
@@ -87,6 +87,12 @@ export function HealthKingdom({ game }: { game: Game }) {
           {WORKS.map((w) => <li key={w.kind}><Icon name={w.icon} /> <b>{w.name}:</b> {w.rule(settings).toLowerCase()} en la semana. +{WORK_COINS} <Icon name="coin" className="coin-ico" /></li>)}
           <li><Icon name="heart" /> El reino premia la constancia, no las cifras: dormir poco una noche no te quita nada; no apuntarla, sí.</li>
         </ul>
+        <div className="health-setup" data-testid="health-setup">
+          <p className="eyebrow">Configura tu reino</p>
+          <p className="muted small-text">Tu horario y tus entrenos deciden cuándo se levantan el Reloj de Sol y la Palestra. Puedes cambiarlo cuando quieras en Datos.</p>
+          <ScheduleFields />
+          <p className="small-text"><Icon name="moon" /> Cama a las <b className="mono">{bedtimeGoal(settings)}</b>, levantarte a las <b className="mono">{settings.levantar}</b> · Palestra con {settings.entrenosMin} {settings.entrenosMin === 1 ? 'entreno' : 'entrenos'} por semana.</p>
+        </div>
         <button className="primary big" onClick={() => { act((s) => syncHealth(foundHealth(s, Date.now()), healthNights(), healthSettings(), Date.now())); sfx.confirm(); }} data-testid="found-health">
           <Icon name="castle" /> Fundar el Reino de la Salud
         </button>

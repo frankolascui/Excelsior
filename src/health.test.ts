@@ -102,6 +102,22 @@ describe('en la partida', () => {
   });
 });
 
+describe('derribar obras', () => {
+  it('borrar o cambiar la noche que completó una obra la derriba; lo que llega de la nube nunca', () => {
+    const nights = [0, 1, 2].map((i) => night(addDays(MON, i), { peso: 70 }));
+    const r = syncHealth(base(), nights, S, NOW);
+    expect(r.built).toEqual(['balanza']);
+    const sinUna = nights.slice(0, 2);
+    expect(syncHealth(r.state, sinUna, S, NOW).state.health?.works).toHaveLength(1);
+    const borrada = syncHealth(r.state, sinUna, S, NOW, addDays(MON, 2));
+    expect(borrada.lost).toEqual(['balanza']);
+    expect(borrada.state.health?.works).toHaveLength(0);
+    expect(coinsEarned(borrada.state, NOW).total).toBeLessThan(coinsEarned(r.state, NOW).total);
+    const otraSemana = syncHealth(r.state, sinUna, S, NOW, addDays(MON, -10));
+    expect(otraSemana.state.health?.works).toHaveLength(1);
+  });
+});
+
 describe('fusión con la nube', () => {
   const row = (fecha: string, actualizado: string, deleted = false) => ({ fecha, deleted, updated_at: actualizado, data: deleted ? { fecha, borrado: actualizado } : { fecha, actualizado, cuerpo: { peso_kg: 71 } } });
   it('entra lo de la nube, salvo donde hay un cambio local más reciente', () => {

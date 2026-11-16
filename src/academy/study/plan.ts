@@ -5,8 +5,11 @@ import type { CardRow, ExamDate, Level } from './types';
 
 /** Solo se tienen en cuenta los exámenes de las próximas 5 semanas. */
 export const HORIZON_DAYS = 35;
-/** Los últimos días antes del examen se adelantan las tarjetas que olvidarías ese día. */
-export const FINAL_DAYS = 3;
+/**
+ * La última semana antes del examen se adelantan las tarjetas que olvidarías ese día, repartidas:
+ * cada día una parte (las que más olvidarías primero), en vez de todas en los 3 últimos días.
+ */
+export const FINAL_DAYS = 7;
 /** Tope de nuevas al día aunque el examen esté muy cerca (más es empollar, no aprender). */
 export const MAX_NEW_PER_DAY = 80;
 
@@ -48,9 +51,10 @@ export const EXAM_DAY_TARGET = 0.9;
 /**
  * «Repaso final»: tarjetas de los temas del examen que aún no tocan, pero que según FSRS
  * recordarías el día del examen con menos probabilidad que el objetivo (el mayor entre tu nivel y 90 %).
- * Se adelantan, las de menor probabilidad primero.
+ * Se adelantan, las de menor probabilidad primero. FSRS no se toca: solo se adelanta la fecha de repaso.
+ * Con `daysLeft` se reparte: hoy toca la parte que corresponde a los días que quedan (la víspera, todas).
  */
-export function finalReview(cards: readonly CardRow[], examDate: string, now: Date, level: Level, limit = 60): CardRow[] {
+export function finalReview(cards: readonly CardRow[], examDate: string, now: Date, level: Level, daysLeft = 0): CardRow[] {
   const [y, m, d] = examDate.split('-').map(Number);
   const at = new Date(y, m - 1, d, 9); // a las 9 de la mañana del día del examen
   const target = Math.max(LEVELS[level].retention, EXAM_DAY_TARGET);
@@ -60,7 +64,7 @@ export function finalReview(cards: readonly CardRow[], examDate: string, now: Da
     .map((c) => ({ c, r: s.get_retrievability(toCard(c), at, false) }))
     .filter((x) => x.r < target)
     .sort((a, b) => a.r - b.r)
-    .slice(0, limit)
+    .filter((_, i, all) => i < Math.ceil(all.length / Math.max(1, daysLeft)))
     .map((x) => x.c);
 }
 

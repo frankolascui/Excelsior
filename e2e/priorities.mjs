@@ -27,7 +27,7 @@ const state = {
   ],
   habits: [], habitCompletions: [], sessions: [], activeTimer: null, kingdoms: [], goals: [], rewards: [], purchases: [], bosses: [],
   xp: [1, 2, 3, 4].map((d) => ({ id: `x${d}`, at: NOW - d * DAY, amount: 60, source: 'quest', sourceId: `old${d}`, label: 'Antes', attributes: { voluntad: 3 } })),
-  tours: ['intro', 'reinos', 'arena', 'gremios', 'v3'], newsSeen: '3.0', balance: 2, ascended: [],
+  tours: ['intro', 'reinos', 'arena', 'gremios', 'v3'], newsSeen: (await import('node:fs')).readFileSync('src/version.ts', 'utf8').match(/APP_VERSION = '([^']+)'/)[1], balance: 2, ascended: [],
   weeklyReviews: [{ week: '2026-10-26', at: NOW - 8 * DAY, change: 'Deep Work antes de mirar el móvil' }],
 };
 
@@ -130,6 +130,7 @@ await page.click('button[aria-label="Más acciones de Llamar al tutor del TFG"]'
 check(await seen(page, '.item-tools button:has-text("Borrar")') && !(await page.isVisible('.item:has-text("Responder correos") button:has-text("Borrar")')), 'las acciones de una misión salen solo al pulsar ⋯');
 await page.screenshot({ path: `${out}/p4-misiones-limpieza.png`, fullPage: true });
 await page.click('.cleanup-item:has-text("Ver el curso de Notion") button:has-text("Eliminar")');
+await page.click('[data-testid="sure-dialog"] button.danger-solid');
 check(!(await page.isVisible('.item:has-text("Ver el curso de Notion")')), 'eliminar la quita');
 await page.click('.cleanup-item:has-text("Ordenar el escritorio") button:has-text("Posponer")');
 check(!(await page.isVisible('.cleanup')), 'posponer la quita de la limpieza');

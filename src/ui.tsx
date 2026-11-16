@@ -1,4 +1,5 @@
 // Piezas de interfaz compartidas entre pantallas.
+import { sureThen } from './confirm';
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import type { AttributeRewards, GameState, Habit, Impact, Quest, QuestType } from './types';
 import { ATTRIBUTES, attributeHistory, attributeLevel, attributeXp, avatarInfo, formatAttrXp, habitRewards, questRewards } from './attributes';
@@ -205,7 +206,7 @@ export function QuestItem({
               <button className="ghost small edit-btn" onClick={() => setEditing(true)} aria-label={`Editar ${quest.title}`}><Icon name="pencil" /> Editar</button>
             )}
             {onDelete && (
-              <button className="ghost small danger" onClick={onDelete} aria-label={`Borrar ${quest.title}`}><Icon name="trash" /> Borrar</button>
+              <button className="ghost small danger" onClick={() => sureThen({ title: `¿Borrar la misión «${quest.title}»?`, confirmLabel: 'Borrar misión' }, onDelete)} aria-label={`Borrar ${quest.title}`}><Icon name="trash" /> Borrar</button>
             )}
           </div>
         )}
@@ -468,7 +469,7 @@ export function HabitItem({
       <div className="item-actions">
         {handle}
         {onEdit && <button className="icon-btn edit-btn" onClick={() => setEditing(true)} aria-label={`Editar ${habit.name}`} title="Editar XP y atributos"><Icon name="sliders" /></button>}
-        {onDelete && <button className="icon-btn" onClick={onDelete} aria-label={`Borrar ${habit.name}`} title="Borrar"><Icon name="trash" /></button>}
+        {onDelete && <button className="icon-btn" onClick={() => sureThen({ title: `¿Borrar el hábito «${habit.name}»?`, message: 'Se borra también su historial y su racha.', confirmLabel: 'Borrar hábito' }, onDelete)} aria-label={`Borrar ${habit.name}`} title="Borrar"><Icon name="trash" /></button>}
       </div>
     </li>
   );

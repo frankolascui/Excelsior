@@ -36,7 +36,7 @@ describe('plan de examen', () => {
 
   it('si tu nivel va más rápido que el reparto, se usa tu nivel', () => {
     const plan = buildPlan(9, 25, today, 10);
-    expect(plan.slice(0, 4).map((d) => d.items[0])).toEqual(['10 tarjetas nuevas', '10 tarjetas nuevas', '5 tarjetas nuevas', 'Repasos del día']);
+    expect(plan.slice(0, 4).map((d) => d.items[0])).toEqual(['10 tarjetas nuevas', '10 tarjetas nuevas', '5 tarjetas nuevas', 'Repasos + repaso final de los temas del examen']);
   });
 
   it('repaso final: adelanta lo que olvidarías antes del examen', () => {
@@ -47,5 +47,7 @@ describe('plan de examen', () => {
     const justa: CardRow = { ...base, id: 'justa', stability: 2.4, difficulty: 5, scheduled_days: 9, due: '2026-11-19T10:00:00Z', last_review: '2026-11-10T09:00:00Z' };
     const out = finalReview([fuerte, justa, flojo], '2026-11-13', today, 'minimo');
     expect(out.map((c) => c.id)).toEqual(['flojo', 'justa']);
+    // A 2 días del examen solo sale hoy la mitad, la que más olvidarías.
+    expect(finalReview([fuerte, justa, flojo], '2026-11-13', today, 'minimo', 2).map((c) => c.id)).toEqual(['flojo']);
   });
 });

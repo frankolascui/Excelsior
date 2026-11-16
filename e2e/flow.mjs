@@ -30,6 +30,12 @@ async function questAction(title, label) {
   const sel = `button[aria-label="${label} ${title}"]`;
   if (!(await page.isVisible(sel))) await page.click(`button[aria-label="Más acciones de ${title}"]`);
   await page.click(sel);
+  if (label === 'Borrar') await sure();
+}
+/** Dice «sí» en la ventana «¿Seguro?» de borrar. */
+async function sure() {
+  await page.waitForSelector('[data-testid="sure-dialog"]', { timeout: 3000 });
+  await page.click('[data-testid="sure-dialog"] button.danger-solid');
 }
 /** Abre «Más opciones» del formulario de misión si está cerrado. */
 async function moreOpts(scope = '[data-tour="quest-add"]') {
@@ -151,6 +157,11 @@ await page.click('.template-new button:has-text("Guardar plantilla")');
 check(await seen('.templates-list .template-row:has-text("Clase de violín")') && await seen('[role=tab]:has-text("Mías · 1")'), 'se puede guardar una plantilla propia');
 await page.screenshot({ path: `${out}/02c-templates.png`, fullPage: true });
 await page.click('button[aria-label="Borrar plantilla Clase de violín"]');
+check(await seen('[data-testid="sure-dialog"]:has-text("¿Borrar la plantilla")'), 'borrar pide «¿Seguro?»');
+await page.click('[data-testid="sure-dialog"] button:has-text("Cancelar")');
+check(await seen('button[aria-label="Borrar plantilla Clase de violín"]'), 'cancelar no borra nada');
+await page.click('button[aria-label="Borrar plantilla Clase de violín"]');
+await sure();
 await questAction('Hablar con alguien nuevo', 'Borrar');
 await page.click('button.templates-open');
 await page.click('.nav-item:has-text("Hoy")');
@@ -170,19 +181,17 @@ check((await page.textContent('.hero-line .levelbar-foot')).includes('20 / 100')
 await page.click('button:has-text("Empezar Deep Work")');
 await page.click('button.mode-card:has-text("Sesión libre")');
 check(await seen('.phase-pill:has-text("Foco")'), 'cronómetro libre en marcha');
-await page.clock.fastForward('45:10');
+await page.clock.fastForward('50:10');
 await page.waitForTimeout(300);
-check((await page.textContent('.ring-time')).startsWith('45:1'), 'cronómetro marca 45:1x');
-await page.click('button:has-text("Me distraje")');
-await page.clock.fastForward('05:00');
-await page.waitForTimeout(300);
-check(await seen('.focus-stats >> text=90 %'), 'foco real 90 % tras 5 min de distracción');
+check((await page.textContent('.ring-time')).startsWith('50:1'), 'cronómetro marca 50:1x');
+check(!(await page.isVisible('button:has-text("Me distraje")')), 'sin botón «Me distraje» durante la sesión');
 await page.screenshot({ path: `${out}/02-timer.png` });
-await page.click('button:has-text("Volver al foco")');
 await page.click('text=Terminar sesión');
-check(await seen('text=45 min de foco · +45 XP'), 'solo cuenta el foco: 45 min, +45 XP');
+check(await seen('[aria-labelledby="rate-h"] [aria-label="¿Te distrajiste?"]'), 'al terminar pregunta si te distrajiste');
+await page.click('[aria-labelledby="rate-h"] .rate-chips button:has-text("5 min")');
+check(await seen('text=45 min de foco · +45 XP'), 'la distracción se resta: 45 min, +45 XP');
 check(await seen('.result >> text=90 %'), 'resumen muestra 90 % de foco real');
-if (await quick('#rate-h')) await page.click('[aria-labelledby="rate-h"] button:has-text("Omitir")');
+await page.click('[aria-labelledby="rate-h"] button:has-text("Listo")');
 await page.click('button:has-text("Completar «Terminar el tema 3 de Física»")');
 // 20 + 45 + 50 = 115 → nivel 2
 check(await seen('#lvl-h:has-text("Nivel 2")'), 'sube a nivel 2');
@@ -403,8 +412,14 @@ check(await seen('.news-dialog h2:has-text("La era social")'), 'el aviso de nove
 await page.screenshot({ path: `${out}/20-news.png` });
 await page.click('.news-dialog button.primary');
 await page.click('.app-version .version-btn');
-check(await seen('.news-dialog h2:has-text("Cuerpo y mente")'), 'pulsar la versión de la app vuelve a abrir las novedades');
-await page.click('.news-dialog button.primary');
+check(await seen('.news-center .news-index-item.on:has-text("v3.1")'), 'pulsar la versión abre el índice de novedades en la versión actual');
+check(await page.locator('.news-index-group').count() === 3, 'el índice agrupa por versión entera (3.0, 2.0, 1.0)');
+await page.click('.news-index-subhead:has-text("Actualizaciones 1.x")');
+check(await page.locator('.news-index-item.sub').count() === 18, 'las actualizaciones 1.x salen en su subapartado');
+await page.click('.news-index-item:has-text("v1.18")');
+check(await seen('.news-center-detail:has-text("55 logros")'), 'pulsar una versión enseña todo lo que trajo');
+await page.screenshot({ path: `${out}/21-news-index.png` });
+await page.click('.news-center button[aria-label="Cerrar"]');
 check(!(await quick('.news-dialog')), 'y se cierra');
 await page.click('.theme-swatch:has-text("Olimpo")');
 check((await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--c1').trim())) === '#ffd166', 'el tema Olimpo cambia los colores');

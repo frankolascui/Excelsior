@@ -142,8 +142,10 @@ export interface DeepWorkSession {
   pomodoros?: number; // pomodoros completados en la sesión
   /** Lo que midió el reloj antes de corregir la sesión a mano: tope de lo que se puede poner. */
   measured?: { minutes: number; endedAt: number };
-  /** Nota al terminar (1–5): cuánto y qué tal rendiste, y con qué mentalidad. Da las horas productivas (productivity.ts). */
-  rating?: { performance: number; mindset: number };
+  /** Nota al terminar (1–5): cuánto y qué tal rendiste, el sentido y con qué mentalidad. Da las horas productivas (productivity.ts). */
+  rating?: { performance: number; mindset: number; sense?: number };
+  /** Minutos de distracción que dijiste al terminar (ya restados del foco); se pueden cambiar después. */
+  distractionReported?: number;
   /** Sesión de repaso de Academy (V3): tarjetas repasadas y si la cola del día quedó vacía. */
   study?: { cards: number; cleared: boolean };
 }
@@ -273,6 +275,14 @@ export interface GameState {
   tours?: string[];
   /** Última versión cuyo aviso de novedades ya viste. Viaja con la partida. */
   newsSeen?: string;
+  /**
+   * La versión más nueva cuyas novedades viste (desde la V3.1). Campo aparte de `newsSeen` porque
+   * la V3.0 compara `newsSeen` con su versión exacta: si la web de prueba escribiera ahí «3.1»,
+   * la web normal volvería a enseñar las novedades de la 3.0 cada vez.
+   */
+  newsLatest?: string;
+  /** Minutos al día para repasar en Academy (sin campo = sin límite). */
+  academyBudgetMin?: number;
   /** Avatares a los que ya has ascendido con su ritual. Sin el campo (partidas antiguas) se calculan como antes. */
   ascended?: string[];
   /** Respuestas que diste a Hiperión en cada ritual de ascensión. */

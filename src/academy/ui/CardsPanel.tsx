@@ -10,6 +10,7 @@ import { askConfirm } from './Dialog';
 import { Icon } from './Icon';
 import { ImportCards } from './ImportCards';
 import { Menu } from './Kit';
+import { addDrafts, draftFlags, FLAG_HINT, FLAG_LABEL, loadDrafts, saveDrafts, type Draft } from '../study/drafts';
 
 /** Las flashcards de un tema: crear, editar, borrar, importar y lanzar el repaso. */
 export function CardsPanel({ subjectId, topicId, onTopicsChanged }: { subjectId: string; topicId: string; onTopicsChanged?: () => void }) {
@@ -18,6 +19,15 @@ export function CardsPanel({ subjectId, topicId, onTopicsChanged }: { subjectId:
   const [back, setBack] = useState('');
   const [editing, setEditing] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
+  const [drafts, setDrafts] = useState<Draft[]>(() => loadDrafts(topicId));
+  useEffect(() => { setDrafts(loadDrafts(topicId)); }, [topicId]);
+  const keepDrafts = (next: Draft[]) => { saveDrafts(topicId, next); setDrafts(next); };
+  async function approve(list: Draft[]) {
+    if (!list.length) return;
+    const ids = new Set(list.map((d) => d.id));
+    await act(() => createCards(list.map((d) => ({ topic_id: topicId, front: d.front.trim(), back: d.back.trim() }))), sfx.reward);
+    keepDrafts(loadDrafts(topicId).filter((d) => !ids.has(d.id)));
+  }
   const [error, setError] = useState<string | null>(null);
   const frontRef = useRef<HTMLTextAreaElement>(null);
 
@@ -62,7 +72,7 @@ export function CardsPanel({ subjectId, topicId, onTopicsChanged }: { subjectId:
         <div className="row">
           <button className="ghost" onClick={() => { setImporting(true); sfx.open(); }}><Icon name="download" /> Importar</button>
           <a
-            className={dueNow + fresh ? 'button primary' : 'button'}
+            className={dueNow + fresh ? 'primary' : 'secondary'}
             href={routeToHash({ view: 'repasar', subjectId, topicIds: [topicId] })}
             onClick={() => sfx.open()}
           >
@@ -73,7 +83,11 @@ export function CardsPanel({ subjectId, topicId, onTopicsChanged }: { subjectId:
       {importing && (
         <ImportCards subjectId={subjectId} topicId={topicId} existing={cards}
           onClose={() => setImporting(false)}
-          onDone={(changed) => { setImporting(false); reload(); if (changed) onTopicsChanged?.(); }} />
+          onDone={(changed) => { setImporting(false); reload(); if (changed) onTopicsChanged?.(); }}
+          onDrafts={(list, source) => { setDrafts(addDrafts(topicId, list, source)); setImporting(false); }} />
+      )}
+      {drafts.length > 0 && (
+        <DraftTray drafts={drafts} existing={cards} onChange={keepDrafts} onApprove={approve} />
       )}
 
       <form className="card-form composer" onSubmit={add}>
@@ -92,6 +106,8 @@ export function CardsPanel({ subjectId, topicId, onTopicsChanged }: { subjectId:
             <CardEditor key={c.id} card={c} onCancel={() => setEditing(null)} onSave={(f, b) => {
               setEditing(null);
               act(() => updateCard(c.id, { front: f, back: b }), sfx.saved);
+            }} onDelete={async () => {
+              if (await askConfirm({ title: '¿Borrar esta tarjeta?', message: 'Se borra también su historial de repasos.', confirmLabel: 'Borrar tarjeta', danger: true })) { setEditing(null); act(() => deleteCard(c.id), sfx.remove); }
             }} />
           ) : (
             <li key={c.id} className={c.suspended ? 'card-row off' : 'card-row'} onClick={() => { sfx.tick(); setEditing(c.id); }} title="Pulsa para editar">
@@ -118,7 +134,60 @@ export function CardsPanel({ subjectId, topicId, onTopicsChanged }: { subjectId:
   );
 }
 
-function CardEditor({ card, onSave, onCancel }: { card: CardRow; onSave: (front: string, back: string) => void; onCancel: () => void }) {
+/**
+ * Bandeja de revisión: borradores que aún no están en el repaso. Puedes editarlos, aprobarlos o descartarlos.
+ * Los avisos (duplicada, parecida, larga, sin respuesta) son ayudas: decides tú.
+ */
+function DraftTray({ drafts, existing, onChange, onApprove }: {
+  drafts: Draft[]; existing: { front: string }[];
+  onChange: (next: Draft[]) => void; onApprove: (list: Draft[]) => void;
+}) {
+  const flags = draftFlags(drafts, existing);
+  const clean = drafts.filter((d) => !(flags.get(d.id) ?? []).some((f) => f === 'duplicada' || f === 'sin-respuesta'));
+  const flagged = drafts.length - clean.length;
+  const edit = (id: string, patch: Partial<Draft>) => onChange(drafts.map((d) => (d.id === id ? { ...d, ...patch } : d)));
+  return (
+    <section className="draft-tray" aria-labelledby="draft-tray-h" data-testid="draft-tray">
+      <header className="draft-tray-head">
+        <div>
+          <h4 id="draft-tray-h"><Icon name="sparkles" /> Bandeja de revisión · {drafts.length} {drafts.length === 1 ? 'borrador' : 'borradores'}</h4>
+          <p className="muted small">No entran al repaso hasta que los apruebes. Se guardan en este dispositivo.</p>
+        </div>
+        <div className="row">
+          <button type="button" className="ghost small danger" onClick={async () => {
+            if (await askConfirm({ title: '¿Descartar todos los borradores?', message: `Se borran ${drafts.length} borradores de la bandeja.`, confirmLabel: 'Descartar todos', danger: true })) { onChange([]); sfx.remove(); }
+          }}>Descartar todos</button>
+          <button type="button" className="primary small" disabled={!clean.length} onClick={() => onApprove(clean)}>
+            <Icon name="check" /> Aprobar {clean.length}{flagged ? ` (sin las ${flagged} con aviso)` : ''}
+          </button>
+        </div>
+      </header>
+      <ul className="draft-list">
+        {drafts.map((d) => {
+          const fl = flags.get(d.id) ?? [];
+          return (
+            <li key={d.id} className={fl.length ? 'draft flagged' : 'draft'}>
+              <div className="draft-fields">
+                <textarea aria-label="Pregunta" value={d.front} rows={1} onChange={(e) => edit(d.id, { front: e.target.value })} />
+                <textarea aria-label="Respuesta" value={d.back} rows={2} onChange={(e) => edit(d.id, { back: e.target.value })} />
+              </div>
+              <div className="draft-side">
+                {fl.map((f) => <span key={f} className={`pill draft-flag ${f}`} title={FLAG_HINT[f]}>{FLAG_LABEL[f]}</span>)}
+                <span className="muted small">{d.source}</span>
+                <div className="row">
+                  <button type="button" className="icon-btn" aria-label="Descartar borrador" title="Descartar" onClick={async () => { if (await askConfirm({ title: '¿Descartar este borrador?', message: plainPreview(d.front).slice(0, 120), confirmLabel: 'Descartar', danger: true })) { onChange(drafts.filter((x) => x.id !== d.id)); sfx.remove(); } }}><Icon name="trash" /></button>
+                  <button type="button" className="secondary small" disabled={!d.front.trim()} onClick={() => onApprove([d])}><Icon name="check" /> Aprobar</button>
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+function CardEditor({ card, onSave, onCancel, onDelete }: { card: CardRow; onSave: (front: string, back: string) => void; onCancel: () => void; onDelete: () => void }) {
   const [f, setF] = useState(card.front);
   const [b, setB] = useState(card.back);
   return (
@@ -129,6 +198,7 @@ function CardEditor({ card, onSave, onCancel }: { card: CardRow; onSave: (front:
         <div className="row">
           <button className="primary" disabled={!f.trim()}><Icon name="check" /> Guardar</button>
           <button type="button" className="ghost" onClick={onCancel}>Cancelar</button>
+          <button type="button" className="ghost danger card-delete" onClick={onDelete}><Icon name="trash" /> Borrar tarjeta</button>
         </div>
       </form>
     </li>

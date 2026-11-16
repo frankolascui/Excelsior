@@ -4,7 +4,8 @@ import type { GameState } from './types';
 import { levelInfo, totalXp } from './game';
 import { attributeLevel, attributeXp, avatarInfo } from './attributes';
 import { bossStatus } from './bosses';
-import { cloudClient, getUserId } from './cloud';
+import { ADMIN } from './admin';
+import { ADMIN_READONLY_MSG, cloudClient, getUserId } from './cloud';
 import { publicWeeks, type WeekStats } from './ranking';
 
 // ---------- Reglas puras ----------
@@ -166,6 +167,11 @@ export async function publishProfile(s: GameState, now = Date.now()): Promise<Pu
   const fields = publicFields(s, now);
   const { data: existing, error } = await db.from('profiles').select(FIELDS).eq('user_id', userId).maybeSingle();
   if (error) throw error;
+  // Modo admin: se enseña tu perfil real tal cual; la partida de pruebas nunca se publica.
+  if (ADMIN) {
+    set({ me: (existing as PublicProfile) ?? null });
+    return (existing as PublicProfile) ?? null;
+  }
   if (existing) {
     const { data, error: e2 } = await db.from('profiles').update({ ...fields, updated_at: new Date(now).toISOString() })
       .eq('user_id', userId).select(FIELDS).single();
@@ -188,7 +194,7 @@ export async function publishProfile(s: GameState, now = Date.now()): Promise<Pu
 
 /** Tras cada cambio de la partida: si cambió algo público, se sube (agrupando cambios seguidos). */
 export function schedulePublish(s: GameState) {
-  if (!getUserId() || !s.profile) return;
+  if (ADMIN || !getUserId() || !s.profile) return;
   if (JSON.stringify(publicFields(s, Date.now())) === published) return;
   clearTimeout(publishTimer);
   publishTimer = window.setTimeout(() => {
@@ -231,6 +237,7 @@ async function loadSocial(s: GameState): Promise<void> {
 
 function describe(e: unknown): string {
   const m = e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e);
+  if (m === ADMIN_READONLY_MSG) return m;
   if (/fetch|network|load failed/i.test(m)) return NETWORK;
   if (/relation .* does not exist|recommended_friends|schema cache/i.test(m)) return 'Falta preparar la base de datos de amigos (docs/supabase-amigos.sql).';
   return `Algo falló con los amigos. (${m})`;
@@ -247,6 +254,7 @@ export async function findByTag(input: string): Promise<PublicProfile | null | '
 // ---------- Solicitudes ----------
 
 async function run(op: PromiseLike<{ error: unknown }>, s: GameState): Promise<string | null> {
+  if (ADMIN) return ADMIN_READONLY_MSG;
   const { error } = await op;
   if (error) return describe(error);
   await refreshSocial(s);

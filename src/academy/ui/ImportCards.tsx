@@ -17,9 +17,11 @@ type Source =
  * - un archivo .csv / .txt con «pregunta;respuesta» por línea (lo que da la skill);
  * - o ese mismo texto pegado.
  */
-export function ImportCards({ subjectId, topicId, existing, onClose, onDone }: {
+export function ImportCards({ subjectId, topicId, existing, onClose, onDone, onDrafts }: {
   subjectId: string; topicId: string; existing: { front: string; back: string }[];
   onClose: () => void; onDone: (topicsChanged: boolean) => void;
+  /** El texto pegado o el .csv van a la bandeja de revisión, salvo que actives «aprobar sin revisar». */
+  onDrafts: (cards: { front: string; back: string }[], source: string) => void;
 }) {
   const [text, setText] = useState('');
   const [source, setSource] = useState<Source | null>(null);
@@ -27,6 +29,9 @@ export function ImportCards({ subjectId, topicId, existing, onClose, onDone }: {
   const [error, setError] = useState<string | null>(null);
   const [perDeck, setPerDeck] = useState(false);
   const [keepProgress, setKeepProgress] = useState(true);
+  const [fileName, setFileName] = useState<string | null>(null);
+  // Opt-in y bien visible: por defecto todo lo pegado pasa por la bandeja (puede venir de una IA y tener errores).
+  const [autoApprove, setAutoApprove] = useState(false);
 
   async function onFiles([file]: File[]) {
     setError(null);
@@ -44,7 +49,7 @@ export function ImportCards({ subjectId, topicId, existing, onClose, onDone }: {
     } else {
       const cards = parseCardLines(await file.text());
       if (!cards.length) { setError('No he encontrado líneas con el formato pregunta;respuesta.'); sfx.error(); return; }
-      setSource({ kind: 'texto', cards }); sfx.open();
+      setSource({ kind: 'texto', cards }); setFileName(file.name); sfx.open();
     }
   }
 
@@ -56,6 +61,11 @@ export function ImportCards({ subjectId, topicId, existing, onClose, onDone }: {
   async function run() {
     if (!active) return;
     setError(null);
+    if (active.kind === 'texto' && !autoApprove) {
+      onDrafts(active.cards, fileName ?? 'pegado');
+      sfx.reward();
+      return;
+    }
     try {
       const seen = new Set(existing.map((c) => `${c.front}\u0000${c.back}`));
       const rows: NewCard[] = [];
@@ -102,7 +112,7 @@ export function ImportCards({ subjectId, topicId, existing, onClose, onDone }: {
       onClose={onClose}
       footer={<>
         <button className="ghost" onClick={onClose}>Cancelar</button>
-        <button className="primary" disabled={!total || !!busy} onClick={run}>{busy ?? `Importar ${total || ''} tarjetas`}</button>
+        <button className="primary" disabled={!total || !!busy} onClick={run}>{busy ?? (active?.kind === 'texto' && !autoApprove ? `Llevar ${total || ''} a la bandeja` : `Importar ${total || ''} tarjetas`)}</button>
       </>}
     >
       {!source && (
@@ -115,6 +125,14 @@ export function ImportCards({ subjectId, topicId, existing, onClose, onDone }: {
       )}
 
       {source?.kind === 'texto' && <p className="import-summary"><strong>{source.cards.length}</strong> tarjetas listas.</p>}
+      {active?.kind === 'texto' && (
+        <div className="import-review">
+          <p className="muted small">{autoApprove
+            ? 'Aprobar sin revisar: entran directas al repaso, sin pasar por la bandeja.'
+            : 'Irán a la bandeja de revisión del tema: no entran al repaso hasta que las apruebes. Te avisa de duplicadas, parecidas y respuestas largas.'}</p>
+          <Toggle checked={autoApprove} onChange={setAutoApprove}>Aprobar sin revisar</Toggle>
+        </div>
+      )}
 
       {source?.kind === 'anki' && (
         <div className="import-summary">

@@ -6,6 +6,7 @@ import { useCloud } from './cloud';
 import { Tune } from './academy/ui/Tune';
 import { DialogHost } from './academy/ui/Dialog';
 import { Icon, IconDefs } from './icons';
+import { applyTheme, loadTheme } from './theme';
 import './styles.css';
 import './academy/academy.css';
 import './academy.css';
@@ -23,4 +24,5 @@ function Page() {
   );
 }
 
+applyTheme(loadTheme());
 createRoot(document.getElementById('root')!).render(<><IconDefs /><Page /></>);

@@ -1,7 +1,9 @@
 // Mapa de los reinos: tu fortaleza en el centro y un camino hacia cada reino que se ilumina según su %.
 import type { KeyboardEvent } from 'react';
 import type { GameState } from './types';
-import { kingdomProgress, realmProgress } from './kingdoms';
+import { kingdomProgress, realmProgress, stageFor } from './kingdoms';
+import { healthFounded } from './health';
+import { HEALTH_KINGDOM } from './nav-state';
 import { useWidth } from './charts';
 import { Birds, Clouds, Mist } from './sky-fx';
 import './city.css';
@@ -43,7 +45,17 @@ export function RealmMap({ state, onSelect }: { state: GameState; onSelect: (kin
     x: Math.max(pad, Math.min(W - pad, fx * W)),
     y: Math.max(40, Math.min(H - 70, fy * H)),
   });
-  const nodes = state.kingdoms.map((k, i) => ({ k, p: kingdomProgress(state, k.id), ...place(slot(i)) }));
+  // El Reino de la Salud también es un reino del mapa: crece con sus obras (12 = castillo glorioso).
+  const works = state.health?.works.length ?? 0;
+  const healthStage = stageFor(works);
+  const entries = [
+    ...(healthFounded(state) ? [{
+      k: { id: HEALTH_KINGDOM, name: 'Reino de la Salud' },
+      p: { built: works, progress: Math.min(1, works / 12), stage: healthStage.name, icon: 'caduceus' as const, complete: works >= 12 },
+    }] : []),
+    ...state.kingdoms.map((k) => ({ k: { id: k.id, name: k.name }, p: kingdomProgress(state, k.id) })),
+  ];
+  const nodes = entries.map((e, i) => ({ ...e, ...place(slot(i)) }));
   const nameLen = W < 600 ? 14 : 26;
   // Bosque en dos trazos (cara iluminada y cara en sombra) para no llenar el SVG de nodos.
   const pines = SCENERY.trees.reduce((acc, t) => {
@@ -68,12 +80,12 @@ export function RealmMap({ state, onSelect }: { state: GameState; onSelect: (kin
         <div>
           <h3 id="realm-h">Mapa del reino</h3>
           <p className="muted chart-sub">
-            Dominio <span className="mono">{Math.round(realm.progress * 100)} %</span> · {realm.built}/{realm.total} construcciones en {state.kingdoms.length} {state.kingdoms.length === 1 ? 'reino' : 'reinos'}
+            Dominio <span className="mono">{Math.round(realm.progress * 100)} %</span> · {realm.built}/{realm.total} construcciones en {state.kingdoms.length} {state.kingdoms.length === 1 ? 'reino' : 'reinos'}{works > 0 && <> · {works} {works === 1 ? 'obra' : 'obras'} de salud</>}
           </p>
         </div>
       </header>
       <div className="realm-map" ref={ref}>
-        <svg width={W} height={H} role="img" aria-label={`Mapa con ${state.kingdoms.length} reinos. ${nodes.map((n) => `${n.k.name}: ${Math.round(n.p.progress * 100)} %`).join(', ')}`}>
+        <svg width={W} height={H} role="img" aria-label={`Mapa con ${nodes.length} reinos. ${nodes.map((n) => `${n.k.name}: ${Math.round(n.p.progress * 100)} %`).join(', ')}`}>
           <defs>
             <radialGradient id="realm-bg" cx="50%" cy="50%" r="70%">
               <stop offset="0%" style={{ stopColor: 'color-mix(in srgb, var(--c3) 22%, #050505)' }} />
@@ -161,7 +173,7 @@ export function RealmMap({ state, onSelect }: { state: GameState; onSelect: (kin
             </g>
           ))}
         </svg>
-        {state.kingdoms.length === 0 && <p className="realm-empty">Funda tu primer reino y aparecerá en el mapa.</p>}
+        {nodes.length === 0 && <p className="realm-empty">Funda tu primer reino y aparecerá en el mapa.</p>}
       </div>
     </section>
   );

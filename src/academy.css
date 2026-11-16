@@ -8,3 +8,79 @@
 .study-streak { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 99px; border: 1px solid var(--line); font-size: 14px; color: var(--muted); }
 .study-streak.on { color: var(--fg, #fff); border-color: var(--c2); box-shadow: 0 0 12px color-mix(in srgb, var(--c2) 40%, transparent); }
 .deep-tabs-row.wide { max-width: 1180px; }
+
+/* El texto sobre el color del tema sigue al tema (oscuro en temas claros como Olimpo o Hades).
+   Los botones (.primary, .secondary, .ghost, .link, .icon-btn) son los del RPG: styles.css, «Botones: un solo sistema». */
+.acad .tab.active .tab-num, .acad .drop-icon,
+.acad .segmented button[aria-checked='true'], .acad .exams-tab.active { color: var(--on-accent, #fff); }
+.acad a:is(.primary, .secondary, .ghost) { text-decoration: none; }
+.acad a.primary { color: var(--on-btn); }
+.acad a.link { color: var(--c1); }
+.acad .is-disabled { opacity: 0.42; cursor: not-allowed; filter: saturate(0.6); }
+
+/* Repaso: botones más grandes y «Cambiar la anterior» junto a «Mostrar respuesta» */
+.acad .reveal-row { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; }
+/* Botones de tamaño normal (Nicolas, 2026-11-14): lo grande es la tarjeta. */
+.acad .reveal-row .reveal { justify-self: auto; min-width: 220px; padding: 7px 18px; font-size: 15px; font-weight: 600; }
+.acad .reveal-row kbd { padding: 0 6px; line-height: 1.4; }
+.acad .review { max-width: 920px; }
+.acad .flashcard { min-height: clamp(320px, 50dvh, 560px); padding: 40px 44px; }
+.acad .fc-front .md { font-size: 27px; line-height: 1.35; }
+.acad .fc-back .md { font-size: 20px; line-height: 1.5; }
+.acad .grades { gap: 10px; }
+.acad .grade {
+  padding: 12px 8px; font-size: 16.5px; gap: 3px; min-height: 70px; align-content: center; border-radius: 13px; color: var(--fg);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--fg) 5%, var(--surface-2)), var(--surface-2));
+  transition: transform 0.12s cubic-bezier(0.3, 1.4, 0.5, 1), box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+.acad .grade:hover { transform: translateY(-1px); box-shadow: 0 5px 16px color-mix(in srgb, var(--c1) 14%, transparent); }
+.acad .grade:active { transform: translateY(1px) scale(0.97); transition-duration: 0.05s; }
+.acad .grade .when { font-size: 14px; color: var(--fg); opacity: 0.85; }
+@media (max-width: 640px) {
+  .acad .reveal-row { flex-direction: column-reverse; }
+  .acad .reveal-row .reveal { min-width: 0; width: 100%; }
+  .acad .flashcard { min-height: 42dvh; padding: 26px 22px; }
+  .acad .fc-front .md { font-size: 22px; }
+  .acad .fc-back .md { font-size: 18px; }
+  .acad .grade { padding: 14px 2px; min-height: 76px; font-size: 16px; }
+}
+.acad .primary.icon-only { padding: 0; width: 38px; min-width: 38px; }
+
+/* Minutos al día (Hoy de la estantería) */
+.acad .budget { display: grid; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.acad .budget-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 0; font-size: 14.5px; color: var(--muted); }
+.acad .budget-line strong { color: var(--fg); }
+.acad .budget-line .ico { color: var(--c1); }
+.acad .budget-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.acad .budget-chips .chip-btn { min-height: 32px; padding: 4px 12px; border-radius: 99px; border: 1px solid var(--line); background: var(--surface-2); font-size: 14px; font-weight: 600; }
+.acad .budget-chips .chip-btn.on { border-color: var(--c2); background: color-mix(in srgb, var(--c2) 18%, var(--surface-2)); }
+.acad .budget-note { margin: 0; }
+
+/* Bandeja de revisión (borradores que aún no entran al repaso) */
+.acad .import-review { display: grid; gap: 8px; }
+.acad .draft-tray { border: 1px dashed color-mix(in srgb, var(--c2) 55%, var(--line)); border-radius: 14px; padding: 12px; display: grid; gap: 10px; background: color-mix(in srgb, var(--c2) 5%, transparent); }
+.acad .draft-tray-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 12px; align-items: flex-start; }
+.acad .draft-tray-head h4 { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 16px; }
+.acad .draft-tray-head p { margin: 2px 0 0; }
+.acad .draft-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 60vh; overflow-y: auto; }
+.acad .draft { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 8px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); }
+.acad .draft.flagged { border-color: color-mix(in srgb, var(--warn, #f59e0b) 55%, var(--line)); }
+.acad .draft-fields { display: grid; gap: 6px; min-width: 0; }
+.acad .draft-fields textarea { width: 100%; resize: vertical; font-size: 14.5px; }
+.acad .draft-fields textarea:first-child { font-weight: 600; }
+.acad .draft-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.acad .draft-flag { background: color-mix(in srgb, var(--warn, #f59e0b) 18%, transparent); color: var(--fg); cursor: help; }
+@media (max-width: 640px) {
+  .acad .draft { grid-template-columns: 1fr; }
+  .acad .draft-side { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-end; }
+}
+
+/* Tandas de 8 (repaso) */
+.acad .batch-dots { display: inline-flex; gap: 5px; margin-left: auto; margin-right: 8px; }
+.acad .batch-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); transition: background 0.2s ease, box-shadow 0.2s ease; }
+.acad .batch-dots i.on { background: var(--c1); box-shadow: 0 0 8px color-mix(in srgb, var(--c1) 60%, transparent); }
+.acad .batch-done .row { flex-wrap: wrap; justify-content: center; }
+
+/* Borrar tarjeta: en el repaso junto a Deshacer, y en el editor a la derecha */
+.acad .review .crumbs .delete-card { margin-left: 4px; }
+.acad .card-form .card-delete { margin-left: auto; }

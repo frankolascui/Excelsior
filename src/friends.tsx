@@ -1,4 +1,5 @@
 // Pantalla de Amigos (V2): tu perfil con foto, biografía y tag; añadir por tag; solicitudes; amigos y recomendados.
+import { sureThen } from './confirm';
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import type { Game } from './screens';
 import { RequireAccount } from './account';
@@ -14,6 +15,7 @@ import {
 import { Icon } from './icons';
 import { InfoTip } from './infotip';
 import { inviteLink } from './invite';
+import { ADMIN } from './admin';
 
 export function Face({ p, size = 56 }: { p: Pick<PublicProfile, 'name' | 'photo' | 'avatar_index' | 'avatar_name'>; size?: number }) {
   return <AvatarPortrait tier={p.avatar_index} label={initialOf(p.name)} photo={p.photo ?? undefined} size={size} title={p.avatar_name} />;
@@ -162,7 +164,7 @@ function MyProfile({ game }: { game: Game }) {
           ) : <p className="muted small-text">Creando tu tag…</p>}
           <InfoTip label="Cómo te añaden"><p>Tus amigos te añaden con este tag, o mándales tu enlace: al entrar con él te llega su solicitud sola.</p></InfoTip>
           {me && <button className="primary small invite-btn" onClick={() => void shareInvite()}><Icon name="send" /> Invitar a un amigo</button>}
-          {state.profile?.photo && <button className="link" onClick={() => act((s) => setPhoto(s, null))}>Quitar foto</button>}
+          {state.profile?.photo && <button className="link" onClick={() => sureThen({ title: '¿Quitar tu foto de perfil?', confirmLabel: 'Quitar foto' }, () => act((s) => setPhoto(s, null)))}>Quitar foto</button>}
         </div>
       </div>
       <form className="bio-form" onSubmit={save}>
@@ -211,6 +213,16 @@ function AddByTag({ game, open }: { game: Game; open: (p: PublicProfile) => void
   );
 }
 
+/** Modo admin: lo social se ve con tu cuenta real, pero solo para mirar. */
+export function AdminSocialNote() {
+  if (!ADMIN) return null;
+  return (
+    <section className="panel admin-note">
+      <p className="hint"><Icon name="wrench" /> <strong>Modo admin:</strong> ves tus amigos y tu gremio reales solo para mirar. La partida de pruebas no se publica en tu perfil ni aporta al gremio, y desde aquí no se puede cambiar nada de tu cuenta.</p>
+    </section>
+  );
+}
+
 function FriendsBody({ game }: { game: Game }) {
   const { state } = game;
   const me = useCloud().userId!;
@@ -227,6 +239,7 @@ function FriendsBody({ game }: { game: Game }) {
 
   return (
     <>
+      <AdminSocialNote />
       {social.error && (
         <section className="panel">
           <p className="error-text" role="alert">{social.error}</p>

@@ -5,7 +5,8 @@ import type { GameState, XPTransaction } from './types';
 import { uid } from './game';
 import { addTrophy, MVP_TITLE } from './trophies';
 import { canFoundGuild, GUILD_FOUND_LEVEL } from './unlocks';
-import { cloudClient, getUserId } from './cloud';
+import { ADMIN } from './admin';
+import { ADMIN_READONLY_MSG, cloudClient, getUserId } from './cloud';
 import type { PublicProfile } from './social';
 
 // ---------- Retos ----------
@@ -329,6 +330,7 @@ const PROFILE = 'user_id, tag, name, bio, photo, level, xp, avatar_index, avatar
 
 function describe(e: unknown): string {
   const m = e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e);
+  if (m === ADMIN_READONLY_MSG) return m;
   if (/fetch|network|load failed/i.test(m)) return 'No se pudo conectar con el servidor.';
   if (/lleno/i.test(m)) return 'El gremio está lleno (8 miembros).';
   if (/ya hay un encargo|nivel de gremio|encargo ya termin/i.test(m)) return m.replace(/^.*?(Ya hay|Este jefe|El encargo)/, '$1') + '.';
@@ -410,7 +412,7 @@ const reported = new Set<string>();
  */
 async function reportContribution(s: GameState, c: ChallengeRow) {
   const me = getUserId();
-  if (!me) return;
+  if (!me || ADMIN) return; // la partida de pruebas no aporta al gremio real
   const db = cloudClient();
   const mine = { ...contributionFor(s, Date.parse(c.starts_at), Date.parse(c.ends_at)), updated_at: new Date().toISOString() };
   if (!reported.has(c.id)) {
@@ -425,6 +427,7 @@ async function reportContribution(s: GameState, c: ChallengeRow) {
 
 /** Pide al servidor que compruebe la victoria: él recalcula la regla del 30 %, la marca y elige al MVP. */
 async function finishChallenge(id: string) {
+  if (ADMIN) return;
   const db = cloudClient();
   const { data: won, error } = await db.rpc('guild_check_victory', { c: id });
   if (error || !won) return;
@@ -437,7 +440,7 @@ let lastReport = '';
 /** Tras cada cambio de la partida: si hay reto activo, sube tu aportación (agrupando cambios seguidos). */
 export function scheduleGuildReport(s: GameState) {
   const c = activeChallenge(Date.now());
-  if (!getUserId() || !c) return;
+  if (ADMIN || !getUserId() || !c) return;
   const key = `${c.id}:${JSON.stringify(contributionFor(s, Date.parse(c.starts_at), Date.parse(c.ends_at)))}`;
   if (key === lastReport) return;
   clearTimeout(reportTimer);
@@ -445,6 +448,7 @@ export function scheduleGuildReport(s: GameState) {
 }
 
 async function run(op: PromiseLike<{ error: unknown }>, s: GameState): Promise<string | null> {
+  if (ADMIN) return ADMIN_READONLY_MSG;
   const { error } = await op;
   if (error) return describe(error);
   await refreshGuild(s);
@@ -452,6 +456,7 @@ async function run(op: PromiseLike<{ error: unknown }>, s: GameState): Promise<s
 }
 
 export async function createGuild(input: { name: string; emblem: string; motto: string }, s: GameState): Promise<string | null> {
+  if (ADMIN) return ADMIN_READONLY_MSG;
   if (!canFoundGuild(s)) return `Fundar un gremio pide nivel ${GUILD_FOUND_LEVEL}.`;
   const me = getUserId()!;
   const db = cloudClient();
@@ -462,6 +467,7 @@ export async function createGuild(input: { name: string; emblem: string; motto: 
 }
 
 export async function acceptInvite(guildId: string, s: GameState): Promise<string | null> {
+  if (ADMIN) return ADMIN_READONLY_MSG;
   const me = getUserId()!;
   const db = cloudClient();
   const { error } = await db.from('guild_members').insert({ user_id: me, guild_id: guildId });
@@ -485,6 +491,7 @@ export const kick = (userId: string, s: GameState) =>
 
 /** Sales del gremio. Si eras el líder, hereda el colíder más antiguo (o el miembro más antiguo); si eras el último, el gremio se disuelve. */
 export async function leaveGuild(s: GameState): Promise<string | null> {
+  if (ADMIN) return ADMIN_READONLY_MSG;
   const me = getUserId()!;
   const g = gs.guild!;
   const db = cloudClient();
@@ -502,6 +509,7 @@ export async function leaveGuild(s: GameState): Promise<string | null> {
 }
 
 export async function startChallenge(t: ChallengeTemplate, s: GameState, now = Date.now()): Promise<string | null> {
+  if (ADMIN) return ADMIN_READONLY_MSG;
   if (!canCommand(myRank())) return 'Solo el líder y los colíderes aceptan encargos.';
   if (activeChallenge(now)) return 'Ya hay un encargo en marcha.';
   if (guildLevel(guildXpFrom(gs.challenges)).level < (t.minLevel ?? 1)) return `Este jefe pide nivel de gremio ${t.minLevel}.`;
@@ -514,6 +522,7 @@ export async function startChallenge(t: ChallengeTemplate, s: GameState, now = D
 
 /** Da ánimos a un compañero (uno al día por persona). */
 export async function cheer(userId: string, s: GameState): Promise<string | null> {
+  if (ADMIN) return ADMIN_READONLY_MSG;
   const me = getUserId()!;
   const { error } = await cloudClient().from('guild_events').insert({ guild_id: gs.guild!.id, kind: 'cheer', actor: me, target: userId });
   if (error) return /duplicate|23505/i.test(`${(error as { code?: string }).code} ${error.message}`) ? 'Ya le has dado ánimos hoy.' : describe(error);
@@ -544,6 +553,7 @@ export function demote(userId: string, s: GameState): Promise<string | null> {
 
 /** Cede el liderazgo: el elegido pasa a líder y tú, a colíder si queda hueco. */
 export async function makeLeader(userId: string, s: GameState): Promise<string | null> {
+  if (ADMIN) return ADMIN_READONLY_MSG;
   if (myRank() !== 'leader') return 'Solo el líder puede ceder el liderazgo.';
   const me = getUserId()!;
   const g = gs.guild!;

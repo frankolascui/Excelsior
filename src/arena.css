@@ -319,10 +319,10 @@
 /* Bloqueado: la silueta rellena de un degradado de noche, con un filo de luz para que se adivine la forma */
 .pixel-boss .pb-silhouette {
   display: block; width: 100%; height: 100%;
-  background: linear-gradient(180deg, #4a4270 0%, #26213c 45%, #0e0c18 100%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c3) 45%, #3a3a48) 0%, color-mix(in srgb, var(--c3) 22%, #1c1c26) 45%, #0c0c12 100%);
   -webkit-mask-size: contain; mask-size: contain; -webkit-mask-position: 50% 100%; mask-position: 50% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
 }
-.pixel-boss.has-img.is-silhouette { filter: drop-shadow(0 -1px 0 rgba(190, 180, 255, 0.35)) drop-shadow(0 0 6px rgba(120, 100, 220, 0.18)); }
+.pixel-boss.has-img.is-silhouette { filter: drop-shadow(0 -1px 0 color-mix(in srgb, var(--c1) 35%, transparent)) drop-shadow(0 0 6px color-mix(in srgb, var(--c3) 20%, transparent)); }
 
 /* ---------- Combate: Arena y jefes de gremio ----------
    Calma visual: el boss respira despacio (sin saltos ni temblores), la sombra está detrás y en el suelo,
