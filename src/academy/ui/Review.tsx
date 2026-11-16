@@ -375,24 +375,61 @@ function LeechNote({ card, onClose }: { card: CardRow; onClose: () => void }) {
 }
 
 /** Panel «Hoy» de la estantería: cuántas tarjetas tocan, en total y por asignatura. */
+type TodayData = {
+  total: ReturnType<typeof countsFor>; bySubject: { s: Subject; n: number }[];
+  exams: { e: ExamDate; daysLeft: number; s?: Subject }[]; budget: Awaited<ReturnType<typeof loadQueue>>['budget'];
+};
+
+/**
+ * «Hoy» sale al instante: se pinta lo último que se calculó (de hoy) y se refresca por detrás.
+ * La cuenta tarda varias consultas a la base de datos; sin esto el panel aparecía con retraso y movía la estantería.
+ */
+const TODAY_KEY = 'excelsior:acad-today';
+const localDay = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
+let todayMem: { day: string; data: TodayData } | null = null;
+let todayLoad: Promise<TodayData> | null = null;
+
+function cachedToday(): TodayData | null {
+  if (!todayMem) {
+    try { todayMem = JSON.parse(localStorage.getItem(TODAY_KEY) ?? 'null'); } catch { todayMem = null; }
+  }
+  return todayMem?.day === localDay() ? todayMem.data : null;
+}
+
+/** Empieza a calcular «Hoy» (la estantería lo llama al abrirse, a la vez que carga las asignaturas). */
+export function prefetchToday(): Promise<TodayData> {
+  todayLoad ??= Promise.all([loadQueue(), listSubjects()])
+    .then(([{ queue, topics, exams, budget }, subjects]) => {
+      const subjectOf = new Map(topics.map((t) => [t.id, t.subject_id]));
+      const bySubject = subjects
+        .map((s) => ({ s, n: queue.filter((c) => subjectOf.get(c.topic_id) === s.id).length }))
+        .filter((x) => x.n > 0);
+      const soon = exams.filter((e) => e.daysLeft <= 14).map((e) => ({ e, daysLeft: e.daysLeft, s: subjects.find((s) => s.id === e.subject_id) }));
+      const data: TodayData = { total: countsFor(queue), bySubject, exams: soon, budget };
+      todayMem = { day: localDay(), data };
+      try { localStorage.setItem(TODAY_KEY, JSON.stringify(todayMem)); } catch { /* sin espacio: solo memoria */ }
+      return data;
+    })
+    .finally(() => { todayLoad = null; });
+  return todayLoad;
+}
+
 export function TodayPanel() {
-  type Budget = Awaited<ReturnType<typeof loadQueue>>['budget'];
-  const [data, setData] = useState<{ total: ReturnType<typeof countsFor>; bySubject: { s: Subject; n: number }[]; exams: { e: ExamDate; daysLeft: number; s?: Subject }[]; budget: Budget } | null>(null);
+  const [data, setData] = useState<TodayData | null>(cachedToday);
   const [error, setError] = useState<string | null>(null);
   const [editBudget, setEditBudget] = useState(false);
   const [budgetMin, setBudgetMin] = useState(studyBridge.budgetMin);
+  const first = useRef(true);
 
   useEffect(() => {
-    Promise.all([loadQueue(), listSubjects()])
-      .then(([{ queue, topics, exams, budget }, subjects]) => {
-        const subjectOf = new Map(topics.map((t) => [t.id, t.subject_id]));
-        const bySubject = subjects
-          .map((s) => ({ s, n: queue.filter((c) => subjectOf.get(c.topic_id) === s.id).length }))
-          .filter((x) => x.n > 0);
-        const soon = exams.filter((e) => e.daysLeft <= 14).map((e) => ({ e, daysLeft: e.daysLeft, s: subjects.find((s) => s.id === e.subject_id) }));
-        setData({ total: countsFor(queue), bySubject, exams: soon, budget });
-      })
-      .catch((e) => setError(friendly(e.message)));
+    let alive = true;
+    // Al cambiar los minutos hay que recalcular aunque ya hubiera una cuenta en marcha.
+    if (!first.current) todayLoad = null;
+    first.current = false;
+    prefetchToday()
+      .then((d) => { if (alive) { setData(d); setError(null); } })
+      .catch((e) => { if (alive) setError(friendly(e.message)); });
+    return () => { alive = false; };
   }, [budgetMin]);
 
   function pickBudget(min: number | null) {
@@ -403,8 +440,12 @@ export function TodayPanel() {
     sfx.tick();
   }
 
-  if (error) return <div className="today panel"><p className="eyebrow">Hoy</p><p className="muted small">{error}</p></div>;
-  if (!data) return null;
+  if (error && !data) return <div className="today panel"><p className="eyebrow">Hoy</p><p className="muted small">{error}</p></div>;
+  if (!data) return (
+    <div className="today panel" aria-busy="true" data-testid="today-loading">
+      <div className="today-main"><div><p className="eyebrow">Hoy</p><p className="today-num muted">Contando tarjetas…</p></div></div>
+    </div>
+  );
   const sum = data.total.nuevas + data.total.aprendiendo + data.total.repaso;
 
   return (

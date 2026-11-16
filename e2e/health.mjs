@@ -55,6 +55,14 @@ await page.fill('#night-levantado', '07:05');
 await page.fill('#night-h', '7');
 await page.fill('#night-m', '25');
 await page.fill('#night-peso', '70,1');
+{
+  // La casilla del peso ocupa su fila (antes chocaba con el estilo del círculo de completar) y las escalas van en una fila.
+  const box = await page.locator('.night-check').boundingBox();
+  const scale = await page.locator('.night-form [aria-label="¿Te levantaste descansado?"]').boundingBox();
+  check(box.width > 400 && box.height < 60 && box.y + box.height <= scale.y, 'la casilla del peso no se monta sobre lo de abajo');
+  const tops = await page.locator('.night-form [aria-label="Entrenos de ayer"] .seg').evaluateAll((els) => new Set(els.map((e) => Math.round(e.getBoundingClientRect().top))).size);
+  check(tops === 1, 'los entrenos 0–4 van en una sola fila');
+}
 await page.click('.night-form [aria-label="¿Te levantaste descansado?"] button:has-text("4")');
 await page.click('.night-form [aria-label="Entrenos de ayer"] button:has-text("1")');
 await page.click('button:has-text("Apuntar la noche")');
@@ -121,6 +129,13 @@ await m.click('[data-testid="open-health"]');
 await m.click('[data-testid="found-health"]');
 await m.waitForSelector('[data-testid="night-form"]');
 check(await m.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), 'móvil: sin scroll horizontal');
+for (const label of ['¿Te levantaste descansado?', 'Entrenos de ayer']) {
+  const rows = await m.locator(`.night-form [aria-label="${label}"] .seg`).evaluateAll((els) => new Set(els.map((e) => Math.round(e.getBoundingClientRect().top))).size);
+  check(rows === 1, `móvil: «${label}» en una sola fila`);
+}
+await m.fill('#night-peso', '70');
+const mb = await m.locator('.night-check').boundingBox();
+check(mb.width > 250, 'móvil: la casilla del peso usa todo el ancho');
 await m.screenshot({ path: `${out}/health-03-movil.png`, fullPage: true });
 
 check(errors.length === 0, `sin errores de la app ${errors.join(' | ')}`);

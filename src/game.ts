@@ -659,6 +659,32 @@ export function toggleHabit(s: GameState, habitId: string, now: number, day = da
   return { state, xp: amount, capped: amount < base };
 }
 
+/**
+ * Hábitos de varias veces al día: deja el día en `n` marcas (0…perDay). Sube de una en una con su XP
+ * y, al bajar, quita las últimas con el XP que dieron. Así se corrige una marca de más sin perder las demás.
+ */
+export function setHabitDayCount(s: GameState, habitId: string, n: number, now: number, day = dayKey(now)): ActionResult {
+  const habit = s.habits.find((h) => h.id === habitId);
+  if (!habit || habit.system || day > dayKey(now)) return { state: s, xp: 0 };
+  const target = Math.max(0, Math.min(habit.perDay ?? 1, Math.round(n)));
+  const existing = s.habitCompletions.filter((c) => c.habitId === habitId && c.day === day).sort((a, b) => a.at - b.at);
+  if (target > existing.length) {
+    let res: ActionResult = { state: s, xp: 0 };
+    for (let i = existing.length; i < target; i++) {
+      const r = toggleHabit(res.state, habitId, now, day);
+      res = { state: r.state, xp: res.xp + r.xp, capped: res.capped || r.capped };
+    }
+    return res;
+  }
+  if (target === existing.length) return { state: s, xp: 0 };
+  const ids = new Set(existing.slice(target).map((c) => c.id));
+  const removed = s.xp.filter((t) => t.source === 'habit' && ids.has(t.sourceId)).reduce((sum, t) => sum + t.amount, 0);
+  return {
+    state: { ...s, habitCompletions: s.habitCompletions.filter((c) => !ids.has(c.id)), xp: s.xp.filter((t) => !(t.source === 'habit' && ids.has(t.sourceId))) },
+    xp: -removed,
+  };
+}
+
 // ---------- Deep Work ----------
 
 /** `targetMinutes = 0` es una sesión libre (cronómetro); > 0 es una cuenta atrás de minutos de foco. */

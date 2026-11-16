@@ -53,8 +53,11 @@
 .diary-panel h3 { margin: 0; }
 
 .night-form .eyebrow { margin: 0; }
-.night-form .check { display: flex; gap: 8px; align-items: flex-start; color: var(--muted); }
-.night-form .check input { margin-top: 4px; }
+.night-form .night-check { display: flex; gap: 10px; align-items: flex-start; color: var(--muted); cursor: pointer; }
+.night-form .night-check input { flex: none; width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--c1); cursor: pointer; }
+/* Escalas de la noche (descanso 1–5, entrenos 0–4): siempre en una fila, botones del mismo ancho. */
+.night-form .segmented { display: flex; flex-wrap: nowrap; }
+.night-form .segmented .seg { flex: 1 1 0; min-width: 0; padding: 6px 0; text-align: center; }
 .night-live { display: flex; gap: 22px; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid var(--line); }
 .night-live > div { display: flex; flex-direction: column; }
 .night-live b { font-family: var(--mono); font-weight: 600; font-size: 18px; }

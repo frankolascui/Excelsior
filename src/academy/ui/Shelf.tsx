@@ -4,20 +4,22 @@ import { byPosition, nextPosition, routeToHash, swapWithNeighbour, SUBJECT_COLOR
 import type { Subject } from '../study/types';
 import { sfx } from '../sfx';
 import { askConfirm, askText } from './Dialog';
-import { TodayPanel } from './Review';
+import { prefetchToday, TodayPanel } from './Review';
 import { Icon } from './Icon';
 import { Menu, Modal } from './Kit';
 
 /** La estantería: una carpeta por asignatura. */
+let shelfMem: Subject[] | null = null; // la estantería de la última vez, para no enseñar «Cargando…» al volver
+
 export function Shelf() {
-  const [subjects, setSubjects] = useState<Subject[] | null>(null);
+  const [subjects, setSubjects] = useState<Subject[] | null>(shelfMem);
   const [name, setName] = useState('');
   const [color, setColor] = useState(SUBJECT_COLORS[0]);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
 
-  const reload = () => listSubjects().then(setSubjects).catch((e) => setError(e.message));
-  useEffect(() => { reload(); }, []);
+  const reload = () => listSubjects().then((s) => { shelfMem = s; setSubjects(s); }).catch((e) => setError(e.message));
+  useEffect(() => { prefetchToday().catch(() => { /* el panel enseña su error */ }); reload(); }, []);
 
   async function add(e: React.FormEvent) {
     e.preventDefault();

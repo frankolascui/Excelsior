@@ -112,7 +112,14 @@ await page.waitForSelector('[data-testid="academy-panel"] .shelf', { timeout: 80
 check((await page.locator('[data-testid="academy-panel"]').boundingBox()).width > 900, 'Academy usa todo el ancho en escritorio');
 check(page.url().includes('#academy'), 'la pestaña Academy tiene su dirección (#academy)');
 check(await page.isVisible('[data-testid="study-strip"]'), 'encima, la franja del juego: racha y hábito');
-check(await page.isVisible('.today-num:has-text("3 tarjetas")'), 'la estantería dice cuántas tocan hoy (repaso y nuevas)');
+await page.waitForSelector('.today-num:has-text("3 tarjetas")', { timeout: 8000 });
+check(true, 'la estantería dice cuántas tocan hoy (repaso y nuevas)');
+// Al volver a la estantería, «Hoy» sale al instante con lo último calculado (sin esperar a la base de datos).
+await page.evaluate(() => { location.hash = '#hoy'; });
+await page.waitForSelector('.nav');
+await page.evaluate(() => { location.hash = '#academy/'; });
+await page.waitForSelector('[data-testid="academy-panel"] .shelf', { timeout: 8000 });
+check(await page.isVisible('.today-num:has-text("3 tarjetas")') && await page.locator('[data-testid="today-loading"]').count() === 0, '«Hoy» de Academy sale sin retraso al volver');
 let g = await game(page);
 check(g.habits.some((h) => h.system === 'academy'), 'abrir Academy con cuenta crea el hábito «Repasar las tarjetas»');
 await page.screenshot({ path: `${out}/academy-01-inicio.png` });

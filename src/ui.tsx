@@ -13,7 +13,7 @@ import { IMPACTS } from './priorities';
 
 const impactName = (v: Impact) => IMPACTS.find((x) => x.id === v)!.name;
 import './core.css';
-import { HabitHistory, habitShields, MinimumInput, PerDayInput, ProgressionInput, progressionDraft, type ProgressionDraft } from './habits-ui';
+import { DayPips, HabitGoal, HabitHistory, habitShields, MinimumInput, PerDayInput, ProgressionInput, progressionDraft, type ProgressionDraft } from './habits-ui';
 import { progressionText } from './progression';
 import { shieldableDay, shieldsLeft } from './economy';
 import { SubAdd } from './tree-ui';
@@ -359,12 +359,14 @@ export function useHabitFlip<T extends HTMLElement>() {
 }
 
 export function HabitItem({
-  state, habit, now, onToggle, onDelete, onEdit, onToggleDay, onShield, onRetire, handle, compact = false,
+  state, habit, now, onToggle, onSetCount, onDelete, onEdit, onToggleDay, onShield, onRetire, handle, compact = false,
 }: {
   state: GameState;
   habit: Habit;
   now: number;
   onToggle: () => void;
+  /** Hábitos de varias veces al día: deja hoy en n marcas (las bolitas). */
+  onSetCount?: (n: number) => void;
   /** Con él, los puntos de la semana se pueden pulsar y el nombre abre el historial. */
   onToggleDay?: (day: string) => void;
   onDelete?: () => void;
@@ -399,9 +401,9 @@ export function HabitItem({
           initial={{ xp: habit.xp, rewards: sameRewards(habit.rewards, auto) ? undefined : habit.rewards }}
           maxXp={CUSTOM_LIMITS.habitXp} idPrefix={`edit-${habit.id}`}
           extra={<>
-            <MinimumInput id={`edit-${habit.id}-min`} value={minimum} onChange={setMinimum} />
-            <ProgressionInput id={`edit-${habit.id}-prog`} value={prog} onChange={setProg} perWeek={habit.frequency === 'weekly' ? habit.perWeek ?? 1 : 7} perDay={perDayDraft} />
             <PerDayInput id={`edit-${habit.id}-perday`} value={perDayDraft} onChange={setPerDayDraft} />
+            <ProgressionInput id={`edit-${habit.id}-prog`} value={prog} onChange={setProg} perWeek={habit.frequency === 'weekly' ? habit.perWeek ?? 1 : 7} perDay={perDayDraft} />
+            <MinimumInput id={`edit-${habit.id}-min`} value={minimum} onChange={setMinimum} />
             {onRetire && <button type="button" className="link retire-now" onClick={() => { setEditing(false); onRetire(); }}><Icon name="trophy" /> Ya lo tengo consolidado: retirarlo del seguimiento</button>}
           </>}
           onSave={(n, v) => { onEdit(n, v, minimum, prog, perDayDraft); setEditing(false); }} onCancel={() => { setMinimum(habit.minimum ?? ''); setProg(progressionDraft(habit)); setPerDayDraft(habit.perDay ?? 1); setEditing(false); }}
@@ -414,6 +416,7 @@ export function HabitItem({
   const perDay = habit.perDay ?? 1;
   const todayCount = perDay > 1 ? habitDayCount(state, habit.id, today) : 0;
   const more = perDay > 1 && todayCount < perDay;
+  const partial = more && todayCount > 0;
   const streak = habitStreak(state, habit.id, now);
   const weekly = habit.frequency === 'weekly';
   const weekCount = weekly ? habitWeekCount(state, habit.id, now) : 0;
@@ -426,21 +429,22 @@ export function HabitItem({
   return (
     <li className={done && !more ? 'item done' : risk ? 'item at-risk' : 'item'} data-habit={habit.id}>
       <button
-        className={done ? 'check checked' : 'check'}
+        className={partial ? 'check partial' : done ? 'check checked' : 'check'}
+        style={partial ? { '--p': todayCount / perDay } as React.CSSProperties : undefined}
         onClick={onToggle}
         aria-pressed={done}
-        aria-label={more && done ? `Marcar otra vez ${habit.name} (${todayCount}/${perDay} hoy)` : done ? `Desmarcar ${habit.name}` : `Completar ${habit.name}`}
-        title={more && done ? `Otra vez (${todayCount}/${perDay} hoy)` : done ? 'Desmarcar' : 'Completado'}
+        aria-label={partial ? `Marcar otra vez ${habit.name} (${todayCount}/${perDay} hoy)` : done ? `Desmarcar ${habit.name}` : `Completar ${habit.name}`}
+        title={partial ? `Otra vez (${todayCount}/${perDay} hoy)` : done ? 'Desmarcar' : 'Completado'}
       >
-        ✓
+        {partial ? `${todayCount}/${perDay}` : '✓'}
       </button>
       <div className="item-body">
         {onToggleDay
           ? <button type="button" className="habit-open" aria-expanded={open} onClick={() => setOpen(!open)} title="Ver historial"><span className="item-title">{habit.name}</span><Icon name="chevron-down" /></button>
           : <span className="item-title">{habit.name}</span>}
         <span className="item-meta">
-          {habit.progression && habit.progression.kind !== 'freq' && <span className="freq-tag goal-tag" title="Meta actual (sobrecarga progresiva)"><Icon name="trend" /> {progressionText(habit)}</span>}
-          {perDay > 1 && <span className="freq-tag" title={`Se puede marcar hasta ${perDay} veces al día`}>{todayCount}/{perDay} hoy</span>}
+          {compact && habit.progression && <span className="freq-tag goal-tag" title="Meta actual (sobrecarga progresiva)"><Icon name="trend" /> {progressionText(habit)}</span>}
+          {perDay > 1 && <DayPips name={habit.name} count={todayCount} max={perDay} onSet={onSetCount} />}
           {weekly && <span className={weekDone ? 'freq-tag done' : 'freq-tag'}>{weekCount}/{habit.perWeek} esta semana{weekDone && <> <Icon name="check" /></>}</span>}
           <span className="week" aria-label="Últimos 7 días">
             {week.map((d) => {
@@ -456,6 +460,7 @@ export function HabitItem({
           {!compact && <span className="mono xp-tag">+{habitXp(habit)} XP</span>}
           {!compact && <RewardTags rewards={habit.rewards} />}
         </span>
+        {!compact && <HabitGoal state={state} habit={habit} now={now} />}
         {(risk || (savable && stock > 0)) && (
           <p className="habit-risk small-text">
             {risk && <span><Icon name="alert" /> Ayer fallaste: nunca dos días seguidos. {habit.minimum ? <>Si hoy es un día malo, vale con lo mínimo: <b>{habit.minimum}</b>.</> : 'Hoy cuenta aunque sea poco.'}</span>}
