@@ -16,7 +16,7 @@ export interface NewsEntry {
 /** La más nueva primero. Al publicar una versión, añade su entrada arriba y sube APP_VERSION en version.ts. */
 export const NEWS: NewsEntry[] = [
   {
-    version: '3.1', date: '2026-11-14', title: 'Afinando',
+    version: '3.1', date: '2026-11-16', title: 'Afinando',
     groups: [
       { name: 'Deep Work', items: [
         'La productividad ya puede llegar a tu tiempo real entero: el Sentido es una pregunta más (viene propuesta según la sesión) y con 5 en rendimiento y sentido salen todas tus horas de foco.',
@@ -29,7 +29,6 @@ export const NEWS: NewsEntry[] = [
         'Minutos al día para Academy (en «Hoy» de la estantería): estima cuánto te espera con tu tiempo real por tarjeta, frena las tarjetas nuevas si no caben y avisa si ni los repasos te caben. Los repasos que tocan nunca se esconden.',
         'Bandeja de revisión: lo que pegas o importas en texto entra como borrador y no llega al repaso hasta que lo apruebas. Avisa de duplicadas, preguntas casi iguales, respuestas largas y sin respuesta. Se puede aprobar sin revisar si lo activas.',
         'Botón «Borrar tarjeta» en el repaso y al editar una tarjeta.',
-        'Todo lo que borra pide confirmación antes: misiones, hábitos, metas, recordatorios, eventos, plantillas, noches, borradores y tarjetas.',
         'El repaso va por tandas de 8 tarjetas: al acabar cada una, un resumen corto y sigues (espacio) o terminas ahí.',
         'Exámenes: el repaso final empieza 7 días antes y se reparte día a día, sin tope de 60 tarjetas.',
         'Estadísticas: «Retención estimada» (lo que FSRS calcula que recordarías hoy) junto a la real (lo que acertaste).',
@@ -42,8 +41,9 @@ export const NEWS: NewsEntry[] = [
         'Nuevo reloj del sueño en Hoy: una esfera de 24 horas con tu noche marcada y la hora actual.',
         'Diario sin reloj repetido y con las 6 medidas en una sola línea.',
       ] },
-      { name: 'Novedades', items: [
-        'Índice de todas las versiones: pulsa una para ver todo lo que trajo.',
+      { name: 'En toda la app', items: [
+        'Todo lo que borra pide confirmación antes: misiones, hábitos, metas, recordatorios, eventos, plantillas, noches, borradores y tarjetas.',
+        'Índice de novedades: primero las versiones enteras y debajo sus actualizaciones (.1, .2…). Pulsa una para ver todo lo que trajo.',
       ] },
     ],
   },
