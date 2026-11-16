@@ -24,3 +24,13 @@ describe('modo admin: la cuenta real es solo de lectura', () => {
     expect(adminBlocks('POST', `${U}/rest/v1/rpc/recommended_friends`)).toBe(false);
   });
 });
+
+describe('cuenta de pruebas del modo admin', () => {
+  it('solo un email con «+» cuenta como cuenta de pruebas', async () => {
+    const { isTestEmail } = await import('./cloud');
+    expect(isTestEmail('nico+pruebas@gmail.com')).toBe(true);
+    expect(isTestEmail('nico@gmail.com')).toBe(false);
+    expect(isTestEmail('nico@gm+ail.com')).toBe(false);
+    expect(isTestEmail(null)).toBe(false);
+  });
+});

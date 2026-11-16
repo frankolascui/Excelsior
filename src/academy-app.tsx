@@ -4,7 +4,7 @@
 // El juego la envuelve: racha y hábito «Repasar las tarjetas», y cada repaso se convierte en Deep Work de estudio.
 import { useEffect, useRef, useState } from 'react';
 import type { Game } from './screens';
-import { useCloud } from './cloud';
+import { adminReadOnly, useCloud } from './cloud';
 import { Icon } from './icons';
 import { InfoTip } from './infotip';
 import { confetti } from './confetti';
@@ -22,7 +22,6 @@ import { Stats } from './academy/ui/Stats';
 import { Tune } from './academy/ui/Tune';
 import './academy/academy.css';
 import './academy.css';
-import { ADMIN } from './admin';
 
 function useAcademyRoute(): Route {
   const read = () => parseRoute(location.hash.startsWith('#academy') ? location.hash : '');
@@ -97,7 +96,7 @@ export default function AcademyApp({ game }: { game: Game }) {
 
   return (
     <div className="acad" data-testid="academy-panel">
-      {ADMIN && (
+      {adminReadOnly() && (
         <section className="panel admin-note">
           <p className="hint"><Icon name="wrench" /> <strong>Modo admin:</strong> ves tus apuntes y tarjetas reales y puedes repasar para probar, pero nada se guarda en tu cuenta: tus tarjetas siguen con sus fechas de siempre. El XP del repaso va a la partida de pruebas.</p>
         </section>

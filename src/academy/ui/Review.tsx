@@ -13,7 +13,7 @@ import { friendly } from './CardsPanel';
 import { Icon } from './Icon';
 import { studyBridge } from '../bridge';
 import { askConfirm } from './Dialog';
-import { ADMIN } from '../../admin';
+import { adminReadOnly } from '../../cloud';
 
 const Markdown = lazy(() => import('./Markdown').then((m) => ({ default: m.Markdown })));
 
@@ -172,7 +172,7 @@ export function Review({ subjectId, topicIds }: { subjectId?: string; topicIds?:
     durations.current.push(ms);
     const reviewId = saveReview(card.id, next, {
       rating: grade, state: card.state, scheduled_days: next.scheduled_days, duration_ms: ms,
-    }).catch((e) => { if (!ADMIN) setError(`No se ha podido guardar una respuesta: ${friendly(e.message)}`); return null; }); // en modo admin no se guarda a propósito
+    }).catch((e) => { if (!adminReadOnly()) setError(`No se ha podido guardar una respuesta: ${friendly(e.message)}`); return null; }); // en modo admin no se guarda a propósito
     history.current.push({ queue, card, reviewId });
     if (history.current.length > 30) history.current.shift();
     setCanUndo(true);

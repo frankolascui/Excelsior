@@ -6,7 +6,7 @@ import { uid } from './game';
 import { addTrophy, MVP_TITLE } from './trophies';
 import { canFoundGuild, GUILD_FOUND_LEVEL } from './unlocks';
 import { ADMIN } from './admin';
-import { ADMIN_READONLY_MSG, cloudClient, getUserId } from './cloud';
+import { ADMIN_READONLY_MSG, adminReadOnly, cloudClient, getUserId } from './cloud';
 import type { PublicProfile } from './social';
 
 // ---------- Retos ----------
@@ -412,7 +412,7 @@ const reported = new Set<string>();
  */
 async function reportContribution(s: GameState, c: ChallengeRow) {
   const me = getUserId();
-  if (!me || ADMIN) return; // la partida de pruebas no aporta al gremio real
+  if (!me || adminReadOnly()) return; // la partida de pruebas no aporta al gremio real
   const db = cloudClient();
   const mine = { ...contributionFor(s, Date.parse(c.starts_at), Date.parse(c.ends_at)), updated_at: new Date().toISOString() };
   if (!reported.has(c.id)) {
@@ -427,7 +427,7 @@ async function reportContribution(s: GameState, c: ChallengeRow) {
 
 /** Pide al servidor que compruebe la victoria: él recalcula la regla del 30 %, la marca y elige al MVP. */
 async function finishChallenge(id: string) {
-  if (ADMIN) return;
+  if (adminReadOnly()) return;
   const db = cloudClient();
   const { data: won, error } = await db.rpc('guild_check_victory', { c: id });
   if (error || !won) return;
@@ -440,7 +440,7 @@ let lastReport = '';
 /** Tras cada cambio de la partida: si hay reto activo, sube tu aportación (agrupando cambios seguidos). */
 export function scheduleGuildReport(s: GameState) {
   const c = activeChallenge(Date.now());
-  if (ADMIN || !getUserId() || !c) return;
+  if (adminReadOnly() || !getUserId() || !c) return;
   const key = `${c.id}:${JSON.stringify(contributionFor(s, Date.parse(c.starts_at), Date.parse(c.ends_at)))}`;
   if (key === lastReport) return;
   clearTimeout(reportTimer);

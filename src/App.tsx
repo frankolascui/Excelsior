@@ -14,7 +14,7 @@ import { NewsGate, VersionButton } from './news-ui';
 import { latestVersion, loadNewsSeen, markNewsSeen } from './news';
 import { ConflictDialog, loadGuest, saveGuest, Welcome } from './account';
 import { Guilds } from './guilds-ui';
-import { cloudEnabled, useCloud } from './cloud';
+import { cloudEnabled, isTestEmail, useCloud } from './cloud';
 import { coinBalance } from './economy';
 import { Character, Dashboard, DeepWork, Habits, Kingdoms, Onboarding, Quests, type Tab } from './screens';
 import { useAgendaAlerts } from './agenda-ui';
@@ -195,7 +195,7 @@ export default function App() {
     <div className={ADMIN ? 'app admin' : 'app'}>
       {ADMIN && (
         <div className="admin-bar" role="status">
-          <Icon name="wrench" /> Modo admin · partida de pruebas, todo desbloqueado · <button className="link" onClick={() => setAdmin(false)}>Salir</button>
+          <Icon name="wrench" /> Modo admin · partida de pruebas, todo desbloqueado · <span data-testid="admin-account">{!cloud.email ? 'sin cuenta' : isTestEmail(cloud.email) ? `cuenta de pruebas ${cloud.email}: amigos, gremios y Academy se guardan en ella` : 'tu cuenta real en solo lectura (para probar lo online, entra con un email con «+», p. ej. tucorreo+pruebas@gmail.com)'}</span> · <button className="link" onClick={() => setAdmin(false)}>Salir</button>
         </div>
       )}
       <nav className="nav" aria-label="Secciones">

@@ -21,10 +21,17 @@ export function adminBlocks(method: string, url: string): boolean {
   if (path.startsWith('/auth/')) return false; // entrar y salir de la cuenta
   return !ADMIN_WRITABLE.test(path);
 }
+/** Cuenta de pruebas: un email con «+» (p. ej. tucorreo+pruebas@gmail.com). Es otra cuenta, aparte de la real. */
+export const isTestEmail = (email: string | null | undefined) => !!email && /\+[^@]+@/.test(email);
+/**
+ * ¿El modo admin está en solo lectura? Sí con tu cuenta real (o sin saber aún cuál es);
+ * no con una cuenta de pruebas: ahí amigos, gremios, Salud y Academy se guardan de verdad, en esa cuenta.
+ */
+export const adminReadOnly = () => ADMIN && !isTestEmail(cloud.email);
 const adminFetch: typeof fetch = (input, init) => {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
   const method = init?.method ?? (input instanceof Request ? input.method : 'GET');
-  if (adminBlocks(method, url)) {
+  if (adminReadOnly() && adminBlocks(method, url)) {
     return Promise.resolve(new Response(JSON.stringify({ code: 'ADMIN', message: ADMIN_READONLY_MSG }), { status: 403, headers: { 'content-type': 'application/json' } }));
   }
   return fetch(input, init);
