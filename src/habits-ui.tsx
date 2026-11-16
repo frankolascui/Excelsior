@@ -75,28 +75,29 @@ export function PerDayInput({ id, value, onChange }: { id: string; value: number
         ))}
       </div>
       <span className="hint">{value > 1
-        ? `Cada marca da su XP. El día ya cuenta para la racha con 1; con ${value} de ${value} el hábito queda cumplido y baja con los hechos.`
+        ? `El botón de siempre cumple el día. Si un día lo haces más veces, pulsa las estrellas: cada vez extra da su XP y cuenta para tu meta semanal.`
         : 'Para cosas que haces más de una vez al día (ej. doble entreno, beber agua).'}</span>
     </div>
   );
 }
 
 /**
- * Las marcas de hoy de un hábito de varias veces al día: una bolita por vez.
- * Pulsar una deja el día en ese número; pulsar la última encendida la quita (corrige una de más sin perder las otras).
+ * Veces extra de hoy en un hábito de varias veces al día: una estrella por cada vez de más (la primera es el botón).
+ * Pulsar una estrella deja el día en ese número; pulsar la última encendida la quita.
  */
 export function DayPips({ name, count, max, onSet }: { name: string; count: number; max: number; onSet?: (n: number) => void }) {
   return (
     <span className="day-pips" role="group" aria-label={`${name}: ${count} de ${max} hoy`}>
-      {Array.from({ length: max }, (_, i) => i + 1).map((n) => {
+      {Array.from({ length: max - 1 }, (_, i) => i + 2).map((n) => {
         const on = n <= count;
         const next = on && n === count ? n - 1 : n;
+        const star = <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6-4.5-4.2 6.1-.8z" /></svg>;
         return onSet
           ? <button type="button" key={n} className={on ? 'pip on' : 'pip'} aria-pressed={on} onClick={() => onSet(next)}
-              aria-label={next < count ? `Quitar una marca de ${name} (quedan ${next})` : `Dejar ${name} en ${n} de ${max} hoy`} title={next < count ? 'Quitar esta' : `${n} de ${max}`}><i /></button>
-          : <span key={n} className={on ? 'pip on' : 'pip'}><i /></span>;
+              aria-label={next < count ? `Quitar una vez extra de ${name}` : `${name}: ${n} veces hoy`} title={next < count ? 'Quitar esta vez extra' : `Vez extra: ${n} hoy (da su XP)`}>{star}</button>
+          : <span key={n} className={on ? 'pip on' : 'pip'}>{star}</span>;
       })}
-      <span className="pips-text mono">{count}/{max} hoy</span>
+      {count > 1 && <span className="pips-text mono">×{count} hoy</span>}
     </span>
   );
 }

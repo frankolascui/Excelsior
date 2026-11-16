@@ -591,9 +591,12 @@ export function updateHabit(s: GameState, id: string, patch: { name?: string; xp
   };
 }
 
-/** Ya no hay que hacerlo hoy: hecho hoy o, si es semanal, objetivo de la semana cumplido. */
+/**
+ * Ya no hay que hacerlo hoy: hecho hoy (una marca basta; las veces extra de perDay son opcionales)
+ * o, si es semanal, objetivo de la semana cumplido.
+ */
 export const habitCleared = (s: GameState, h: Habit, now: number) =>
-  habitDayCount(s, h.id, dayKey(now)) >= (h.perDay ?? 1) || habitSatisfied(s, h, now);
+  isHabitDone(s, h.id, dayKey(now)) || habitSatisfied(s, h, now);
 
 /** Orden en pantalla: los que faltan arriba y los ya cumplidos al final; dentro de cada grupo, el orden elegido. */
 export function habitsInOrder(s: GameState, now: number): Habit[] {

@@ -48,15 +48,18 @@ check(t.includes('Llevas 9 de 14'), 'cuánto falta para que Hiperión proponga s
 check((await p.locator('[data-habit="h2"] [data-testid="habit-goal"]').innerText()).includes('3 veces/sem'), 'también la de veces por semana');
 check(await p.locator('[data-habit="h4"] [data-testid="habit-goal"]').count() === 0, 'sin sobrecarga, sin bloque');
 
-check(await p.isVisible('[data-habit="h3"] .day-pips') && (await p.locator('[data-habit="h3"] .check').innerText()) === '1/3', 'varias veces al día: bolitas y el aro dice 1/3');
+// Varias veces al día: botón normal (una marca cumple el día) y estrellas para las veces extra.
+check(await p.locator('[data-habit="h3"].done').count() === 1 && await p.locator('[data-habit="h3"] .pip').count() === 2, 'con una marca el día ya está cumplido; las veces extra son 2 estrellas');
 await p.screenshot({ path: `${out}/habits-01.png` });
-await p.click('[data-habit="h3"] .pip >> nth=2');
-check(await count(p) === 3, 'pulsar la tercera bolita deja el día en 3 de 3');
-check(await p.locator('[data-habit="h3"].done').count() === 1, 'con 3 de 3 queda cumplido');
-await p.click('[data-habit="h3"] .pip >> nth=2');
-check(await count(p) === 2, 'pulsar la última encendida quita solo esa');
+await p.click('[data-habit="h3"] .pip >> nth=1');
+check(await count(p) === 3, 'pulsar la segunda estrella deja el día en 3 veces');
+check((await game(p)).xp.filter((t) => t.source === 'habit').length === 2, 'cada vez extra da su XP');
+await p.click('[data-habit="h3"] .pip >> nth=1');
+check(await count(p) === 2, 'pulsar la última estrella encendida quita solo esa');
 await p.click('[data-habit="h3"] .check');
-check(await count(p) === 3, 'el aro suma otra');
+check(await count(p) === 0, 'el botón de siempre desmarca el día entero');
+await p.click('[data-habit="h3"] .check');
+check(await count(p) === 1 && await p.locator('[data-habit="h3"].done').count() === 1, 'y lo vuelve a marcar con una sola vez');
 
 // El editor enseña las veces al día con botones, antes de la meta.
 await p.click('[data-habit="h4"] .edit-btn');

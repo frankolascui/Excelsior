@@ -486,18 +486,12 @@ button.tg-session { font-family: inherit; justify-content: flex-start; align-ite
 .sure-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
 
 /* Hábitos: varias veces al día (bolitas) y sobrecarga a la vista */
-.check.partial {
-  border-width: 3px; font-size: 11px; font-weight: 700; color: var(--fg); letter-spacing: -0.02em;
-  background: linear-gradient(var(--surface-2), var(--surface-2)) padding-box,
-    conic-gradient(var(--c1) calc(var(--p, 0) * 1turn), color-mix(in srgb, var(--c1) 18%, var(--line)) 0) border-box;
-}
-.check.partial::before { display: none; }
-.day-pips { display: inline-flex; align-items: center; gap: 2px; }
-.day-pips .pip { display: inline-grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; background: none; border-radius: 50%; }
-.day-pips .pip i { width: 13px; height: 13px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--c1) 55%, var(--line)); transition: background 0.15s ease, transform 0.15s ease; }
-.day-pips .pip.on i { background: linear-gradient(135deg, var(--c1), var(--c3)); border-color: transparent; box-shadow: 0 0 8px color-mix(in srgb, var(--c1) 45%, transparent); }
-.day-pips button.pip:hover i { transform: scale(1.15); }
-.day-pips .pips-text { font-size: 12.5px; color: var(--c3); margin-left: 4px; }
+.day-pips { display: inline-flex; align-items: center; gap: 0; }
+.day-pips .pip { display: inline-grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; background: none; border-radius: 50%; }
+.day-pips .pip svg { width: 18px; height: 18px; fill: none; stroke: color-mix(in srgb, var(--gold) 55%, var(--line)); stroke-width: 1.8; stroke-linejoin: round; transition: transform 0.15s ease, fill 0.15s ease; }
+.day-pips .pip.on svg { fill: var(--gold); stroke: var(--gold); filter: drop-shadow(0 0 5px color-mix(in srgb, var(--gold) 55%, transparent)); }
+.day-pips button.pip:hover svg { transform: scale(1.18); }
+.day-pips .pips-text { font-size: 12.5px; color: var(--gold); margin-left: 4px; }
 .habit-goal { display: grid; gap: 6px; margin-top: 8px; padding: 8px 10px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--c1) 28%, var(--line)); background: color-mix(in srgb, var(--c1) 6%, transparent); }
 .habit-goal-head { margin: 0; font-size: 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 .habit-goal-head .ico { color: var(--c1); }

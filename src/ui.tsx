@@ -415,8 +415,6 @@ export function HabitItem({
   const done = isHabitDone(state, habit.id, today);
   const perDay = habit.perDay ?? 1;
   const todayCount = perDay > 1 ? habitDayCount(state, habit.id, today) : 0;
-  const more = perDay > 1 && todayCount < perDay;
-  const partial = more && todayCount > 0;
   const streak = habitStreak(state, habit.id, now);
   const weekly = habit.frequency === 'weekly';
   const weekCount = weekly ? habitWeekCount(state, habit.id, now) : 0;
@@ -426,17 +424,18 @@ export function HabitItem({
   const risk = habitAtRisk(state, habit, now);
   const savable = onShield ? shieldableDay(state, habit.id, now) : null;
   const stock = shieldsLeft(state);
+  // Varias veces al día: el botón es el de siempre (una marca cumple el día); las veces extra son estrellas.
+  const toggle = perDay > 1 && onSetCount ? () => onSetCount(todayCount > 0 ? 0 : 1) : onToggle;
   return (
-    <li className={done && !more ? 'item done' : risk ? 'item at-risk' : 'item'} data-habit={habit.id}>
+    <li className={done ? 'item done' : risk ? 'item at-risk' : 'item'} data-habit={habit.id}>
       <button
-        className={partial ? 'check partial' : done ? 'check checked' : 'check'}
-        style={partial ? { '--p': todayCount / perDay } as React.CSSProperties : undefined}
-        onClick={onToggle}
+        className={done ? 'check checked' : 'check'}
+        onClick={toggle}
         aria-pressed={done}
-        aria-label={partial ? `Marcar otra vez ${habit.name} (${todayCount}/${perDay} hoy)` : done ? `Desmarcar ${habit.name}` : `Completar ${habit.name}`}
-        title={partial ? `Otra vez (${todayCount}/${perDay} hoy)` : done ? 'Desmarcar' : 'Completado'}
+        aria-label={done ? `Desmarcar ${habit.name}` : `Completar ${habit.name}`}
+        title={done ? 'Desmarcar' : 'Completado'}
       >
-        {partial ? `${todayCount}/${perDay}` : '✓'}
+        ✓
       </button>
       <div className="item-body">
         {onToggleDay
