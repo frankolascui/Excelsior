@@ -109,6 +109,8 @@ export function useGame() {
     reconciled.current = userId;
     const sync = startSync({
       get: () => latest.current, adopt: (remote) => adopt(remote), conflict: setConflict, supports: supportsSave,
+      normalize: (remote) => rebalance(ensureAscended(migrate(remote as unknown as Parameters<typeof migrate>[0]), Date.now())),
+      merged: () => toast('Partida unida con la de tu otro dispositivo', 'info'),
       outdated: () => toast('Tu partida de la nube es de una versión más nueva. Recarga la página para actualizar la app.', 'info', 9000),
     });
     sync.ready

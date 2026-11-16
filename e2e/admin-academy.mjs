@@ -125,7 +125,7 @@ await page.evaluate(() => { location.hash = '#deepwork'; });
 await page.click('[data-testid="tab-academy"]');
 await page.waitForSelector('[data-testid="academy-panel"] .shelf', { timeout: 8000 });
 check(await page.isVisible('[data-testid="academy-panel"] .admin-note'), 'modo admin: Academy avisa de que no se guarda nada en la cuenta');
-check(await page.isVisible('.today-num:has-text("3 tarjetas")'), 'modo admin: se ven las tarjetas reales');
+check(await page.waitForSelector('.today-num:has-text("3 tarjetas")', { timeout: 8000 }).then(() => true, () => false), 'modo admin: se ven las tarjetas reales');
 await page.click('.today a:has-text("Repasar todo")');
 await page.waitForSelector('.flashcard', { timeout: 8000 });
 for (let i = 0; i < 3; i++) {
@@ -141,6 +141,14 @@ const sandbox = await page.evaluate(() => JSON.parse(localStorage.getItem('excel
 check(db.study_reviews.length === 0, 'modo admin: el repaso no se guarda en study_reviews');
 check(JSON.stringify(db.study_cards) === cardsBefore, 'modo admin: las tarjetas reales mantienen sus fechas');
 check(sandbox.sessions.some((x) => x.area === 'estudio'), 'modo admin: el repaso cuenta en la partida de pruebas');
+// Borrar una tarjeta en modo admin no la borra de la cuenta real.
+await page.evaluate(() => { location.hash = '#academy/'; });
+await page.click('.today a:has-text("Repasar todo")');
+await page.waitForSelector('.flashcard', { timeout: 8000 });
+await page.click('.delete-card');
+await page.click('.acad [role="dialog"] button:has-text("Borrar tarjeta"), [role="dialog"] button:has-text("Borrar tarjeta")');
+await page.waitForTimeout(800);
+check(JSON.stringify(db.study_cards) === cardsBefore, 'modo admin: borrar una tarjeta no la borra de tu cuenta');
 console.log('escrituras en modo admin:', writes.join(', ') || 'ninguna');
 check(writes.length === 0, 'modo admin: ninguna escritura en la base de datos');
 check(!(await page.isVisible('text=No se ha podido guardar')), 'modo admin: sin mensaje de error rojo al repasar');

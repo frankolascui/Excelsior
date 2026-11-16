@@ -42,9 +42,11 @@ export function SettingsScreen({
       <AdminPanel game={game} startTour={startTour} />
       <section className="panel quiet">
         <h3>Zona peligrosa</h3>
-        <p className="muted">Borrar el personaje elimina misiones, hábitos e historial de este dispositivo.</p>
-        <ConfirmButton label="Borrar personaje" confirmLabel="Sí, borrar todo" onConfirm={game.reset} />
-        <DeleteAccount game={game} />
+        {ADMIN
+          ? <p className="muted" data-testid="admin-danger-note">Modo admin: esto borra solo la partida de pruebas. Tu personaje real (el de tu cuenta y este navegador) no se toca, aunque uses el mismo email.</p>
+          : <p className="muted">Borrar el personaje elimina misiones, hábitos e historial de este dispositivo.</p>}
+        <ConfirmButton label={ADMIN ? 'Borrar la partida de pruebas' : 'Borrar personaje'} confirmLabel="Sí, borrar todo" onConfirm={game.reset} />
+        {!ADMIN && <DeleteAccount game={game} />}
       </section>
       <p className="app-version"><VersionButton className="" label={APP_VERSION_LABEL} /></p>
     </div>
