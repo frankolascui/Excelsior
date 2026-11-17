@@ -9,8 +9,8 @@ import { healthCoins } from './health';
 
 export const COIN_RULES = {
   xpPerCoin: 5, // 1 moneda por cada 5 XP
-  kingdomBonusPerBuilding: 10, // al completar un reino (mín. 3 construcciones)
-  kingdomMinBuildings: 3,
+  kingdomBonusPerBuilding: 10, // tributo por construcción levantada, desde que el reino es Villa
+  kingdomMinBuildings: 3, // Villa
 };
 
 /** Categorías de la tienda, de lo pequeño a lo grande. */
@@ -54,10 +54,13 @@ export function rewardCategory(r: Pick<Reward, 'name' | 'cost'> & { category?: s
   return 'ocio';
 }
 
-/** Monedas ganadas por reino completado (0 si no cuenta). */
+/**
+ * Tributo de un reino: desde Villa (3 construcciones levantadas), 10 monedas por cada construcción levantada.
+ * Solo depende de lo construido, así que añadir tareas pendientes nunca lo quita (antes sí: había que terminarlo todo).
+ */
 export function kingdomBonus(s: GameState, kingdomId: string): number {
-  const p = kingdomProgress(s, kingdomId);
-  return p.complete && p.total >= COIN_RULES.kingdomMinBuildings ? p.total * COIN_RULES.kingdomBonusPerBuilding : 0;
+  const { built } = kingdomProgress(s, kingdomId);
+  return built >= COIN_RULES.kingdomMinBuildings ? built * COIN_RULES.kingdomBonusPerBuilding : 0;
 }
 
 export function coinsEarned(s: GameState, now: number) {

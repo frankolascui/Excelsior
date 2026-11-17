@@ -45,6 +45,52 @@ export function deleteKingdom(s: GameState, id: string): GameState {
   };
 }
 
+/** Cierra el reino como monumento: quita lo pendiente (el proyecto terminó) y conserva lo construido. */
+export function closeKingdom(s: GameState, id: string, now: number): GameState {
+  return {
+    ...s,
+    kingdoms: s.kingdoms.map((k) => (k.id === id ? { ...k, closedAt: now } : k)),
+    quests: s.quests.filter((q) => !(q.kingdomId === id && !q.completedAt)),
+  };
+}
+
+/** Vuelve a abrir un monumento para seguir construyendo. */
+export function reopenKingdom(s: GameState, id: string): GameState {
+  return {
+    ...s,
+    kingdoms: s.kingdoms.map((k) => {
+      if (k.id !== id) return k;
+      const next = { ...k };
+      delete next.closedAt;
+      return next;
+    }),
+  };
+}
+
+/** Días sin mover un reino abierto para que se considere parado. */
+export const STALE_KINGDOM_DAYS = 14;
+
+/** Días desde lo último que pasó en un reino (fundarlo, añadir o levantar una construcción). */
+export function kingdomIdleDays(s: GameState, kingdomId: string, now: number): number {
+  const k = s.kingdoms.find((x) => x.id === kingdomId);
+  if (!k) return 0;
+  const last = buildings(s, kingdomId).reduce((t, q) => Math.max(t, q.createdAt, q.completedAt ?? 0), k.createdAt);
+  return Math.floor((now - last) / 86_400_000);
+}
+
+/** Reinos abiertos que llevan 14 días o más sin moverse. */
+export function staleKingdoms(s: GameState, now: number) {
+  return s.kingdoms.filter((k) => !k.closedAt && kingdomIdleDays(s, k.id, now) >= STALE_KINGDOM_DAYS);
+}
+
+/** Un reino «terminado»: cerrado como monumento, o con todo construido (3 o más). */
+export function kingdomFinished(s: GameState, kingdomId: string): boolean {
+  const k = s.kingdoms.find((x) => x.id === kingdomId);
+  if (!k) return false;
+  const p = kingdomProgress(s, kingdomId);
+  return (!!k.closedAt && p.built > 0) || (p.complete && p.total >= 3);
+}
+
 export function buildings(s: GameState, kingdomId: string): Quest[] {
   return s.quests.filter((q) => q.kingdomId === kingdomId);
 }

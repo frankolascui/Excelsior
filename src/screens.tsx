@@ -4,7 +4,7 @@ import type { useGame } from './store';
 import type { DeepWorkArea, FocusPhase, GameState, Quest, QuestType } from './types';
 import { addGoal, avatarInfo, DEEP_WORK_AREA_HINT, deepWorkRewards, inferDeepWorkArea, deleteGoal, formatAttrXp, goalProgress, habitRewards, questRewards, updateGoal } from './attributes';
 import { CustomizeToggle, RewardEditor, sameRewards, type CustomValue } from './customize';
-import { addKingdom, BUILDINGS, buildings, deleteKingdom, kingdomName, kingdomProgress, nextStage, renameKingdom, setKingdomDeadline } from './kingdoms';
+import { addKingdom, BUILDINGS, buildings, closeKingdom, deleteKingdom, kingdomIdleDays, kingdomName, kingdomProgress, nextStage, renameKingdom, reopenKingdom, setKingdomDeadline, STALE_KINGDOM_DAYS } from './kingdoms';
 import { DatePicker, Select } from './pickers';
 import { CityScene } from './city';
 import { kingdomBonus, spendShield } from './economy';
@@ -973,13 +973,13 @@ export function Kingdoms({ game, focusQuest }: { game: Game; focusQuest: (q: Que
     <div className="screen">
       <div className="with-info">
         <h1 className="screen-title">Reinos</h1>
-        <InfoTip label="Cómo funcionan los reinos"><p>Un reino es un proyecto. Cada tarea es una construcción y tu ciudad crece al completarlas: campamento, aldea, villa, ciudad amurallada y reino glorioso. Pulsa un reino en el mapa para entrar.</p></InfoTip>
+        <InfoTip label="Cómo funcionan los reinos"><p>Un reino es un proyecto. Cada tarea es una construcción y tu ciudad crece al completarlas: aldea (1), villa (3), ciudad amurallada (6) y reino glorioso (10). Desde villa, cada construcción levantada paga 10 monedas de tributo. Cuando el proyecto acabe, ciérralo y quedará en el mapa como monumento. Pulsa un reino en el mapa para entrar.</p></InfoTip>
       </div>
       <RealmMap state={state} onSelect={(id) => open(id)} />
       <div className="kingdom-tabs kingdom-pick" aria-label="Entrar en un reino">
         <button type="button" className="chip-btn health-chip" onClick={() => open(HEALTH_KINGDOM)} data-testid="open-health" data-tour="health"><Icon name="caduceus" /> Reino de la Salud{!healthFounded(state) && <span className="muted small-text"> · nuevo</span>}</button>
         {state.kingdoms.map((k) => (
-          <button key={k.id} type="button" className="chip-btn" onClick={() => open(k.id)}><Icon name="castle" /> {k.name}</button>
+          <button key={k.id} type="button" className={k.closedAt ? 'chip-btn monument-chip' : 'chip-btn'} onClick={() => open(k.id)}><Icon name={k.closedAt ? 'laurel-crown' : 'castle'} /> {k.name}</button>
         ))}
       </div>
       <section className="panel" data-tour="kingdom-add">
@@ -1009,6 +1009,18 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
   const [renaming, setRenaming] = useState(false);
   const [newName, setNewName] = useState('');
   const due = kingdom.deadline ? deadlineLabel(kingdom.deadline, Date.now()) : null;
+  const closed = !!kingdom.closedAt;
+  const idle = closed ? 0 : kingdomIdleDays(state, kingdomId, Date.now());
+  function close() {
+    const msg = pending.length
+      ? `Las ${pending.length} ${pending.length === 1 ? 'construcción pendiente se quita' : 'construcciones pendientes se quitan'}; lo construido queda en el mapa como monumento.`
+      : 'Lo construido queda en el mapa como monumento. Puedes reabrirlo cuando quieras.';
+    sureThen({ title: `¿Cerrar ${kingdom.name}?`, message: msg, confirmLabel: 'Cerrar como monumento' }, () => {
+      act((s) => closeKingdom(s, kingdomId, Date.now()));
+      sfx.victory();
+      confetti({ count: 120 });
+    });
+  }
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
@@ -1019,7 +1031,7 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
     setOpen(false);
   }
   return (
-    <section id={`kingdom-${kingdomId}`} className={p.complete ? 'panel kingdom complete' : 'panel kingdom'} aria-labelledby={`k-${kingdomId}`}>
+    <section id={`kingdom-${kingdomId}`} className={`panel kingdom${p.complete || closed ? ' complete' : ''}${closed ? ' monument' : ''}`} aria-labelledby={`k-${kingdomId}`}>
       <header className="kingdom-head">
         <div className="kingdom-head-main">
           {renaming ? (
@@ -1035,7 +1047,9 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
             </h2>
           )}
           <p className="kingdom-stage"><Icon name={p.icon} /> {p.stage}{bonus > 0 && <> · tributo +{bonus} <Icon name="coin" className="coin-ico" /></>}</p>
-          {(() => {
+          {closed ? (
+            <p className="kingdom-monument"><Icon name="laurel-crown" /> Monumento desde el {new Date(kingdom.closedAt!).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          ) : (() => {
             const n = nextStage(p.built);
             return n ? (
               <div className="kingdom-next">
@@ -1044,18 +1058,26 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
               </div>
             ) : <p className="muted small-text">Tu reino ya es glorioso. Cada construcción nueva lo hace aún más grande.</p>;
           })()}
-          <div className="kingdom-due">
+          {!closed && <div className="kingdom-due">
             <DatePicker value={kingdom.deadline ?? null} onChange={(d) => act((s) => setKingdomDeadline(s, kingdomId, d))} label={`Fecha objetivo de ${kingdom.name}`} clearLabel="Quitar fecha objetivo" className={due ? `due due-${due.tone}` : 'kingdom-due-add'}>
               <Icon name="calendar" /> {due ? (p.complete ? `objetivo: ${shortDate(kingdom.deadline!)}` : due.text.replace('vence', 'objetivo')) : 'Fecha objetivo'}
             </DatePicker>
-          </div>
+          </div>}
         </div>
         <div className="kingdom-count" aria-label={`${p.built} construcciones levantadas, ${pending.length} por construir`}>
           <span className="kingdom-pct mono">{p.built}</span>
           <span className="muted small-text">{p.built === 1 ? 'construcción' : 'construcciones'}{pending.length > 0 && <><br />{pending.length} por construir</>}</span>
         </div>
       </header>
-      <CityScene quests={all} progress={p.progress} complete={p.complete} stage={p.stage} icon={p.icon} />
+      {idle >= STALE_KINGDOM_DAYS && (
+        <div className="kingdom-idle" role="status">
+          <span><Icon name="hourglass" /> Este reino lleva {idle} días parado. Si el proyecto ya acabó o no va a seguir, ciérralo.</span>
+          {p.built > 0
+            ? <button type="button" className="ghost small" onClick={close}><Icon name="laurel-crown" /> Cerrar como monumento</button>
+            : <span className="muted small-text">Sin nada construido, mejor bórralo abajo.</span>}
+        </div>
+      )}
+      <CityScene quests={all} progress={p.progress} complete={p.complete || closed} stage={closed ? 'Monumento' : p.stage} icon={closed ? 'laurel-crown' : p.icon} />
       {pending.length > 0 && (
         <ul className="list">
           {pending.map((root) => (
@@ -1086,6 +1108,11 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
           )}
         </>
       )}
+      {closed ? (
+        <div className="kingdom-actions">
+          <button type="button" className="ghost" onClick={() => act((s) => reopenKingdom(s, kingdomId))}><Icon name="anvil" /> Reabrir para seguir construyendo</button>
+        </div>
+      ) : <>
       <form className="quick-add" onSubmit={submit}>
         <input id={`b-${kingdomId}`} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="+ Nueva construcción (ej. Terminar una calculadora)" maxLength={80} aria-label="Nueva construcción" />
         <div className="quick-add-row">
@@ -1101,7 +1128,11 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
         </div>
         {open && <RewardEditor autoXp={XP_RULES.quest[type]} autoRewards={questRewards(type, title)} value={custom} onChange={setCustom} maxXp={CUSTOM_LIMITS.questXp} idPrefix={`b-${kingdomId}`} />}
       </form>
-      <ConfirmButton label="Borrar reino" confirmLabel="Sí, borrar (lo construido se conserva)" onConfirm={() => act((s) => deleteKingdom(s, kingdomId))} />
+      <div className="kingdom-actions">
+        {p.built > 0 && <button type="button" className="ghost" onClick={close}><Icon name="laurel-crown" /> Cerrar como monumento</button>}
+        <ConfirmButton label="Borrar reino" confirmLabel="Sí, borrar (lo construido se conserva)" onConfirm={() => act((s) => deleteKingdom(s, kingdomId))} />
+      </div>
+      </>}
     </section>
   );
 }

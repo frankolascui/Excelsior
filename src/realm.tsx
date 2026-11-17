@@ -53,7 +53,11 @@ export function RealmMap({ state, onSelect }: { state: GameState; onSelect: (kin
       k: { id: HEALTH_KINGDOM, name: 'Reino de la Salud' },
       p: { built: works, progress: Math.min(1, works / 12), stage: healthStage.name, icon: 'caduceus' as const, complete: works >= 12 },
     }] : []),
-    ...state.kingdoms.map((k) => ({ k: { id: k.id, name: k.name }, p: kingdomProgress(state, k.id) })),
+    ...state.kingdoms.map((k) => {
+      const p = kingdomProgress(state, k.id);
+      // Un reino cerrado queda como monumento: anillo completo y laurel.
+      return { k: { id: k.id, name: k.name }, p: k.closedAt ? { ...p, progress: 1, complete: true, stage: 'Monumento', icon: 'laurel-crown' as const } : p };
+    }),
   ];
   const nodes = entries.map((e, i) => ({ ...e, ...place(slot(i)) }));
   const nameLen = W < 600 ? 14 : 26;

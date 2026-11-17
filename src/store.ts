@@ -8,7 +8,8 @@ import { avatarInfo, ensureAscended, rebalance } from './attributes';
 import { sfx } from './sfx';
 import { confetti } from './confetti';
 import { bossLoot, bossStatus } from './bosses';
-import { kingdomBonus } from './economy';
+import { COIN_RULES, kingdomBonus } from './economy';
+import { kingdomProgress, stageFor } from './kingdoms';
 import { schedulePublish } from './social';
 import { scheduleGuildReport } from './guilds';
 import { markLocalChange, resolveConflict as resolveCloudConflict, scheduleSave, startSync, useCloud, type RemoteSave } from './cloud';
@@ -60,8 +61,9 @@ function defeatedIds(s: GameState): Set<string> {
   return new Set(s.bosses.filter((b) => bossStatus(s, b, now).defeated).map((b) => b.id));
 }
 
-function completedKingdoms(s: GameState): Set<string> {
-  return new Set(s.kingdoms.filter((k) => kingdomBonus(s, k.id) > 0).map((k) => k.id));
+/** Construcciones levantadas por reino, para celebrar cuando uno sube de etapa (Villa, Ciudad, Glorioso). */
+function kingdomBuilt(s: GameState): Map<string, number> {
+  return new Map(s.kingdoms.map((k) => [k.id, kingdomProgress(s, k.id).built]));
 }
 
 /** Nombre del avatar cuyo ritual ya puedes hacer, o null. */
@@ -85,7 +87,7 @@ export function useGame() {
   const prevLevel = useRef(levelInfo(totalXp(state)).level);
   const prevReady = useRef(readyFor(state));
   const prevDefeated = useRef(defeatedIds(state));
-  const prevKingdoms = useRef(completedKingdoms(state));
+  const prevKingdoms = useRef(kingdomBuilt(state));
   const [achieved, setAchieved] = useState<AchievementDef[]>([]);
   const dismissAchievement = useCallback(() => setAchieved((q) => q.slice(1)), []);
 
@@ -137,7 +139,7 @@ export function useGame() {
     prevLevel.current = levelInfo(totalXp(next)).level;
     prevReady.current = readyFor(next);
     prevDefeated.current = defeatedIds(next);
-    prevKingdoms.current = completedKingdoms(next);
+    prevKingdoms.current = kingdomBuilt(next);
     latest.current = next; // si no, la siguiente acción partiría de la partida anterior
     setState(next);
     return next;
@@ -195,14 +197,17 @@ export function useGame() {
     }
     prevDefeated.current = defeated;
 
-    const kingdoms = completedKingdoms(state);
+    const kingdoms = kingdomBuilt(state);
     for (const k of state.kingdoms) {
-      if (kingdoms.has(k.id) && !prevKingdoms.current.has(k.id)) {
-        const bonus = kingdomBonus(state, k.id);
-        toast(`{i:crown} ${k.name} es un reino glorioso${bonus ? ` · +${bonus} {i:coin}` : ''}`, 'level');
-        setTimeout(() => sfx.victory(), 300);
-        confetti({ big: true, count: 200 });
-      }
+      const now = kingdoms.get(k.id) ?? 0;
+      const before = prevKingdoms.current.get(k.id);
+      if (before === undefined || now <= before) continue;
+      const stage = stageFor(now);
+      if (stage.name === stageFor(before).name || now < COIN_RULES.kingdomMinBuildings) continue;
+      const gained = kingdomBonus(state, k.id) - (before >= COIN_RULES.kingdomMinBuildings ? before * COIN_RULES.kingdomBonusPerBuilding : 0);
+      toast(`{i:${stage.icon}} ${k.name} ya es ${stage.name}${gained > 0 ? ` · tributo +${gained} {i:coin}` : ''}`, 'level');
+      setTimeout(() => sfx.victory(), 300);
+      confetti({ big: stage.name === 'Reino glorioso', count: stage.name === 'Reino glorioso' ? 200 : 90 });
     }
     prevKingdoms.current = kingdoms;
   }, [state]);

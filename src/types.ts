@@ -192,6 +192,8 @@ export interface Kingdom {
   name: string;
   createdAt: number;
   deadline?: string; // fecha objetivo del proyecto (YYYY-MM-DD local)
+  /** Cerrado como monumento: el proyecto terminó y queda en el mapa como trofeo. */
+  closedAt?: number;
 }
 
 /** Meta personal medible (dinero, peso, personas…) que se exige para desbloquear un avatar. */
