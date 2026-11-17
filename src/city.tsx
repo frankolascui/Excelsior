@@ -862,14 +862,61 @@ type V3 = [number, number, number];
 const pts = (P: Proj, list: V3[]) => list.map(([i, j, z]) => P(i, j, z).map((n) => n.toFixed(1)).join(',')).join(' ');
 
 /** Caja isométrica: cara izquierda (l), derecha (r) y techo (t). */
+const MASONRY = new Set(['m-stone', 'm-stone2', 'm-wall']);
+
+/** Hiladas de sillares en las dos caras visibles de un bloque de piedra (textura muy sutil). */
+function courses(P: Proj, i0: number, j0: number, i1: number, j1: number, z0: number, z1: number): string {
+  let d = '';
+  const seg = (a: V3, b: V3) => {
+    const [x0, y0] = P(...a);
+    const [x1, y1] = P(...b);
+    d += `M${x0.toFixed(1)},${y0.toFixed(1)}L${x1.toFixed(1)},${y1.toFixed(1)}`;
+  };
+  const step = 0.32;
+  for (let z = z0 + step, k = 0; z < z1 - 0.05; z += step, k++) {
+    seg([i0, j1, z], [i1, j1, z]);
+    seg([i1, j0, z], [i1, j1, z]);
+    // juntas verticales escalonadas, una de cada dos hiladas desplazada
+    const off = k % 2 ? 0.5 : 0;
+    for (let t = 0.25 + off * 0.5; t < 1; t += 0.5) {
+      const zi = Math.min(z1, z + step);
+      seg([i0 + (i1 - i0) * t, j1, z], [i0 + (i1 - i0) * t, j1, zi]);
+      seg([i1, j0 + (j1 - j0) * t, z], [i1, j0 + (j1 - j0) * t, zi]);
+    }
+  }
+  return d;
+}
+
 function Box({ P, i0, j0, i1, j1, z0 = 0, z1, m, top = true }: { P: Proj; i0: number; j0: number; i1: number; j1: number; z0?: number; z1: number; m: string; top?: boolean }) {
+  const l = pts(P, [[i0, j1, z0], [i1, j1, z0], [i1, j1, z1], [i0, j1, z1]]);
+  const r = pts(P, [[i1, j0, z0], [i1, j1, z0], [i1, j1, z1], [i1, j0, z1]]);
+  const tall = z1 - z0 >= 0.5;
   return (
     <>
-      <polygon className={`${m} l`} points={pts(P, [[i0, j1, z0], [i1, j1, z0], [i1, j1, z1], [i0, j1, z1]])} />
-      <polygon className={`${m} r`} points={pts(P, [[i1, j0, z0], [i1, j1, z0], [i1, j1, z1], [i1, j0, z1]])} />
+      <polygon className={`${m} l`} points={l} />
+      <polygon className={`${m} r`} points={r} />
+      {tall && MASONRY.has(m) && <path className="masonry" d={courses(P, i0, j0, i1, j1, z0, z1)} />}
+      {/* Oclusión: las caras se oscurecen hacia el suelo, y la luz de la luna roza la arista de arriba. */}
+      {tall && <polygon className="ao" points={l} fill="url(#cx-ao)" />}
+      {tall && <polygon className="ao" points={r} fill="url(#cx-ao)" />}
       {top && <polygon className={`${m} t`} points={pts(P, [[i0, j0, z1], [i1, j0, z1], [i1, j1, z1], [i0, j1, z1]])} />}
+      {top && <polyline className="rim" points={pts(P, [[i0, j1, z1], [i1, j1, z1], [i1, j0, z1]])} />}
     </>
   );
+}
+
+/** Hileras de tejas sobre un faldón: líneas paralelas al caballete entre el alero (e) y la cumbrera (r). */
+function Tiles({ P, i0, i1, je, jr, ze, zr, n = 4 }: { P: Proj; i0: number; i1: number; je: number; jr: number; ze: number; zr: number; n?: number }) {
+  let d = '';
+  for (let k = 1; k < n; k++) {
+    const t = k / n;
+    const j = je + (jr - je) * t;
+    const z = ze + (zr - ze) * t;
+    const [x0, y0] = P(i0, j, z);
+    const [x1, y1] = P(i1, j, z);
+    d += `M${x0.toFixed(1)},${y0.toFixed(1)}L${x1.toFixed(1)},${y1.toFixed(1)}`;
+  }
+  return <path className="tiles" d={d} />;
 }
 
 /** Rectángulo sobre la cara izquierda (plano j fijo) o derecha (plano i fijo). */
@@ -910,6 +957,7 @@ function IsoCabana({ P, smoke, dim = ISO_DIM.casa }: { P: Proj; smoke: boolean; 
       <Box P={P} i0={0.3} j0={-0.48} i1={0.5} j1={-0.28} z0={h} z1={h + 1.15} m="m-stone" />
       <polygon className="m-wood r" points={pts(P, [[a, -b, h], [a, b, h], [a, 0, h + 0.85]])} />
       <polygon className="m-roof l" points={pts(P, [[-a - 0.12, b + 0.12, h], [a + 0.12, b + 0.12, h], [a + 0.12, 0, h + 0.85], [-a - 0.12, 0, h + 0.85]])} />
+      <Tiles P={P} i0={-a - 0.12} i1={a + 0.12} je={b + 0.12} jr={0} ze={h} zr={h + 0.85} n={5} />
       <polyline className="ridge" points={pts(P, [[-a - 0.12, 0, h + 0.85], [a + 0.12, 0, h + 0.85]])} />
       {smoke && (
         <g className="smoke soft" transform={`translate(${cx},${cy})`}>
@@ -936,6 +984,7 @@ function IsoHerreria({ P, gid, live }: { P: Proj; gid: string; live: boolean }) 
       <Box P={P} i0={0.45} j0={-0.7} i1={0.78} j1={-0.36} z1={h + 1.55} m="m-stone" />
       <polygon className="m-stone r" points={pts(P, [[a, -b, h], [a, b, h], [a, 0, h + 0.55]])} />
       <polygon className="m-roof l" points={pts(P, [[-a - 0.1, b + 0.1, h], [a + 0.1, b + 0.1, h], [a + 0.1, 0, h + 0.55], [-a - 0.1, 0, h + 0.55]])} />
+      <Tiles P={P} i0={-a - 0.1} i1={a + 0.1} je={b + 0.1} jr={0} ze={h} zr={h + 0.55} n={4} />
       <polyline className="ridge" points={pts(P, [[-a - 0.1, 0, h + 0.55], [a + 0.1, 0, h + 0.55]])} />
       {live && (
         <>
@@ -1071,6 +1120,12 @@ function Pyr({ P, a, z0, z1, m }: { P: Proj; a: number; z0: number; z1: number; 
     <>
       <polygon className={`${m} l`} points={pts(P, [[-a, a, z0], [a, a, z0], [0, 0, z1]])} />
       <polygon className={`${m} r`} points={pts(P, [[a, -a, z0], [a, a, z0], [0, 0, z1]])} />
+      <path className="tiles" d={[0.25, 0.5, 0.75].map((t) => {
+        const q = a * (1 - t);
+        const z = z0 + (z1 - z0) * t;
+        const c = (p: V3) => P(...p).map((v) => v.toFixed(1)).join(',');
+        return `M${c([-q, q, z])}L${c([q, q, z])}L${c([q, -q, z])}`;
+      }).join('')} />
     </>
   );
 }
@@ -1460,6 +1515,7 @@ function IsoCity({ quests, complete, stage, icon, W, fresh, setHover, castle }: 
       key: q.id,
       node: (
         <g onPointerEnter={() => setHover({ q, x: hx, y: hy })} onPointerLeave={() => setHover(null)}>
+          <Pool P={Pl} i={0.08} j={0.08} r={Math.max(base.a, base.b) + 0.4} gid="cx-contact" cls="contact" />
           {done && <Pool P={Pl} i={0.25} j={base.b + 0.35} r={0.9} gid={glow} />}
           {done ? (
             <g className={fresh.has(q.id) ? 'iso-bld built just-built' : 'iso-bld built'}>
@@ -1677,6 +1733,39 @@ function IsoCity({ quests, complete, stage, icon, W, fresh, setHover, castle }: 
     return Array.from({ length: 8 }, (_, i) => ({ x: 20 + rnd() * (W - 40), y: 30 + rnd() * (H - 50), d: 5 + rnd() * 6, i }));
   }, [W, H]);
 
+  // Detalle del suelo: matas de hierba y alguna flor fuera de los caminos, y adoquines a lo largo de las calles.
+  const { tufts, flowers, cobbles } = useMemo(() => {
+    const rnd = seeded(97);
+    const onRoad = (v: number) => n > 0 && Math.abs(((v - m) % S + S) % S) < rw + 0.12 && v > m - 0.5 && v < m + L * S + 0.5;
+    let t = '';
+    let f = '';
+    const sz = th * 0.22;
+    for (let k = 0; k < 70 * L; k++) {
+      const i = 0.25 + rnd() * (G - 0.5);
+      const j = 0.25 + rnd() * (G - 0.5);
+      if (onRoad(i) || onRoad(j)) continue;
+      if (n > 0 && Math.abs(i - mid) < 0.6 && j > mid) continue; // avenida
+      const [x, y] = P(i, j);
+      if (rnd() < 0.12) f += `M${x.toFixed(1)},${y.toFixed(1)}h0.01`;
+      else t += `M${(x - sz).toFixed(1)},${y.toFixed(1)}l${(sz * 0.6).toFixed(1)},${(-sz).toFixed(1)}M${x.toFixed(1)},${y.toFixed(1)}l0,${(-sz * 1.3).toFixed(1)}M${(x + sz).toFixed(1)},${y.toFixed(1)}l${(-sz * 0.6).toFixed(1)},${(-sz).toFixed(1)}`;
+    }
+    let c = '';
+    if (n > 0) {
+      const line = (a: V3, b: V3) => {
+        const [x0, y0] = P(...a);
+        const [x1, y1] = P(...b);
+        c += `M${x0.toFixed(1)},${y0.toFixed(1)}L${x1.toFixed(1)},${y1.toFixed(1)}`;
+      };
+      for (let k = 0; k <= L; k++) {
+        const v = m + k * S;
+        line([m - rw, v, 0], [m + L * S + rw, v, 0]);
+        line([v, m - rw, 0], [v, m + L * S + rw, 0]);
+      }
+      line([mid, mid, 0], [mid, G, 0]);
+    }
+    return { tufts: t, flowers: f, cobbles: c };
+  }, [G, L, m, mid, n, rw, th, tw, ox, oy]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [pX, pY] = P(0, 0);
   return (
     <svg width={W} height={H} role="img" aria-label={`Ciudad vista desde arriba: ${stage}, ${built} de ${n} construcciones levantadas.${n ? ` ${castle.label} (${castle.name}).` : ''}`}>
@@ -1702,6 +1791,21 @@ function IsoCity({ quests, complete, stage, icon, W, fresh, setHover, castle }: 
           <stop offset="60%" stopColor="#ffb347" stopOpacity="0.14" />
           <stop offset="100%" stopColor="#ffb347" stopOpacity="0" />
         </radialGradient>
+        {/* Comunes a todos los edificios (Box no conoce el id de la escena): oclusión, sombra de contacto y luz cálida. */}
+        <linearGradient id="cx-ao" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#fff" stopOpacity="0.07" />
+          <stop offset="45%" stopColor="#000" stopOpacity="0" />
+          <stop offset="100%" stopColor="#000" stopOpacity="0.42" />
+        </linearGradient>
+        <radialGradient id="cx-contact">
+          <stop offset="0%" stopColor="#000" stopOpacity="0.55" />
+          <stop offset="70%" stopColor="#000" stopOpacity="0.2" />
+          <stop offset="100%" stopColor="#000" stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id="cx-warm" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#ffb85c" stopOpacity="0.16" />
+          <stop offset="100%" stopColor="#ffb85c" stopOpacity="0" />
+        </radialGradient>
         <radialGradient id={id('vig')} cx="50%" cy="55%" r="72%">
           <stop offset="60%" stopColor="#000" stopOpacity="0" />
           <stop offset="100%" stopColor="#000" stopOpacity="0.6" />
@@ -1719,7 +1823,10 @@ function IsoCity({ quests, complete, stage, icon, W, fresh, setHover, castle }: 
       <polygon points={diamond} fill={`url(#${id('grass')})`} className="plot" />
       <polygon points={diamond} fill={`url(#${id('chk')})`} className="plot-checker" />
       <polygon points={diamond} className="plot-edge" />
+      <path className="tufts" d={tufts} />
+      <path className="flowers" d={flowers} />
       <g className={stoneWalls ? 'iso-roads paved' : 'iso-roads'}>{roads}</g>
+      {n > 0 && <path className={stoneWalls ? 'road-cobbles paved' : 'road-cobbles'} d={cobbles} />}
       {n > 0 && L >= 5 && (
         <g className="iso-court">
           <polygon points={pts(P, [[mid - 4.2, mid - 4.2, 0], [mid + 4.2, mid - 4.2, 0], [mid + 4.2, mid + 4.2, 0], [mid - 4.2, mid + 4.2, 0]])} />
@@ -1742,6 +1849,11 @@ function IsoCity({ quests, complete, stage, icon, W, fresh, setHover, castle }: 
       </g>
       <Birds W={W} y={H * 0.22} n={3} dur={30} delay={6} />
       <Clouds W={W} shadow rows={[{ y: H * 0.3, s: 1.6, dur: 70, o: 0.06 }, { y: H * 0.68, s: 2.1, dur: 100, o: 0.05 }]} />
+      {n > 0 && (() => {
+        // Luz cálida que sale del castillo y baña las calles cercanas.
+        const [lx, ly] = P(mid, mid);
+        return <ellipse cx={lx} cy={ly} rx={tw * L * 1.3} ry={th * L * 1.3} fill="url(#cx-warm)" className="warm-light" pointerEvents="none" />;
+      })()}
       <rect width={W} height={H} fill={`url(#${id('vig')})`} pointerEvents="none" />
       {W >= 560 && <><StageIcon icon={icon} /><text x={36} y={24} className="city-stage">{stage} · {built} {built === 1 ? 'construcción' : 'construcciones'}</text></>}
       {n === 0 && <EmptyText x={W / 2} y={oy - (W < 480 ? 30 : 14)} W={W} />}

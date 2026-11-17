@@ -253,3 +253,16 @@
 .bld .sign-mug { fill: #ffd27a; }
 .m-marble.t { fill: #e2dccf; } .m-marble.l { fill: #c7c0b2; } .m-marble.r { fill: #9e978a; }
 .iso-bld.pending rect, .iso-bld.pending line { fill: none !important; stroke: var(--muted); stroke-width: 0.8; stroke-dasharray: 3 3; opacity: 0.5; }
+
+/* Profundidad de la vista desde arriba (2026-11-17): oclusión, sillares, tejas, arista iluminada y sombras de contacto. */
+.ao { pointer-events: none; }
+.masonry { fill: none; stroke: rgba(0, 0, 0, 0.22); stroke-width: 0.6; pointer-events: none; }
+.rim { fill: none; stroke: rgba(235, 228, 255, 0.22); stroke-width: 0.8; stroke-linejoin: round; pointer-events: none; }
+.tiles { fill: none; stroke: rgba(0, 0, 0, 0.3); stroke-width: 0.7; pointer-events: none; }
+.contact { pointer-events: none; }
+.warm-light { mix-blend-mode: screen; }
+.iso-bld.pending .ao, .iso-bld.pending .masonry, .iso-bld.pending .rim, .iso-bld.pending .tiles { display: none; }
+.tufts { fill: none; stroke: color-mix(in srgb, var(--c3) 10%, #3f6e47); stroke-width: 0.8; stroke-linecap: round; opacity: 0.75; pointer-events: none; }
+.flowers { fill: none; stroke: #e9d27a; stroke-width: 2.2; stroke-linecap: round; opacity: 0.55; pointer-events: none; }
+.road-cobbles { fill: none; stroke: rgba(0, 0, 0, 0.25); stroke-width: 1; stroke-dasharray: 1.5 3; pointer-events: none; }
+.road-cobbles.paved { stroke: rgba(255, 255, 255, 0.12); stroke-dasharray: 2 2.5; }
