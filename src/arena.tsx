@@ -5,7 +5,7 @@ import type { Boss, BossSource, GameState, Reward } from './types';
 import {
   abilityText, bestStars, bossLoot, bossStars, combat, CRIT_RULES, STAR_BONUS, weaknessText, type BossAbility, type CombatEvent,
   activeBosses, addBoss, BOSS_TEMPLATES, bossLock, bossPhase, bossReward, bossStatus, deleteBoss, MAX_ACTIVE_BOSSES, nextInSaga,
-  SAGAS, sagaOf, SOURCE_LABEL, summonBoss, templateOf, TIERS, timesDefeated, isActiveTemplate, type BossTemplate, type BossTier,
+  SAGAS, sagaOf, scaledBoss, SOURCE_LABEL, summonBoss, templateOf, TIERS, timesDefeated, isActiveTemplate, type BossTemplate, type BossTier,
 } from './bosses';
 import {
   addReward, buyReward, coinBalance, coinsEarned, coinsSpent, COIN_RULES, deleteReward, nextReward, purchaseCounts, refundPurchase, consumePurchase, unusedPurchases, buyShield, SHIELD, shieldsLeft,
@@ -257,9 +257,14 @@ function TemplateCard({ t, state, now, full, onSummon }: { t: BossTemplate; stat
           <p className="muted small-text tpl-lore">{t.lore}</p>
         )}
         <p className="tpl-ability small-text" title={abilityText(t.ability, t.source)}><Icon name={ABILITY_ICON[t.ability.kind]} /> {t.ability.name}</p>
-        <p className="mono small-text tpl-stats">
-          {t.hp} {SOURCE_LABEL[t.source].unit} · {t.days} días · <span className="loot">{t.reward} <Icon name="coin" className="coin-ico" /></span>
-        </p>
+        {(() => {
+          const sc = scaledBoss(state, t, now);
+          return (
+            <p className="mono small-text tpl-stats" title={sc.ratio === 1 ? undefined : `Ajustado a tu ritmo: lo que sueles hacer en ${t.days} días más un 20 %`}>
+              {sc.hp} {SOURCE_LABEL[t.source].unit} · {t.days} días · <span className="loot">{sc.reward} <Icon name="coin" className="coin-ico" /></span>
+            </p>
+          );
+        })()}
         {!lock && (fighting ? (
           <span className="tpl-state"><Icon name="crossed-swords" /> En combate</span>
         ) : (
@@ -463,7 +468,7 @@ export function Arena({ game }: { game: Game }) {
       <div className="arena-top">
         <h1 className="screen-title">Arena</h1>
         <InfoTip label="Cómo funciona la Arena">
-          <p>Un boss es un reto con plazo: le haces daño con lo que hagas desde que lo invocas y, si cae a tiempo, te llevas su botín. Subir de nivel y vencer a cada bestia abre las siguientes de su saga. Cada boss tiene una habilidad y un punto débil que se revela a media vida.</p>
+          <p>Un boss es un reto con plazo: le haces daño con lo que hagas desde que lo invocas y, si cae a tiempo, te llevas su botín. Subir de nivel y vencer a cada bestia abre las siguientes de su saga. Cada boss tiene una habilidad y un punto débil que se revela a media vida. Su vida se ajusta a tu ritmo: lo que sueles hacer en su plazo (según tus últimas 2 semanas) más un 20 %.</p>
           <p className="crit-hint"><Icon name="sparkles" /> {CRIT_RULES}</p>
           <p className="muted small-text">
             Tus monedas: {earned.fromXp} por XP (1 cada {COIN_RULES.xpPerCoin} XP) · {earned.fromBosses} por bosses · {earned.fromKingdoms} por reinos{earned.fromSocial > 0 && ` · ${earned.fromSocial} por trofeos`} · −{coinsSpent(state)} gastadas

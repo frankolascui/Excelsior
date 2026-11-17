@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { GameState, XPTransaction } from './types';
-import { createProfile, emptyState, migrate, xpForLevel } from './game';
+import { addQuest, completeQuest, createProfile, emptyState, migrate, xpForLevel } from './game';
 import {
   splitBossName, combat, bossStars,
   activeBosses, BOSS_TEMPLATES, bossLock, bossPhase, bossStatus, MAX_ACTIVE_BOSSES, nextInSaga, SAGAS, summonBoss, summonCheck, summonTemplate,
-  templateOf, timesDefeated,
+  templateOf, timesDefeated, scaledBoss, templateById,
 } from './bosses';
 import { coinBalance } from './economy';
 
@@ -248,5 +248,37 @@ describe('estrellas', () => {
     expect(bossStars(b, NOW + span * 0.95)).toBe(1);
     const { rules: _r, ...old } = b;
     expect(bossStars(old, NOW + 1000)).toBe(0);
+  });
+});
+
+describe('bosses a tu ritmo', () => {
+  const T0 = new Date(2026, 10, 1, 10).getTime();
+  const D = 86_400_000;
+  it('sin actividad usa la vida de la plantilla; con ritmo, lo que sueles hacer en su plazo +20 %', () => {
+    let s = createProfile(emptyState(), 'Nico', [], T0);
+    const hidra = templateById('hidra')!;
+    expect(scaledBoss(s, hidra, T0 + 14 * D)).toMatchObject({ hp: hidra.hp, reward: hidra.reward });
+    // 150 XP al día durante 14 días → en 7 días, 1050 XP; +20 % = 1260.
+    for (let d = 0; d < 14; d++) {
+      s = addQuest(s, `m${d}`, 'main', T0 + d * D);
+      s = completeQuest(s, s.quests.at(-1)!.id, T0 + d * D + 1000).state;
+      s = addQuest(s, `n${d}`, 'main', T0 + d * D);
+      s = completeQuest(s, s.quests.at(-1)!.id, T0 + d * D + 2000).state;
+      s = addQuest(s, `o${d}`, 'main', T0 + d * D);
+      s = completeQuest(s, s.quests.at(-1)!.id, T0 + d * D + 3000).state;
+    }
+    const now = T0 + 14 * D;
+    const sc = scaledBoss(s, hidra, now);
+    expect(sc.hp).toBe(1260);
+    expect(sc.reward).toBe(Math.round(hidra.reward * 1.5)); // botín con tope del 150 %
+    const summoned = summonTemplate(s, 'hidra', now).bosses.at(-1)!;
+    expect(summoned.hp).toBe(1260);
+  });
+  it('nunca baja del 40 % ni sube del triple', () => {
+    let s = createProfile(emptyState(), 'Nico', [], T0);
+    s = addQuest(s, 'una', 'side', T0);
+    s = completeQuest(s, s.quests[0].id, T0 + 1000).state;
+    const tifon = templateById('tifon')!;
+    expect(scaledBoss(s, tifon, T0 + 14 * D).hp).toBe(Math.round(tifon.hp * 0.4));
   });
 });
