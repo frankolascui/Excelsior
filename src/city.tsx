@@ -453,6 +453,26 @@ function Torreon({ built, glow }: { built: boolean; glow: string }) {
   );
 }
 
+/**
+ * Profundidad de la vista frontal (2026-11-17): el mismo dibujo, repetido y desplazado en oscuro detrás, hace de
+ * cara lateral (volumen); encima, un degradado recortado con la silueta del edificio oscurece la base y aclara la
+ * parte de arriba. Ventanas, fuego y antorchas quedan fuera de la máscara para que sigan brillando.
+ */
+function Depth({ id, w, h, children }: { id: string; w: number; h: number; children: ReactNode }) {
+  return (
+    <>
+      <g className="extrude" aria-hidden="true">
+        {[4, 3, 2, 1].map((k) => <g key={k} transform={`translate(${k * 1.3},${-k * 0.8})`}>{children}</g>)}
+      </g>
+      {children}
+      <mask id={id} maskUnits="userSpaceOnUse" x={-w} y={-h} width={2 * w + 8} height={h + 6}>
+        <g className="mask-shape">{children}</g>
+      </mask>
+      <rect x={-w} y={-h} width={2 * w + 8} height={h + 4} fill="url(#cx-ao-front)" mask={`url(#${id})`} pointerEvents="none" />
+    </>
+  );
+}
+
 /** Biblioteca (Sabiduría): piedra, ventanales en arco, cúpula y un libro abierto sobre la puerta. */
 function Biblioteca({ built }: { built: boolean; glow?: string }) {
   return (
@@ -707,7 +727,7 @@ function FrontCity({ quests, complete, stage, icon, W, fresh, setHover, castle }
           <g transform={bs === 1 ? undefined : `scale(${bs})`}>
           {q.completedAt ? (
             <g className={fresh.has(q.id) ? 'just-built' : undefined}>
-              <Shape built glow={glow} />
+              <Depth id={`${glow}d${q.id}`} w={40} h={120}><Shape built glow={glow} /></Depth>
               {fresh.has(q.id) && <g className="dust">{[-18, -6, 6, 18].map((dx) => <circle key={dx} cx={dx} cy={-3} r={5} />)}</g>}
             </g>
           ) : <><Shape built={false} glow={glow} /><Scaffold kind={kind} /></>}
@@ -741,6 +761,11 @@ function FrontCity({ quests, complete, stage, icon, W, fresh, setHover, castle }
         <linearGradient id={id('banner')} x1="0" x2="1">
           <stop offset="0%" stopColor="var(--c1)" />
           <stop offset="100%" stopColor="var(--c2)" />
+        </linearGradient>
+        <linearGradient id="cx-ao-front" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#fff" stopOpacity="0.1" />
+          <stop offset="55%" stopColor="#000" stopOpacity="0" />
+          <stop offset="100%" stopColor="#000" stopOpacity="0.5" />
         </linearGradient>
         <radialGradient id={glow}>
           <stop offset="0%" stopColor="#ffbe5c" stopOpacity="0.55" />
@@ -793,7 +818,7 @@ function FrontCity({ quests, complete, stage, icon, W, fresh, setHover, castle }
           onPointerEnter={() => setHover({ castle: true, x: W / 2 + 40 * ck, y: GROUND - 90 * ck })} onPointerLeave={() => setHover(null)}
         >
           <rect x={-56} y={-150} width={112} height={156} fill="transparent" />
-          <FrontCastle tier={castle.tier} prev={castle.prev} glow={glow} />
+          <Depth id={`${glow}dcastle`} w={80} h={190}><FrontCastle tier={castle.tier} prev={castle.prev} glow={glow} /></Depth>
           {castle.upgraded && <CastleBurst key={built} x={0} y={-96} tier={castle.tier} s={1} />}
         </g>
       )}

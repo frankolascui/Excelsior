@@ -266,3 +266,9 @@
 .flowers { fill: none; stroke: #e9d27a; stroke-width: 2.2; stroke-linecap: round; opacity: 0.55; pointer-events: none; }
 .road-cobbles { fill: none; stroke: rgba(0, 0, 0, 0.25); stroke-width: 1; stroke-dasharray: 1.5 3; pointer-events: none; }
 .road-cobbles.paved { stroke: rgba(255, 255, 255, 0.12); stroke-dasharray: 2 2.5; }
+
+/* Profundidad de la vista frontal: cara lateral oscura y máscara de luz. */
+.extrude * { fill: #17141d !important; stroke: none !important; filter: none !important; animation: none !important; }
+.extrude .c-ghost, .mask-shape .c-ghost, .extrude .c-crown, .extrude .smoke, .extrude .embers, .extrude .torch, .extrude .banner, .extrude .shadow, .extrude .light-pool, .extrude .pole, .extrude .dust { display: none; }
+.mask-shape * { fill: #fff !important; stroke: none !important; filter: none !important; animation: none !important; }
+.mask-shape .window, .mask-shape .forge, .mask-shape .torch, .mask-shape .smoke, .mask-shape .embers, .mask-shape .shadow, .mask-shape .light-pool, .mask-shape .banner, .mask-shape .sign-mug, .mask-shape .pole { display: none; }
