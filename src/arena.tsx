@@ -234,6 +234,32 @@ function BossCard({ boss: b, st, events, hero, onFlee }: { boss: Boss; st: Retur
   );
 }
 
+function SagaBlock({ saga, state, now, full, onSummon, defaultOpen }: {
+  saga: (typeof SAGAS)[number]; state: GameState; now: number; full: boolean; onSummon: (id: string) => void; defaultOpen: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const list = BOSS_TEMPLATES.filter((t) => t.saga === saga.id);
+  const won = list.filter((t) => timesDefeated(state, t.id, now) > 0).length;
+  return (
+    <section className={`saga${won === list.length ? ' done' : ''}${open ? ' open' : ''}`} aria-label={saga.name}>
+      <button type="button" className="saga-head saga-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <h5>{saga.name}</h5>
+        <span className="mono saga-count">{won}/{list.length}{won === list.length && <> <Icon name="crown" /></>} <Icon name={open ? 'chevron-down' : 'chevron-right'} /></span>
+        <p className="muted small-text">{saga.blurb}</p>
+      </button>
+      {open && (
+        <ol className="saga-chain">
+          {list.map((t) => (
+            <li key={t.id}>
+              <TemplateCard t={t} state={state} now={now} full={full} onSummon={() => onSummon(t.id)} />
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
+
 function TemplateCard({ t, state, now, full, onSummon }: { t: BossTemplate; state: GameState; now: number; full: boolean; onSummon: () => void }) {
   const lock = bossLock(state, t.id, now);
   const fighting = !lock && isActiveTemplate(state, t.id, now);
@@ -402,6 +428,9 @@ export function Arena({ game }: { game: Game }) {
   const unlockedCount = BOSS_TEMPLATES.filter((t) => !bossLock(state, t.id, now)).length;
   const beatenCount = BOSS_TEMPLATES.filter((t) => timesDefeated(state, t.id, now) > 0).length;
   const starCount = BOSS_TEMPLATES.reduce((n, t) => n + bestStars(state, t.id, now), 0);
+  // La saga con tu siguiente boss por vencer (desbloqueado y sin derrotar); si no hay, la primera sin terminar.
+  const nextSaga = (BOSS_TEMPLATES.find((t) => !bossLock(state, t.id, now) && timesDefeated(state, t.id, now) === 0)
+    ?? BOSS_TEMPLATES.find((t) => timesDefeated(state, t.id, now) === 0))?.saga;
   const finished = state.bosses
     .map((b) => ({ b, st: bossStatus(state, b, now) }))
     .filter(({ st }) => !st.active)
@@ -502,32 +531,21 @@ export function Arena({ game }: { game: Game }) {
           </div>
         )}
 
-        <Fold label={full ? 'Sagas' : 'Invocar un boss'} icon="crossed-swords" count={`${unlockedCount}/${BOSS_TEMPLATES.length}`} className="sagas-fold" defaultOpen={active.length === 0}>
-        {full && <p className="muted small-text full-note">Ya tienes {MAX_ACTIVE_BOSSES} bosses activos. Derrota alguno antes de invocar más.</p>}
-        <div className="sagas">
-          {SAGAS.map((saga) => {
-            const list = BOSS_TEMPLATES.filter((t) => t.saga === saga.id);
-            const won = list.filter((t) => timesDefeated(state, t.id, now) > 0).length;
-            return (
-              <section key={saga.id} className={won === list.length ? 'saga done' : 'saga'} aria-label={saga.name}>
-                <header className="saga-head">
-                  <h5>{saga.name}</h5>
-                  <span className="mono saga-count">{won}/{list.length}{won === list.length && <> <Icon name="crown" /></>}</span>
-                  <p className="muted small-text">{saga.blurb}</p>
-                </header>
-                <ol className="saga-chain">
-                  {list.map((t) => (
-                    <li key={t.id}>
-                      <TemplateCard t={t} state={state} now={now} full={full} onSummon={() => summon(t.id)} />
-                    </li>
-                  ))}
-                </ol>
-              </section>
-            );
-          })}
+        {/* Invocar: siempre a la vista; cada saga se abre y se cierra (abierta la que tiene tu siguiente boss). */}
+        <div className="summon-panel">
+          <h4 className="summon-title"><Icon name="crossed-swords" /> {full ? 'Sagas' : 'Invocar un boss'} <span className="mono muted">{unlockedCount}/{BOSS_TEMPLATES.length}</span></h4>
+          {full && <p className="muted small-text full-note">Ya tienes {MAX_ACTIVE_BOSSES} bosses activos. Derrota alguno antes de invocar más.</p>}
+          <div className="sagas">
+            {SAGAS.map((saga) => (
+              <SagaBlock key={saga.id} saga={saga} state={state} now={now} full={full} onSummon={summon} defaultOpen={saga.id === nextSaga} />
+            ))}
+          </div>
+          {!full && (
+            <Fold label="Crear un boss propio" icon="plus" className="custom-boss-fold">
+              <CustomBossForm onCreate={summonCustom} />
+            </Fold>
+          )}
         </div>
-        {!full && <CustomBossForm onCreate={summonCustom} />}
-        </Fold>
 
         {finished.length > 0 && (
           <Fold label="Últimos combates" icon="crossed-swords" count={finished.length} className="combats-fold">
