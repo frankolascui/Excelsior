@@ -14,6 +14,7 @@ import { Icon } from './Icon';
 import { studyBridge } from '../bridge';
 import { askConfirm } from './Dialog';
 import { adminReadOnly } from '../../cloud';
+import { ErrorBoundary } from '../../error-boundary';
 
 const Markdown = lazy(() => import('./Markdown').then((m) => ({ default: m.Markdown })));
 
@@ -330,10 +331,12 @@ export function Review({ subjectId, topicIds }: { subjectId?: string; topicIds?:
       {leech && <LeechNote card={leech} onClose={() => setLeech(null)} />}
       <article className="flashcard" onClick={reveal}>
         {topic && <p className="eyebrow">{topic.title}{early.current.has(card.id) && <span className="pill learn early-pill">repaso final</span>}</p>}
+        <ErrorBoundary key={card.id} label="esta tarjeta">
         <Suspense fallback={<p>{card.front}</p>}>
           <div className="fc-front"><Markdown text={card.front} /></div>
           {revealed && <><hr /><div className="fc-back"><Markdown text={card.back || '_(sin respuesta)_'} /></div></>}
         </Suspense>
+        </ErrorBoundary>
       </article>
 
       {!revealed ? (
