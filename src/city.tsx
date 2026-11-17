@@ -2,10 +2,10 @@
 // (cimientos con andamios si está pendiente) y las murallas aparecen según la etapa.
 // Dos perspectivas: frontal (silueta nocturna) y desde arriba (isométrica, al estilo de los juegos de estrategia).
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
-import type { Quest, QuestType } from './types';
+import type { Quest } from './types';
 import { useWidth } from './charts';
 import { Birds, Clouds, Mist, ShootingStars } from './sky-fx';
-import { BUILDINGS } from './kingdoms';
+import { buildingKind, buildingScale, KIND_INFO, type BuildingKind } from './kingdoms';
 import './city.css';
 import { Icon, iconOf } from './icons';
 
@@ -453,10 +453,80 @@ function Torreon({ built, glow }: { built: boolean; glow: string }) {
   );
 }
 
+/** Biblioteca (Sabiduría): piedra, ventanales en arco, cúpula y un libro abierto sobre la puerta. */
+function Biblioteca({ built }: { built: boolean; glow?: string }) {
+  return (
+    <g className={built ? 'bld built' : 'bld pending'}>
+      {built && <ellipse cx={0} cy={0} rx={30} ry={3} className="shadow" />}
+      <rect x={-26} y={-34} width={52} height={34} className="stone" />
+      {built && <path d="M-26,-24 H26 M-26,-12 H26 M-16,-34 V-24 M16,-34 V-24 M-20,-12 V0 M20,-12 V0" className="brick" />}
+      <path d="M-13,-38 A13,13 0 0 1 13,-38 Z" className="roof" />
+      {built && <path d="M0,-51 A13,13 0 0 1 13,-38 L0,-38 Z" className="roof-shade" />}
+      <rect x={-29} y={-39} width={58} height={5} className="ledge" />
+      <line x1={0} y1={-51} x2={0} y2={-58} className="pole" />
+      <rect x={-21} y={-29} width={7} height={15} rx={3.5} className="window" />
+      <rect x={14} y={-29} width={7} height={15} rx={3.5} className="window" />
+      <path d="M-6,0 L-6,-13 A6,6 0 0 1 6,-13 L6,0 Z" className="door" />
+      {built && <path d="M-6,-24 L0,-22 L6,-24 V-18 L0,-16 L-6,-18 Z M0,-22 V-16" className="book" />}
+    </g>
+  );
+}
+
+/** Templo (Impacto): gradas, columnas de mármol y frontón, con luz dentro. */
+function Templo({ built, glow }: { built: boolean; glow: string }) {
+  return (
+    <g className={built ? 'bld built' : 'bld pending'}>
+      {built && <ellipse cx={0} cy={0} rx={30} ry={3} className="shadow" />}
+      {built && <circle cx={0} cy={-20} r={13} fill={`url(#${glow})`} className="light-pool" />}
+      <rect x={-27} y={-5} width={54} height={5} className="marble-dark" />
+      <rect x={-24} y={-9} width={48} height={4} className="marble" />
+      <rect x={-17} y={-34} width={34} height={25} className="naos" />
+      {[-19, -8, 3, 14].map((x) => <rect key={x} x={x} y={-35} width={5} height={26} className="marble" />)}
+      <rect x={-24} y={-40} width={48} height={5} className="marble" />
+      <path d="M-26,-40 L0,-53 L26,-40 Z" className="marble" />
+      {built && <path d="M-17,-42 L0,-50 L17,-42 Z" className="marble-dark" />}
+    </g>
+  );
+}
+
+/** Taberna (Conexión): casa de madera de dos alturas con cartel y ventanas cálidas. */
+function Taberna({ built }: { built: boolean; glow?: string }) {
+  return (
+    <g className={built ? 'bld built' : 'bld pending'}>
+      {built && <ellipse cx={0} cy={0} rx={27} ry={3} className="shadow" />}
+      {built && <rect x={-16} y={-50} width={6} height={12} className="chimney" />}
+      <rect x={-21} y={-34} width={42} height={34} className="wood" />
+      {built && <path d="M-21,-27 H21 M-21,-20 H21 M-21,-6 H21" className="plank" />}
+      {built && <rect x={-22} y={-15} width={44} height={2} className="eave" />}
+      <path d="M-26,-34 L0,-50 L26,-34 Z" className="roof" />
+      {built && <path d="M0,-50 L26,-34 L0,-34 Z" className="roof-shade" />}
+      <rect x={-6} y={-12} width={12} height={12} className="door" />
+      <rect x={-17} y={-29} width={9} height={7} className="window" />
+      <rect x={8} y={-29} width={9} height={7} className="window" />
+      <rect x={-17} y={-11} width={8} height={7} className="window" />
+      <line x1={21} y1={-22} x2={30} y2={-22} className="bracket" />
+      <rect x={24} y={-21} width={8} height={7} rx={1} className="sign" />
+      {built && <path d="M26,-19.5 h3 v4 h-3 z M29,-18.5 h1.2 v2 h-1.2" className="sign-mug" />}
+      {built && (
+        <g className="smoke soft">
+          <circle cx={-13} cy={-53} r={2.4} />
+          <circle cx={-12} cy={-59} r={3.1} />
+          <circle cx={-14} cy={-66} r={3.8} />
+        </g>
+      )}
+    </g>
+  );
+}
+
+/** Ancho y alto del andamio de cada edificio (vista frontal). */
+const FRONT_DIM: Record<BuildingKind, { w: number; h: number }> = {
+  cuartel: { w: 30, h: 80 }, forja: { w: 50, h: 34 }, casa: { w: 40, h: 30 },
+  taberna: { w: 44, h: 36 }, biblioteca: { w: 52, h: 40 }, templo: { w: 50, h: 42 },
+};
+
 /** Andamio sobre unos cimientos: el edificio aún no existe. */
-function Scaffold({ type }: { type: QuestType }) {
-  const h = type === 'main' ? 80 : type === 'daily' ? 34 : 30;
-  const w = type === 'main' ? 30 : type === 'daily' ? 50 : 40;
+function Scaffold({ kind }: { kind: BuildingKind }) {
+  const { w, h } = FRONT_DIM[kind];
   return (
     <g className="scaffold">
       <rect x={-w / 2} y={-4} width={w} height={4} className="foundation" />
@@ -546,10 +616,14 @@ function Firework({ x, y, delay, hue }: { x: number; y: number; delay: number; h
   );
 }
 
-const SHAPE = { side: Cabana, daily: Herreria, main: Torreon };
-const SLOT = { side: 54, daily: 62, main: 44 };
+const SHAPE: Record<BuildingKind, (p: { built: boolean; glow: string }) => ReactNode> = {
+  casa: Cabana, forja: Herreria, cuartel: Torreon, taberna: Taberna, biblioteca: Biblioteca, templo: Templo,
+};
+const BASE_SLOT: Record<BuildingKind, number> = { casa: 54, forja: 62, cuartel: 44, taberna: 60, biblioteca: 64, templo: 62 };
+/** Hueco que ocupa una construcción en la vista frontal: según su edificio y su tamaño (impacto). */
+const slotOf = (q: Quest) => BASE_SLOT[buildingKind(q)] * buildingScale(q);
 
-function FrontCity({ quests, progress, complete, stage, icon, W, fresh, setHover, castle }: SceneProps) {
+function FrontCity({ quests, complete, stage, icon, W, fresh, setHover, castle }: SceneProps) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
   const id = (s: string) => `${uid}${s}`;
   const glow = id('glow');
@@ -593,14 +667,14 @@ function FrontCity({ quests, progress, complete, stage, icon, W, fresh, setHover
   let lw = 0;
   let rw = 0;
   for (const q of quests) {
-    const w = SLOT[q.type] * k;
+    const w = slotOf(q) * k;
     if (lw <= rw && lw + w <= sideCap) { left.push(q); lw += w; }
     else if (rw + w <= sideCap) { right.push(q); rw += w; }
     else if (lw + w <= sideCap) { left.push(q); lw += w; }
     else back.push(q);
   }
   // Fila de atrás (más pequeña); si no cabe sin encogerse demasiado, se reparte en dos filas escalonadas.
-  const backSum = back.reduce((n, q) => n + SLOT[q.type], 0);
+  const backSum = back.reduce((n, q) => n + slotOf(q), 0);
   const avail = W - 24 - gap * 0.85;
   const twoRows = backSum > 0 && avail / backSum < 0.5;
   const bk = backSum ? Math.min(0.7 * k, (twoRows ? 1.9 : 1) * avail / backSum) : 0.7 * k;
@@ -610,37 +684,41 @@ function FrontCity({ quests, progress, complete, stage, icon, W, fresh, setHover
     const r = twoRows ? i % 2 : 0;
     const side = widths[r][0] <= widths[r][1] ? 0 : 1;
     backRows[r][side].push(q);
-    widths[r][side] += SLOT[q.type];
+    widths[r][side] += slotOf(q);
   });
   /** Coloca una fila a ambos lados del castillo: la izquierda crece hacia fuera desde el centro, igual que la derecha. */
   function row(l: Quest[], r: Quest[], baseline: number, scale: number, g: number) {
     const placed: { q: Quest; cx: number }[] = [];
     let x = W / 2 - g / 2;
-    for (const q of l) { const w = SLOT[q.type] * scale; placed.push({ q, cx: x - w / 2 }); x -= w; }
+    for (const q of l) { const w = slotOf(q) * scale; placed.push({ q, cx: x - w / 2 }); x -= w; }
     x = W / 2 + g / 2;
-    for (const q of r) { const w = SLOT[q.type] * scale; placed.push({ q, cx: x + w / 2 }); x += w; }
+    for (const q of r) { const w = slotOf(q) * scale; placed.push({ q, cx: x + w / 2 }); x += w; }
     return placed.map(({ q, cx }) => {
-      const Shape = SHAPE[q.type];
+      const kind = buildingKind(q);
+      const Shape = SHAPE[kind];
+      const bs = buildingScale(q);
       return (
         <g
           key={q.id} transform={`translate(${cx},${baseline}) scale(${scale})`}
           onPointerEnter={() => setHover({ q, x: cx, y: baseline - 60 * scale })} onPointerLeave={() => setHover(null)}
         >
-          <rect x={-SLOT[q.type] / 2} y={-110} width={SLOT[q.type]} height={110} fill="transparent" />
-          {q.completedAt && <ellipse cx={0} cy={2} rx={SLOT[q.type] * 0.42} ry={7} fill={`url(#${glow})`} className="light-pool" />}
+          <rect x={-slotOf(q) / 2} y={-110} width={slotOf(q)} height={110} fill="transparent" />
+          {q.completedAt && <ellipse cx={0} cy={2} rx={slotOf(q) * 0.42} ry={7} fill={`url(#${glow})`} className="light-pool" />}
+          <g transform={bs === 1 ? undefined : `scale(${bs})`}>
           {q.completedAt ? (
             <g className={fresh.has(q.id) ? 'just-built' : undefined}>
               <Shape built glow={glow} />
               {fresh.has(q.id) && <g className="dust">{[-18, -6, 6, 18].map((dx) => <circle key={dx} cx={dx} cy={-3} r={5} />)}</g>}
             </g>
-          ) : <><Shape built={false} glow={glow} /><Scaffold type={q.type} /></>}
+          ) : <><Shape built={false} glow={glow} /><Scaffold kind={kind} /></>}
+          </g>
         </g>
       );
     });
   }
 
-  const walls = progress >= 0.34;
-  const stoneWalls = progress >= 0.67;
+  const walls = built >= 3; // empalizada desde Villa (por número de construcciones, como la etapa)
+  const stoneWalls = built >= 6; // muralla de piedra desde Ciudad amurallada
   const showLabel = W >= 560;
   const gateX = W / 2;
   return (
@@ -810,14 +888,17 @@ function Pool({ P, i, j, r, gid, cls = 'light-pool' }: { P: Proj; i: number; j: 
 }
 
 /** Dimensiones de cada edificio en casillas: medio ancho (a, b) y altura de muro. */
-const ISO_DIM: Record<QuestType, { a: number; b: number; h: number }> = {
-  side: { a: 0.72, b: 0.72, h: 1 },
-  daily: { a: 0.92, b: 0.78, h: 1.1 },
-  main: { a: 0.6, b: 0.6, h: 3.4 },
+const ISO_DIM: Record<BuildingKind, { a: number; b: number; h: number }> = {
+  casa: { a: 0.72, b: 0.72, h: 1 },
+  forja: { a: 0.92, b: 0.78, h: 1.1 },
+  cuartel: { a: 0.6, b: 0.6, h: 3.4 },
+  taberna: { a: 0.82, b: 0.74, h: 1.5 },
+  biblioteca: { a: 0.9, b: 0.74, h: 1.35 },
+  templo: { a: 0.95, b: 0.8, h: 1.25 },
 };
 
-function IsoCabana({ P, smoke }: { P: Proj; smoke: boolean }) {
-  const { a, b, h } = ISO_DIM.side;
+function IsoCabana({ P, smoke, dim = ISO_DIM.casa }: { P: Proj; smoke: boolean; dim?: { a: number; b: number; h: number } }) {
+  const { a, b, h } = dim;
   const [cx, cy] = P(0.4, -0.35, h + 1.25);
   return (
     <>
@@ -842,7 +923,7 @@ function IsoCabana({ P, smoke }: { P: Proj; smoke: boolean }) {
 }
 
 function IsoHerreria({ P, gid, live }: { P: Proj; gid: string; live: boolean }) {
-  const { a, b, h } = ISO_DIM.daily;
+  const { a, b, h } = ISO_DIM.forja;
   const [sx, sy] = P(0.62, -0.52, 2.7);
   const [fx, fy] = P(0, b, 0.35);
   return (
@@ -906,7 +987,7 @@ function Flag({ P, i = 0, j = 0, z, len = 1.3, banner = 'iso-banner' }: { P: Pro
 }
 
 function IsoTorreon({ P, live }: { P: Proj; live: boolean }) {
-  const { a, h } = ISO_DIM.main;
+  const { a, h } = ISO_DIM.cuartel;
   const p = a + 0.1;
   return (
     <>
@@ -921,6 +1002,65 @@ function IsoTorreon({ P, live }: { P: Proj; live: boolean }) {
       <Merlons P={P} s={p} z={h + 0.3} back />
       {live && <Flag P={P} z={h + 0.3} len={1.5} />}
       <Merlons P={P} s={p} z={h + 0.3} back={false} />
+    </>
+  );
+}
+
+/** Taberna: la cabaña, más alta, con un cartel colgado de un brazo de hierro. */
+function IsoTaberna({ P, live }: { P: Proj; live: boolean }) {
+  const dim = ISO_DIM.taberna;
+  const [x0, y0] = P(-dim.a, dim.b, dim.h * 0.8);
+  const [x1] = P(-dim.a - 0.4, dim.b + 0.4, dim.h * 0.8);
+  const len = x0 - x1;
+  return (
+    <>
+      <IsoCabana P={P} smoke={live} dim={dim} />
+      <line x1={x0} y1={y0} x2={x1} y2={y0} className="bracket" />
+      <rect x={x1 - len * 0.35} y={y0 + len * 0.08} width={len * 0.7} height={len * 0.6} rx={1} className="sign" />
+    </>
+  );
+}
+
+/** Biblioteca: piedra, ventanales altos, cornisa y una cúpula sobre un tambor. */
+function IsoBiblioteca({ P }: { P: Proj }) {
+  const { a, b, h } = ISO_DIM.biblioteca;
+  return (
+    <>
+      <Box P={P} i0={-a} j0={-b} i1={a} j1={b} z1={h} m="m-stone" top={false} />
+      <FaceL P={P} j={b} a={-0.12} b={0.18} z0={0} z1={0.62} cls="m-door" />
+      <FaceL P={P} j={b} a={-0.7} b={-0.48} z0={0.35} z1={1.0} cls="iso-win" />
+      <FaceL P={P} j={b} a={0.42} b={0.64} z0={0.35} z1={1.0} cls="iso-win" />
+      <FaceR P={P} i={a} a={-0.5} b={-0.28} z0={0.35} z1={1.0} cls="iso-win" />
+      <FaceR P={P} i={a} a={0.18} b={0.4} z0={0.35} z1={1.0} cls="iso-win" />
+      <Box P={P} i0={-a - 0.08} j0={-b - 0.08} i1={a + 0.08} j1={b + 0.08} z0={h} z1={h + 0.16} m="m-stone2" />
+      <Box P={P} i0={-0.36} j0={-0.36} i1={0.36} j1={0.36} z0={h + 0.16} z1={h + 0.5} m="m-stone" />
+      <Pyr P={P} a={0.42} z0={h + 0.5} z1={h + 1.15} m="m-roof" />
+    </>
+  );
+}
+
+/** Templo: gradas de mármol, cella, columnas al frente y tejado a dos aguas muy bajo. */
+function IsoTemplo({ P }: { P: Proj }) {
+  const { a, b, h } = ISO_DIM.templo;
+  const ca = a - 0.3;
+  const cb = b - 0.3;
+  const col = (i: number, j: number) => <Box key={`${i},${j}`} P={P} i0={i - 0.08} j0={j - 0.08} i1={i + 0.08} j1={j + 0.08} z0={0.2} z1={h} m="m-marble" />;
+  const front = [-0.7, -0.24, 0.22].map((i) => col(i, b - 0.1));
+  const side = [-0.55, -0.1, 0.35].map((j) => col(a - 0.1, j));
+  return (
+    <>
+      <Box P={P} i0={-a - 0.08} j0={-b - 0.08} i1={a + 0.08} j1={b + 0.08} z1={0.1} m="m-marble" />
+      <Box P={P} i0={-a} j0={-b} i1={a} j1={b} z0={0.1} z1={0.2} m="m-marble" />
+      <Box P={P} i0={-ca} j0={-cb} i1={ca} j1={cb} z0={0.2} z1={h} m="m-stone2" top={false} />
+      <FaceL P={P} j={cb} a={-0.15} b={0.15} z0={0.2} z1={0.85} cls="iso-win" />
+      {side}
+      {front}
+      {col(a - 0.1, b - 0.1)}
+      <Box P={P} i0={-a} j0={-b} i1={a} j1={b} z0={h} z1={h + 0.16} m="m-marble" />
+      <polygon className="m-marble r" points={pts(P, [[-a, -b, h + 0.16], [a, -b, h + 0.16], [a, 0, h + 0.5], [-a, 0, h + 0.5]])} />
+      <polygon className="m-marble r" points={pts(P, [[a, -b, h + 0.16], [a, b, h + 0.16], [a, 0, h + 0.5]])} />
+      <polygon className="m-marble l" points={pts(P, [[-a, b, h + 0.16], [a, b, h + 0.16], [a, 0, h + 0.5], [-a, 0, h + 0.5]])} />
+      <polyline className="ridge" points={pts(P, [[-a, 0, h + 0.5], [a, 0, h + 0.5]])} />
     </>
   );
 }
@@ -1117,9 +1257,9 @@ function IsoCastle({ P, tier, prev, s, glow }: { P: Proj; tier: number; prev: nu
 }
 
 /** Andamio isométrico sobre los cimientos de un edificio pendiente. */
-function IsoScaffold({ P, type, s }: { P: Proj; type: QuestType; s: number }) {
-  const { a, b, h } = ISO_DIM[type];
-  const top = type === 'main' ? h : h + 0.5;
+function IsoScaffold({ P, kind, s }: { P: Proj; kind: BuildingKind; s: number }) {
+  const { a, b, h } = ISO_DIM[kind];
+  const top = kind === 'cuartel' ? h : h + 0.5;
   const pole = (i: number, j: number) => {
     const [x0, y0] = P(i, j, 0.15);
     const [x1, y1] = P(i, j, top + 0.25);
@@ -1211,14 +1351,14 @@ function EmptyLot({ P, kind, s }: { P: Proj; kind: number; s: number }) {
   );
 }
 
-function IsoCity({ quests, progress, complete, stage, icon, W, fresh, setHover, castle }: SceneProps) {
+function IsoCity({ quests, complete, stage, icon, W, fresh, setHover, castle }: SceneProps) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
   const id = (s: string) => `${uid}${s}`;
   const glow = id('glow');
   const n = quests.length;
   const built = quests.filter((q) => q.completedAt).length;
-  const walls = progress >= 0.34;
-  const stoneWalls = progress >= 0.67;
+  const walls = built >= 3; // empalizada desde Villa (por número de construcciones, como la etapa)
+  const stoneWalls = built >= 6; // muralla de piedra desde Ciudad amurallada
 
   // Cuadrícula de solares (impar, con el castillo en el centro y una avenida hasta la puerta). En cuanto la
   // ciudad crece, el castillo se reserva los 3×3 solares centrales para seguir siendo el protagonista.
@@ -1291,36 +1431,45 @@ function IsoCity({ quests, progress, complete, stage, icon, W, fresh, setHover, 
   lots.forEach((lot, k) => {
     const ci = m + lot.li * S + 1.5;
     const cj = m + lot.lj * S + 1.5;
-    const Pl: Proj = (i, j, z = 0) => P(ci + i, cj + j, z);
     const q = quests[k];
     if (!q) {
-      items.push({ depth: ci + cj, key: `e${k}`, node: <EmptyLot P={Pl} kind={(lot.li * 7 + lot.lj * 3) % 3} s={s} /> });
+      const Pe: Proj = (i, j, z = 0) => P(ci + i, cj + j, z);
+      items.push({ depth: ci + cj, key: `e${k}`, node: <EmptyLot P={Pe} kind={(lot.li * 7 + lot.lj * 3) % 3} s={s} /> });
       return;
     }
-    const dim = ISO_DIM[q.type];
-    const tall = q.type === 'main' ? dim.h + 2 : dim.h + 1.6;
+    const kind = buildingKind(q);
+    const bs = buildingScale(q);
+    const Pl: Proj = (i, j, z = 0) => P(ci + i * bs, cj + j * bs, z * bs);
+    const base = ISO_DIM[kind];
+    const dim = { a: base.a * bs, b: base.b * bs, h: base.h * bs };
+    const tall = kind === 'cuartel' ? dim.h + 2 : dim.h + 1.6;
     const [lx] = P(ci - dim.a, cj + dim.b);
     const [rx] = P(ci + dim.a, cj - dim.b);
     const [, ty] = P(ci - dim.a, cj - dim.b, tall);
     const [hx, hy] = P(ci, cj, dim.h);
     const [, by] = P(ci + dim.a, cj + dim.b);
     const done = !!q.completedAt;
-    const body = q.type === 'side' ? <IsoCabana P={Pl} smoke={done} /> : q.type === 'daily' ? <IsoHerreria P={Pl} gid={glow} live={done} /> : <IsoTorreon P={Pl} live={done} />;
+    const body = kind === 'casa' ? <IsoCabana P={Pl} smoke={done} />
+      : kind === 'forja' ? <IsoHerreria P={Pl} gid={glow} live={done} />
+      : kind === 'cuartel' ? <IsoTorreon P={Pl} live={done} />
+      : kind === 'taberna' ? <IsoTaberna P={Pl} live={done} />
+      : kind === 'biblioteca' ? <IsoBiblioteca P={Pl} />
+      : <IsoTemplo P={Pl} />;
     items.push({
       depth: ci + cj,
       key: q.id,
       node: (
         <g onPointerEnter={() => setHover({ q, x: hx, y: hy })} onPointerLeave={() => setHover(null)}>
-          {done && <Pool P={Pl} i={0.25} j={dim.b + 0.35} r={0.9} gid={glow} />}
+          {done && <Pool P={Pl} i={0.25} j={base.b + 0.35} r={0.9} gid={glow} />}
           {done ? (
             <g className={fresh.has(q.id) ? 'iso-bld built just-built' : 'iso-bld built'}>
               {body}
-              {fresh.has(q.id) && <g className="dust">{[-0.6, 0, 0.6].map((d) => { const [x, y] = Pl(d, dim.b + 0.2); return <circle key={d} cx={x} cy={y} r={4 * s} />; })}</g>}
+              {fresh.has(q.id) && <g className="dust">{[-0.6, 0, 0.6].map((d) => { const [x, y] = Pl(d, base.b + 0.2); return <circle key={d} cx={x} cy={y} r={4 * s} />; })}</g>}
             </g>
           ) : (
             <>
               <g className="iso-bld pending">{body}</g>
-              <IsoScaffold P={Pl} type={q.type} s={s} />
+              <IsoScaffold P={Pl} kind={kind} s={s} />
             </>
           )}
           <rect x={lx} y={ty} width={rx - lx} height={by - ty} fill="transparent" />
@@ -1594,7 +1743,7 @@ function IsoCity({ quests, progress, complete, stage, icon, W, fresh, setHover, 
       <Birds W={W} y={H * 0.22} n={3} dur={30} delay={6} />
       <Clouds W={W} shadow rows={[{ y: H * 0.3, s: 1.6, dur: 70, o: 0.06 }, { y: H * 0.68, s: 2.1, dur: 100, o: 0.05 }]} />
       <rect width={W} height={H} fill={`url(#${id('vig')})`} pointerEvents="none" />
-      {W >= 560 && <><StageIcon icon={icon} /><text x={36} y={24} className="city-stage">{stage} · {Math.round(progress * 100)} %</text></>}
+      {W >= 560 && <><StageIcon icon={icon} /><text x={36} y={24} className="city-stage">{stage} · {built} {built === 1 ? 'construcción' : 'construcciones'}</text></>}
       {n === 0 && <EmptyText x={W / 2} y={oy - (W < 480 ? 30 : 14)} W={W} />}
     </svg>
   );
@@ -1682,7 +1831,7 @@ export function CityScene({ quests, progress, complete, stage, icon }: { quests:
         <div className={'q' in hover ? 'chart-tip' : 'chart-tip castle-tip'} style={{ left: hover.x, top: hover.y, transform: `translate(${hover.x > W - 190 ? 'calc(-100% - 12px)' : '12px'}, -50%)` }}>
           {'q' in hover ? (
             <>
-              <span className="tip-title">{hover.q.completedAt ? BUILDINGS[hover.q.type].name : `Cimientos de ${BUILDINGS[hover.q.type].name.toLowerCase()}`}</span>
+              <span className="tip-title">{hover.q.completedAt ? KIND_INFO[buildingKind(hover.q)].name : `Cimientos de ${KIND_INFO[buildingKind(hover.q)].name.toLowerCase()}`}</span>
               <span className="tip-value">{hover.q.title}</span>
             </>
           ) : (

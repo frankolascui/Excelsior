@@ -1,8 +1,8 @@
 // Reinos: proyectos que se construyen como una ciudad. Cada construcción es una misión
 // normal (con kingdomId), así que da XP y atributos igual que cualquier otra.
-import type { GameState, Quest, QuestType } from './types';
+import type { AttributeId, GameState, Impact, Quest, QuestType } from './types';
 import type { IconName } from './icon-data';
-import { uid } from './game';
+import { impactOf, uid } from './game';
 
 // Ambientación medieval: cabañas, herrerías y torreones.
 export const BUILDINGS: Record<QuestType, { name: string; icon: IconName }> = {
@@ -10,6 +10,54 @@ export const BUILDINGS: Record<QuestType, { name: string; icon: IconName }> = {
   daily: { name: 'Herrería', icon: 'anvil' },
   main: { name: 'Torreón', icon: 'stone-tower' },
 };
+
+/**
+ * Edificios por atributo (2026-11-17): la ciudad enseña en qué te esfuerzas. El atributo elegido al construir
+ * (`Quest.focus`) decide el edificio y el impacto, su tamaño. Las construcciones antiguas sin atributo siguen
+ * con su dibujo de siempre según su tipo (Torreón → cuartel, Herrería → forja, Cabaña → casa).
+ */
+export type BuildingKind = 'cuartel' | 'biblioteca' | 'forja' | 'taberna' | 'templo' | 'casa';
+
+export const BUILDING_OF: Record<AttributeId, BuildingKind> = {
+  voluntad: 'cuartel', sabiduria: 'biblioteca', maestria: 'forja', conexion: 'taberna', creacion: 'templo',
+};
+
+export const KIND_INFO: Record<BuildingKind, { name: string; icon: IconName; attr?: AttributeId }> = {
+  cuartel: { name: 'Cuartel', icon: 'attr-voluntad', attr: 'voluntad' },
+  biblioteca: { name: 'Biblioteca', icon: 'attr-sabiduria', attr: 'sabiduria' },
+  forja: { name: 'Forja', icon: 'attr-maestria', attr: 'maestria' },
+  taberna: { name: 'Taberna', icon: 'attr-conexion', attr: 'conexion' },
+  templo: { name: 'Templo', icon: 'attr-creacion', attr: 'creacion' },
+  casa: { name: 'Cabaña', icon: 'cabin' },
+};
+
+/** Los cinco edificios que se pueden elegir al construir, en el orden de los atributos. */
+export const BUILDING_CHOICES: AttributeId[] = ['voluntad', 'sabiduria', 'maestria', 'conexion', 'creacion'];
+
+const LEGACY_KIND: Record<QuestType, BuildingKind> = { main: 'cuartel', daily: 'forja', side: 'casa' };
+
+export function buildingKind(q: Pick<Quest, 'focus' | 'type'>): BuildingKind {
+  return q.focus ? BUILDING_OF[q.focus] : LEGACY_KIND[q.type];
+}
+
+/** Tamaño del edificio según el impacto de la tarea. */
+export const IMPACT_SCALE: Record<Impact, number> = { alto: 1.22, medio: 1, bajo: 0.84 };
+export const buildingScale = (q: Pick<Quest, 'impact' | 'type'>) => IMPACT_SCALE[impactOf(q)];
+
+// Copia local (attributes.ts importa este módulo: importar de allí sería circular).
+const normalize = (t: string) => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const GUESS: [RegExp, AttributeId][] = [
+  [/llamar|llamada|famili|amig|pareja|novi[ao]|padre|madre|herman|abuel|quedar|reunion|agradec|visitar|cena con|desconocid|hablar con|conocer gente|cita|equipo|red de contactos/, 'conexion'],
+  [/estudi|leer|lectura|libro|aprend|curso|investig|repas|examen|teori|apunte|document|tutorial/, 'sabiduria'],
+  [/ayudar|voluntari|ensenar|mentor|publicar|lanzar|donar|usuarios|clientes|comunidad|compartir/, 'creacion'],
+  [/entren|madrug|gym|gimnas|correr|disciplin|dejar de|sin movil|ayuno/, 'voluntad'],
+];
+
+/** Atributo (y por tanto edificio) que se propone para una construcción según su nombre: por defecto, la forja. */
+export function guessBuildingAttr(title: string): AttributeId {
+  const t = normalize(title);
+  return GUESS.find(([re]) => re.test(t))?.[1] ?? 'maestria';
+}
 
 export function addKingdom(s: GameState, name: string, now: number): GameState {
   return { ...s, kingdoms: [...s.kingdoms, { id: uid(), name: name.trim(), createdAt: now }] };

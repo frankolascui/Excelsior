@@ -50,3 +50,19 @@ describe('cerrar un reino como monumento', () => {
     expect(staleKingdoms(closeKingdom(s, k, NOW), NOW + 30 * DAY)).toHaveLength(0);
   });
 });
+
+describe('edificios por atributo', () => {
+  it('el atributo decide el edificio y las antiguas siguen con el suyo', async () => {
+    const { buildingKind, guessBuildingAttr, buildingScale } = await import('./kingdoms');
+    expect(buildingKind({ type: 'side', focus: 'sabiduria' })).toBe('biblioteca');
+    expect(buildingKind({ type: 'main', focus: 'creacion' })).toBe('templo');
+    expect(buildingKind({ type: 'main' })).toBe('cuartel');
+    expect(buildingKind({ type: 'daily' })).toBe('forja');
+    expect(buildingKind({ type: 'side' })).toBe('casa');
+    expect(guessBuildingAttr('Estudiar el tema 3')).toBe('sabiduria');
+    expect(guessBuildingAttr('Llamar al cliente')).toBe('conexion');
+    expect(guessBuildingAttr('Publicar la web')).toBe('creacion');
+    expect(guessBuildingAttr('Terminar la calculadora')).toBe('maestria');
+    expect(buildingScale({ type: 'side', impact: 'alto' })).toBeGreaterThan(buildingScale({ type: 'side', impact: 'bajo' }));
+  });
+});

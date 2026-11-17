@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { sureThen } from './confirm';
 import type { useGame } from './store';
-import type { DeepWorkArea, FocusPhase, GameState, Quest, QuestType } from './types';
-import { addGoal, avatarInfo, DEEP_WORK_AREA_HINT, deepWorkRewards, inferDeepWorkArea, deleteGoal, formatAttrXp, goalProgress, habitRewards, questRewards, updateGoal } from './attributes';
+import type { AttributeId, DeepWorkArea, FocusPhase, GameState, Impact, Quest, QuestType } from './types';
+import { addGoal, attributeDef, avatarInfo, DEEP_WORK_AREA_HINT, deepWorkRewards, inferDeepWorkArea, deleteGoal, formatAttrXp, goalProgress, habitRewards, questRewards, updateGoal } from './attributes';
 import { CustomizeToggle, RewardEditor, sameRewards, type CustomValue } from './customize';
-import { addKingdom, BUILDINGS, buildings, closeKingdom, deleteKingdom, kingdomIdleDays, kingdomName, kingdomProgress, nextStage, renameKingdom, reopenKingdom, setKingdomDeadline, STALE_KINGDOM_DAYS } from './kingdoms';
-import { DatePicker, Select } from './pickers';
+import { addKingdom, BUILDING_CHOICES, BUILDING_OF, buildings, guessBuildingAttr, KIND_INFO, closeKingdom, deleteKingdom, kingdomIdleDays, kingdomName, kingdomProgress, nextStage, renameKingdom, reopenKingdom, setKingdomDeadline, STALE_KINGDOM_DAYS } from './kingdoms';
+import { DatePicker, ImpactPicker, Select } from './pickers';
 import { CityScene } from './city';
 import { kingdomBonus, spendShield } from './economy';
 import { RealmMap } from './realm';
@@ -21,7 +21,7 @@ import { sfx } from './sfx';
 import { confetti } from './confetti';
 import { XpChart } from './charts';
 import {
-  addHabit, addQuest, cancelTimer, CUSTOM_LIMITS, maxPerWeek, updateHabit, updateQuest, completeQuest, createProfile, dayKey, deepWorkMinutesOnDay,
+  addHabit, addQuest, IMPACT_TYPE, cancelTimer, CUSTOM_LIMITS, maxPerWeek, updateHabit, updateQuest, completeQuest, createProfile, dayKey, deepWorkMinutesOnDay,
   deleteHabit, deleteQuest, focusPercent, habitStreakDays, levelInfo, pendingQuests, scheduledQuests, setQuestDeadline, setQuestRepeat, setPhase, timerTotals,
   pomodoroStatus, pomodoroStep, startTimer, stopTimer, suggest, questXp, PRIORITY_BONUS, impactOf, toggleHabit, setHabitDayCount, habitCleared, habitsInOrder, reorderHabits, totalXp, undoQuest, XP_RULES,
 } from './game';
@@ -915,7 +915,6 @@ export function Character({ game }: { game: Game }) {
 
 // ---------- Reinos ----------
 
-const BUILDING_TYPES: QuestType[] = ['side', 'daily', 'main'];
 
 // Reino abierto: se recuerda al cambiar de pestaña (p. ej. al volver de Deep Work) mientras dure la sesión.
 export function Kingdoms({ game, focusQuest }: { game: Game; focusQuest: (q: Quest) => void }) {
@@ -1002,7 +1001,10 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
   const built = all.filter((q) => q.completedAt);
   const bonus = kingdomBonus(state, kingdomId);
   const [title, setTitle] = useState('');
-  const [type, setType] = useState<QuestType>('side');
+  const [impact, setImpact] = useState<Impact>('medio');
+  const [picked, setPicked] = useState<AttributeId | null>(null);
+  const attr = picked ?? guessBuildingAttr(title); // el edificio se propone solo por el nombre; tocarlo lo fija
+  const type: QuestType = IMPACT_TYPE[impact];
   const [custom, setCustom] = useState<CustomValue>({});
   const [open, setOpen] = useState(false);
   const [showBuilt, setShowBuilt] = useState(false);
@@ -1015,7 +1017,7 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
     const msg = pending.length
       ? `Las ${pending.length} ${pending.length === 1 ? 'construcción pendiente se quita' : 'construcciones pendientes se quitan'}; lo construido queda en el mapa como monumento.`
       : 'Lo construido queda en el mapa como monumento. Puedes reabrirlo cuando quieras.';
-    sureThen({ title: `¿Cerrar ${kingdom.name}?`, message: msg, confirmLabel: 'Cerrar como monumento' }, () => {
+    sureThen({ title: `¿Cerrar ${kingdom.name}?`, message: msg, confirmLabel: 'Cerrar como monumento', icon: 'laurel-crown' }, () => {
       act((s) => closeKingdom(s, kingdomId, Date.now()));
       sfx.victory();
       confetti({ count: 120 });
@@ -1024,8 +1026,9 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    const rewards = custom.rewards && !sameRewards(custom.rewards, questRewards(type, title)) ? custom.rewards : undefined;
-    act((s) => addQuest(s, title, type, Date.now(), { kingdomId, xp: custom.xp, rewards }));
+    const rewards = custom.rewards && !sameRewards(custom.rewards, questRewards(type, title, attr)) ? custom.rewards : undefined;
+    act((s) => addQuest(s, title, type, Date.now(), { kingdomId, impact, focus: attr, xp: custom.xp, rewards }));
+    setPicked(null);
     setTitle('');
     setCustom({});
     setOpen(false);
@@ -1116,17 +1119,21 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
       <form className="quick-add" onSubmit={submit}>
         <input id={`b-${kingdomId}`} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="+ Nueva construcción (ej. Terminar una calculadora)" maxLength={80} aria-label="Nueva construcción" />
         <div className="quick-add-row">
-          <div className="segmented" role="radiogroup" aria-label="Tipo de construcción">
-            {BUILDING_TYPES.map((t) => (
-              <button type="button" key={t} role="radio" aria-checked={type === t} className={type === t ? 'seg on' : 'seg'} onClick={() => setType(t)}>
-                <Icon name={BUILDINGS[t].icon} /> {BUILDINGS[t].name} <span className="mono">{XP_RULES.quest[t]}</span>
-              </button>
-            ))}
+          <div className="segmented building-pick" role="radiogroup" aria-label="Edificio (según el atributo que trabaja)">
+            {BUILDING_CHOICES.map((a) => {
+              const k = KIND_INFO[BUILDING_OF[a]];
+              return (
+                <button type="button" key={a} role="radio" aria-checked={attr === a} className={attr === a ? 'seg on' : 'seg'} onClick={() => setPicked(a)} title={`${k.name}: ${attributeDef(a).name}`}>
+                  <Icon name={k.icon} /> {k.name}
+                </button>
+              );
+            })}
           </div>
+          <ImpactPicker value={impact} onChange={setImpact} label="Tamaño de la construcción" />
           <CustomizeToggle open={open} onToggle={() => setOpen(!open)} custom={custom.xp !== undefined || custom.rewards !== undefined} />
           <button type="submit" className="primary" disabled={!title.trim()}><Icon name="plus" /> Construir</button>
         </div>
-        {open && <RewardEditor autoXp={XP_RULES.quest[type]} autoRewards={questRewards(type, title)} value={custom} onChange={setCustom} maxXp={CUSTOM_LIMITS.questXp} idPrefix={`b-${kingdomId}`} />}
+        {open && <RewardEditor autoXp={XP_RULES.quest[type]} autoRewards={questRewards(type, title, attr)} value={custom} onChange={setCustom} maxXp={CUSTOM_LIMITS.questXp} idPrefix={`b-${kingdomId}`} />}
       </form>
       <div className="kingdom-actions">
         {p.built > 0 && <button type="button" className="ghost" onClick={close}><Icon name="laurel-crown" /> Cerrar como monumento</button>}
