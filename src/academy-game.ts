@@ -2,7 +2,7 @@
 // - Cada sesión de repaso se guarda como una sesión de Deep Work (área «estudio»): da 1 XP por minuto
 //   de repaso real, como cualquier foco, y sube Sabiduría. El tiempo se mide por tarjeta (máximo 2 min cada una)
 //   para que dejar la pantalla abierta no cuente.
-// - El hábito del sistema «Repasar las tarjetas» se marca solo el día que vacías la cola o repasas 20 tarjetas.
+// - El hábito del sistema «Repasar las tarjetas» se marca solo el día que vacías la cola o repasas una ronda (8 tarjetas).
 // - Vaciar la cola del día da un pequeño bonus (una vez al día).
 import type { DeepWorkSession, GameState, Habit } from './types';
 import { dayKey, toggleHabit, uid, XP_RULES, type ActionResult } from './game';
@@ -12,7 +12,7 @@ export const ACADEMY_HABIT_ID = 'sys-academy';
 export const ACADEMY_HABIT_NAME = 'Repasar las tarjetas';
 export const STUDY_RULES = {
   /** Tarjetas que bastan para dar el hábito por hecho aunque la cola no se vacíe. */
-  habitCards: 20,
+  habitCards: 8, // una ronda de repaso (BATCH en Review.tsx); antes 20 = casi 3 rondas
   /** Tiempo máximo que cuenta por tarjeta. */
   maxMsPerCard: 120_000,
   /** XP por vaciar la cola del día (una vez al día). */
