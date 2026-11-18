@@ -119,8 +119,12 @@ export function unusedPurchases(s: GameState): Purchase[] {
 
 // ---------- Escudo de racha ----------
 
-/** Objeto fijo de la tienda: salva un día fallado de un hábito diario si el anterior lo hiciste. */
-export const SHIELD = { id: 'streak-shield', name: 'Escudo de racha', icon: 'shield', cost: 50 } as const;
+/**
+ * Objeto fijo de la tienda: congela la racha de un hábito diario salvando el día de ayer, si anteayer lo hiciste.
+ * Precio subido de 50 a 150 el 2026-11-18 (≈ 750 XP, unos 3 días normales) y máximo 2 guardados (pedido de Nicolas).
+ * Los escudos ya comprados conservan el precio que costaron.
+ */
+export const SHIELD = { id: 'streak-shield', name: 'Escudo de racha', icon: 'shield', cost: 150, max: 2 } as const; // max = SHIELD_MAX de game.ts (import circular: no se puede leer aquí al cargar)
 
 /** Escudos comprados que aún no has usado. */
 export function shieldsLeft(s: GameState): number {
@@ -128,27 +132,21 @@ export function shieldsLeft(s: GameState): number {
 }
 
 export function buyShield(s: GameState, now: number): { state: GameState; ok: boolean } {
-  if (coinBalance(s, now) < SHIELD.cost) return { state: s, ok: false };
+  if (shieldsLeft(s) >= SHIELD.max || coinBalance(s, now) < SHIELD.cost) return { state: s, ok: false };
   const purchase: Purchase = { id: uid(), rewardId: SHIELD.id, name: SHIELD.name, icon: SHIELD.icon, cost: SHIELD.cost, at: now, usedAt: null };
   return { state: { ...s, purchases: [...s.purchases, purchase] }, ok: true };
 }
 
 /**
- * Día que un escudo puede salvar ahora: el último fallo de los 7 últimos días con el día anterior hecho
- * y todo hecho desde entonces hasta ayer (si no, la racha ya se perdió). Null si no hay ninguno.
+ * Día que un escudo puede salvar ahora: solo ayer, si lo fallaste, anteayer lo hiciste y el hábito ya existía.
+ * Ni días más antiguos ni futuros. Null si no se puede.
  */
 export function shieldableDay(s: GameState, habitId: string, now: number): string | null {
   const h = s.habits.find((x) => x.id === habitId);
   if (!h || h.frequency === 'weekly') return null;
-  const saved = shieldedDays(s, habitId);
-  const ok = (d: string) => isHabitDone(s, habitId, d) || saved.has(d);
-  for (let i = 1; i <= 6; i++) {
-    const d = dayKey(shiftDay(now, -i));
-    if (ok(d)) continue;
-    if (d < dayKey(h.createdAt)) return null;
-    return isHabitDone(s, habitId, dayKey(shiftDay(now, -i - 1))) ? d : null;
-  }
-  return null;
+  const y = dayKey(shiftDay(now, -1));
+  if (y < dayKey(h.createdAt) || isHabitDone(s, habitId, y) || shieldedDays(s, habitId).has(y)) return null;
+  return isHabitDone(s, habitId, dayKey(shiftDay(now, -2))) ? y : null;
 }
 
 /** Usa un escudo del cofre en ese día fallado. */

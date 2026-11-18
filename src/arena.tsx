@@ -667,21 +667,22 @@ function ShieldCard({ game, balance }: { game: Game; balance: number }) {
   const { state, act, toast } = game;
   const left = shieldsLeft(state);
   const missing = SHIELD.cost - balance;
+  const full = left >= SHIELD.max;
   function buy() {
     const r = buyShield(state, Date.now());
     if (!r.ok) return;
     act(() => r.state);
     sfx.purchase();
-    toast(`{i:shield} Escudo de racha guardado (${left + 1}). −${SHIELD.cost} {i:coin}`, 'level');
+    toast(`{i:snowflake} Escudo de racha guardado (${left + 1} de ${SHIELD.max}). −${SHIELD.cost} {i:coin}`, 'level');
   }
   return (
-    <div className="shop-shield">
-      <span className="shop-next-icon" aria-hidden="true"><Icon name="shield" /></span>
+    <div className="shop-shield ice">
+      <span className="shop-next-icon" aria-hidden="true"><Icon name="snowflake" /></span>
       <div className="shop-next-body">
-        <p><strong>{SHIELD.name}</strong> {left > 0 && <span className="muted small-text nowrap">· tienes {left}</span>}</p>
-        <p className="muted small-text">Salva un día fallado de un hábito diario si el anterior lo hiciste. Nunca dos días seguidos. Se usa desde Hábitos.</p>
+        <p><strong>{SHIELD.name}</strong> <span className="muted small-text nowrap">· tienes {left} de {SHIELD.max}</span></p>
+        <p className="muted small-text">Congela la racha de un hábito diario: salva <b>solo el día de ayer</b>, si anteayer lo hiciste. Nunca dos días seguidos. Se usa desde Hábitos.</p>
       </div>
-      <button className="primary" disabled={missing > 0} onClick={buy} aria-label={`Comprar escudo de racha por ${SHIELD.cost} monedas`} title={missing > 0 ? `Te faltan ${missing} monedas` : undefined}>
+      <button className="primary" disabled={full || missing > 0} onClick={buy} aria-label={`Comprar escudo de racha por ${SHIELD.cost} monedas`} title={full ? `Ya tienes el máximo (${SHIELD.max})` : missing > 0 ? `Te faltan ${missing} monedas` : undefined}>
         <Icon name="coin" /> {SHIELD.cost}
       </button>
     </div>

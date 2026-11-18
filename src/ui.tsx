@@ -424,10 +424,14 @@ export function HabitItem({
   const risk = habitAtRisk(state, habit, now);
   const savable = onShield ? shieldableDay(state, habit.id, now) : null;
   const stock = shieldsLeft(state);
+  // Hielo: el día de ayer congelado con un escudo, y el destello justo al usarlo
+  const iced = !weekly && streak > 0 && shields.includes(dayKey(shiftDay(now, -1)));
+  const freeze = state.purchases.find((p) => p.shield?.habitId === habit.id && p.usedAt != null && Date.now() - p.usedAt < 2500);
   // Varias veces al día: el botón es el de siempre (una marca cumple el día); las veces extra son estrellas.
   const toggle = perDay > 1 && onSetCount ? () => onSetCount(todayCount > 0 ? 0 : 1) : onToggle;
   return (
-    <li className={done ? 'item done' : risk ? 'item at-risk' : 'item'} data-habit={habit.id}>
+    <li className={[done ? 'item done' : risk ? 'item at-risk' : 'item', iced && 'iced', freeze && 'freezing'].filter(Boolean).join(' ')} data-habit={habit.id}>
+      {freeze && <IceBurst key={freeze.usedAt} />}
       <button
         className={done ? 'check checked' : 'check'}
         onClick={toggle}
@@ -449,13 +453,13 @@ export function HabitItem({
             {week.map((d) => {
               const on = isHabitDone(state, habit.id, d);
               const cls = on ? 'dot on' : shields.includes(d) ? 'dot shield' : 'dot';
-              const tip = `${dayWords(d)}${on ? ': hecho' : shields.includes(d) ? ': salvado por el escudo' : ''}`;
+              const tip = `${dayWords(d)}${on ? ': hecho' : shields.includes(d) ? ': congelado con un escudo' : ''}`;
               return onToggleDay && d !== today
                 ? <button type="button" key={d} className={cls} title={tip} aria-label={`${on ? 'Desmarcar' : 'Marcar'} ${habit.name} (${dayWords(d).toLowerCase()})`} aria-pressed={on} onClick={() => onToggleDay(d)} />
                 : <span key={d} className={cls} title={tip} />;
             })}
           </span>
-          <span className="mono streak">{streak > 0 ? `racha ${streak}${weekly ? ' sem' : ''}` : 'sin racha'}</span>
+          <span className="mono streak">{iced && <Icon name="snowflake" />}{streak > 0 ? `racha ${streak}${weekly ? ' sem' : ''}` : 'sin racha'}</span>
           {!compact && <span className="mono xp-tag">+{habitXp(habit)} XP</span>}
           {!compact && <RewardTags rewards={habit.rewards} />}
         </span>
@@ -464,7 +468,7 @@ export function HabitItem({
           <p className="habit-risk small-text">
             {risk && <span><Icon name="alert" /> Ayer fallaste: nunca dos días seguidos. {habit.minimum ? <>Si hoy es un día malo, vale con lo mínimo: <b>{habit.minimum}</b>.</> : 'Hoy cuenta aunque sea poco.'}</span>}
             {savable && (stock > 0
-              ? <button type="button" className="link" onClick={() => onShield!(savable)}><Icon name="shield" /> Salvar {dayWords(savable) === 'Ayer' ? 'ayer' : `el ${dayWords(savable)}`} con un escudo (tienes {stock})</button>
+              ? <button type="button" className="link ice-link" onClick={() => onShield!(savable)}><Icon name="snowflake" /> Congelar ayer con un escudo (tienes {stock})</button>
               : risk && <span className="muted"> O compra un escudo de racha en la Tienda de la Arena.</span>)}
           </p>
         )}
@@ -590,5 +594,14 @@ export function AttributeList({ state, detailed = false }: { state: GameState; d
         );
       })}
     </ul>
+  );
+}
+
+/** Destello de hielo al usar un escudo de racha: la escarcha cubre el hábito y se deshace. Solo decorativo. */
+function IceBurst() {
+  return (
+    <span className="ice-burst" aria-hidden="true">
+      {[12, 30, 50, 70, 88].map((x, i) => <span key={x} className="ice-flake" style={{ left: `${x}%`, animationDelay: `${i * 70}ms` }}><Icon name="snowflake" /></span>)}
+    </span>
   );
 }

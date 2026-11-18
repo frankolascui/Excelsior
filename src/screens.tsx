@@ -723,7 +723,7 @@ function spendHabitShield(game: Game, habitId: string, day: string) {
   if (!r.ok) return;
   game.act(() => r.state);
   sfx.purchase();
-  game.toast('{i:shield} Escudo usado: la racha sigue viva.', 'level');
+  game.toast('{i:snowflake} Ayer queda congelado: la racha sigue viva.', 'level');
 }
 
 const HABITS_IDEAL = { min: 4, max: 7 };

@@ -235,6 +235,8 @@ function dailyStreak(s: GameState, habitId: string, now: number): number {
 
 /** Hasta este día (incluido) seguía el escudo gratis de 1 fallo por semana; desde entonces los escudos se compran. */
 export const FREE_SHIELD_UNTIL = '2026-10-26';
+/** Escudos de racha que puedes tener guardados a la vez (SHIELD.max en economy.ts). */
+export const SHIELD_MAX = 2;
 
 /** Días de un hábito salvados con escudos comprados en la tienda. */
 export function shieldedDays(s: GameState, habitId: string): Set<string> {
@@ -645,14 +647,17 @@ export function toggleHabit(s: GameState, habitId: string, now: number, day = da
   }
   const completion = { id: uid(), habitId, day, at: now };
   const base = habitXp(habit);
-  // si ese día tenía escudo, ya no hace falta: vuelve sin usar
+  // si ese día tenía escudo, ya no hace falta: vuelve sin usar (o se devuelven sus monedas si ya tienes el máximo guardado)
   if (s.purchases.some((p) => p.shield?.habitId === habitId && p.shield.day === day)) {
+    let stock = s.purchases.filter((p) => p.rewardId === 'streak-shield' && p.usedAt === null).length;
     s = {
       ...s,
-      purchases: s.purchases.map((p) => {
-        if (p.shield?.habitId !== habitId || p.shield.day !== day) return p;
+      purchases: s.purchases.flatMap((p) => {
+        if (p.shield?.habitId !== habitId || p.shield.day !== day) return [p];
+        if (stock >= SHIELD_MAX) return [];
+        stock++;
         const { shield: _, ...rest } = p;
-        return { ...rest, usedAt: null };
+        return [{ ...rest, usedAt: null }];
       }),
     };
   }

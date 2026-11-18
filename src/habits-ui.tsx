@@ -36,20 +36,20 @@ export function HabitHistory({ state, habit, now, onToggleDay }: { state: GameSt
         {days.map((d) => {
           const done = isHabitDone(state, habit.id, d);
           const cls = ['hh-day', done && 'on', shields.has(d) && 'shield', d === today && 'today', d > today && 'future', d < born && 'before'].filter(Boolean).join(' ');
-          const label = `${new Date(`${d}T12:00:00`).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}: ${done ? 'hecho' : shields.has(d) ? 'salvado por el escudo' : 'sin hacer'}`;
+          const label = `${new Date(`${d}T12:00:00`).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}: ${done ? 'hecho' : shields.has(d) ? 'congelado con un escudo' : 'sin hacer'}`;
           return onToggleDay && editableDay(d, now)
             ? <button type="button" key={d} role="gridcell" className={cls} aria-pressed={done} aria-label={label} title={label} onClick={() => onToggleDay(d)}>{Number(d.slice(8))}</button>
-            : <span key={d} role="gridcell" className={cls} aria-label={label} title={label}>{shields.has(d) ? <Icon name="shield" /> : Number(d.slice(8))}</span>;
+            : <span key={d} role="gridcell" className={cls} aria-label={label} title={label}>{shields.has(d) ? <Icon name="snowflake" /> : Number(d.slice(8))}</span>;
         })}
       </div>
       <div className="hh-stats">
         <span><b className="mono">{done30}</b>{weekly ? ' veces' : `/${last30.length} días`} en los últimos 30 días</span>
         {!weekly && last30.length > 0 && <span><b className="mono">{Math.round((done30 / last30.length) * 100)} %</b> de constancia</span>}
         <span><b className="mono">{total}</b> en total</span>
-        {habitStreakDays(state, habit.id, now) > 0 && shields.size > 0 && <span><Icon name="shield" /> Escudo usado esta racha</span>}
+        {habitStreakDays(state, habit.id, now) > 0 && shields.size > 0 && <span className="ice-text"><Icon name="snowflake" /> Racha congelada con un escudo</span>}
       </div>
       {habit.minimum && <p className="small-text"><b>Mínimo para un día malo:</b> {habit.minimum}</p>}
-      <p className="hint">Puedes marcar o desmarcar los últimos 7 días si se te olvidó. {!weekly && `Nunca falles dos días seguidos. Un día fallado se puede salvar con un escudo de racha (Tienda, ${SHIELD.cost} monedas) si el anterior lo hiciste; ese día no suma.`}</p>
+      <p className="hint">Puedes marcar o desmarcar los últimos 7 días si se te olvidó. {!weekly && `Nunca falles dos días seguidos. Si ayer fallaste, puedes congelarlo con un escudo de racha (Tienda, ${SHIELD.cost} monedas, máximo ${SHIELD.max}) siempre que anteayer lo hicieras; solo vale para ayer y ese día no suma.`}</p>
     </div>
   );
 }
