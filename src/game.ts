@@ -15,8 +15,9 @@ export const XP_RULES = {
   deepWorkPerMinute: 1,
   // Anti-farmeo: tope diario de XP por misiones y por hábitos.
   // El Deep Work no tiene tope diario porque está limitado por tiempo real.
-  dailyCap: { quest: 200, habit: 100 },
-  capPerLevel: { quest: 25, habit: 10 }, // cada nivel sube el tope diario
+  // Dificultad subida el 2026-11-18 (pedido de Nicolas): antes 200/100 y +25/+10 por nivel.
+  dailyCap: { quest: 150, habit: 80 },
+  capPerLevel: { quest: 15, habit: 5 }, // cada nivel sube el tope diario
   maxSessionMinutes: 240,
   minSessionMinutes: 1,
 };

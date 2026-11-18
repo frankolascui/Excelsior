@@ -8,7 +8,7 @@ import {
   SAGAS, sagaOf, SOURCE_LABEL, summonBoss, templateOf, TIERS, timesDefeated, isActiveTemplate, type BossTemplate, type BossTier,
 } from './bosses';
 import {
-  addReward, buyReward, coinBalance, coinsEarned, coinsSpent, COIN_RULES, deleteReward, nextReward, purchaseCounts, refundPurchase, consumePurchase, unusedPurchases, buyShield, SHIELD, shieldsLeft,
+  addReward, buyReward, coinBalance, coinsEarned, coinsSpent, deleteReward, nextReward, purchaseCounts, refundPurchase, consumePurchase, unusedPurchases, buyShield, SHIELD, shieldsLeft, xpPerCoinAt,
   REWARD_CATEGORIES, REWARD_ICONS, rewardCategory, updateReward, type RewardCategory,
 } from './economy';
 import { dayKey, levelInfo, totalXp } from './game';
@@ -466,7 +466,7 @@ export function Arena({ game }: { game: Game }) {
           <p>Un boss es un reto con plazo: le haces daño con lo que hagas desde que lo invocas y, si cae a tiempo, te llevas su botín. Subir de nivel y vencer a cada bestia abre las siguientes de su saga. Cada boss tiene una habilidad y un punto débil que se revela a media vida.</p>
           <p className="crit-hint"><Icon name="sparkles" /> {CRIT_RULES}</p>
           <p className="muted small-text">
-            Tus monedas: {earned.fromXp} por XP (1 cada {COIN_RULES.xpPerCoin} XP) · {earned.fromBosses} por bosses · {earned.fromKingdoms} por reinos{earned.fromSocial > 0 && ` · ${earned.fromSocial} por trofeos`} · −{coinsSpent(state)} gastadas
+            Tus monedas: {earned.fromXp} por XP (1 cada {xpPerCoinAt(Date.now())} XP) · {earned.fromBosses} por bosses · {earned.fromKingdoms} por reinos{earned.fromSocial > 0 && ` · ${earned.fromSocial} por trofeos`} · −{coinsSpent(state)} gastadas
           </p>
         </InfoTip>
         <div className="arena-top-right">
@@ -820,7 +820,7 @@ function RewardForm({ onCreate }: { onCreate: (r: { name: string; icon: string; 
         <input id="reward-cost" type="number" min={1} value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} placeholder="Precio" aria-label="Precio en monedas" />
         <CategorySelect id="reward-cat" value={form.category} onChange={(category) => setForm({ ...form, category })} />
       </div>
-      <p className="muted small-text">Referencia: 1 <Icon name="coin" className="coin-ico" /> = {COIN_RULES.xpPerCoin} XP. Un episodio ~25, salir con amigos ~100, un día libre ~350.</p>
+      <p className="muted small-text">Referencia: 1 <Icon name="coin" className="coin-ico" /> = {xpPerCoinAt(Date.now())} XP. Un episodio ~25, salir con amigos ~100, un día libre ~350.</p>
       <span className="boss-form-actions">
         <button type="button" className="ghost" onClick={() => setOpen(false)}>Cerrar</button>
         <button type="submit" className="primary" disabled={!valid}><Icon name="plus" /> Añadir a la tienda</button>

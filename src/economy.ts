@@ -8,7 +8,10 @@ import { trophyCoins } from './trophies';
 import { healthCoins } from './health';
 
 export const COIN_RULES = {
-  xpPerCoin: 5, // 1 moneda por cada 5 XP
+  xpPerCoin: 7, // 1 moneda por cada 7 XP (desde xpPerCoinSince; antes 5)
+  oldXpPerCoin: 5,
+  /** Cambio de 5 a 7 XP por moneda: el XP ganado antes sigue a 5 para que nadie pierda monedas. Poner aquí el día de publicar. */
+  xpPerCoinSince: new Date('2026-11-19T00:00:00').getTime(),
   kingdomBonusPerBuilding: 10, // al completar un reino (mín. 3 construcciones)
   kingdomMinBuildings: 3,
 };
@@ -54,6 +57,9 @@ export function rewardCategory(r: Pick<Reward, 'name' | 'cost'> & { category?: s
   return 'ocio';
 }
 
+/** XP que vale una moneda en ese momento (5 antes del cambio, 7 después). */
+export const xpPerCoinAt = (now: number) => (now < COIN_RULES.xpPerCoinSince ? COIN_RULES.oldXpPerCoin : COIN_RULES.xpPerCoin);
+
 /** Monedas ganadas por reino completado (0 si no cuenta). */
 export function kingdomBonus(s: GameState, kingdomId: string): number {
   const p = kingdomProgress(s, kingdomId);
@@ -61,7 +67,8 @@ export function kingdomBonus(s: GameState, kingdomId: string): number {
 }
 
 export function coinsEarned(s: GameState, now: number) {
-  const fromXp = Math.floor(totalXp(s) / COIN_RULES.xpPerCoin);
+  const oldXp = s.xp.reduce((n, t) => n + (t.at < COIN_RULES.xpPerCoinSince ? t.amount : 0), 0);
+  const fromXp = Math.floor(oldXp / COIN_RULES.oldXpPerCoin + (totalXp(s) - oldXp) / COIN_RULES.xpPerCoin);
   const fromBosses = defeatedBosses(s, now).reduce((n, b) => n + bossLoot(s, b, now), 0);
   const fromKingdoms = s.kingdoms.reduce((n, k) => n + kingdomBonus(s, k.id), 0);
   const fromSocial = trophyCoins(s); // MVP de gremio y coronas semanales
@@ -179,5 +186,5 @@ export function nextReward(s: GameState, now: number): { reward: Reward; missing
   const next = s.rewards.filter((r) => r.cost > balance).sort((a, b) => a.cost - b.cost)[0];
   if (!next) return null;
   const missing = next.cost - balance;
-  return { reward: next, missing, xp: missing * COIN_RULES.xpPerCoin };
+  return { reward: next, missing, xp: missing * xpPerCoinAt(now) };
 }
