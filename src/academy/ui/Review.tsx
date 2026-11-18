@@ -399,6 +399,13 @@ function cachedToday(): TodayData | null {
   return todayMem?.day === localDay() ? todayMem.data : null;
 }
 
+/** Olvida el «Hoy» guardado (p. ej. tras mover las fechas al terminar una pausa). */
+export function resetTodayCache() {
+  todayMem = null;
+  todayLoad = null;
+  try { localStorage.removeItem(TODAY_KEY); } catch { /* sin almacenamiento */ }
+}
+
 /** Empieza a calcular «Hoy» (la estantería lo llama al abrirse, a la vez que carga las asignaturas). */
 export function prefetchToday(): Promise<TodayData> {
   todayLoad ??= Promise.all([loadQueue(), listSubjects()])
@@ -443,6 +450,19 @@ export function TodayPanel() {
     sfx.tick();
   }
 
+  const pause = studyBridge.pause;
+  if (pause) return (
+    <div className="today panel" data-testid="today-paused">
+      <div className="today-main">
+        <div>
+          <p className="eyebrow">Hoy</p>
+          <p className="today-num">Tarjetas en pausa</p>
+          <p className="small muted">{pause.until ? `Vuelven el ${new Date(new Date(`${pause.until}T12:00:00`).getTime() + 86_400_000).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}.` : 'Hasta que la reanudes.'} Al volver, las fechas de repaso se mueven los días de pausa.</p>
+        </div>
+        {data && data.total.nuevas + data.total.aprendiendo + data.total.repaso > 0 && <a className="secondary" href={routeToHash({ view: 'repasar' })} onClick={() => sfx.open()}><Icon name="play" /> Repasar igualmente</a>}
+      </div>
+    </div>
+  );
   if (error && !data) return <div className="today panel"><p className="eyebrow">Hoy</p><p className="muted small">{error}</p></div>;
   if (!data) return (
     <div className="today panel" aria-busy="true" data-testid="today-loading">
