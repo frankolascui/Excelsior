@@ -94,7 +94,10 @@ function stepsToChildren(s: GameState): GameState {
 function migrateToV4(raw: { version: number } & Record<string, unknown>): GameState {
   const base = { ...emptyState(), ...raw, version: 6 } as GameState; // v5 → v6 (V3): solo campos nuevos opcionales
   // v3 → v4: los reinos pasan a tener construcciones (misiones) y aparecen las metas; no hay nada que recalcular.
-  if (raw.version >= 3) return { ...base, kingdoms: base.kingdoms.map(({ id, name, createdAt }) => ({ id, name, createdAt: createdAt ?? Date.now() })) };
+  // Antes se rehacía cada reino solo con id, nombre y fecha, y al recargar se perdían la fecha objetivo y lo demás.
+  // Solo los reinos de la v3 (con su `progress` viejo) se rehacen; desde la v4 se conservan enteros.
+  if (raw.version === 3) return { ...base, kingdoms: base.kingdoms.map(({ id, name, createdAt }) => ({ id, name, createdAt: createdAt ?? Date.now() })) };
+  if (raw.version > 3) return { ...base, kingdoms: base.kingdoms.map((k) => ({ ...k, createdAt: k.createdAt ?? Date.now() })) };
   const habits = base.habits.map((h) => ({ ...h, rewards: habitRewards(h.name) }));
   const sessions = base.sessions.map((x) => ({ ...x, area: x.area ?? ('general' as const) }));
   const xp = base.xp.map((t) => {

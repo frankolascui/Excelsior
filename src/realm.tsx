@@ -1,7 +1,7 @@
 // Mapa de los reinos: tu fortaleza en el centro y un camino hacia cada reino que se ilumina según su %.
 import type { KeyboardEvent } from 'react';
 import type { GameState } from './types';
-import { kingdomProgress, realmProgress, stageFor } from './kingdoms';
+import { citiesOf, kingdomProgress, realmProgress, realms, realmTotals, stageFor } from './kingdoms';
 import { healthFounded } from './health';
 import { HEALTH_KINGDOM } from './nav-state';
 import { useWidth } from './charts';
@@ -34,10 +34,15 @@ const SCENERY = scenery();
 
 const clip = (t: string, n: number) => (t.length > n ? `${t.slice(0, n - 1)}…` : t);
 
-export function RealmMap({ state, onSelect }: { state: GameState; onSelect: (kingdomId: string) => void }) {
+/**
+ * Mapa general (tus reinos alrededor de tu fortaleza) o, con `realmId`, el mapa de un reino: sus ciudades
+ * alrededor de la capital.
+ */
+export function RealmMap({ state, onSelect, realmId }: { state: GameState; onSelect: (kingdomId: string) => void; realmId?: string }) {
   const [ref, W] = useWidth<HTMLDivElement>(800);
   const H = W < 600 ? 400 : Math.round(Math.min(440, Math.max(320, W * 0.48)));
-  const realm = realmProgress(state);
+  const inside = realmId ? state.kingdoms.find((k) => k.id === realmId) : undefined;
+  const realm = inside ? realmTotals(state, inside.id) : realmProgress(state);
   const cx = W / 2;
   const cy = H / 2;
   const pad = 60; // margen para que nombres y nodos no se salgan
@@ -48,15 +53,20 @@ export function RealmMap({ state, onSelect }: { state: GameState; onSelect: (kin
   // El Reino de la Salud también es un reino del mapa: crece con sus obras (12 = castillo glorioso).
   const works = state.health?.works.length ?? 0;
   const healthStage = stageFor(works);
-  const entries = [
+  const monument = <T extends object>(p: T) => ({ ...p, progress: 1, complete: true, stage: 'Monumento', icon: 'laurel-crown' as const });
+  const entries = inside ? citiesOf(state, inside.id).map((c) => {
+    const p = kingdomProgress(state, c.id);
+    return { k: { id: c.id, name: c.name }, p: c.closedAt ? monument(p) : p, cities: 0 };
+  }) : [
     ...(healthFounded(state) ? [{
+      cities: 0,
       k: { id: HEALTH_KINGDOM, name: 'Reino de la Salud' },
       p: { built: works, progress: Math.min(1, works / 12), stage: healthStage.name, icon: 'caduceus' as const, complete: works >= 12 },
     }] : []),
-    ...state.kingdoms.map((k) => {
-      const p = kingdomProgress(state, k.id);
-      // Un reino cerrado queda como monumento: anillo completo y laurel.
-      return { k: { id: k.id, name: k.name }, p: k.closedAt ? { ...p, progress: 1, complete: true, stage: 'Monumento', icon: 'laurel-crown' as const } : p };
+    ...realms(state).map((k) => {
+      // El reino suma su capital y sus ciudades. Uno cerrado queda como monumento: anillo completo y laurel.
+      const p = realmTotals(state, k.id);
+      return { k: { id: k.id, name: k.name }, p: k.closedAt ? monument(p) : p, cities: p.cities };
     }),
   ];
   const nodes = entries.map((e, i) => ({ ...e, ...place(slot(i)) }));
@@ -82,14 +92,16 @@ export function RealmMap({ state, onSelect }: { state: GameState; onSelect: (kin
     <section className="panel realm" aria-labelledby="realm-h" data-tour="realm">
       <header className="panel-head chart-head">
         <div>
-          <h3 id="realm-h">Mapa del reino</h3>
+          <h3 id="realm-h">{inside ? `Mapa de ${inside.name}` : 'Mapa del reino'}</h3>
           <p className="muted chart-sub">
-            Dominio <span className="mono">{Math.round(realm.progress * 100)} %</span> · {realm.built}/{realm.total} construcciones en {state.kingdoms.length} {state.kingdoms.length === 1 ? 'reino' : 'reinos'}{works > 0 && <> · {works} {works === 1 ? 'obra' : 'obras'} de salud</>}
+            {inside
+              ? <>{nodes.length} {nodes.length === 1 ? 'ciudad' : 'ciudades'} · {realm.built} {realm.built === 1 ? 'construcción levantada' : 'construcciones levantadas'}</>
+              : <>{realm.built}/{realm.total} construcciones en {nodes.length - (healthFounded(state) ? 1 : 0)} {nodes.length - (healthFounded(state) ? 1 : 0) === 1 ? 'reino' : 'reinos'}{works > 0 && <> · {works} {works === 1 ? 'obra' : 'obras'} de salud</>}</>}
           </p>
         </div>
       </header>
       <div className="realm-map" ref={ref}>
-        <svg width={W} height={H} role="img" aria-label={`Mapa con ${nodes.length} reinos. ${nodes.map((n) => `${n.k.name}: ${Math.round(n.p.progress * 100)} %`).join(', ')}`}>
+        <svg width={W} height={H} role="img" aria-label={`Mapa con ${nodes.length} ${inside ? 'ciudades' : 'reinos'}. ${nodes.map((n) => `${n.k.name}: ${Math.round(n.p.progress * 100)} %`).join(', ')}`}>
           <defs>
             <radialGradient id="realm-bg" cx="50%" cy="50%" r="70%">
               <stop offset="0%" style={{ stopColor: 'color-mix(in srgb, var(--c3) 22%, #050505)' }} />
@@ -151,11 +163,11 @@ export function RealmMap({ state, onSelect }: { state: GameState; onSelect: (kin
             <circle r={34} className="node-bg" />
             <circle r={34} className="node-ring" pathLength={1} strokeDasharray={`${realm.progress} 1`} transform="rotate(-90)" />
             <Icon name="fleur" className="node-icon" x={-15} y={-15} size={30} />
-            <text className="node-name" y={52} textAnchor="middle">{clip(state.profile?.name ?? 'Tu fortaleza', nameLen)}</text>
-            <text className="node-pct" y={68} textAnchor="middle">Tu fortaleza</text>
+            <text className="node-name" y={52} textAnchor="middle">{clip(inside ? inside.name : state.profile?.name ?? 'Tu fortaleza', nameLen)}</text>
+            <text className="node-pct" y={68} textAnchor="middle">{inside ? 'Capital' : 'Tu fortaleza'}</text>
           </g>
 
-          {nodes.map(({ k, p, x, y }) => (
+          {nodes.map(({ k, p, x, y, cities }) => (
             <g
               key={k.id}
               className={p.complete ? 'kingdom-node complete' : 'kingdom-node'}
@@ -173,11 +185,11 @@ export function RealmMap({ state, onSelect }: { state: GameState; onSelect: (kin
               <circle r={27} className="node-ring" pathLength={1} strokeDasharray={`${p.progress} 1`} transform="rotate(-90)" />
               <Icon name={p.icon} className="node-icon" x={-13} y={-13} size={26} />
               <text className="node-name" y={45} textAnchor="middle">{clip(k.name, nameLen)}</text>
-              <text className="node-pct" y={61} textAnchor="middle">{p.built}{W < 600 ? ' constr.' : ` · ${p.stage}`}</text>
+              <text className="node-pct" y={61} textAnchor="middle">{cities > 0 ? `${cities} ${cities === 1 ? 'ciudad' : 'ciudades'}` : p.built}{W < 600 ? (cities > 0 ? '' : ' constr.') : ` · ${p.stage}`}</text>
             </g>
           ))}
         </svg>
-        {nodes.length === 0 && <p className="realm-empty">Funda tu primer reino y aparecerá en el mapa.</p>}
+        {nodes.length === 0 && <p className="realm-empty">{inside ? 'Funda la primera ciudad de este reino (un proyecto concreto) y aparecerá aquí.' : 'Funda tu primer reino y aparecerá en el mapa.'}</p>}
       </div>
     </section>
   );

@@ -514,3 +514,4 @@ button.tg-session { font-family: inherit; justify-content: flex-start; align-ite
 .kingdom-monument { display: inline-flex; align-items: center; gap: 6px; margin: 4px 0 0; color: #e8c766; font-size: 0.92em; }
 .panel.kingdom.monument { border-color: color-mix(in srgb, #e8c766 45%, var(--line)); }
 .chip-btn.monument-chip .ico { color: #e8c766; }
+.kingdom-capital { display: block; font-size: 11px; margin-bottom: 2px; }

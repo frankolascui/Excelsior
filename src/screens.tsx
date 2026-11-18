@@ -4,7 +4,7 @@ import type { useGame } from './store';
 import type { AttributeId, DeepWorkArea, FocusPhase, GameState, Impact, Quest, QuestType } from './types';
 import { addGoal, attributeDef, avatarInfo, DEEP_WORK_AREA_HINT, deepWorkRewards, inferDeepWorkArea, deleteGoal, formatAttrXp, goalProgress, habitRewards, questRewards, updateGoal } from './attributes';
 import { CustomizeToggle, RewardEditor, sameRewards, type CustomValue } from './customize';
-import { addKingdom, BUILDING_CHOICES, BUILDING_OF, buildings, guessBuildingAttr, KIND_INFO, closeKingdom, deleteKingdom, kingdomIdleDays, kingdomName, kingdomProgress, nextStage, renameKingdom, reopenKingdom, setKingdomDeadline, STALE_KINGDOM_DAYS } from './kingdoms';
+import { addKingdom, citiesOf, realms, BUILDING_CHOICES, BUILDING_OF, buildings, guessBuildingAttr, KIND_INFO, closeKingdom, deleteKingdom, kingdomIdleDays, kingdomName, kingdomProgress, nextStage, renameKingdom, reopenKingdom, setKingdomDeadline, STALE_KINGDOM_DAYS } from './kingdoms';
 import { DatePicker, ImpactPicker, Select } from './pickers';
 import { CityScene } from './city';
 import { kingdomBonus, spendShield } from './economy';
@@ -939,7 +939,7 @@ export function Kingdoms({ game, focusQuest }: { game: Game; focusQuest: (q: Que
           {state.kingdoms.length > 0 && (
             <div className="kingdom-tabs" role="tablist" aria-label="Tus reinos">
               <button type="button" role="tab" aria-selected className="chip-btn on"><Icon name="caduceus" /> Salud</button>
-              {state.kingdoms.map((k) => (
+              {realms(state).map((k) => (
                 <button key={k.id} type="button" role="tab" aria-selected={false} className="chip-btn" onClick={() => open(k.id)}>{k.name}</button>
               ))}
             </div>
@@ -949,16 +949,17 @@ export function Kingdoms({ game, focusQuest }: { game: Game; focusQuest: (q: Que
       </div>
     );
   }
-  if (current) {
-    // Cada reino en su propia vista; el mapa queda a un botón.
+  if (current?.parentId) {
+    // Una ciudad: su escena y sus construcciones; arriba, la vuelta a su reino y sus ciudades hermanas.
+    const realm = state.kingdoms.find((k) => k.id === current.parentId);
+    const siblings = realm ? citiesOf(state, realm.id) : [];
     return (
       <div className="screen">
         <div className="kingdom-back">
-          <button className="ghost" onClick={() => open(null)}><Icon name="chevron-left" /> Mapa del reino</button>
-          {state.kingdoms.length > 0 && (
-            <div className="kingdom-tabs" role="tablist" aria-label="Tus reinos">
-              <button type="button" role="tab" aria-selected={false} className="chip-btn" onClick={() => open(HEALTH_KINGDOM)}><Icon name="caduceus" /> Salud</button>
-              {state.kingdoms.map((k) => (
+          <button className="ghost" onClick={() => open(realm?.id ?? null)}><Icon name="chevron-left" /> {realm?.name ?? 'Mapa del reino'}</button>
+          {siblings.length > 1 && (
+            <div className="kingdom-tabs" role="tablist" aria-label={`Ciudades de ${realm?.name ?? 'este reino'}`}>
+              {siblings.map((k) => (
                 <button key={k.id} type="button" role="tab" aria-selected={k.id === current.id} className={k.id === current.id ? 'chip-btn on' : 'chip-btn'} onClick={() => open(k.id)}>{k.name}</button>
               ))}
             </div>
@@ -968,16 +969,45 @@ export function Kingdoms({ game, focusQuest }: { game: Game; focusQuest: (q: Que
       </div>
     );
   }
+  if (current) {
+    // Un reino: su mapa con las ciudades alrededor de la capital, fundar ciudades y la capital con sus construcciones.
+    const cities = citiesOf(state, current.id);
+    return (
+      <div className="screen">
+        <div className="kingdom-back">
+          <button className="ghost" onClick={() => open(null)}><Icon name="chevron-left" /> Mapa del reino</button>
+          <div className="kingdom-tabs" role="tablist" aria-label="Tus reinos">
+            <button type="button" role="tab" aria-selected={false} className="chip-btn" onClick={() => open(HEALTH_KINGDOM)}><Icon name="caduceus" /> Salud</button>
+            {realms(state).map((k) => (
+              <button key={k.id} type="button" role="tab" aria-selected={k.id === current.id} className={k.id === current.id ? 'chip-btn on' : 'chip-btn'} onClick={() => open(k.id)}>{k.name}</button>
+            ))}
+          </div>
+        </div>
+        <RealmMap state={state} realmId={current.id} onSelect={(id) => open(id)} />
+        <section className="panel city-list" aria-label={`Ciudades de ${current.name}`}>
+          {cities.length > 0 && (
+            <div className="kingdom-tabs kingdom-pick">
+              {cities.map((k) => (
+                <button key={k.id} type="button" className={k.closedAt ? 'chip-btn monument-chip' : 'chip-btn'} onClick={() => open(k.id)}><Icon name={k.closedAt ? 'laurel-crown' : 'village'} /> {k.name}</button>
+              ))}
+            </div>
+          )}
+          {!current.closedAt && <CityForm onCreate={(n) => { const next = addKingdom(state, n, Date.now(), current.id); act(() => next); open(next.kingdoms.at(-1)!.id); }} />}
+        </section>
+        <KingdomCard key={current.id} game={game} kingdomId={current.id} focusQuest={focusQuest} capital={cities.length > 0} />
+      </div>
+    );
+  }
   return (
     <div className="screen">
       <div className="with-info">
         <h1 className="screen-title">Reinos</h1>
-        <InfoTip label="Cómo funcionan los reinos"><p>Un reino es un proyecto. Cada tarea es una construcción y tu ciudad crece al completarlas: aldea (1), villa (3), ciudad amurallada (6) y reino glorioso (10). Desde villa, cada construcción levantada paga 10 monedas de tributo. Cuando el proyecto acabe, ciérralo y quedará en el mapa como monumento. Pulsa un reino en el mapa para entrar.</p></InfoTip>
+        <InfoTip label="Cómo funcionan los reinos"><p>Un reino es un área grande (Programación) y sus ciudades son proyectos concretos (Calculadora, Temporizador). Cada tarea es una construcción y la ciudad crece al completarlas: aldea (1), villa (3), ciudad amurallada (6) y reino glorioso (10). Desde villa, cada construcción levantada paga 10 monedas de tributo. Cuando un proyecto acabe, ciérralo y quedará como monumento. Pulsa un reino en el mapa para entrar y ver sus ciudades.</p></InfoTip>
       </div>
       <RealmMap state={state} onSelect={(id) => open(id)} />
       <div className="kingdom-tabs kingdom-pick" aria-label="Entrar en un reino">
         <button type="button" className="chip-btn health-chip" onClick={() => open(HEALTH_KINGDOM)} data-testid="open-health" data-tour="health"><Icon name="caduceus" /> Reino de la Salud{!healthFounded(state) && <span className="muted small-text"> · nuevo</span>}</button>
-        {state.kingdoms.map((k) => (
+        {realms(state).map((k) => (
           <button key={k.id} type="button" className={k.closedAt ? 'chip-btn monument-chip' : 'chip-btn'} onClick={() => open(k.id)}><Icon name={k.closedAt ? 'laurel-crown' : 'castle'} /> {k.name}</button>
         ))}
       </div>
@@ -992,7 +1022,17 @@ export function Kingdoms({ game, focusQuest }: { game: Game; focusQuest: (q: Que
   );
 }
 
-function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: string; focusQuest: (q: Quest) => void }) {
+function CityForm({ onCreate }: { onCreate: (name: string) => void }) {
+  const [name, setName] = useState('');
+  return (
+    <form className="quick-add inline" onSubmit={(e) => { e.preventDefault(); if (name.trim()) { onCreate(name); setName(''); } }}>
+      <input id="new-city" value={name} onChange={(e) => setName(e.target.value)} placeholder="+ Fundar una ciudad (ej. Calculadora)" maxLength={50} aria-label="Nombre de la nueva ciudad" />
+      <button type="submit" className="primary" disabled={!name.trim()}><Icon name="plus" /> Fundar ciudad</button>
+    </form>
+  );
+}
+
+function KingdomCard({ game, kingdomId, focusQuest, capital = false }: { game: Game; kingdomId: string; focusQuest: (q: Quest) => void; capital?: boolean }) {
   const { state, act } = game;
   const kingdom = state.kingdoms.find((k) => k.id === kingdomId)!;
   const p = kingdomProgress(state, kingdomId);
@@ -1012,6 +1052,8 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
   const [newName, setNewName] = useState('');
   const due = kingdom.deadline ? deadlineLabel(kingdom.deadline, Date.now()) : null;
   const closed = !!kingdom.closedAt;
+  const isCity = !!kingdom.parentId;
+  const noun = isCity ? 'ciudad' : 'reino';
   const idle = closed ? 0 : kingdomIdleDays(state, kingdomId, Date.now());
   function close() {
     const msg = pending.length
@@ -1045,6 +1087,7 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
             </form>
           ) : (
             <h2 id={`k-${kingdomId}`} className="kingdom-name">
+              {capital && <span className="eyebrow kingdom-capital">Capital del reino</span>}
               {kingdom.name}
               <button className="icon-btn kingdom-edit" onClick={() => { setNewName(kingdom.name); setRenaming(true); }} aria-label={`Renombrar ${kingdom.name}`} title="Renombrar"><Icon name="pencil" /></button>
             </h2>
@@ -1074,7 +1117,7 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
       </header>
       {idle >= STALE_KINGDOM_DAYS && (
         <div className="kingdom-idle" role="status">
-          <span><Icon name="hourglass" /> Este reino lleva {idle} días parado. Si el proyecto ya acabó o no va a seguir, ciérralo.</span>
+          <span><Icon name="hourglass" /> {isCity ? 'Esta ciudad lleva' : 'Este reino lleva'} {idle} días parado{isCity ? 'a' : ''}. Si el proyecto ya acabó o no va a seguir, ciérralo.</span>
           {p.built > 0
             ? <button type="button" className="ghost small" onClick={close}><Icon name="laurel-crown" /> Cerrar como monumento</button>
             : <span className="muted small-text">Sin nada construido, mejor bórralo abajo.</span>}
@@ -1137,7 +1180,7 @@ function KingdomCard({ game, kingdomId, focusQuest }: { game: Game; kingdomId: s
       </form>
       <div className="kingdom-actions">
         {p.built > 0 && <button type="button" className="ghost" onClick={close}><Icon name="laurel-crown" /> Cerrar como monumento</button>}
-        <ConfirmButton label="Borrar reino" confirmLabel="Sí, borrar (lo construido se conserva)" onConfirm={() => act((s) => deleteKingdom(s, kingdomId))} />
+        <ConfirmButton label={`Borrar ${noun}`} confirmLabel={isCity || !citiesOf(state, kingdomId).length ? 'Sí, borrar (lo construido se conserva)' : 'Sí, borrar el reino y sus ciudades'} onConfirm={() => act((s) => deleteKingdom(s, kingdomId))} />
       </div>
       </>}
     </section>

@@ -60,9 +60,9 @@ await p.locator('.city-scene').screenshot({ path: `${out}/reinos-03-arriba.png` 
 // Formulario: el edificio se propone por el nombre
 await p.fill('#b-k1', 'Estudiar el capítulo 2');
 check((await p.locator('.building-pick .seg.on').innerText()).includes('Biblioteca'), 'el nombre propone la biblioteca');
-await p.locator('.quick-add').first().screenshot({ path: `${out}/reinos-04-form.png` });
+await p.locator('.kingdom .quick-add').first().screenshot({ path: `${out}/reinos-04-form.png` });
 await p.click('.building-pick .seg >> text=Templo');
-await p.click('.quick-add button[type=submit]');
+await p.click('.kingdom .quick-add button[type=submit]');
 const added = (await game(p)).quests.at(-1);
 check(added.focus === 'creacion' && added.kingdomId === 'k1', 'se crea con el atributo elegido (templo)');
 check((await p.locator('.kingdom-stage').innerText()).includes('tributo +60'), 'añadir una pendiente no quita el tributo');
@@ -80,6 +80,26 @@ await p.screenshot({ path: `${out}/reinos-06-monumento.png` });
 await p.click('text=Mapa del reino');
 await p.waitForTimeout(400);
 await p.locator('.realm').screenshot({ path: `${out}/reinos-07-mapa-monumento.png` });
+// Reino con ciudades: fundar una ciudad dentro del reino, construir en ella y verla en el mapa del reino.
+await p.click('.kingdom-pick >> text=Reino del Juego');
+await p.waitForSelector('#new-city');
+await p.fill('#new-city', 'Calculadora');
+await p.click('.city-list button[type=submit]');
+await p.waitForSelector('.kingdom-back >> text=Reino del Juego');
+check((await p.locator('.kingdom-name').innerText()).includes('Calculadora'), 'la ciudad nueva se abre sola');
+await p.fill('[id^="b-"]', 'Programar la suma');
+await p.click('.kingdom .quick-add button[type=submit]');
+const st = await game(p);
+const city = st.kingdoms.find((k) => k.name === 'Calculadora');
+check(city.parentId === 'k1' && st.quests.some((q) => q.kingdomId === city.id), 'la ciudad es del reino y tiene su construcción');
+await p.click('.kingdom-back >> text=Reino del Juego');
+await p.waitForSelector('.realm');
+check((await p.locator('.realm .chart-sub').innerText()).includes('1 ciudad'), 'el mapa del reino muestra su ciudad');
+await p.locator('.realm').screenshot({ path: `${out}/reinos-09-mapa-ciudades.png` });
+await p.screenshot({ path: `${out}/reinos-10-reino.png`, fullPage: true });
+await p.reload(); await p.waitForSelector('.nav');
+const after = await game(p);
+check(after.kingdoms.find((k) => k.id === 'k2').closedAt && after.kingdoms.find((k) => k.name === 'Calculadora').parentId === 'k1', 'al recargar se conservan el monumento y la ciudad');
 // Arena: bosses a tu ritmo
 await p.evaluate(() => { location.hash = '#arena'; });
 await p.waitForSelector('.boss-template');

@@ -194,6 +194,8 @@ export interface Kingdom {
   deadline?: string; // fecha objetivo del proyecto (YYYY-MM-DD local)
   /** Cerrado como monumento: el proyecto terminó y queda en el mapa como trofeo. */
   closedAt?: number;
+  /** Si tiene, es una ciudad de ese reino (p. ej. «Calculadora» dentro de «Programación»). Sin él, es un reino. */
+  parentId?: string;
 }
 
 /** Meta personal medible (dinero, peso, personas…) que se exige para desbloquear un avatar. */

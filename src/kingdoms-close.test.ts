@@ -66,3 +66,33 @@ describe('edificios por atributo', () => {
     expect(buildingScale({ type: 'side', impact: 'alto' })).toBeGreaterThan(buildingScale({ type: 'side', impact: 'bajo' }));
   });
 });
+
+describe('reinos con ciudades', () => {
+  it('un reino tiene ciudades; el reino suma lo construido en todas y borrarlo borra sus ciudades', async () => {
+    const k = await import('./kingdoms');
+    let { s, k: realm } = withKingdom(1, 0); // la capital ya tenía 1 construcción (reinos de antes)
+    s = k.addKingdom(s, 'Calculadora', NOW, realm);
+    const city = s.kingdoms.at(-1)!.id;
+    expect(s.kingdoms.at(-1)!.parentId).toBe(realm);
+    expect(k.addKingdom(s, 'Nieta', NOW, city)).toBe(s); // las ciudades no tienen ciudades
+    for (const t of ['a', 'b', 'c']) s = addQuest(s, t, 'side', NOW, { kingdomId: city });
+    for (const q of s.quests.filter((x) => x.kingdomId === city)) s = completeQuest(s, q.id, NOW).state;
+    expect(k.realms(s).map((r) => r.id)).toEqual([realm]);
+    expect(k.realmTotals(s, realm)).toMatchObject({ built: 4, cities: 1, stage: 'Villa' });
+    expect(k.kingdomProgress(s, city).built).toBe(3);
+    expect(k.kingdomName(s, city)).toBe('R · Calculadora');
+    const d = k.deleteKingdom(s, realm);
+    expect(d.kingdoms).toHaveLength(0);
+  });
+  it('cargar la partida ya no borra la fecha objetivo, el monumento ni la ciudad', async () => {
+    const { migrate } = await import('./game');
+    const k = await import('./kingdoms');
+    let { s, k: realm } = withKingdom(1, 0);
+    s = k.setKingdomDeadline(s, realm, '2026-12-01');
+    s = k.addKingdom(s, 'Timer', NOW, realm);
+    s = k.closeKingdom(s, s.kingdoms.at(-1)!.id, NOW);
+    const back = migrate(JSON.parse(JSON.stringify(s)));
+    expect(back.kingdoms[0].deadline).toBe('2026-12-01');
+    expect(back.kingdoms[1]).toMatchObject({ parentId: realm, closedAt: NOW });
+  });
+});
