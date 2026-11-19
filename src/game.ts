@@ -15,8 +15,9 @@ export const XP_RULES = {
   deepWorkPerMinute: 1,
   // Anti-farmeo: tope diario de XP por misiones y por hábitos.
   // El Deep Work no tiene tope diario porque está limitado por tiempo real.
-  dailyCap: { quest: 200, habit: 100 },
-  capPerLevel: { quest: 25, habit: 10 }, // cada nivel sube el tope diario
+  // Dificultad subida el 2026-11-18 (pedido de Nicolas): antes 200/100 y +25/+10 por nivel.
+  dailyCap: { quest: 150, habit: 80 },
+  capPerLevel: { quest: 15, habit: 5 }, // cada nivel sube el tope diario
   maxSessionMinutes: 240,
   minSessionMinutes: 1,
 };
@@ -160,7 +161,13 @@ export function levelInfo(totalXp: number) {
 
 // ---------- Consultas ----------
 
+/** XP total: lo ganado menos el desgaste por inactividad (src/decay.ts). */
 export function totalXp(s: GameState): number {
+  return earnedXp(s) - (s.decay ?? []).reduce((n, d) => n + d.amount, 0);
+}
+
+/** XP ganado sin descontar el desgaste (las monedas salen de aquí: el desgaste no quita monedas). */
+export function earnedXp(s: GameState): number {
   return s.xp.reduce((sum, t) => sum + t.amount, 0);
 }
 
@@ -238,6 +245,8 @@ function dailyStreak(s: GameState, habitId: string, now: number): number {
 
 /** Hasta este día (incluido) seguía el escudo gratis de 1 fallo por semana; desde entonces los escudos se compran. */
 export const FREE_SHIELD_UNTIL = '2026-10-26';
+/** Escudos de racha que puedes tener guardados a la vez (SHIELD.max en economy.ts). */
+export const SHIELD_MAX = 2;
 
 /** Días de un hábito salvados con escudos comprados en la tienda. */
 export function shieldedDays(s: GameState, habitId: string): Set<string> {
@@ -648,14 +657,17 @@ export function toggleHabit(s: GameState, habitId: string, now: number, day = da
   }
   const completion = { id: uid(), habitId, day, at: now };
   const base = habitXp(habit);
-  // si ese día tenía escudo, ya no hace falta: vuelve sin usar
+  // si ese día tenía escudo, ya no hace falta: vuelve sin usar (o se devuelven sus monedas si ya tienes el máximo guardado)
   if (s.purchases.some((p) => p.shield?.habitId === habitId && p.shield.day === day)) {
+    let stock = s.purchases.filter((p) => p.rewardId === 'streak-shield' && p.usedAt === null).length;
     s = {
       ...s,
-      purchases: s.purchases.map((p) => {
-        if (p.shield?.habitId !== habitId || p.shield.day !== day) return p;
+      purchases: s.purchases.flatMap((p) => {
+        if (p.shield?.habitId !== habitId || p.shield.day !== day) return [p];
+        if (stock >= SHIELD_MAX) return [];
+        stock++;
         const { shield: _, ...rest } = p;
-        return { ...rest, usedAt: null };
+        return [{ ...rest, usedAt: null }];
       }),
     };
   }

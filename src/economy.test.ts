@@ -3,7 +3,7 @@ import {
   addHabit, addQuest, completeQuest, createProfile, emptyState, startTimer, stopTimer, toggleHabit, totalXp, undoQuest, updateHabit, updateQuest,
 } from './game';
 import {
-  addReward, buyReward, coinBalance, consumePurchase, defaultRewards, unusedPurchases, nextReward, purchaseCounts, refundPurchase, rewardCategory, updateReward,
+  addReward, buyReward, COIN_RULES, coinBalance, coinsEarned, consumePurchase, defaultRewards, unusedPurchases, nextReward, purchaseCounts, refundPurchase, rewardCategory, updateReward,
 } from './economy';
 import { addBoss, bossReward, bossStatus, summonTemplate } from './bosses';
 import { attributeXp } from './attributes';
@@ -102,6 +102,15 @@ describe('tienda por categorías', () => {
     expect(nextReward(s, NOW)).toMatchObject({ reward: { name: 'Ver un episodio de una serie' }, missing: 15, xp: 75 });
     s = { ...s, rewards: s.rewards.filter((r) => r.cost <= 10) };
     expect(nextReward(s, NOW)).toBeNull();
+  });
+
+  it('desde el cambio, 1 moneda cada 7 XP; lo ganado antes sigue a 5', () => {
+    const LATER = COIN_RULES.xpPerCoinSince + DAY;
+    let s = addQuest(base(), 'A', 'main', NOW);
+    s = completeQuest(s, s.quests[0].id, NOW).state; // 50 XP antes → 10 monedas
+    s = addQuest(s, 'B', 'main', LATER);
+    s = completeQuest(s, s.quests[1].id, LATER).state; // 50 XP después → 50/7
+    expect(coinsEarned(s, LATER).fromXp).toBe(Math.floor(10 + 50 / 7));
   });
 });
 
