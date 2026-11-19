@@ -1,7 +1,7 @@
 // Monedas y tienda de recompensas. El saldo se deriva: lo ganado (XP, bosses, reinos) menos lo gastado.
 import type { GameState, Purchase, Reward } from './types';
 import type { IconName } from './icon-data';
-import { dayKey, isHabitDone, shiftDay, shieldedDays, totalXp, uid } from './game';
+import { dayKey, earnedXp, isHabitDone, shiftDay, shieldedDays, uid } from './game';
 import { bossLoot, defeatedBosses } from './bosses';
 import { kingdomProgress } from './kingdoms';
 import { trophyCoins } from './trophies';
@@ -68,7 +68,7 @@ export function kingdomBonus(s: GameState, kingdomId: string): number {
 
 export function coinsEarned(s: GameState, now: number) {
   const oldXp = s.xp.reduce((n, t) => n + (t.at < COIN_RULES.xpPerCoinSince ? t.amount : 0), 0);
-  const fromXp = Math.floor(oldXp / COIN_RULES.oldXpPerCoin + (totalXp(s) - oldXp) / COIN_RULES.xpPerCoin);
+  const fromXp = Math.floor(oldXp / COIN_RULES.oldXpPerCoin + (earnedXp(s) - oldXp) / COIN_RULES.xpPerCoin);
   const fromBosses = defeatedBosses(s, now).reduce((n, b) => n + bossLoot(s, b, now), 0);
   const fromKingdoms = s.kingdoms.reduce((n, k) => n + kingdomBonus(s, k.id), 0);
   const fromSocial = trophyCoins(s); // MVP de gremio y coronas semanales

@@ -547,3 +547,8 @@ button.tg-session { font-family: inherit; justify-content: flex-start; align-ite
   .ice-burst { animation: none; opacity: 0; }
   .ice-flake { display: none; }
 }
+
+/* Aviso de desgaste por inactividad (Hoy) */
+.decay-note { display: flex; align-items: flex-start; gap: 6px; margin: 8px 0 0; padding: 8px 12px; border-radius: var(--r); color: var(--danger); background: color-mix(in srgb, var(--danger) 9%, transparent); }
+.decay-note .ico { flex: none; margin-top: 2px; }
+.decay-note b { color: var(--fg); }

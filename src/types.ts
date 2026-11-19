@@ -275,6 +275,8 @@ export interface GameState {
   tours?: string[];
   /** Última versión cuyo aviso de novedades ya viste. Viaja con la partida. */
   newsSeen?: string;
+  /** XP perdido por inactividad, un apunte por día (src/decay.ts). Resta del XP total, no del historial. */
+  decay?: { day: string; amount: number }[];
   /**
    * La versión más nueva cuyas novedades viste (desde la V3.1). Campo aparte de `newsSeen` porque
    * la V3.0 compara `newsSeen` con su versión exacta: si la web de prueba escribiera ahí «3.1»,

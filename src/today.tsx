@@ -2,6 +2,7 @@
 import type { GameState } from './types';
 import { dailyCap, dayKey, deepWorkMinutesOnDay, habitSatisfied, isHabitDone, xpOnDay } from './game';
 import { activeDayStreak } from './core';
+import { decayWarning, recentDecay } from './decay';
 import { formatMinutes } from './ui';
 import { Icon, type IconName } from './icons';
 
@@ -31,7 +32,10 @@ export function TodayStrip({ state, now }: { state: GameState; now: number }) {
   const habitsDone = due.filter((h) => isHabitDone(state, h.id, today)).length;
   const streak = activeDayStreak(state, now);
   const capped = questXp >= capQ || habitXp >= capH;
+  const warn = decayWarning(state, now);
+  const lost = recentDecay(state, now);
   return (
+    <>
     <section className="today-strip" aria-label="Tu día">
       <Tile icon="zap" value={`+${xp}`} label="XP hoy" sub={capped ? 'tope' : undefined} hot={xp > 0} />
       <Tile icon="hourglass" value={formatMinutes(minutes)} label="de foco" hot={minutes > 0} />
@@ -44,5 +48,14 @@ export function TodayStrip({ state, now }: { state: GameState; now: number }) {
         hot={streak.today && streak.days > 1}
       />
     </section>
+    {(warn || (lost > 0 && xp === 0)) && (
+      <p className="decay-note small-text" role="status" data-testid="decay-note">
+        <Icon name="alert" />
+        <span>{warn
+          ? <>Ayer no hiciste nada. Si hoy tampoco, pierdes {warn.lose > 0 ? <b>{warn.lose} XP</b> : 'XP'} (el 5 % de lo que llevas de nivel) y cada día parado, otro tanto. Nunca bajas de nivel.{lost > 0 && <> Esta semana ya has perdido <b>{lost} XP</b>.</>}</>
+          : <>Has perdido <b>{lost} XP</b> por días sin actividad esta semana. Con cualquier cosa que hagas hoy se para.</>}</span>
+      </p>
+    )}
+    </>
   );
 }

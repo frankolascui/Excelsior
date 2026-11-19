@@ -14,6 +14,7 @@ import { scheduleGuildReport } from './guilds';
 import { markLocalChange, resolveConflict as resolveCloudConflict, scheduleSave, startSync, useCloud, type RemoteSave } from './cloud';
 
 import { ADMIN } from './admin';
+import { applyInactivity } from './decay';
 import { pendingAchievements, recordAchievements, type AchievementDef } from './achievements';
 
 // En modo admin se juega sobre una partida de pruebas aparte.
@@ -269,6 +270,21 @@ export function useGame() {
     },
     [toast],
   );
+
+  // Desgaste por inactividad: se apunta al abrir y cada media hora (por si cambia el día con la app abierta).
+  useEffect(() => {
+    const tick = () => {
+      const prev = latest.current;
+      const next = applyInactivity(prev, Date.now());
+      if (next === prev) return;
+      const lost = (next.decay ?? []).reduce((n, d) => n + d.amount, 0) - (prev.decay ?? []).reduce((n, d) => n + d.amount, 0);
+      act(() => next);
+      if (lost > 0) toast(`{i:alert} Días sin actividad: −${lost} XP. Hoy puedes pararlo.`, 'info');
+    };
+    tick();
+    const id = setInterval(tick, 30 * 60_000);
+    return () => clearInterval(id);
+  }, [act, toast]);
 
   const reset = useCallback(() => {
     latest.current = emptyState();

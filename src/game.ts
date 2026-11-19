@@ -158,7 +158,13 @@ export function levelInfo(totalXp: number) {
 
 // ---------- Consultas ----------
 
+/** XP total: lo ganado menos el desgaste por inactividad (src/decay.ts). */
 export function totalXp(s: GameState): number {
+  return earnedXp(s) - (s.decay ?? []).reduce((n, d) => n + d.amount, 0);
+}
+
+/** XP ganado sin descontar el desgaste (las monedas salen de aquí: el desgaste no quita monedas). */
+export function earnedXp(s: GameState): number {
   return s.xp.reduce((sum, t) => sum + t.amount, 0);
 }
 
