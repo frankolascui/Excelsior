@@ -45,6 +45,7 @@ import { SessionEdit } from './session-ui';
 import { RateDialog, SessionRating } from './productivity-ui';
 import { formatHours, productivityWeek, sessionProductivity } from './productivity';
 import { QuestTemplates } from './templates-ui';
+import { LadderPanel } from './ladder-ui';
 import { DragHandle, draftToProgression, HabitHints, MinimumInput, PerDayInput, ProgressionInput, progressionDraft, RetiredHabits, weekShareText, type ProgressionDraft } from './habits-ui';
 import { atMax, levelUp, restoreHabit, retireHabit, setProgression, snoozeHint } from './progression';
 import { InfoTip } from './infotip';
@@ -841,6 +842,7 @@ export function Habits({ game, guide }: { game: Game; guide: string }) {
           </ul>
         )}
       </section>
+      <LadderPanel state={state} act={act} toast={game.toast} guide={guide} now={now} />
       <RetiredHabits state={state} onRestore={(id) => act((s) => restoreHabit(s, id))} />
       </div>
     </div>

@@ -1,0 +1,45 @@
+/* Escalera de hábitos (ladder-ui.tsx) */
+.ladder { display: grid; gap: 10px; }
+.ladder-head { display: flex; align-items: center; gap: 10px; }
+.ladder-head > .ico { font-size: 1.4em; color: var(--gold); flex: none; }
+.ladder-head > div { flex: 1; min-width: 0; }
+.ladder-head h3, .ladder-head p { margin: 0; }
+.ladder-empty .secondary { justify-self: start; }
+.ladder-last { margin: 0; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); }
+.ladder-last .ico { vertical-align: -2px; }
+.ladder-last.up { border-color: color-mix(in srgb, var(--ok) 50%, transparent); }
+.ladder-last.repeat, .ladder-last.full { border-color: color-mix(in srgb, var(--gold) 50%, transparent); }
+.ladder-now { display: grid; gap: 6px; }
+.ladder-now p { margin: 0; }
+.ladder-now .hint { margin: 0; }
+.ladder-now-title b { font-size: 1.05em; }
+.ladder-live { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.ladder-live li { display: grid; grid-template-columns: minmax(0, 9em) 1fr auto; align-items: center; gap: 10px; }
+.ladder-live-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ladder-bar { position: relative; height: 6px; border-radius: 3px; background: var(--line); }
+.ladder-bar i { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: var(--gold); }
+.ladder-live li.ok .ladder-bar i { background: var(--ok); }
+.ladder-bar em { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--fg); opacity: 0.5; }
+.ladder-plan summary { cursor: pointer; color: var(--muted); }
+.ladder-steps, .ladder-edit { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 2px; }
+.ladder-steps li, .ladder-edit li { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); }
+.ladder-step-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.ladder-dot { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 0.75em; border: 1px solid var(--line); font-family: var(--mono); }
+.ladder-steps li.ls-done .ladder-dot { background: var(--ok); border-color: var(--ok); color: var(--bg); }
+.ladder-steps li.ls-now .ladder-dot { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 25%, transparent); }
+.ladder-steps li.ls-done .ladder-step-text { color: var(--muted); }
+.ladder-steps li.ls-rest .ladder-step-text b, .ladder-steps li.ls-audit .ladder-step-text b { font-weight: 500; font-style: italic; }
+.ladder-edit li { align-items: flex-start; }
+.ladder-edit li.locked { opacity: 0.6; align-items: center; }
+.ladder-edit-body { flex: 1; min-width: 0; display: grid; gap: 6px; }
+.ladder-edit-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ladder-edit-row input { flex: 1 1 10em; min-width: 0; }
+.ladder-min { width: 100%; }
+.ladder-edit-tools { display: flex; flex: none; }
+.ladder-edit-tools .icon-btn:nth-child(1) .ico, .ladder-edit-tools .icon-btn:nth-child(2) .ico { transform: rotate(90deg); }
+.ladder-start { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ladder-tip p, .ladder-done p { margin: 0; }
+@media (max-width: 560px) {
+  .ladder-live li { grid-template-columns: minmax(0, 7em) 1fr auto; gap: 8px; }
+  .ladder-edit-tools { flex-direction: column; }
+}

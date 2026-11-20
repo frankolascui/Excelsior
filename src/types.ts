@@ -120,6 +120,31 @@ export interface HabitProgression {
   history?: { value: number; at: number }[];
 }
 
+/** Un escalón de la escalera: un hábito nuevo (con su mínimo) o una semana sin nada nuevo. */
+export interface LadderStep {
+  id: string;
+  /** 'new': añade un hábito; 'rest': consolidar lo que ya tienes; 'audit': revisar el % de cada hábito. */
+  kind: 'new' | 'rest' | 'audit';
+  name?: string;
+  minimum?: string;
+  /** Veces por semana (7 = cada día). */
+  perWeek?: number;
+}
+
+export interface HabitLadder {
+  steps: LadderStep[];
+  /** Lunes (YYYY-MM-DD) de la semana 1. */
+  startedOn: string;
+  /** Escalón de esta semana (-1 = aún no ha empezado). */
+  current: number;
+  /** Lunes de la semana en curso del escalón actual (lo anterior ya se evaluó). */
+  week?: string;
+  /** Resultado de cada semana: 'up' sube, 'repeat' algún hábito < 80 %, 'full' ya tenías 7, 'manual' «Subir ya». */
+  log: { id: string; week: string; step: string; result: 'up' | 'repeat' | 'full' | 'manual'; below?: string[] }[];
+  /** Lunes en que se terminó el último escalón. */
+  finishedOn?: string;
+}
+
 export interface HabitCompletion {
   id: string;
   habitId: string;
@@ -262,6 +287,8 @@ export interface GameState {
   habits: Habit[];
   /** Hábitos retirados porque ya están automatizados (conservan su historial). */
   retiredHabits?: Habit[];
+  /** Escalera de hábitos: plan por semanas con la regla del 80 % (ladder.ts). */
+  ladder?: HabitLadder;
   habitCompletions: HabitCompletion[];
   sessions: DeepWorkSession[];
   xp: XPTransaction[];
