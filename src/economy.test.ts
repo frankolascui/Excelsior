@@ -180,3 +180,22 @@ describe('cofre de premios', () => {
     expect(consumePurchase(s, s.purchases[0].id, NOW2 + 9).purchases[0].usedAt).toBe(NOW2 + 5);
   });
 });
+
+describe('cofre: devolver un premio usado', () => {
+  it('se puede devolver durante 24 h, luego no; los escudos nunca', async () => {
+    const eco = await import('./economy');
+    const { emptyState } = await import('./game');
+    const at = new Date(2026, 10, 20, 10).getTime();
+    const base = { ...emptyState(), purchases: [
+      { id: 'a', rewardId: 'r', name: 'Peli', icon: 'film', cost: 10, at, usedAt: at },
+      { id: 'b', rewardId: eco.SHIELD.id, name: 'Escudo', icon: 'shield', cost: 150, at, usedAt: at, shield: { habitId: 'h', day: '2026-11-19' } },
+      { id: 'c', rewardId: 'r', name: 'Peli', icon: 'film', cost: 10, at },
+    ] } as ReturnType<typeof emptyState>;
+    expect(eco.usedPurchases(base).map((p) => p.id)).toEqual(['a']);
+    const back = eco.returnPurchase(base, 'a', at + 3600_000);
+    expect(eco.unusedPurchases(back).map((p) => p.id)).toEqual(['a']);
+    expect(eco.returnPurchase(base, 'a', at + eco.UNDO_USE_MS + 1)).toBe(base);
+    expect(eco.returnPurchase(base, 'b', at + 1)).toBe(base);
+    expect(eco.returnPurchase(base, 'c', at + 1)).toBe(base);
+  });
+});

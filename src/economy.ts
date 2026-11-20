@@ -163,6 +163,21 @@ export function spendShield(s: GameState, habitId: string, day: string, now: num
   return { state: { ...s, purchases: s.purchases.map((x) => (x.id === p.id ? { ...x, usedAt: now, shield: { habitId, day } } : x)) }, ok: true };
 }
 
+/** Puedes devolver al cofre un premio usado durante este rato (por si lo pulsaste sin querer). */
+export const UNDO_USE_MS = 24 * 3600_000;
+
+/** Premios del cofre ya usados, del más reciente al más antiguo (sin escudos ni canjes antiguos sin fecha). */
+export function usedPurchases(s: GameState): Purchase[] {
+  return s.purchases.filter((p) => typeof p.usedAt === 'number' && p.rewardId !== SHIELD.id).sort((a, b) => (b.usedAt as number) - (a.usedAt as number));
+}
+
+/** Devuelve al cofre un premio usado hace menos de UNDO_USE_MS. Los escudos no (los gasta un hábito). */
+export function returnPurchase(s: GameState, purchaseId: string, now: number): GameState {
+  const p = s.purchases.find((x) => x.id === purchaseId);
+  if (!p || p.rewardId === SHIELD.id || typeof p.usedAt !== 'number' || now - p.usedAt > UNDO_USE_MS) return s;
+  return { ...s, purchases: s.purchases.map((x) => (x.id === purchaseId ? { ...x, usedAt: null } : x)) };
+}
+
 /** Usa un premio del cofre. */
 export function consumePurchase(s: GameState, purchaseId: string, now: number): GameState {
   return { ...s, purchases: s.purchases.map((p) => (p.id === purchaseId && p.usedAt === null ? { ...p, usedAt: now } : p)) };
