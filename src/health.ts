@@ -282,15 +282,95 @@ export function syncHealth(s: GameState, nights: Night[], settings: HealthSettin
   return { state, xp, capped, built, lost };
 }
 
-/** Monedas ganadas con las obras del Reino de la Salud. */
-export const healthCoins = (s: GameState) => (s.health?.works.length ?? 0) * WORK_COINS;
+// ---------- Constancia a largo plazo: semanas constantes y monumentos ----------
+// Una semana es «constante» si en ella se levantó el Templo del Sueño (5 noches apuntadas): premia apuntar, no las cifras.
+// Las obras llevan al reino a Reino glorioso en pocas semanas; los monumentos son la meta de meses.
+// Se calculan a partir de las obras (no se guardan aparte): no hay nada nuevo que sincronizar y, si derribas
+// un Templo al borrar noches, el monumento que dependía de él también se va.
 
-/** Las obras como «construcciones» para dibujar la ciudad del reino. */
-export function healthBuildings(s: GameState): Quest[] {
-  return (s.health?.works ?? []).map((w) => {
-    const d = workDef(w.kind);
-    return { id: w.id, title: d.name, type: d.size, createdAt: w.at, completedAt: w.at } as Quest;
+export interface MonumentDef {
+  id: string;
+  /** Semanas constantes (en total, no hace falta que sean seguidas) para levantarlo. */
+  weeks: number;
+  name: string;
+  icon: IconName;
+  coins: number;
+}
+export const MONUMENTS: MonumentDef[] = [
+  { id: 'fuente', weeks: 4, name: 'Fuente de Higía', icon: 'spa', coins: 25 },
+  { id: 'estatua', weeks: 12, name: 'Estatua de Asclepio', icon: 'caduceus', coins: 50 },
+  { id: 'columnata', weeks: 26, name: 'Columnata de Panacea', icon: 'ionic-column', coins: 100 },
+  { id: 'santuario', weeks: 52, name: 'Santuario de Epidauro', icon: 'laurel-crown', coins: 200 },
+];
+
+/** Lunes de las semanas constantes (con Templo del Sueño), sin repetir, de la más antigua a la más reciente. */
+export function constantWeeks(s: GameState): string[] {
+  return [...new Set((s.health?.works ?? []).filter((w) => w.kind === 'templo').map((w) => w.week))].sort();
+}
+
+/**
+ * Racha de semanas constantes seguidas hasta hoy. La semana en curso suma si ya tiene su Templo;
+ * si aún no, la racha no se rompe hasta que acabe (cuenta desde la semana pasada).
+ */
+export function weekStreak(s: GameState, today: string): number {
+  const weeks = new Set(constantWeeks(s));
+  let monday = weekStart(today);
+  if (!weeks.has(monday)) monday = addDays(monday, -7);
+  let n = 0;
+  while (weeks.has(monday)) {
+    n++;
+    monday = addDays(monday, -7);
+  }
+  return n;
+}
+
+/** Monumentos levantados, con el día en que se ganaron (el lunes de la semana constante que los completó). */
+export function healthMonuments(s: GameState): (MonumentDef & { week: string; at: number })[] {
+  const weeks = constantWeeks(s);
+  const templo = (s.health?.works ?? []).filter((w) => w.kind === 'templo');
+  return MONUMENTS.filter((m) => weeks.length >= m.weeks).map((m) => {
+    const week = weeks[m.weeks - 1];
+    const at = templo.find((w) => w.week === week)?.at ?? 0;
+    return { ...m, week, at };
   });
+}
+
+/** Siguiente monumento y cuántas semanas constantes faltan (null si ya están todos). */
+export function nextMonument(s: GameState): (MonumentDef & { missing: number; ratio: number }) | null {
+  const have = constantWeeks(s).length;
+  const i = MONUMENTS.findIndex((m) => have < m.weeks);
+  if (i < 0) return null;
+  const m = MONUMENTS[i];
+  const from = i === 0 ? 0 : MONUMENTS[i - 1].weeks;
+  return { ...m, missing: m.weeks - have, ratio: (have - from) / (m.weeks - from) };
+}
+
+/** Estructuras del reino (obras + monumentos): deciden su etapa, como en los demás reinos. */
+export const healthStructures = (s: GameState) => (s.health?.works.length ?? 0) + healthMonuments(s).length;
+
+/** Monedas ganadas en el Reino de la Salud: las obras y los monumentos. */
+export const healthCoins = (s: GameState) =>
+  (s.health?.works.length ?? 0) * WORK_COINS + healthMonuments(s).reduce((t, m) => t + m.coins, 0);
+
+// Cómo se dibuja cada obra en la ciudad: el Templo del Sueño como templo, la Palestra como cuartel,
+// el Reloj de Sol como biblioteca (astronomía) y la Balanza como cabaña.
+const WORK_LOOK: Record<WorkKind, Pick<Quest, 'focus' | 'impact'>> = {
+  templo: { focus: 'creacion', impact: 'medio' },
+  reloj: { focus: 'sabiduria', impact: 'medio' },
+  palestra: { focus: 'voluntad', impact: 'medio' },
+  balanza: { impact: 'bajo' },
+};
+
+/** Las obras y los monumentos como «construcciones» para dibujar la ciudad del reino. */
+export function healthBuildings(s: GameState): Quest[] {
+  const works = (s.health?.works ?? []).map((w) => {
+    const d = workDef(w.kind);
+    return { id: w.id, title: d.name, type: d.size, ...WORK_LOOK[w.kind], createdAt: w.at, completedAt: w.at } as Quest;
+  });
+  const monuments = healthMonuments(s).map((m) => (
+    { id: `monumento-${m.id}`, title: m.name, type: 'main', focus: 'creacion', impact: 'alto', createdAt: m.at, completedAt: m.at } as Quest
+  ));
+  return [...monuments, ...works];
 }
 
 // ---------- Fusión con la nube (pura) ----------

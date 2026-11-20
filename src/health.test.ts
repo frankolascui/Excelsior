@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { createProfile, dayKey, emptyState, toggleHabit, totalXp } from './game';
 import { coinsEarned } from './economy';
 import {
-  addDays, bedtimeGoal, clockDistance, DEFAULT_SETTINGS, emptyNight, foundHealth, HEALTH_HABIT_ID, healthBuildings, mergeRemote, nightStats,
-  normalizeNight, span, syncHealth, vigor, weekProgress, weekStart, WORK_COINS, type Night,
+  addDays, bedtimeGoal, clockDistance, constantWeeks, DEFAULT_SETTINGS, emptyNight, foundHealth, HEALTH_HABIT_ID, healthBuildings, healthCoins,
+  healthMonuments, healthStructures, mergeRemote, MONUMENTS, nextMonument, nightStats, normalizeNight, span, syncHealth, vigor, weekProgress,
+  weekStart, weekStreak, WORK_COINS, type Night,
 } from './health';
 
 const NOW = new Date('2026-11-12T09:00:00').getTime(); // jueves
@@ -131,5 +132,52 @@ describe('fusión con la nube', () => {
   it('un borrado en la nube quita la noche local', () => {
     const m = mergeRemote([night(MON)], {}, [row(MON, '2026-11-12T08:00:00.000Z', true)], null);
     expect(m.nights).toHaveLength(0);
+  });
+});
+
+describe('constancia a largo plazo: semanas constantes y monumentos', () => {
+  const withTemplos = (weeks: string[]) => {
+    const s = foundHealth(base(), NOW);
+    return { ...s, health: { works: weeks.flatMap((w, i) => [
+      { id: `t${i}`, kind: 'templo' as const, week: w, at: NOW - i },
+      { id: `p${i}`, kind: 'palestra' as const, week: w, at: NOW - i },
+    ]) } };
+  };
+  const mondays = (n: number, from = MON) => Array.from({ length: n }, (_, i) => addDays(from, -7 * i));
+
+  it('cuenta solo las semanas con Templo del Sueño, sin repetir', () => {
+    const s = withTemplos([MON, MON, addDays(MON, -7)]);
+    expect(constantWeeks(s)).toEqual([addDays(MON, -7), MON]);
+  });
+
+  it('la racha no se rompe hasta que acaba la semana en curso', () => {
+    const s = withTemplos(mondays(3, addDays(MON, -7))); // las 3 semanas anteriores, esta aún sin Templo
+    expect(weekStreak(s, TODAY)).toBe(3);
+    expect(weekStreak(withTemplos([MON, ...mondays(3, addDays(MON, -7))]), TODAY)).toBe(4);
+    expect(weekStreak(withTemplos([addDays(MON, -14)]), TODAY)).toBe(0); // la semana pasada falló
+  });
+
+  it('los monumentos piden semanas constantes en total (no seguidas) y dan monedas', () => {
+    const gaps = Array.from({ length: 4 }, (_, i) => addDays(MON, -14 * i)); // una sí, una no
+    const s = withTemplos(gaps);
+    expect(healthMonuments(s).map((m) => m.id)).toEqual(['fuente']);
+    expect(nextMonument(s)).toMatchObject({ id: 'estatua', missing: 8 });
+    expect(healthCoins(s)).toBe(8 * WORK_COINS + MONUMENTS[0].coins);
+    expect(healthStructures(s)).toBe(9);
+    expect(coinsEarned(s, NOW).fromKingdoms).toBe(healthCoins(s));
+  });
+
+  it('si cae el Templo de una semana, el monumento que dependía de él también cae', () => {
+    const s = withTemplos(mondays(4));
+    expect(healthMonuments(s)).toHaveLength(1);
+    const less = { ...s, health: { works: s.health.works.filter((w) => w.id !== 't0') } };
+    expect(healthMonuments(less)).toHaveLength(0);
+  });
+
+  it('la ciudad dibuja los monumentos y cada obra con su edificio', () => {
+    const b = healthBuildings(withTemplos(mondays(4)));
+    expect(b.filter((q) => q.id.startsWith('monumento-'))).toHaveLength(1);
+    expect(b.find((q) => q.title === 'Templo del Sueño')?.focus).toBe('creacion');
+    expect(b.find((q) => q.title === 'Palestra')?.focus).toBe('voluntad');
   });
 });

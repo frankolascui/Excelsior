@@ -177,3 +177,10 @@
   .sleep-card-now { display: none; }
 }
 @media (min-width: 900px) { .health-setup .night-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+.health-constancy-nums { display: flex; gap: 18px; flex-wrap: wrap; align-items: baseline; margin: 8px 0; }
+.health-constancy-nums .ico { color: var(--c2); }
+.health-monuments { list-style: none; padding: 0; margin: 12px 0 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.health-monuments li { display: flex; align-items: center; gap: 10px; opacity: .55; }
+.health-monuments li.done { opacity: 1; }
+.health-monuments li.done .health-work-ico { border-color: var(--c2); box-shadow: 0 0 12px color-mix(in srgb, var(--c2) 40%, transparent); color: var(--c2); }
