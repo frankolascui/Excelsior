@@ -16,6 +16,7 @@ import { markLocalChange, resolveConflict as resolveCloudConflict, scheduleSave,
 
 import { ADMIN } from './admin';
 import { applyInactivity } from './decay';
+import { advanceLadder } from './ladder';
 import { pendingAchievements, recordAchievements, type AchievementDef } from './achievements';
 
 // En modo admin se juega sobre una partida de pruebas aparte.
@@ -280,8 +281,12 @@ export function useGame() {
   useEffect(() => {
     const tick = () => {
       const prev = latest.current;
-      const next = applyInactivity(prev, Date.now());
+      const withDecay = applyInactivity(prev, Date.now());
+      // Escalera de hábitos: cada lunes mira la regla del 80 % de la semana acabada (ladder.ts).
+      const next = advanceLadder(withDecay, Date.now());
       if (next === prev) return;
+      const stepIn = next.ladder && next.ladder.current !== prev.ladder?.current ? next.ladder.steps[next.ladder.current] : null;
+      if (stepIn?.kind === 'new') toast(`{i:mountain-climb} Escalera: esta semana entra «${stepIn.name}».`, 'level');
       const lost = (next.decay ?? []).reduce((n, d) => n + d.amount, 0) - (prev.decay ?? []).reduce((n, d) => n + d.amount, 0);
       act(() => next);
       if (lost > 0) toast(`{i:alert} Días sin actividad: −${lost} XP. Hoy puedes pararlo.`, 'info');
