@@ -28,6 +28,10 @@ export const NEWS: NewsEntry[] = [
         'Inventario: ves tus congelados guardados y lo ya usado, y puedes devolver al cofre un premio en las primeras 24 horas.',
         'Trofeos de aliados con título al tener 1, 3 y 8 amigos.',
       ] },
+      { name: 'Gremios', items: [
+        'Encargos más justos: lo que hiciste antes de entrar en el gremio ya no cuenta, y quien entra a mitad y se va deja de sumar.',
+        'Los aportes se comprueban en el servidor, así nadie puede inflar los rankings.',
+      ] },
       { name: 'Arena', items: [
         'Los bosses se ajustan a tu ritmo: su vida es lo que sueles hacer en su plazo (según tus últimas 2 semanas) más un 20 %, y el botín sube con ella.',
         'El panel de invocar está siempre a la vista, con cada saga plegable y abierta la de tu siguiente boss.',
