@@ -9,7 +9,10 @@ import { Icon } from './icons';
 import { InfoTip } from './infotip';
 import { confetti } from './confetti';
 import { academyFounded, cardsToday, foundAcademy, recordStudy, STUDY_RULES } from './academy-game';
-import { dayKey, habitStreak } from './game';
+import { currentStudyPause, dayKey, habitStreak, markPauseShifted, pausesToShift, studyPausedOn } from './game';
+import { StudyPauseControl } from './study-pause-ui';
+import { shiftDueForPause } from './academy/study/api';
+import { resetTodayCache } from './academy/ui/Review';
 import { parseRoute, type Route } from './academy/study/logic';
 import { studyBridge } from './academy/bridge';
 import { loadQueue, Review } from './academy/ui/Review';
@@ -22,6 +25,9 @@ import { Stats } from './academy/ui/Stats';
 import { Tune } from './academy/ui/Tune';
 import './academy/academy.css';
 import './academy.css';
+
+/** Evita mover las fechas dos veces a la vez (la pestaña puede volver a montarse a mitad). */
+let shiftLock = false;
 
 function useAcademyRoute(): Route {
   const read = () => parseRoute(location.hash.startsWith('#academy') ? location.hash : '');
@@ -43,17 +49,21 @@ function StudyStrip({ game }: { game: Game }) {
   const doneToday = !!habit && state.habitCompletions.some((c) => c.habitId === habit.id && c.day === dayKey(now));
   const today = cardsToday(state, now);
   const left = Math.max(0, STUDY_RULES.habitCards - today);
+  const paused = studyPausedOn(state, dayKey(now));
   return (
     <section className="panel study-strip" data-testid="study-strip" aria-label="Tu estudio en el juego">
       <span className={`study-streak${doneToday ? ' on' : ''}`} title="Días seguidos repasando"><Icon name="flame" /> {streak} {streak === 1 ? 'día' : 'días'}</span>
       <span className="study-today-line">
         {doneToday
           ? <><Icon name="check" /> Hábito de hoy cumplido · {today} {today === 1 ? 'tarjeta' : 'tarjetas'}</>
-          : <>Hoy {today} {today === 1 ? 'tarjeta' : 'tarjetas'} · vacía la cola o repasa {left} más para el hábito</>}
+          : paused
+            ? <>Hoy descansas: el hábito no cuenta como fallado</>
+            : <>Hoy {today} {today === 1 ? 'tarjeta' : 'tarjetas'} · vacía la cola o repasa {left} más para el hábito</>}
       </span>
       <InfoTip label="Cómo da XP Academy">
         <p>Repasar cuenta como Deep Work de estudio: 1 XP por minuto de repaso real (como mucho 2 min por tarjeta) y sube Sabiduría. Vaciar la cola del día da +{STUDY_RULES.clearBonus} XP una vez al día. Vaciarla o repasar {STUDY_RULES.habitCards} tarjetas marca solo tu hábito «Repasar las tarjetas».</p>
       </InfoTip>
+      <StudyPauseControl game={game} />
     </section>
   );
 }
@@ -85,6 +95,29 @@ export default function AcademyApp({ game }: { game: Game }) {
     else loadQueue().then((q) => save(q.queue.length === 0), () => save(false));
   };
 
+  // Pausa de las tarjetas: «Hoy» lo enseña; al terminar, las fechas de repaso se mueven los días de pausa (una vez).
+  const pauseNow = currentStudyPause(game.state, Date.now());
+  studyBridge.pause = pauseNow && pauseNow.from <= dayKey(Date.now()) ? { until: pauseNow.until } : null;
+  const toShift = cloud.userId && !adminReadOnly() ? pausesToShift(game.state, Date.now()) : [];
+  const [shifting, setShifting] = useState<{ done: number; total: number; error?: string } | null>(null);
+  const blocked = shifting ?? (toShift.length ? { done: 0, total: 0, error: undefined } : null);
+  const shiftKey = toShift.map((x) => x.pause.id).join(',');
+  useEffect(() => {
+    if (!toShift.length || shiftLock) return;
+    shiftLock = true;
+    setShifting({ done: 0, total: 0 });
+    (async () => {
+      for (const { pause, days } of toShift) {
+        const fromIso = new Date(`${pause.from}T00:00:00`).toISOString();
+        await shiftDueForPause(fromIso, days, (done, total) => setShifting({ done, total }));
+        act((s) => markPauseShifted(s, pause.id, days));
+      }
+      resetTodayCache();
+      setShifting(null);
+    })().catch((e: Error) => setShifting({ done: 0, total: 0, error: e.message }))
+      .finally(() => { shiftLock = false; });
+  }, [shiftKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!cloud.userId) {
     return (
       <section className="panel">
@@ -102,6 +135,13 @@ export default function AcademyApp({ game }: { game: Game }) {
         </section>
       )}
       <StudyStrip game={game} />
+      {blocked ? (
+        <section className="panel" data-testid="pause-shifting" role="status">
+          {blocked.error
+            ? <p><Icon name="alert" /> No se pudieron mover las fechas de repaso tras la pausa: {blocked.error}. Se volverá a intentar al abrir Academy.</p>
+            : <p><Icon name="palm" /> Bienvenido de vuelta. Moviendo las fechas de repaso los días de pausa{blocked.total ? ` (${blocked.done} de ${blocked.total} tarjetas)` : ''}…</p>}
+        </section>
+      ) : <>
       {route.view === 'estanteria' && <Shelf />}
       {route.view === 'asignatura' && <Binder subjectId={route.subjectId} topicId={route.topicId} />}
       {route.view === 'ajustar' && <Tune />}
@@ -110,6 +150,7 @@ export default function AcademyApp({ game }: { game: Game }) {
       {route.view === 'simulacro' && <ExamView subjectId={route.subjectId} examId={route.examId} />}
       {route.view === 'repasar' && <Review key={location.hash} subjectId={route.subjectId} topicIds={route.topicIds} />}
       {route.view === 'hoja' && <PageView subjectId={route.subjectId} topicId={route.topicId} pageId={route.pageId} edit={route.edit} />}
+      </>}
       <DialogHost />
     </div>
   );

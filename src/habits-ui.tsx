@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import type { GameState, Habit, HabitProgression } from './types';
 import { atMax, clockText, constancy, habitHints, levelUpDue, nextValue, parseClock, PROGRESSION_RULES, valueText } from './progression';
 import { GuidePortrait } from './tutorial';
-import { dailyStreakInfo, dayKey, habitDayCount, habitStreakDays, isHabitDone, maxPerWeek, MINIMUM_MAX, PER_DAY_MAX, shiftDay, weekStart } from './game';
+import { dailyStreakInfo, dayKey, habitDayCount, habitPausedOn, habitStreakDays, isHabitDone, maxPerWeek, MINIMUM_MAX, PER_DAY_MAX, shiftDay, weekStart } from './game';
 import { SHIELD } from './economy';
 import { Icon } from './icons';
 import { Select } from './pickers';
@@ -25,7 +25,7 @@ export function HabitHistory({ state, habit, now, onToggleDay }: { state: GameSt
   const days = Array.from({ length: 35 }, (_, i) => dayKey(shiftDay(first, i)));
   const shields = new Set(habitShields(state, habit, now));
   const born = dayKey(habit.createdAt);
-  const last30 = Array.from({ length: 30 }, (_, i) => dayKey(shiftDay(now, -i))).filter((d) => d >= born);
+  const last30 = Array.from({ length: 30 }, (_, i) => dayKey(shiftDay(now, -i))).filter((d) => d >= born && (isHabitDone(state, habit.id, d) || !habitPausedOn(state, habit.id, d)));
   const done30 = last30.filter((d) => isHabitDone(state, habit.id, d)).length;
   const weekly = habit.frequency === 'weekly';
   const total = state.habitCompletions.filter((c) => c.habitId === habit.id).length;
@@ -35,8 +35,9 @@ export function HabitHistory({ state, habit, now, onToggleDay }: { state: GameSt
         {WD.map((w) => <span key={w} className="hh-wd">{w}</span>)}
         {days.map((d) => {
           const done = isHabitDone(state, habit.id, d);
-          const cls = ['hh-day', done && 'on', shields.has(d) && 'shield', d === today && 'today', d > today && 'future', d < born && 'before'].filter(Boolean).join(' ');
-          const label = `${new Date(`${d}T12:00:00`).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}: ${done ? 'hecho' : shields.has(d) ? 'congelado con un escudo' : 'sin hacer'}`;
+          const rest = !done && habitPausedOn(state, habit.id, d);
+          const cls = ['hh-day', done && 'on', shields.has(d) && 'shield', rest && 'paused', d === today && 'today', d > today && 'future', d < born && 'before'].filter(Boolean).join(' ');
+          const label = `${new Date(`${d}T12:00:00`).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}: ${done ? 'hecho' : shields.has(d) ? 'congelado con un escudo' : rest ? 'en pausa (vacaciones)' : 'sin hacer'}`;
           return onToggleDay && editableDay(d, now)
             ? <button type="button" key={d} role="gridcell" className={cls} aria-pressed={done} aria-label={label} title={label} onClick={() => onToggleDay(d)}>{Number(d.slice(8))}</button>
             : <span key={d} role="gridcell" className={cls} aria-label={label} title={label}>{shields.has(d) ? <Icon name="snowflake" /> : Number(d.slice(8))}</span>;

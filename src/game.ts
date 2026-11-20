@@ -1,7 +1,7 @@
 // Reglas del juego: funciones puras sobre GameState. Toda la lógica de XP,
 // niveles, rachas y límites anti-farmeo vive aquí para poder probarla.
 import type {
-  ActiveTimer, AttributeId, AttributeRewards, GameState, Habit, Quest, QuestType, XPSource, XPTransaction, DeepWorkSession, DeepWorkArea, FocusPhase,
+  ActiveTimer, AttributeId, AttributeRewards, GameState, Habit, Quest, QuestType, XPSource, XPTransaction, DeepWorkSession, DeepWorkArea, FocusPhase, StudyPause,
 } from './types';
 import { ancestors, descendants, effectiveDeadline, hasOpenChildren, isLeaf } from './tree';
 import { deepWorkRewards, habitRewards, inferDeepWorkArea, questRewards } from './attributes';
@@ -239,6 +239,85 @@ export function habitStreakDays(s: GameState, habitId: string, now: number): num
   return habit?.frequency === 'weekly' ? n * 7 : n;
 }
 
+// ---------- Pausa de las tarjetas (vacaciones) ----------
+
+/** El hábito que se pausa con las tarjetas (el mismo id que ACADEMY_HABIT_ID de academy-game.ts). */
+export const STUDY_PAUSE_HABIT = 'sys-academy';
+
+const addDay = (day: string, n: number) => dayKey(shiftDay(new Date(`${day}T12:00:00`).getTime(), n));
+
+/** Último día en pausa (incluido), o null si sigue abierta sin fecha de fin. */
+export function pauseLastDay(p: StudyPause): string | null {
+  const end = p.endedOn ? addDay(p.endedOn, -1) : null;
+  if (end && (!p.until || end < p.until)) return end;
+  return p.until;
+}
+
+/** ¿Ese día está dentro de alguna pausa de las tarjetas? */
+export function studyPausedOn(s: GameState, day: string): boolean {
+  return (s.studyPauses ?? []).some((p) => {
+    const last = pauseLastDay(p);
+    return p.from <= day && (last === null || day <= last);
+  });
+}
+
+/** La pausa en curso o la próxima programada (la que aún no ha terminado), si la hay. */
+export function currentStudyPause(s: GameState, now: number): StudyPause | null {
+  const today = dayKey(now);
+  return (s.studyPauses ?? []).find((p) => {
+    const last = pauseLastDay(p);
+    return !p.endedOn && (last === null || last >= today) && (last === null || p.from <= last);
+  }) ?? null;
+}
+
+/** Programa (o empieza hoy) una pausa. Sustituye a la que hubiera pendiente. */
+export function startStudyPause(s: GameState, from: string, until: string | null, now: number): GameState {
+  const today = dayKey(now);
+  const start = from < today ? today : from;
+  const end = until && until < start ? start : until;
+  const cur = currentStudyPause(s, now);
+  let pauses = s.studyPauses ?? [];
+  // Si ya había una: la que aún no empezó se cambia; la que está en curso se mantiene y se le cambia el final.
+  if (cur) pauses = pauses.map((p) => (p.id === cur.id ? { ...p, from: cur.from <= today ? cur.from : start, until: end } : p));
+  else pauses = [...pauses, { id: uid(), from: start, until: end }];
+  return { ...s, studyPauses: pauses };
+}
+
+/** Reanuda hoy la pausa en curso; si aún no había empezado, se borra. */
+export function endStudyPause(s: GameState, now: number): GameState {
+  const today = dayKey(now);
+  const cur = currentStudyPause(s, now);
+  if (!cur) return s;
+  const pauses = (s.studyPauses ?? []).flatMap((p) => (p.id !== cur.id ? [p] : p.from >= today ? [] : [{ ...p, endedOn: today }]));
+  return { ...s, studyPauses: pauses };
+}
+
+/** Pausas ya terminadas cuyas fechas de repaso aún no se han movido, con los días que hay que moverlas. */
+export function pausesToShift(s: GameState, now: number): { pause: StudyPause; days: number }[] {
+  const today = dayKey(now);
+  return (s.studyPauses ?? []).flatMap((p) => {
+    if (p.shifted !== undefined) return [];
+    const last = pauseLastDay(p);
+    if (last === null || last >= today) return [];
+    const days = Math.round((new Date(`${last}T12:00:00`).getTime() - new Date(`${p.from}T12:00:00`).getTime()) / 86_400_000) + 1;
+    return [{ pause: p, days: Math.max(0, days) }];
+  });
+}
+
+export function markPauseShifted(s: GameState, id: string, days: number): GameState {
+  return { ...s, studyPauses: (s.studyPauses ?? []).map((p) => (p.id === id ? { ...p, shifted: days } : p)) };
+}
+
+/** ¿Ese día no cuenta para el hábito (está en pausa)? Solo afecta al hábito de repasar. */
+export const habitPausedOn = (s: GameState, habitId: string, day: string) => habitId === STUDY_PAUSE_HABIT && studyPausedOn(s, day);
+
+/** El día anterior a `ts` que sí cuenta (saltando los días en pausa). */
+export function prevActiveDay(s: GameState, habitId: string, ts: number): number {
+  let c = shiftDay(ts, -1);
+  for (let i = 0; i < 400 && habitPausedOn(s, habitId, dayKey(c)); i++) c = shiftDay(c, -1);
+  return c;
+}
+
 function dailyStreak(s: GameState, habitId: string, now: number): number {
   return dailyStreakInfo(s, habitId, now).streak;
 }
@@ -268,12 +347,14 @@ export function dailyStreakInfo(s: GameState, habitId: string, now: number): { s
     const day = dayKey(cursor);
     if (days.has(day)) {
       streak++;
+    } else if (habitPausedOn(s, habitId, day)) {
+      // día de vacaciones de las tarjetas: ni suma ni rompe la racha
     } else {
-      const prevDone = days.has(dayKey(shiftDay(cursor, -1)));
+      const prevDone = days.has(dayKey(prevActiveDay(s, habitId, cursor)));
       if (!prevDone) break;
       if (!bought.has(day)) {
         // ayer fallado y aún no se ha perdido: hoy se puede salvar haciéndolo (o con un escudo)
-        const pending = streak === 0 && shields.length === 0 && day === dayKey(shiftDay(now, -1));
+        const pending = streak === 0 && shields.length === 0 && day === dayKey(prevActiveDay(s, habitId, now));
         const week = weekStart(cursor);
         const free = day <= FREE_SHIELD_UNTIL && !shields.some((d) => weekStart(new Date(`${d}T12:00:00`).getTime()) === week);
         if (!pending && !free) break;
@@ -291,10 +372,11 @@ export function dailyStreakInfo(s: GameState, habitId: string, now: number): { s
  * Devuelve el día fallado o null.
  */
 export function habitAtRisk(s: GameState, h: Habit, now: number): string | null {
-  if (h.frequency === 'weekly' || isHabitDone(s, h.id, dayKey(now))) return null;
-  const y = dayKey(shiftDay(now, -1));
-  if (isHabitDone(s, h.id, y) || shieldedDays(s, h.id).has(y) || y <= FREE_SHIELD_UNTIL) return null;
-  return isHabitDone(s, h.id, dayKey(shiftDay(now, -2))) ? y : null;
+  if (h.frequency === 'weekly' || isHabitDone(s, h.id, dayKey(now)) || habitPausedOn(s, h.id, dayKey(now))) return null;
+  const yTs = shiftDay(now, -1);
+  const y = dayKey(yTs);
+  if (isHabitDone(s, h.id, y) || habitPausedOn(s, h.id, y) || shieldedDays(s, h.id).has(y) || y <= FREE_SHIELD_UNTIL) return null;
+  return isHabitDone(s, h.id, dayKey(prevActiveDay(s, h.id, yTs))) ? y : null;
 }
 
 /** Tope diario de XP: crece con el nivel con el que empezaste el día (más nivel, más margen). */

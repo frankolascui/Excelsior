@@ -1,7 +1,7 @@
 // Monedas y tienda de recompensas. El saldo se deriva: lo ganado (XP, bosses, reinos) menos lo gastado.
 import type { GameState, Purchase, Reward } from './types';
 import type { IconName } from './icon-data';
-import { dayKey, earnedXp, isHabitDone, shiftDay, shieldedDays, uid } from './game';
+import { dayKey, earnedXp, habitPausedOn, isHabitDone, prevActiveDay, shiftDay, shieldedDays, uid } from './game';
 import { bossLoot, defeatedBosses } from './bosses';
 import { kingdomProgress } from './kingdoms';
 import { trophyCoins } from './trophies';
@@ -152,8 +152,8 @@ export function shieldableDay(s: GameState, habitId: string, now: number): strin
   const h = s.habits.find((x) => x.id === habitId);
   if (!h || h.frequency === 'weekly') return null;
   const y = dayKey(shiftDay(now, -1));
-  if (y < dayKey(h.createdAt) || isHabitDone(s, habitId, y) || shieldedDays(s, habitId).has(y)) return null;
-  return isHabitDone(s, habitId, dayKey(shiftDay(now, -2))) ? y : null;
+  if (y < dayKey(h.createdAt) || isHabitDone(s, habitId, y) || shieldedDays(s, habitId).has(y) || habitPausedOn(s, habitId, y)) return null;
+  return isHabitDone(s, habitId, dayKey(prevActiveDay(s, habitId, shiftDay(now, -1)))) ? y : null;
 }
 
 /** Usa un escudo del cofre en ese día fallado. */

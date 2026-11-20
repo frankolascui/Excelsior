@@ -282,3 +282,24 @@ export async function countReviews(): Promise<number> {
 export async function listAllReviews(): Promise<import('./optimize').RawReview[]> {
   return check(await paged(() => sb().from('study_reviews').select('card_id, rating, state, reviewed_at').order('reviewed_at').order('id'), 200_000)) as import('./optimize').RawReview[];
 }
+
+// ---------- Pausa (vacaciones) ----------
+/**
+ * Al terminar una pausa, las fechas de repaso de las tarjetas ya empezadas se mueven `days` días hacia delante,
+ * como si el tiempo se hubiera parado: al volver no hay una montaña de repasos atrasados.
+ * Las que repasaste durante la pausa (last_review desde `fromIso`) ya tienen su fecha nueva y no se tocan.
+ * Se escriben en tandas de 500 con upsert (una sola petición por tanda). Devuelve cuántas se movieron.
+ */
+export async function shiftDueForPause(fromIso: string, days: number, onProgress?: (done: number, total: number) => void): Promise<number> {
+  if (days <= 0) return 0;
+  const cards = await selectCards((cols) => paged(() => sb().from('study_cards').select(cols).neq('state', 0)
+    .or(`last_review.is.null,last_review.lt."${fromIso}"`).order('id')));
+  const ms = days * 86_400_000;
+  const rows = cards.map((c) => ({ ...c, due: new Date(new Date(c.due).getTime() + ms).toISOString() }));
+  for (let i = 0; i < rows.length; i += 500) {
+    const batch = hasCardExtras() ? rows.slice(i, i + 500) : rows.slice(i, i + 500).map(stripExtras);
+    check(await sb().from('study_cards').upsert(batch, { onConflict: 'id' }));
+    onProgress?.(Math.min(i + 500, rows.length), rows.length);
+  }
+  return rows.length;
+}

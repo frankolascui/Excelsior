@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type Reac
 import type { AttributeRewards, GameState, Habit, Impact, Quest, QuestType } from './types';
 import { ATTRIBUTES, attributeHistory, attributeLevel, attributeXp, avatarInfo, formatAttrXp, habitRewards, questRewards } from './attributes';
 import {
-  daysUntil, CUSTOM_LIMITS, dayKey, habitAtRisk, impactOf, TYPE_IMPACT, habitDayCount, habitStreak, habitWeekCount, habitXp, isHabitDone, levelInfo, QUEST_LABEL, repeatLabel, questXp, shiftDay, totalXp, XP_RULES,
+  daysUntil, CUSTOM_LIMITS, dayKey, habitAtRisk, habitPausedOn, impactOf, TYPE_IMPACT, habitDayCount, habitStreak, habitWeekCount, habitXp, isHabitDone, levelInfo, QUEST_LABEL, repeatLabel, questXp, shiftDay, totalXp, XP_RULES,
 } from './game';
 import { CustomizeToggle, InlineEdit, RewardEditor, sameRewards, type CustomValue } from './customize';
 import { RitualCTA } from './ritual';
@@ -448,12 +448,14 @@ export function HabitItem({
         <span className="item-meta">
           {compact && habit.progression && <span className="freq-tag goal-tag" title="Meta actual (sobrecarga progresiva)"><Icon name="trend" /> {progressionText(habit)}</span>}
           {perDay > 1 && <DayPips name={habit.name} count={todayCount} max={perDay} onSet={onSetCount} />}
+          {!done && habitPausedOn(state, habit.id, today) && <span className="freq-tag paused-tag" title="Las tarjetas están en pausa: hoy no cuenta como fallado"><Icon name="pause" /> En pausa</span>}
           {weekly && <span className={weekDone ? 'freq-tag done' : 'freq-tag'}>{weekCount}/{habit.perWeek} esta semana{weekDone && <> <Icon name="check" /></>}</span>}
           <span className="week" aria-label="Últimos 7 días">
             {week.map((d) => {
               const on = isHabitDone(state, habit.id, d);
-              const cls = on ? 'dot on' : shields.includes(d) ? 'dot shield' : 'dot';
-              const tip = `${dayWords(d)}${on ? ': hecho' : shields.includes(d) ? ': congelado con un escudo' : ''}`;
+              const rest = !on && habitPausedOn(state, habit.id, d);
+              const cls = on ? 'dot on' : shields.includes(d) ? 'dot shield' : rest ? 'dot paused' : 'dot';
+              const tip = `${dayWords(d)}${on ? ': hecho' : shields.includes(d) ? ': congelado con un escudo' : rest ? ': en pausa (vacaciones)' : ''}`;
               return onToggleDay && d !== today
                 ? <button type="button" key={d} className={cls} title={tip} aria-label={`${on ? 'Desmarcar' : 'Marcar'} ${habit.name} (${dayWords(d).toLowerCase()})`} aria-pressed={on} onClick={() => onToggleDay(d)} />
                 : <span key={d} className={cls} title={tip} />;

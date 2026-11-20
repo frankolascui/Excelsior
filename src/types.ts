@@ -255,6 +255,19 @@ export interface Boss {
   rules?: 2;
 }
 
+/**
+ * Una pausa de las tarjetas (vacaciones). Cubre del día `from` al `until` (incluidos; null = hasta reanudarla).
+ * `endedOn`: día en que la reanudaste antes de tiempo (ese día ya no está en pausa).
+ * `shifted`: días que se movieron las fechas de repaso al terminar (sin campo = aún sin mover).
+ */
+export interface StudyPause {
+  id: string;
+  from: string;
+  until: string | null;
+  endedOn?: string;
+  shifted?: number;
+}
+
 export interface GameState {
   version: 6;
   profile: Profile | null;
@@ -289,6 +302,8 @@ export interface GameState {
   newsLatest?: string;
   /** Minutos al día para repasar en Academy (sin campo = sin límite). */
   academyBudgetMin?: number;
+  /** Pausas de las tarjetas de Academy (vacaciones): esos días no vencen repasos ni cuenta el hábito. */
+  studyPauses?: StudyPause[];
   /** Avatares a los que ya has ascendido con su ritual. Sin el campo (partidas antiguas) se calculan como antes. */
   ascended?: string[];
   /** Respuestas que diste a Hiperión en cada ritual de ascensión. */
