@@ -6,7 +6,7 @@ import { useCloud } from './cloud';
 import { refreshSocial, useSocial } from './social';
 import { challengeState, refreshGuild, useGuild } from './guilds';
 import { freshMe } from './ranking-ui';
-import { crownCheck } from './trophies';
+import { crownCheck, friendsCheck } from './trophies';
 import { acceptInvite, captureInvite, clearInvite, prepareInvite, type InviteOffer } from './invite';
 
 // Si se abrió un enlace de invitación, el tag queda guardado hasta que haya cuenta.
@@ -66,6 +66,18 @@ export function useSocialAlerts(game: Game): SocialAlerts {
       game.toast('{i:crown} ¡Ganaste la semana entre tus amigos! Corona y +50 {i:coin} en tu inventario', 'level');
     }
   }, [me, social.loading, game.cloudChecked, friendsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Aliados: trofeo y título al tener 1, 3 y 8 amigos (sin monedas).
+  useEffect(() => {
+    if (!me || social.loading || !game.cloudChecked || friendIds.length === 0) return;
+    const now = Date.now();
+    const next = friendsCheck(game.state, friendIds.length, now);
+    if (next === game.state) return;
+    const got = (next.trophies ?? []).filter((t) => !(game.state.trophies ?? []).some((x) => x.id === t.id));
+    game.act((s) => friendsCheck(s, friendIds.length, now));
+    const last = got[got.length - 1];
+    if (last) game.toast(`{i:${last.icon}} Trofeo «${last.name}»: ya puedes llevar el título «${last.title}». Está en tu inventario.`, 'level');
+  }, [me, social.loading, game.cloudChecked, friendIds.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!online) return { amigos: 0, gremios: 0, invite: null, answerInvite };
   const amigos = social.rows.filter((r) => r.status === 'pending' && r.addressee === me).length;

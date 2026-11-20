@@ -9,7 +9,17 @@ export const CROWN_COINS = 50;
 export const CROWN_TITLE = 'Corona de la semana';
 export const MVP_TITLE = 'MVP del gremio';
 
-export const TROPHY_KIND: Record<Trophy['kind'], string> = { guild: 'Estandarte de gremio', mvp: 'MVP', crown: 'Corona semanal' };
+export const TROPHY_KIND: Record<Trophy['kind'], string> = { guild: 'Estandarte de gremio', mvp: 'MVP', crown: 'Corona semanal', friends: 'Aliados' };
+
+/**
+ * Hitos de amigos: dan trofeo y título, sin monedas (con cuentas falsas se podrían inflar).
+ * Si luego quitas a un amigo, el trofeo se queda.
+ */
+export const FRIEND_MILESTONES = [
+  { n: 1, name: 'Primer aliado', icon: 'user-check', title: 'Leal' },
+  { n: 3, name: 'La compañía', icon: 'users', title: 'Camarada' },
+  { n: 8, name: 'La hueste', icon: 'linked-rings', title: 'Corazón de la hueste' },
+] as const;
 
 export const trophies = (s: GameState): Trophy[] => s.trophies ?? [];
 
@@ -46,4 +56,17 @@ export function crownCheck(s: GameState, people: PublicProfile[], me: string, no
     kind: 'crown', sourceId: weekKey(start), name: 'Corona de la semana', icon: 'crown', at: now,
     detail: `Semana del ${short(start)} entre amigos`, coins: CROWN_COINS, title: CROWN_TITLE,
   });
+}
+
+/** Da los trofeos de amigos que te correspondan por cuántos amigos aceptados tienes ahora. */
+export function friendsCheck(s: GameState, friends: number, now: number): GameState {
+  let next = s;
+  for (const m of FRIEND_MILESTONES) {
+    if (friends < m.n) break;
+    next = addTrophy(next, {
+      kind: 'friends', sourceId: `friends-${m.n}`, name: m.name, icon: m.icon, at: now,
+      detail: m.n === 1 ? 'Tu primer amigo en Excelsior' : `${m.n} amigos en Excelsior`, title: m.title,
+    });
+  }
+  return next;
 }

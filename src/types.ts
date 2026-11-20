@@ -323,7 +323,7 @@ export interface GameState {
 /** Trofeo ganado con otros: estandarte de un encargo de gremio, MVP del encargo o corona de la semana entre amigos. */
 export interface Trophy {
   id: string;
-  kind: 'guild' | 'mvp' | 'crown';
+  kind: 'guild' | 'mvp' | 'crown' | 'friends';
   /** Encargo o semana que lo dio (no se gana dos veces el mismo). */
   sourceId: string;
   name: string;
