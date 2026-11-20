@@ -26,7 +26,7 @@ describe('novedades', () => {
   it('agrupa por versión entera con sus actualizaciones', () => {
     const g = newsGroups();
     expect(g.map((x) => x.major.version)).toEqual(['3.0', '2.0', '1.0']);
-    expect(g[0].updates.map((n) => n.version)).toEqual(['3.1']);
+    expect(g[0].updates.map((n) => n.version)).toEqual(['3.5', '3.1']);
     expect(g[1].updates.map((n) => n.version)).toEqual(['2.2', '2.1']);
     expect(g[2].updates.length).toBe(18);
   });
