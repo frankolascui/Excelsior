@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { SureHost } from './confirm';
+import { HealthHandoff, hasHealthHandoff } from './health-handoff';
 import { APP_VERSION, APP_VERSION_LABEL } from './version';
 import { AchievementPopup } from './achievements-ui';
 import { useHealthBridge } from './health-ui';
@@ -57,6 +58,7 @@ export default function App() {
   useAgendaAlerts(game.state, game.toast);
   const { state } = game;
   const [tab, setTab] = useState<Tab>(tabFromHash);
+  const [handoff, setHandoff] = useState(hasHealthHandoff); // noches del Diario de Sueño por traer
   const [preselect, setPreselect] = useState<string | null>(null);
   const [presetIntent, setPresetIntent] = useState('');
   const [muted, setMutedState] = useState(isMuted);
@@ -122,6 +124,7 @@ export default function App() {
     setTour(null);
   }
 
+  const endHandoff = useCallback(() => setHandoff(false), []);
   function toggleSound() {
     setMuted(!muted);
     setMutedState(!muted);
@@ -286,10 +289,13 @@ export default function App() {
       {review && !tour && !ritual && <ReviewDialog game={game} guide={tutorial.guide} onClose={() => setReview(false)} />}
 
       <SureHost />
+      <HealthHandoff toast={game.toast} onDone={endHandoff}
+        ready={introSeen && (!cloud.email || game.cloudChecked)}
+        blocked={!!tour || ritual || review || !!game.levelUp || !!game.conflict} />
       <NewsGate
         seen={latestVersion(state.newsSeen, state.newsLatest, loadNewsSeen())} createdAt={state.profile.createdAt}
         ready={introSeen && (!cloud.email || game.cloudChecked)}
-        blocked={!!tour || ritual || review || !!game.levelUp || !!game.conflict}
+        blocked={!!tour || ritual || review || !!game.levelUp || !!game.conflict || handoff}
         markSeen={() => { markNewsSeen(); game.act((s) => (latestVersion(s.newsLatest, APP_VERSION) === s.newsLatest ? s : { ...s, newsLatest: APP_VERSION })); }}
       />
 

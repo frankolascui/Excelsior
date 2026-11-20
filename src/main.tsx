@@ -5,9 +5,11 @@ import { IconDefs } from './icons';
 import { applyTheme, loadTheme } from './theme';
 import { installCheckPulse, installShine } from './shine';
 import { installDoneFeedback } from './motion';
+import { stashHealthHandoff } from './health-handoff';
 import './styles.css';
 import './motion.css';
 
+stashHealthHandoff(); // antes de que App lea la pestaña del enlace
 applyTheme(loadTheme());
 installShine();
 installCheckPulse();
