@@ -2,7 +2,7 @@
 import type { KeyboardEvent } from 'react';
 import type { GameState } from './types';
 import { citiesOf, kingdomProgress, realmProgress, realms, realmTotals, stageFor } from './kingdoms';
-import { healthFounded } from './health';
+import { healthFounded, healthStructures } from './health';
 import { HEALTH_KINGDOM } from './nav-state';
 import { useWidth } from './charts';
 import { Birds, Clouds, Mist } from './sky-fx';
@@ -51,7 +51,7 @@ export function RealmMap({ state, onSelect, realmId }: { state: GameState; onSel
     y: Math.max(40, Math.min(H - 70, fy * H)),
   });
   // El Reino de la Salud también es un reino del mapa: crece con sus obras (12 = castillo glorioso).
-  const works = state.health?.works.length ?? 0;
+  const works = healthStructures(state);
   const healthStage = stageFor(works);
   const monument = <T extends object>(p: T) => ({ ...p, progress: 1, complete: true, stage: 'Monumento', icon: 'laurel-crown' as const });
   const entries = inside ? citiesOf(state, inside.id).map((c) => {
@@ -96,7 +96,7 @@ export function RealmMap({ state, onSelect, realmId }: { state: GameState; onSel
           <p className="muted chart-sub">
             {inside
               ? <>{nodes.length} {nodes.length === 1 ? 'ciudad' : 'ciudades'} · {realm.built} {realm.built === 1 ? 'construcción levantada' : 'construcciones levantadas'}</>
-              : <>{realm.built}/{realm.total} construcciones en {nodes.length - (healthFounded(state) ? 1 : 0)} {nodes.length - (healthFounded(state) ? 1 : 0) === 1 ? 'reino' : 'reinos'}{works > 0 && <> · {works} {works === 1 ? 'obra' : 'obras'} de salud</>}</>}
+              : <>{realm.built}/{realm.total} construcciones en {nodes.length - (healthFounded(state) ? 1 : 0)} {nodes.length - (healthFounded(state) ? 1 : 0) === 1 ? 'reino' : 'reinos'}{works > 0 && <> · {works} {works === 1 ? 'estructura' : 'estructuras'} de salud</>}</>}
           </p>
         </div>
       </header>
