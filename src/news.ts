@@ -44,6 +44,7 @@ export const NEWS: NewsEntry[] = [
         '«Hoy» de Academy aparece al momento, sin esperar a calcularlo.',
       ] },
       { name: 'Hábitos y salud', items: [
+        'Reino de la Salud y constancia: cada semana con el Templo del Sueño es una semana constante. A las 4, 12, 26 y 52 semanas constantes se levanta un monumento (+25, 50, 100 y 200 monedas), con tu racha de semanas seguidas.',
         'Cada hábito muestra su meta, el siguiente escalón y cuánto te falta para subirlo.',
         'Hábitos de varias veces al día: una marca cumple el día y las veces de más son estrellas que suman XP.',
         'Arreglada la casilla del peso de la noche, que se montaba encima de lo de abajo.',
