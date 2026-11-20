@@ -12,7 +12,7 @@ import { formatMinutes } from './ui';
 import { confetti } from './confetti';
 import { sfx } from './sfx';
 import {
-  acceptInvite, buildGoal, cancelInvite, CHALLENGES, challengeProgress, challengeState, challengeTemplate, claimReward, createGuild,
+  acceptInvite, buildGoal, cancelInvite, CHALLENGES, challengeProgress, challengeState, countedContributions, challengeTemplate, claimReward, createGuild,
   declineInvite, EMBLEM_NAME, EMBLEMS, GUILD_MAX, guildLevel, guildXpFrom, invite, kick, leaveGuild, memberShare, METRIC_LABEL, refreshGuild,
   byRank, canCommand, canKick, demote, makeLeader, OFFICER_MAX, promote, RANK_LABEL, rankOf, successor, type Rank,
   startChallenge, useGuild, type ChallengeRow, type ChallengeTemplate, type Contribution, type Goal, type Metric,
@@ -136,7 +136,7 @@ function ChallengeCard({ game, c, now }: { game: Game; c: ChallengeRow; now: num
   const g = useGuild();
   const me = useCloud().userId!;
   const t = challengeTemplate(c.template);
-  const contribs: Contribution[] = g.contributions.filter((x) => x.challenge_id === c.id);
+  const contribs: Contribution[] = countedContributions(c, g.contributions.filter((x) => x.challenge_id === c.id), g.members.map((m) => m.user_id));
   const p = challengeProgress(c.goal, contribs);
   const st = challengeState(c, now);
   const fight = st === 'active' && t?.kind === 'jefe' && !!t.art;
