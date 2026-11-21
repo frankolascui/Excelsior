@@ -39,8 +39,11 @@ const game = (p) => p.evaluate(() => JSON.parse(localStorage.getItem('excelsior:
 const count = async (p) => (await game(p)).habitCompletions.filter((c) => c.habitId === 'h3' && c.day === day(0)).length;
 
 const p = await open({ width: 1280, height: 900 });
+check((await p.locator('[data-habit="h1"] .goal-tag').innerText()).includes('meta'), 'en la fila, solo la meta en una línea');
+check(await p.locator('[data-habit="h1"] [data-testid="habit-goal"]').count() === 0, 'el bloque de la meta no se ve hasta abrir el hábito');
+for (const id of ['h1', 'h2', 'h4']) await p.click(`[data-habit="${id}"] .habit-open`);
 const leer = p.locator('[data-habit="h1"] [data-testid="habit-goal"]');
-check(await leer.isVisible(), 'la sobrecarga se ve en la tarjeta del hábito');
+check(await leer.isVisible(), 'al abrir el hábito se ve la sobrecarga');
 const t = await leer.innerText();
 check(t.includes('20 min') && t.includes('siguiente 25 min') && t.includes('final 60 min'), 'meta actual, siguiente y final');
 check(await leer.locator('.goal-steps i').count() === 10 && await leer.locator('.goal-steps i.on').count() === 2, 'escalones: 2 de 10 subidos');
@@ -62,7 +65,7 @@ await p.click('[data-habit="h3"] .check');
 check(await count(p) === 1 && await p.locator('[data-habit="h3"].done').count() === 1, 'y lo vuelve a marcar con una sola vez');
 
 // El editor enseña las veces al día con botones, antes de la meta.
-await p.click('[data-habit="h4"] .edit-btn');
+await p.click('[data-habit="h4"] .edit-btn'); // ya abierto arriba
 check(await p.isVisible('.perday-input [role="radiogroup"]'), 'veces al día con botones en el editor');
 await p.click('.perday-input button:has-text("2 veces")');
 await p.click('li.item.editing button:has-text("Guardar")');

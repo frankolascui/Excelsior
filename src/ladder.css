@@ -1,32 +1,30 @@
 /* Escalera de hábitos (ladder-ui.tsx) */
-.ladder { display: grid; gap: 10px; }
+.hladder { display: grid; gap: 8px; }
 .ladder-head { display: flex; align-items: center; gap: 10px; }
-.ladder-head > .ico { font-size: 1.4em; color: var(--gold); flex: none; }
+.ladder-head > .ico { font-size: 1.25em; color: var(--muted); flex: none; }
 .ladder-head > div { flex: 1; min-width: 0; }
 .ladder-head h3, .ladder-head p { margin: 0; }
 .ladder-empty .secondary { justify-self: start; }
-.ladder-last { margin: 0; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); }
-.ladder-last .ico { vertical-align: -2px; }
-.ladder-last.up { border-color: color-mix(in srgb, var(--ok) 50%, transparent); }
-.ladder-last.repeat, .ladder-last.full { border-color: color-mix(in srgb, var(--gold) 50%, transparent); }
+.ladder-last { margin: 0; color: var(--muted); }
 .ladder-now { display: grid; gap: 6px; }
 .ladder-now p { margin: 0; }
 .ladder-now .hint { margin: 0; }
-.ladder-now-title b { font-size: 1.05em; }
-.ladder-live { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+
+.ladder-live { list-style: none; margin: 10px 0 4px; padding: 0; display: grid; gap: 4px; }
 .ladder-live li { display: grid; grid-template-columns: minmax(0, 9em) 1fr auto; align-items: center; gap: 10px; }
 .ladder-live-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ladder-bar { position: relative; height: 6px; border-radius: 3px; background: var(--line); }
-.ladder-bar i { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: var(--gold); }
-.ladder-live li.ok .ladder-bar i { background: var(--ok); }
-.ladder-bar em { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--fg); opacity: 0.5; }
-.ladder-plan summary { cursor: pointer; color: var(--muted); }
+.ladder-bar { position: relative; height: 4px; border-radius: 2px; background: var(--line); }
+.ladder-bar i { position: absolute; inset: 0 auto 0 0; border-radius: 2px; background: color-mix(in srgb, var(--muted) 70%, transparent); }
+.ladder-live li.ok .ladder-bar i { background: var(--c2); }
+.ladder-bar em { position: absolute; top: -2px; bottom: -2px; width: 1px; background: var(--fg); opacity: 0.35; }
+.ladder-plan summary { cursor: pointer; color: var(--muted); font-size: 13.5px; }
+.ladder-plan .habit-hint-actions { margin-top: 6px; }
 .ladder-steps, .ladder-edit { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 2px; }
 .ladder-steps li, .ladder-edit li { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); }
 .ladder-step-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .ladder-dot { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 0.75em; border: 1px solid var(--line); font-family: var(--mono); }
-.ladder-steps li.ls-done .ladder-dot { background: var(--ok); border-color: var(--ok); color: var(--bg); }
-.ladder-steps li.ls-now .ladder-dot { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 25%, transparent); }
+.ladder-steps li.ls-done .ladder-dot { background: color-mix(in srgb, var(--c2) 25%, transparent); border-color: transparent; color: var(--fg); }
+.ladder-steps li.ls-now .ladder-dot { border-color: var(--c2); color: var(--fg); }
 .ladder-steps li.ls-done .ladder-step-text { color: var(--muted); }
 .ladder-steps li.ls-rest .ladder-step-text b, .ladder-steps li.ls-audit .ladder-step-text b { font-weight: 500; font-style: italic; }
 .ladder-edit li { align-items: flex-start; }

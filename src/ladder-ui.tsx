@@ -34,7 +34,7 @@ export function LadderPanel({ state, act, toast, guide, now }: { state: GameStat
   if (editing || !L) {
     if (!editing) {
       return (
-        <section className="panel ladder ladder-empty" aria-labelledby="ladder-h">
+        <section className="panel hladder ladder-empty" aria-labelledby="ladder-h">
           <div className="ladder-head">
             <Icon name="mountain-climb" />
             <div>
@@ -65,58 +65,35 @@ export function LadderPanel({ state, act, toast, guide, now }: { state: GameStat
   const last = lastWeekResult(L, now);
   const live = started && !L.finishedOn ? weekPcts(state, weekStart(now), today) : [];
   const weekN = weeksOnStep(L);
-  const doneSteps = L.finishedOn ? L.steps.length : Math.max(0, L.current);
 
+  const P = Math.round(LADDER_RULES.pct * 100);
+  const low = live.filter((x) => x.pct < LADDER_RULES.pct);
   return (
-    <section className="panel ladder" aria-labelledby="ladder-h" data-testid="ladder">
+    <section className="panel hladder" aria-labelledby="ladder-h" data-testid="ladder">
       <div className="ladder-head">
         <Icon name="mountain-climb" />
         <div>
           <h3 id="ladder-h">Escalera de hábitos</h3>
-          <p className="muted small-text mono">{doneSteps} de {L.steps.length} escalones{L.finishedOn ? ' · terminada' : started ? ` · escalón ${L.current + 1}${weekN > 1 ? `, semana ${weekN}` : ''}` : ` · empieza el ${fmt(L.startedOn)}`}</p>
+          <p className="muted small-text">{L.finishedOn ? 'Terminada' : started ? `Escalón ${L.current + 1} de ${L.steps.length}${weekN > 1 ? ` · semana ${weekN}` : ''}` : `Empieza el ${fmt(L.startedOn)}`}</p>
         </div>
         <button className="icon-btn" onClick={() => setEditing(true)} aria-label="Editar la escalera" title="Editar los escalones que faltan"><Icon name="pencil" /></button>
       </div>
 
-      {last && (
-        <p className={`ladder-last ${last.result}`} data-testid="ladder-last">
-          {last.result === 'up' && <><Icon name="trend" /> La semana pasada todo pasó del {Math.round(LADDER_RULES.pct * 100)} %: subes un escalón.</>}
-          {last.result === 'repeat' && <><Icon name="repeat" /> La semana pasada {last.below!.length === 1 ? <>«{last.below![0]}» quedó</> : <>{last.below!.map((n) => `«${n}»`).join(', ')} quedaron</>} por debajo del {Math.round(LADDER_RULES.pct * 100)} %. Repites esta semana: mejor asentarlo que hundirse.</>}
-          {last.result === 'full' && <><Icon name="alert" /> Ya tienes {LADDER_RULES.maxHabits} hábitos o más. Retira uno consolidado para que entre el siguiente.</>}
-        </p>
-      )}
-
       {L.finishedOn ? (
-        <div className="habit-hints-head ladder-done">
-          <span className="tour-portrait" aria-hidden="true"><GuidePortrait /></span>
-          <p><span className="eyebrow">{guide}</span><br />Has subido la escalera entera. Revisa qué hábitos ya te salen solos y retíralos, o añade escalones nuevos.</p>
-        </div>
+        <p className="ladder-now">Has subido la escalera entera. Retira los hábitos que ya te salen solos, o añade escalones.</p>
       ) : step ? (
         <div className="ladder-now">
-          <p className="eyebrow">Esta semana · desde el {fmt(L.week!)}</p>
-          <p className="ladder-now-title"><b>{stepTitle(step)}</b> <span className="muted small-text">{stepDetail(step)}</span></p>
-          {live.length > 0 && (
-            <ul className="ladder-live" aria-label="Cómo vas esta semana">
-              {live.map((x) => {
-                const pct = Math.round(x.pct * 100);
-                return (
-                  <li key={x.habit.id} className={x.pct >= LADDER_RULES.pct ? 'ok' : 'low'}>
-                    <span className="ladder-live-name">{x.habit.name}</span>
-                    <span className="ladder-bar" aria-hidden="true"><i style={{ width: `${pct}%` }} /><em style={{ left: `${LADDER_RULES.pct * 100}%` }} /></span>
-                    <span className="mono small-text">{x.done}/{x.need}</span>
-                  </li>
-                );
-              })}
-            </ul>
+          <p className="ladder-now-title"><span className="muted">Esta semana:</span> <b>{stepTitle(step)}</b> <span className="muted small-text">{stepDetail(step)}</span></p>
+          {last && (
+            <p className={`ladder-last small-text ${last.result}`} data-testid="ladder-last">
+              {last.result === 'up' && <>La semana pasada todo pasó del {P} %: subes un escalón.</>}
+              {last.result === 'repeat' && <>Repites la semana: {last.below!.map((n) => `«${n}»`).join(', ')} {last.below!.length === 1 ? 'quedó' : 'quedaron'} por debajo del {P} %.</>}
+              {last.result === 'full' && <>Ya tienes {LADDER_RULES.maxHabits} hábitos o más: retira uno consolidado para que entre el siguiente.</>}
+            </p>
           )}
-          <p className="hint">{next
-            ? <>Si el domingo todo está al {Math.round(LADDER_RULES.pct * 100)} % o más, el lunes sube: <b>{stepTitle(next)}</b>.</>
-            : <>Es el último escalón: si el domingo todo está al {Math.round(LADDER_RULES.pct * 100)} %, terminas la escalera.</>}{live.length > 0 && ' Cuenta hasta ayer.'}</p>
-          <div className="habit-hint-actions">
-            <button className="ghost small" onClick={() => sureThen({ title: next ? `¿Subir ya a «${stepTitle(next)}»?` : '¿Dar la escalera por terminada?', message: 'Te saltas la regla del 80 % de esta semana.', confirmLabel: 'Subir ya', icon: 'trend' }, () => { act((s) => climbNow(s, Date.now())); sfx.confirm(); })}>
-              <Icon name="trend" /> Subir ya
-            </button>
-          </div>
+          <p className="hint">{live.length > 0 && (low.length === 0 ? `Todo va al ${P} % o más. ` : `Por debajo del ${P} %: ${low.map((x) => x.habit.name).join(', ')}. `)}{next
+            ? <>Si el domingo todo llega al {P} %, el lunes entra <b>{stepTitle(next)}</b>.</>
+            : <>Es el último escalón.</>}</p>
         </div>
       ) : (
         <p className="ladder-now">Empieza el lunes {fmt(L.startedOn)} con <b>{stepTitle(L.steps[0])}</b>.</p>
@@ -124,6 +101,20 @@ export function LadderPanel({ state, act, toast, guide, now }: { state: GameStat
 
       <details className="ladder-plan">
         <summary>Ver el plan</summary>
+        {live.length > 0 && (
+          <ul className="ladder-live" aria-label="Cómo vas esta semana (hasta ayer)">
+            {live.map((x) => {
+              const pct = Math.round(x.pct * 100);
+              return (
+                <li key={x.habit.id} className={x.pct >= LADDER_RULES.pct ? 'ok' : 'low'}>
+                  <span className="ladder-live-name">{x.habit.name}</span>
+                  <span className="ladder-bar" aria-hidden="true"><i style={{ width: `${pct}%` }} /><em style={{ left: `${LADDER_RULES.pct * 100}%` }} /></span>
+                  <span className="mono small-text">{x.done}/{x.need}</span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
         <ol className="ladder-steps">
           {L.steps.map((x, i) => {
             const state_ = L.finishedOn || i < L.current ? 'done' : i === L.current ? 'now' : 'next';
@@ -136,9 +127,16 @@ export function LadderPanel({ state, act, toast, guide, now }: { state: GameStat
             );
           })}
         </ol>
-        <button className="link danger-text" onClick={() => sureThen({ title: '¿Borrar la escalera?', message: 'Los hábitos que ya entraron se quedan en tu lista.', confirmLabel: 'Borrar escalera' }, () => { sfx.remove(); act(deleteLadder); })}>
-          <Icon name="trash" /> Borrar la escalera
-        </button>
+        <div className="habit-hint-actions">
+          {step && !L.finishedOn && (
+            <button className="ghost small" onClick={() => sureThen({ title: next ? `¿Subir ya a «${stepTitle(next)}»?` : '¿Dar la escalera por terminada?', message: `Te saltas la regla del ${P} % de esta semana.`, confirmLabel: 'Subir ya', icon: 'trend' }, () => { act((s) => climbNow(s, Date.now())); sfx.confirm(); })}>
+              <Icon name="trend" /> Subir ya
+            </button>
+          )}
+          <button className="ghost small danger" onClick={() => sureThen({ title: '¿Borrar la escalera?', message: 'Los hábitos que ya entraron se quedan en tu lista.', confirmLabel: 'Borrar escalera' }, () => { sfx.remove(); act(deleteLadder); })}>
+            <Icon name="trash" /> Borrar la escalera
+          </button>
+        </div>
       </details>
     </section>
   );
@@ -166,7 +164,7 @@ function LadderEditor({ state, guide, now, onSave, onCancel }: {
   const valid = steps.slice(locked).every((x) => x.kind !== 'new' || x.name?.trim()) && steps.length > 0;
   const full = steps.length >= LADDER_RULES.maxSteps;
   return (
-    <section className="panel ladder" aria-labelledby="ladder-edit-h" data-testid="ladder-editor">
+    <section className="panel hladder" aria-labelledby="ladder-edit-h" data-testid="ladder-editor">
       <div className="ladder-head">
         <Icon name="mountain-climb" />
         <h3 id="ladder-edit-h">{L ? 'Editar la escalera' : 'Crear mi escalera'}</h3>

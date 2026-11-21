@@ -287,7 +287,9 @@ await page.click('button[aria-label="Renombrar Reino del Código"]');
 await page.fill('[aria-label="Nuevo nombre del reino"]', 'Reino de la Programación');
 await page.press('[aria-label="Nuevo nombre del reino"]', 'Enter');
 await page.fill('.kingdom input', 'Terminar una calculadora');
-await page.click('.kingdom [role=radio]:has-text("Torreón")');
+await page.click('.kingdom [role=radio]:has-text("Forja")'); // V3.5: el edificio va por atributo y el tamaño por impacto
+await page.click('.kingdom button[aria-label^="Tamaño de la construcción"]');
+await page.click('.pop-impact-opt.imp-alto');
 await page.click('.kingdom button:has-text("Construir")');
 await page.fill('.kingdom input', 'Aprender Git');
 await page.click('.kingdom button:has-text("Construir")');
@@ -313,6 +315,7 @@ await page.click('[data-tour="habits"] .customize');
 await page.fill('#new-habit-xp', '15');
 await page.fill('#new-habit-creacion', '5');
 await page.click('[data-tour="habits"] button:has-text("Añadir")');
+await page.click('.habit-open:has-text("Tocar la guitarra")'); // XP, atributos y Editar van dentro del hábito abierto
 check(await seen('.item:has-text("Tocar la guitarra") .rewards[aria-label="+2 Voluntad, +5 Impacto"]'), 'hábito a medida con varios atributos: +2 Voluntad, +5 Impacto');
 check(await seen('.item:has-text("Tocar la guitarra") .xp-tag:has-text("+15 XP")'), 'hábito a medida da +15 XP');
 await page.click('button[aria-label="Editar Tocar la guitarra"]');
@@ -412,7 +415,7 @@ check(await seen('.news-dialog h2:has-text("La era social")'), 'el aviso de nove
 await page.screenshot({ path: `${out}/20-news.png` });
 await page.click('.news-dialog button.primary');
 await page.click('.app-version .version-btn');
-check(await seen('.news-center .news-index-item.on:has-text("v3.1")'), 'pulsar la versión abre el índice de novedades en la versión actual');
+check(await seen('.news-center .news-index-item.on:has-text("v3.5")'), 'pulsar la versión abre el índice de novedades en la versión actual');
 check(await page.locator('.news-index-group').count() === 3, 'el índice agrupa por versión entera (3.0, 2.0, 1.0)');
 await page.click('.news-index-subhead:has-text("Actualizaciones 1.x")');
 check(await page.locator('.news-index-item.sub').count() === 18, 'las actualizaciones 1.x salen en su subapartado');

@@ -446,10 +446,9 @@ export function HabitItem({
           ? <button type="button" className="habit-open" aria-expanded={open} onClick={() => setOpen(!open)} title="Ver historial"><span className="item-title">{habit.name}</span><Icon name="chevron-down" /></button>
           : <span className="item-title">{habit.name}</span>}
         <span className="item-meta">
-          {compact && habit.progression && <span className="freq-tag goal-tag" title="Meta actual (sobrecarga progresiva)"><Icon name="trend" /> {progressionText(habit)}</span>}
           {perDay > 1 && <DayPips name={habit.name} count={todayCount} max={perDay} onSet={onSetCount} />}
           {!done && habitPausedOn(state, habit.id, today) && <span className="freq-tag paused-tag" title="Las tarjetas están en pausa: hoy no cuenta como fallado"><Icon name="pause" /> En pausa</span>}
-          {weekly && <span className={weekDone ? 'freq-tag done' : 'freq-tag'}>{weekCount}/{habit.perWeek} esta semana{weekDone && <> <Icon name="check" /></>}</span>}
+          {weekly && <span className={weekDone ? 'freq-tag done' : 'freq-tag'}>{weekCount}/{habit.perWeek} esta semana</span>}
           <span className="week" aria-label="Últimos 7 días">
             {week.map((d) => {
               const on = isHabitDone(state, habit.id, d);
@@ -462,25 +461,32 @@ export function HabitItem({
             })}
           </span>
           <span className="mono streak">{iced && <Icon name="snowflake" />}{streak > 0 ? `racha ${streak}${weekly ? ' sem' : ''}` : 'sin racha'}</span>
-          {!compact && <span className="mono xp-tag">+{habitXp(habit)} XP</span>}
-          {!compact && <RewardTags rewards={habit.rewards} />}
+          {habit.progression && <span className="goal-tag" title="Meta actual (sobrecarga progresiva)">meta {progressionText(habit)}</span>}
         </span>
-        {!compact && <HabitGoal state={state} habit={habit} now={now} />}
         {(risk || (savable && stock > 0)) && (
           <p className="habit-risk small-text">
-            {risk && <span><Icon name="alert" /> Ayer fallaste: nunca dos días seguidos. {habit.minimum ? <>Si hoy es un día malo, vale con lo mínimo: <b>{habit.minimum}</b>.</> : 'Hoy cuenta aunque sea poco.'}</span>}
-            {savable && (stock > 0
-              ? <button type="button" className="link ice-link" onClick={() => onShield!(savable)}><Icon name="snowflake" /> Congelar ayer con un escudo (tienes {stock})</button>
-              : risk && <span className="muted"> O compra un escudo de racha en la Tienda de la Arena.</span>)}
+            {risk && <span>Ayer fallaste. {habit.minimum ? <>Hoy vale con el mínimo: <b>{habit.minimum}</b>.</> : 'Hoy cuenta aunque sea poco.'}</span>}
+            {savable && stock > 0 && <button type="button" className="link ice-link" onClick={() => onShield!(savable)}><Icon name="snowflake" /> Congelar ayer (tienes {stock})</button>}
           </p>
         )}
-        {open && onToggleDay && <HabitHistory state={state} habit={habit} now={now} onToggleDay={onToggleDay} />}
+        {open && onToggleDay && (
+          <div className="habit-detail">
+            {!compact && <HabitGoal state={state} habit={habit} now={now} />}
+            <HabitHistory state={state} habit={habit} now={now} onToggleDay={onToggleDay} />
+            {!compact && (
+              <div className="habit-detail-foot">
+                <span className="mono xp-tag">+{habitXp(habit)} XP</span>
+                <RewardTags rewards={habit.rewards} />
+                <span className="habit-detail-actions">
+                  {onEdit && <button className="ghost small edit-btn" onClick={() => setEditing(true)} aria-label={`Editar ${habit.name}`} title="Veces, meta, mínimo y XP"><Icon name="sliders" /> Editar</button>}
+                  {onDelete && <button className="ghost small danger" onClick={() => sureThen({ title: `¿Borrar el hábito «${habit.name}»?`, message: 'Se borra también su historial y su racha.', confirmLabel: 'Borrar hábito' }, onDelete)} aria-label={`Borrar ${habit.name}`} title="Borrar"><Icon name="trash" /> Borrar</button>}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
-      <div className="item-actions">
-        {handle}
-        {onEdit && <button className="icon-btn edit-btn" onClick={() => setEditing(true)} aria-label={`Editar ${habit.name}`} title="Editar XP y atributos"><Icon name="sliders" /></button>}
-        {onDelete && <button className="icon-btn" onClick={() => sureThen({ title: `¿Borrar el hábito «${habit.name}»?`, message: 'Se borra también su historial y su racha.', confirmLabel: 'Borrar hábito' }, onDelete)} aria-label={`Borrar ${habit.name}`} title="Borrar"><Icon name="trash" /></button>}
-      </div>
+      {handle && <div className="item-actions">{handle}</div>}
     </li>
   );
 }

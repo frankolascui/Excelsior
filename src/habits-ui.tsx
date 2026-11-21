@@ -50,7 +50,7 @@ export function HabitHistory({ state, habit, now, onToggleDay }: { state: GameSt
         {habitStreakDays(state, habit.id, now) > 0 && shields.size > 0 && <span className="ice-text"><Icon name="snowflake" /> Racha congelada con un escudo</span>}
       </div>
       {habit.minimum && <p className="small-text"><b>Mínimo para un día malo:</b> {habit.minimum}</p>}
-      <p className="hint">Puedes marcar o desmarcar los últimos 7 días si se te olvidó. {!weekly && `Nunca falles dos días seguidos. Si ayer fallaste, puedes congelarlo con un escudo de racha (Tienda, ${SHIELD.cost} monedas, máximo ${SHIELD.max}) siempre que anteayer lo hicieras; solo vale para ayer y ese día no suma.`}</p>
+      <p className="hint">Pulsa un día de los últimos 7 para marcarlo o desmarcarlo.{!weekly && ` Si fallas un día, un escudo de la Tienda (${SHIELD.cost} monedas) congela el de ayer y la racha sigue.`}</p>
     </div>
   );
 }
@@ -144,7 +144,7 @@ export function HabitGoal({ state, habit, now }: { state: GameState; habit: Habi
   return (
     <div className="habit-goal" data-testid="habit-goal">
       <p className="habit-goal-head">
-        <Icon name="trend" /> <span className="muted">Meta</span> <b>{valueText(p, p.value)}</b>
+        <span className="muted">Meta</span> <b>{valueText(p, p.value)}</b>
         {!reached && next !== null && <span className="muted"> · siguiente {valueText(p, next)}</span>}
         {max !== undefined && !reached && <span className="muted"> · final {valueText(p, max)}</span>}
       </p>
@@ -329,10 +329,7 @@ export function HabitHints({ state, now, guide, onLevel, onRetire, onSnooze }: {
     <section className="panel habit-hints" aria-labelledby="habit-hints-h">
       <header className="habit-hints-head">
         <span className="tour-portrait" aria-hidden="true"><GuidePortrait /></span>
-        <div>
-          <p className="eyebrow">{guide}</p>
-          <h3 id="habit-hints-h">{hints.length === 1 ? 'Tengo algo que decirte de un hábito' : 'Tengo algo que decirte de tus hábitos'}</h3>
-        </div>
+        <h3 id="habit-hints-h" className="eyebrow">{guide}</h3>
       </header>
       <ul className="list plain">
         {hints.map((x) => {
@@ -341,18 +338,18 @@ export function HabitHints({ state, now, guide, onLevel, onRetire, onSnooze }: {
           const canLevel = p && nextValue(p) !== null;
           return x.kind === 'auto' ? (
             <li key={h.id} className="habit-hint auto">
-              <p><b>{h.name}</b>: {Math.round(x.pct * 100)} % de constancia en los últimos {PROGRESSION_RULES.autoDays} días. Ya lo has automatizado: te sale solo. Puedes retirarlo de la lista y poner tu energía en otro hábito.{canLevel && <> O súbelo a <b>{valueText(p!, nextValue(p!)!)}</b> si quieres seguir creciendo ahí.</>}</p>
+              <p><b>{h.name}</b> ya te sale solo ({Math.round(x.pct * 100)} % en {PROGRESSION_RULES.autoDays} días). ¿Lo retiras de la lista para centrarte en otro?</p>
               <div className="habit-hint-actions">
                 <button className="primary small" onClick={() => onRetire(h.id)}><Icon name="check" /> Retirarlo</button>
-                {canLevel && <button className="ghost small" onClick={() => onLevel(h.id)}><Icon name="trend" /> Subir la meta</button>}
+                {canLevel && <button className="ghost small" onClick={() => onLevel(h.id)} title={`Siguiente meta: ${valueText(p!, nextValue(p!)!)}`}><Icon name="trend" /> Subir la meta</button>}
                 <button className="ghost small" onClick={() => onSnooze(h.id, 'auto')}>Seguir con él</button>
               </div>
             </li>
           ) : (
             <li key={h.id} className="habit-hint level">
-              <p><b>{h.name}</b>: llevas {PROGRESSION_RULES.levelDays} días cumpliendo <b>{valueText(p!, p!.value)}</b>. Toca subir un poco: <b>{valueText(p!, x.next)}</b>{p!.max === x.next && ', tu meta final'}.</p>
+              <p><b>{h.name}</b>: {PROGRESSION_RULES.levelDays} días cumpliendo. Siguiente meta: <b>{valueText(p!, x.next)}</b>{p!.max === x.next && ' (la final)'}.</p>
               <div className="habit-hint-actions">
-                <button className="primary small" onClick={() => onLevel(h.id)}><Icon name="trend" /> Subir la meta ({valueText(p!, x.next)})</button>
+                <button className="primary small" onClick={() => onLevel(h.id)}><Icon name="trend" /> Subir la meta</button>
                 <button className="ghost small" onClick={() => onSnooze(h.id, 'level')}>Aún no</button>
               </div>
             </li>

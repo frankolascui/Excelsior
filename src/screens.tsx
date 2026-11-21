@@ -773,10 +773,10 @@ export function Habits({ game, guide }: { game: Game; guide: string }) {
         <h1 className="screen-title">Hábitos</h1>
         <InfoTip label="Cómo funcionan los hábitos">
           <p>+{XP_RULES.habit} XP cada vez que lo completes. Los diarios hacen racha de días; los de «N veces por semana», racha de semanas cumplidas (de lunes a domingo).</p>
-          <p>Los puntos son los últimos 7 días: pulsa uno para marcar un día que se te olvidó, o el nombre para ver su historial. Arrastra el asa para ordenarlos.</p>
-          <p>Mejor entre {HABITS_IDEAL.min} y {HABITS_IDEAL.max} hábitos a la vez: sostenibles con tu día a día y que de verdad cambien tu productividad o tu bienestar. Cuando uno ya te salga solo, retíralo desde «XP y atributos» y pon en su lugar el siguiente que necesites.</p>
+          <p>Los puntos son los últimos 7 días: pulsa uno para marcar un día que se te olvidó. Pulsa el nombre para ver su historial, su meta, su XP y los botones de editar y borrar. Arrastra el asa para ordenarlos.</p>
+          <p>Mejor entre {HABITS_IDEAL.min} y {HABITS_IDEAL.max} hábitos a la vez: sostenibles con tu día a día y que de verdad cambien tu productividad o tu bienestar. Cuando uno ya te salga solo, retíralo desde Editar y pon en su lugar el siguiente que necesites.</p>
           <p>Manda cada domingo tu % de la semana a un amigo con «Compartir mi semana»: cumplir delante de alguien ayuda.</p>
-          <p>Veces al día y sobrecarga progresiva (en «Veces, meta y XP» al crear, o en el botón de ajustes del hábito): ponle una meta que sube poco a poco, como minutos, una hora de dormir o veces por semana. Tras 14 días al 80 % Hiperión te propone subirla. Con un 90 % de constancia en 30 días te dirá que ya lo has automatizado y que puedes retirarlo para centrarte en otro.</p>
+          <p>Veces al día y sobrecarga progresiva (en «Veces, meta y XP» al crear, o en Editar): ponle una meta que sube poco a poco, como minutos, una hora de dormir o veces por semana. Tras 14 días al 80 % Hiperión te propone subirla. Con un 90 % de constancia en 30 días te dirá que ya lo has automatizado y que puedes retirarlo para centrarte en otro.</p>
         </InfoTip>
       </div>
       <div className="stack-gap" data-tour="habits">
@@ -790,11 +790,14 @@ export function Habits({ game, guide }: { game: Game; guide: string }) {
         onRetire={(id) => { act((s) => retireHabit(s, id, Date.now())); sfx.victory(); confetti({ count: 120 }); game.toast('{i:trophy} Hábito automatizado. A por el siguiente.', 'level'); }}
         onSnooze={(id, kind) => act((s) => snoozeHint(s, id, kind, Date.now()))} />
       <section className="panel">
-        <form className="quick-add inline" onSubmit={submit}>
+        <form className={name.trim() || open ? 'quick-add inline habit-add typing' : 'quick-add inline habit-add'} onSubmit={submit}>
           <input id="new-habit" value={name} onChange={(e) => setName(e.target.value)} placeholder="+ Nuevo hábito (ej. Leer 10 páginas)" maxLength={60} aria-label="Nombre del nuevo hábito" />
-          <Select id="new-habit-freq" label="Frecuencia" icon="repeat" value={perWeek} onChange={setPerWeek}
-            options={[{ value: 7, label: 'Cada día' }, ...Array.from({ length: maxPerWeek(perDay) }, (_, i) => i + 1).filter((n) => n !== 7).map((n) => ({ value: n, label: `${n} ${n === 1 ? 'vez' : 'veces'} por semana` }))]} />
-          <CustomizeToggle open={open} onToggle={() => setOpen(!open)} custom={custom.xp !== undefined || custom.rewards !== undefined || perDay > 1 || prog.kind !== 'none'} label="Veces, meta y XP" />
+          {/* Frecuencia y opciones solo al escribir: en reposo, una sola línea */}
+          {(name.trim() || open) && <>
+            <Select id="new-habit-freq" label="Frecuencia" icon="repeat" value={perWeek} onChange={setPerWeek}
+              options={[{ value: 7, label: 'Cada día' }, ...Array.from({ length: maxPerWeek(perDay) }, (_, i) => i + 1).filter((n) => n !== 7).map((n) => ({ value: n, label: `${n} ${n === 1 ? 'vez' : 'veces'} por semana` }))]} />
+            <CustomizeToggle open={open} onToggle={() => setOpen(!open)} custom={custom.xp !== undefined || custom.rewards !== undefined || perDay > 1 || prog.kind !== 'none'} label="Veces, meta y XP" />
+          </>}
           <button type="submit" className="primary" disabled={!name.trim()}><Icon name="plus" /> Añadir</button>
         </form>
         {open && (
@@ -809,10 +812,10 @@ export function Habits({ game, guide }: { game: Game; guide: string }) {
       <section className="panel">
         {state.habits.length > 0 && (
           <div className="share-week">
-            <span className={`habit-count mono${state.habits.length > HABITS_IDEAL.max ? ' over' : ''}`} title="Lo ideal son entre 4 y 7 hábitos a la vez">
-              {state.habits.length} {state.habits.length === 1 ? 'hábito' : 'hábitos'} · ideal {HABITS_IDEAL.min}–{HABITS_IDEAL.max}
+            <span className={`habit-count${state.habits.length > HABITS_IDEAL.max ? ' over' : ''}`} title={`Lo ideal son entre ${HABITS_IDEAL.min} y ${HABITS_IDEAL.max} hábitos a la vez`}>
+              {state.habits.length} {state.habits.length === 1 ? 'hábito' : 'hábitos'}{state.habits.length > HABITS_IDEAL.max && ` · lo ideal es ${HABITS_IDEAL.min}–${HABITS_IDEAL.max}`}
             </span>
-            <button type="button" className="ghost" onClick={shareWeek}><Icon name="send" /> Compartir mi semana</button>
+            <button type="button" className="link" onClick={shareWeek}><Icon name="send" /> Compartir mi semana</button>
           </div>
         )}
         {state.habits.length === 0 ? (

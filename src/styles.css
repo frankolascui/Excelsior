@@ -1662,3 +1662,44 @@ svg .node-icon { color: var(--fg); }
 .dw-screen :is(.primary, .secondary, .ghost, .danger-solid).big { min-height: 50px; padding: 13px 22px; border-radius: 14px; font-size: 18px; }
 .dw-screen .ghost { background: transparent; box-shadow: none; }
 .dw-screen .ghost > .ico:first-child { color: inherit; }
+
+/* ---------- Hábitos tranquilos (V3.5, «cuanto más simple, mejor»): una línea por hábito, lo demás al abrirlo ---------- */
+.streak { color: var(--muted); }
+.dot.on { box-shadow: none; }
+.freq-tag { border: 0; padding: 0; color: var(--muted); font-size: 12.5px; }
+.freq-tag.done { color: var(--c1); border: 0; }
+.goal-tag { color: var(--muted); font-size: 12.5px; }
+.item.at-risk { box-shadow: inset 2px 0 0 color-mix(in srgb, var(--gold) 70%, transparent); }
+.habit-risk { color: var(--muted); margin: 2px 0 0; }
+.habit-risk b { color: var(--fg); font-weight: 600; }
+.habit-detail { display: grid; gap: 10px; margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
+.habit-detail .habit-history, .habit-detail .habit-goal { margin: 0; }
+.habit-detail-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 13px; }
+.habit-detail-actions { display: flex; gap: 6px; margin-left: auto; }
+.habit-goal { margin: 0; padding: 0; border: 0; background: none; gap: 4px; }
+.habit-goal-head { font-size: 13.5px; }
+.habit-goal-head b { font-size: 14px; }
+.habit-hints-head { gap: 8px; margin-bottom: 2px; }
+.habit-hints .tour-portrait { width: 30px; height: 30px; font-size: 18px; animation: none; box-shadow: none; }
+.habit-hint { padding: 8px 0; }
+.habit-hint p { margin: 0 0 6px; font-size: 14.5px; }
+.share-week { margin-bottom: 8px; }
+.share-week .link { font-size: 13px; }
+.item-actions:has(> .drag-handle:only-child) { opacity: .55; }
+@media (max-width: 560px) {
+  /* En Hábitos solo queda el asa: la fila no baja a otra línea */
+  .item:has(> .item-actions > .drag-handle:only-child) { flex-wrap: nowrap; }
+  .habit-detail-actions { margin-left: 0; }
+}
+/* Nuevo hábito en reposo: campo y botón en la misma línea también en móvil */
+@media (max-width: 560px) {
+  .quick-add.habit-add:not(.typing) > input:first-child { flex: 1 1 auto; min-width: 0; }
+  .quick-add.habit-add:not(.typing) { flex-wrap: nowrap; }
+}
+.habit-hints-head h3.eyebrow { font-size: 11px; font-weight: 600; }
+/* Historial dentro del hábito abierto: calendario discreto */
+.habit-detail .hh-grid { grid-template-columns: repeat(7, minmax(0, 28px)); gap: 3px; }
+.habit-detail .hh-day { font-size: 11px; }
+.habit-detail .hh-day.on { background: color-mix(in srgb, var(--c2) 30%, var(--surface-2)); color: var(--fg); box-shadow: none; }
+.item:has(> .item-body > .habit-detail) { align-items: flex-start; }
+.item.done:has(> .item-body > .habit-detail) > :not(.check) { opacity: 1; }

@@ -31,7 +31,7 @@ async function open(st, now, viewport = { width: 1280, height: 900 }) {
   await p.evaluate(([s]) => { localStorage.setItem('excelsior:v1', s); localStorage.setItem('excelsior:guest', '1'); }, [JSON.stringify(st)]);
   await p.reload(); await p.waitForSelector('.nav');
   await p.evaluate(() => { location.hash = '#habitos'; });
-  await p.waitForSelector('.ladder');
+  await p.waitForSelector('.hladder');
   return p;
 }
 const game = (p) => p.evaluate(() => JSON.parse(localStorage.getItem('excelsior:v1')));
