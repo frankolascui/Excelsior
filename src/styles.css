@@ -1703,3 +1703,23 @@ svg .node-icon { color: var(--fg); }
 .habit-detail .hh-day.on { background: color-mix(in srgb, var(--c2) 30%, var(--surface-2)); color: var(--fg); box-shadow: none; }
 .item:has(> .item-body > .habit-detail) { align-items: flex-start; }
 .item.done:has(> .item-body > .habit-detail) > :not(.check) { opacity: 1; }
+
+/* ---------- Personaje más tranquilo (V3.5) ---------- */
+.attr-open { background: none; border: 0; padding: 0; color: inherit; font: inherit; font-weight: 500; cursor: pointer; text-align: left; display: inline-flex; align-items: center; gap: 4px; }
+.attr-open .ico-line { opacity: .45; transition: transform .2s; }
+.attr-open[aria-expanded='true'] .ico-line { transform: rotate(180deg); }
+.attr-open:hover { color: var(--c1); }
+.attrs.detailed .attr-desc { margin-top: 0; font-size: 13px; color: var(--muted); }
+.attrs.detailed .attr-desc .attr-tagline { color: var(--fg); }
+.attrs.detailed .attr-last { margin-top: 0; }
+.attrs.detailed .attr.asleep .attr-asleep-text { font-size: 12.5px; }
+@media (min-width: 900px) { .attrs.detailed { gap: 10px 28px; align-items: start; } }
+@media (max-width: 480px) { .attrs.detailed .attr-last { grid-row: auto; } }
+.attr-bar { height: 6px; }
+.heat-1 { fill: color-mix(in srgb, var(--c2) 22%, #0b0b0f); background: color-mix(in srgb, var(--c2) 22%, #0b0b0f); }
+.heat-2 { fill: color-mix(in srgb, var(--c2) 42%, #0b0b0f); background: color-mix(in srgb, var(--c2) 42%, #0b0b0f); }
+.heat-3 { fill: color-mix(in srgb, var(--c2) 66%, #0b0b0f); background: color-mix(in srgb, var(--c2) 66%, #0b0b0f); }
+.heat-4 { fill: var(--c2); background: var(--c2); }
+.goal-form.idle { grid-template-columns: 1fr auto; }
+.goal-form.idle input:first-child { grid-column: auto; }
+.path-detail .ritual-cta { justify-self: start; align-self: flex-start; margin-top: 4px; }

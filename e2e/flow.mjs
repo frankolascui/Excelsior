@@ -213,7 +213,7 @@ const attr = async (name) => (await page.textContent(`.attr:has-text("${name}") 
 check(await attr('Voluntad') === '19,3 XP', 'Voluntad 19,3 XP (con decimales)');
 check(await attr('Maestría') === '5 XP', 'Maestría 5 XP (el Deep Work de un tema es teoría)');
 check(await attr('Sabiduría') === '25,5 XP', 'Sabiduría 25,5 XP (Deep Work de estudio)');
-check((await page.textContent('.avatar-card')).includes('hacia Iniciado · 0 de 2 requisitos'), 'avatar: siguiente es Iniciado (nivel 3 + 3 días)');
+check((await page.textContent('.path-detail')).includes('Iniciado') && (await page.textContent('.path-detail-state')).includes('0/2 requisitos'), 'avatar: siguiente es Iniciado (nivel 3 + 3 días)');
 const order = await page.$$eval('.screen > *', (els) => els.map((e) => e.className.split(' ')[0] + (e.className.includes('avatar') ? ':avatar' : '')));
 console.log('orden Home:', order.join(' > '));
 
@@ -249,7 +249,8 @@ await page.hover('.chart svg rect[fill="transparent"]', { position: { x: 5, y: 6
 check(await seen('.chart-tip'), 'crosshair con tooltip al pasar por la gráfica');
 await page.mouse.move(0, 0);
 await (await page.$('section:has(#xp-chart-h)')).screenshot({ path: `${out}/05c-activity.png` });
-check(await seen('.req:has-text("Nivel global 3")'), 'Personaje muestra los requisitos del siguiente avatar');
+await page.click('.path-node:has-text("Iniciado")', { force: true });
+check(await seen('.path-reqs li:has-text("Nivel global 3")'), 'Personaje muestra los requisitos del siguiente avatar');
 await page.screenshot({ path: `${out}/05-character.png`, fullPage: true });
 
 // 7a. Metas del siguiente avatar
@@ -260,7 +261,8 @@ await page.fill('#goal-unit', 'personas');
 await page.click('.goal-form button:has-text("Añadir")');
 await page.click('.goal button:has-text("+1")');
 check(await seen('.goal >> text=1 / 10 personas'), 'meta personal suma +1');
-check(await seen('.req:has-text("Hablar con desconocidos")'), 'la meta aparece como requisito del avatar');
+await page.click('.path-node:has-text("Iniciado")', { force: true });
+check(await seen('.path-reqs li:has-text("Hablar con desconocidos")'), 'la meta aparece como requisito del avatar');
 await page.screenshot({ path: `${out}/05b-goals.png`, fullPage: true });
 
 // 7a2. Reinos: cada tarea es una construcción. Se abren en el nivel 3 (300 XP): 125 + 180 min de foco.
@@ -298,13 +300,13 @@ await page.waitForSelector('.city-scene .scaffold');
 await page.click('button[aria-label="Completar Terminar una calculadora"]');
 check(await seen('.toast:has-text("+50 XP")'), 'construir la torre da +50 XP');
 check(await seen('.kingdom-stage:has-text("Aldea")') && await seen('.kingdom-count:has-text("1 por construir")'), 'con una construcción el reino pasa a Aldea 1/2');
-check(await seen('.city-scene .bld.built') && await seen('.city-scene .palisade'), 'la ciudad dibuja el torreón y la empalizada de la villa');
+check(await seen('.city-scene .bld.built') && !(await page.$('.city-scene .palisade')), 'la ciudad dibuja la construcción; la empalizada llega con 3 (Villa)');
 await page.click('.kingdom-back button:has-text("Mapa del reino")');
 check(await seen('.realm') && !(await page.$('.kingdom')), 'el mapa se ve solo, sin las ciudades debajo');
 check(await seen('.kingdom-node[aria-label*="Aldea, 1 construcciones"]'), 'el mapa muestra el reino como Aldea con 1 construcción');
-check(await seen('.realm .chart-sub:has-text("Dominio 50 %")'), 'dominio del mapa 50 %');
+check(await seen('.realm .chart-sub:has-text("1/2 construcciones en 1 reino")'), 'el mapa cuenta 1/2 construcciones en 1 reino');
 await page.click('.kingdom-node');
-check(await seen('.kingdom .kingdom-name:has-text("Reino de la Programación")') && !(await page.$('.realm')), 'pulsar el reino en el mapa abre su propia vista');
+check(await seen('.kingdom .kingdom-name:has-text("Reino de la Programación")') && await seen('.realm #realm-h:has-text("Mapa de Reino de la Programación")'), 'pulsar el reino en el mapa abre su propia vista, con su mapa de ciudades');
 await page.evaluate(() => window.scrollTo(0, 0));
 await page.screenshot({ path: `${out}/08-kingdom.png`, fullPage: true });
 
@@ -338,6 +340,7 @@ const coins = async () => Number((await page.textContent('.arena-coins .coins, #
 const before = await coins();
 check(before >= 25, `hay monedas para gastar (${before})`);
 check(await seen('.saga:has-text("Saga del Héroe") .boss-template.locked:has-text("Medusa"):has-text("Nivel 8")'), 'Medusa aparece en silueta: «Nivel 8»');
+for (const s of await page.$$('.saga-toggle[aria-expanded="false"]')) await s.click(); // V3.5: sagas plegables
 check(await seen('.boss-template.locked:has-text("Tifón"):has-text("Nivel 30")'), 'Tifón, el jefe final, espera al nivel 30');
 check((await page.$$('.boss-template:not(.locked) button:has-text("Invocar")')).length === 4, 'en nivel 5 hay 4 bosses para invocar');
 await page.click('.boss-template:has-text("Hidra de la Procrastinación") button:has-text("Invocar")');
@@ -385,7 +388,8 @@ await page.click('.nav-item:has-text("Hábitos")');
 await page.click('button[aria-label="Completar Tocar la guitarra"]');
 check(await seen('.toast:has-text("HP a Hidra")'), 'completar un hábito golpea a la Hidra');
 await page.click('.nav-item:has-text("Arena")');
-check(await seen('.boss .boss-hp:has-text("685 / 700")'), 'la Hidra baja a 685/700 HP');
+const hp = (await page.textContent('.boss .boss-hp')).replace(/\./g, '').match(/(\d+)\s*\/\s*(\d+)/);
+check(hp && Number(hp[2]) - Number(hp[1]) === 15, `la Hidra pierde 15 HP con el hábito (${hp?.[0]}; su vida va a tu ritmo)`);
 if (await page.$('.boss .log-fold')) {
   check(!(await page.$('.boss .combat-log')), 'el registro del combate va plegado');
   await page.click('.boss .log-fold .fold-btn');
@@ -540,8 +544,8 @@ await page.click('.admin-panel button:has-text("7 días")');
 check(await seen('.toast:has-text("Ritual disponible: Iniciado")'), 'simular 7 días cumple Iniciado y avisa del ritual');
 await page.click('.nav-item:has-text("Personaje")');
 check(await seen('.nav-item:has-text("Personaje") .nav-new:has-text("ritual")'), 'Personaje marca el ritual pendiente');
-check((await page.textContent('.avatar-card .avatar-name')).trim() === 'Aprendiz', 'sin ritual sigues siendo Aprendiz');
-await page.click('.avatar-card .ritual-cta');
+check((await page.textContent('.hero-title')).includes('Aprendiz'), 'sin ritual sigues siendo Aprendiz');
+await page.click('.path-detail .ritual-cta');
 check(await seen('.ritual:has-text("Ritual de ascensión")'), 'se abre el ritual con Hiperión');
 await page.click('.ritual button:has-text("Empezar")');
 check(await page.isDisabled('.ritual button:has-text("Siguiente")'), 'no se avanza sin responder');
@@ -562,7 +566,7 @@ await page.click('.ritual button:has-text("Lo juro")');
 check(await seen('#ascend-h:has-text("Ahora eres Iniciado")'), 'ceremonia: asciendes a Iniciado');
 await page.screenshot({ path: `${out}/13-ascension.png` });
 await page.click('.ascension button:has-text("Continuar")');
-check((await page.textContent('.avatar-card .avatar-name')).trim() === 'Iniciado', 'la tarjeta de avatar ya dice Iniciado');
+check((await page.textContent('.hero-title')).includes('Iniciado'), 'el personaje ya dice Iniciado');
 check(await seen('#timed-goals-h') && await seen('.goal:has-text("Ahorrar") >> text=quedan 90 días'), 'Objetivos a 3 meses con cuenta atrás');
 check(await seen('.goal:has-text("Ahorrar") >> text=requisito de Forjador'), 'los objetivos cuentan para Forjador');
 check(await seen('.journal:has-text("Quiero dejar de posponer mi proyecto.")'), 'Tu camino guarda tus respuestas');
@@ -609,7 +613,9 @@ check(await seen('#xp-history-h') && !(await page.$('section:has(#xp-history-h) 
 await page.click('section:has(#xp-history-h) .fold-btn');
 check((await page.$$('section:has(#xp-history-h) li')).length > 0, 'el botón abre el historial de XP');
 await page.click('.nav-item:has-text("Personaje")');
-check(await seen('.attr-desc:has-text("disciplina")'), 'los atributos tienen descripción');
+check(!(await page.$('.attr-desc')), 'los atributos son una línea cada uno');
+await page.click('.attr-open:has-text("Voluntad")');
+check(await seen('.attr-desc:has-text("disciplina")'), 'al pulsar un atributo sale su descripción');
 await page.click('.nav-item:has-text("Hábitos")');
 await page.fill('#new-habit', 'Gimnasio');
 await page.click('#new-habit-freq'); await page.click('.pop-select [data-value="3"]');

@@ -26,7 +26,7 @@ import {
   pomodoroStatus, pomodoroStep, startTimer, stopTimer, suggest, questXp, PRIORITY_BONUS, impactOf, toggleHabit, setHabitDayCount, habitCleared, habitsInOrder, reorderHabits, totalXp, undoQuest, XP_RULES,
 } from './game';
 import {
-  AttributeList, AvatarCard, ConfirmButton, deadlineLabel, formatClock, shortDate, formatMinutes, HabitItem, LevelBar, QuestItem,
+  AttributeList, ConfirmButton, deadlineLabel, formatClock, shortDate, formatMinutes, HabitItem, LevelBar, QuestItem,
   QuickAddQuest, RewardTags, useHabitFlip, useNow,
 } from './ui';
 import { HeroJournal, ReviewBanner, TimedGoals } from './ritual';
@@ -891,8 +891,6 @@ export function Character({ game }: { game: Game }) {
 
       <XpChart state={state} now={now} />
 
-      <AvatarCard state={state} now={now} showRequirements />
-
       <section className="stats" aria-label="Progreso acumulado">
         <Stat label="Deep Work total" value={formatMinutes(dwTotal)} />
         <Stat label="Misiones completadas" value={`${questsDone}`} />
@@ -1242,11 +1240,13 @@ function GoalsPanel({ game, now }: { game: Game; now: number }) {
           })}
         </ul>
       )}
-      <form className="goal-form" onSubmit={submit}>
-        <input id="goal-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Meta (ej. Hablar con desconocidos)" maxLength={60} aria-label="Nombre de la meta" />
+      <form className={form.name.trim() ? 'goal-form' : 'goal-form idle'} onSubmit={submit}>
+        <input id="goal-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="+ Nueva meta (ej. Hablar con desconocidos)" maxLength={60} aria-label="Nombre de la meta" />
+        {form.name.trim() && <>
         <input id="goal-start" type="number" step="any" value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })} placeholder="Ahora" aria-label="Valor actual" />
         <input id="goal-target" type="number" step="any" value={form.target} onChange={(e) => setForm({ ...form, target: e.target.value })} placeholder="Objetivo" aria-label="Objetivo" />
         <input id="goal-unit" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="Unidad (libros, personas…)" maxLength={12} aria-label="Unidad" />
+        </>}
         <button type="submit" className="primary" disabled={!valid}><Icon name="plus" /> Añadir</button>
       </form>
     </section>

@@ -27,7 +27,7 @@
 .ladder-steps li.ls-now .ladder-dot { border-color: var(--c2); color: var(--fg); }
 .ladder-steps li.ls-done .ladder-step-text { color: var(--muted); }
 .ladder-steps li.ls-rest .ladder-step-text b, .ladder-steps li.ls-audit .ladder-step-text b { font-weight: 500; font-style: italic; }
-.ladder-edit li { align-items: flex-start; }
+.ladder-edit li { align-items: flex-start; border-top: 0; padding: 4px 0; }
 .ladder-edit li.locked { opacity: 0.6; align-items: center; }
 .ladder-edit-body { flex: 1; min-width: 0; display: grid; gap: 6px; }
 .ladder-edit-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
@@ -36,7 +36,17 @@
 .ladder-edit-tools { display: flex; flex: none; }
 .ladder-edit-tools .icon-btn:nth-child(1) .ico, .ladder-edit-tools .icon-btn:nth-child(2) .ico { transform: rotate(90deg); }
 .ladder-start { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.ladder-tip p, .ladder-done p { margin: 0; }
+.ladder-tip { margin: 0; }
+/* Editor: controles compactos y neutros */
+.ladder-edit input { padding: 8px 12px; font-size: 14.5px; }
+.ladder-edit .select-btn { padding-block: 7px; font-size: 14px; }
+.ladder-edit .select-btn.set { background: transparent; border-color: var(--line); }
+.ladder-edit .icon-btn { opacity: .55; }
+.ladder-edit .icon-btn:hover { opacity: 1; }
+.ladder-edit .ladder-dot { margin-top: 6px; }
+.ladder-add { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
+.ladder-add .link { font-size: 13.5px; }
+.ladder-start .seg { padding-block: 5px; font-size: 13.5px; }
 @media (max-width: 560px) {
   .ladder-live li { grid-template-columns: minmax(0, 7em) 1fr auto; gap: 8px; }
   .ladder-edit-tools { flex-direction: column; }

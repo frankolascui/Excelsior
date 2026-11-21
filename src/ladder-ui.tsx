@@ -4,7 +4,6 @@ import { useState } from 'react';
 import type { GameState, LadderStep } from './types';
 import { climbNow, createLadder, deleteLadder, LADDER_RULES, lastWeekResult, newStep, stepDates, updateLadderSteps, weekPcts, weeksOnStep } from './ladder';
 import { dayKey, MINIMUM_MAX, shiftDay, weekStart } from './game';
-import { GuidePortrait } from './tutorial';
 import { Icon } from './icons';
 import { Select } from './pickers';
 import { sureThen } from './confirm';
@@ -28,7 +27,7 @@ function stepDetail(x: LadderStep): string {
   return [freqText(x.perWeek), x.minimum && `mínimo: ${x.minimum}`].filter(Boolean).join(' · ');
 }
 
-export function LadderPanel({ state, act, toast, guide, now }: { state: GameState; act: Act; toast: Toast; guide: string; now: number }) {
+export function LadderPanel({ state, act, toast, now }: { state: GameState; act: Act; toast: Toast; guide?: string; now: number }) {
   const L = state.ladder;
   const [editing, setEditing] = useState(false);
   if (editing || !L) {
@@ -46,7 +45,7 @@ export function LadderPanel({ state, act, toast, guide, now }: { state: GameStat
         </section>
       );
     }
-    return <LadderEditor state={state} guide={guide} now={now} onCancel={() => setEditing(false)} onSave={(steps, start) => {
+    return <LadderEditor state={state} now={now} onCancel={() => setEditing(false)} onSave={(steps, start) => {
       if (L) act((s) => updateLadderSteps(s, steps));
       else {
         act((s) => createLadder(s, steps, start, Date.now()));
@@ -143,8 +142,8 @@ export function LadderPanel({ state, act, toast, guide, now }: { state: GameStat
 }
 
 /** Editor de escalones. Con la escalera en marcha, los ya pasados y el de esta semana no se tocan. */
-function LadderEditor({ state, guide, now, onSave, onCancel }: {
-  state: GameState; guide: string; now: number; onSave: (steps: LadderStep[], start: string) => void; onCancel: () => void;
+function LadderEditor({ state, now, onSave, onCancel }: {
+  state: GameState; now: number; onSave: (steps: LadderStep[], start: string) => void; onCancel: () => void;
 }) {
   const L = state.ladder;
   const locked = L ? L.current + 1 : 0;
@@ -169,12 +168,7 @@ function LadderEditor({ state, guide, now, onSave, onCancel }: {
         <Icon name="mountain-climb" />
         <h3 id="ladder-edit-h">{L ? 'Editar la escalera' : 'Crear mi escalera'}</h3>
       </div>
-      <div className="habit-hints-head ladder-tip">
-        <span className="tour-portrait" aria-hidden="true"><GuidePortrait /></span>
-        <p className="small-text"><span className="eyebrow">{guide}</span><br />
-          Un escalón por semana. Pon antes lo <b>nuevo y lo que más te cuesta</b>: necesita más semanas para asentarse. Ampliar algo que ya haces (más días, más minutos) puede ir al final. Cada 3 o 4 escalones, una semana de consolidar sin nada nuevo, y una auditoría al acabar. Lo ideal es no pasar de {LADDER_RULES.maxHabits} hábitos a la vez.
-        </p>
-      </div>
+      <p className="hint ladder-tip">Un escalón por semana. Primero lo nuevo y lo que más te cuesta; cada 3 o 4 escalones, una semana de consolidar. Mejor no pasar de {LADDER_RULES.maxHabits} hábitos a la vez.</p>
       <ol className="ladder-edit">
         {steps.map((x, i) => i < locked ? (
           <li key={x.id} className="locked">
@@ -196,7 +190,7 @@ function LadderEditor({ state, guide, now, onSave, onCancel }: {
                   </>
                 )}
               </div>
-              {x.kind === 'new' && <input className="ladder-min" value={x.minimum ?? ''} onChange={(e) => set(i, { minimum: e.target.value })} maxLength={MINIMUM_MAX} placeholder="Mínimo para un día malo (ej. 5 minutos)" aria-label={`Mínimo del escalón ${i + 1}`} />}
+              {x.kind === 'new' && <input className="ladder-min" value={x.minimum ?? ''} onChange={(e) => set(i, { minimum: e.target.value })} maxLength={MINIMUM_MAX} placeholder="Mínimo para un día malo (opcional)" aria-label={`Mínimo del escalón ${i + 1}`} />}
             </div>
             <span className="ladder-edit-tools">
               <button type="button" className="icon-btn" onClick={() => move(i, -1)} disabled={i - 1 < locked} aria-label="Subir escalón" title="Antes"><Icon name="chevron-left" /></button>
@@ -206,10 +200,11 @@ function LadderEditor({ state, guide, now, onSave, onCancel }: {
           </li>
         ))}
       </ol>
-      <div className="chips">
-        <button type="button" className="pick" disabled={full} onClick={() => setSteps([...steps, newStep('new')])}><Icon name="plus" /> Hábito nuevo</button>
-        <button type="button" className="pick" disabled={full} onClick={() => setSteps([...steps, newStep('rest')])}><Icon name="plus" /> Consolidar</button>
-        <button type="button" className="pick" disabled={full} onClick={() => setSteps([...steps, newStep('audit')])}><Icon name="plus" /> Auditoría</button>
+      <div className="ladder-add">
+        <span className="small-text muted">Añadir</span>
+        <button type="button" className="link" disabled={full} onClick={() => setSteps([...steps, newStep('new')])}><Icon name="plus" /> Hábito nuevo</button>
+        <button type="button" className="link" disabled={full} onClick={() => setSteps([...steps, newStep('rest')])}><Icon name="plus" /> Consolidar</button>
+        <button type="button" className="link" disabled={full} onClick={() => setSteps([...steps, newStep('audit')])}><Icon name="plus" /> Auditoría</button>
       </div>
       {!L && (
         <div className="ladder-start">
@@ -221,8 +216,8 @@ function LadderEditor({ state, guide, now, onSave, onCancel }: {
         </div>
       )}
       <div className="habit-hint-actions">
-        <button className="primary" disabled={!valid} onClick={() => onSave(steps, start)}><Icon name="save" /> {L ? 'Guardar' : 'Empezar la escalera'}</button>
-        <button className="ghost" onClick={onCancel}>Cancelar</button>
+        <button className="primary small" disabled={!valid} onClick={() => onSave(steps, start)}>{L ? 'Guardar' : 'Empezar la escalera'}</button>
+        <button className="ghost small" onClick={onCancel}>Cancelar</button>
       </div>
     </section>
   );

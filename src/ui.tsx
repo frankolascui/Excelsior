@@ -554,46 +554,47 @@ export function AvatarCard({ state, now, showRequirements = false }: { state: Ga
 export function AttributeList({ state, detailed = false }: { state: GameState; detailed?: boolean }) {
   const xp = attributeXp(state);
   const level = levelInfo(totalXp(state)).level;
+  const [open, setOpen] = useState<string | null>(null);
+  // En Personaje (detailed) cada atributo es una línea; su explicación sale al pulsar el nombre.
+  const name = (a: (typeof ATTRIBUTES)[number]) => detailed
+    ? <button type="button" className="attr-name attr-open" aria-expanded={open === a.id} onClick={() => setOpen(open === a.id ? null : a.id)}>{a.name} <Icon name="chevron-down" /></button>
+    : <span className="attr-name">{a.name}</span>;
+  const desc = (a: (typeof ATTRIBUTES)[number]) => (
+    <span className="attr-desc">
+      <strong className="attr-tagline">{a.tagline}</strong> {a.desc}
+      <span className="attr-gains"><span className="eyebrow-inline">Sube con</span> {a.gains}</span>
+      <span className="muted">Ej.: {a.examples}</span>
+    </span>
+  );
   return (
     <ul className={detailed ? 'attrs detailed' : 'attrs'}>
       {ATTRIBUTES.map((a) => {
         const lvl = attributeLevel(xp[a.id]);
-        const last = detailed ? attributeHistory(state, a.id).slice(-1)[0] : undefined;
+        const isOpen = detailed && open === a.id;
+        const last = isOpen ? attributeHistory(state, a.id).slice(-1)[0] : undefined;
         const asleep = a.unlockLevel !== undefined && level < a.unlockLevel;
         if (asleep) {
           return (
-            <li key={a.id} className="attr idle asleep" title={`${a.tagline} ${a.desc}`}>
+            <li key={a.id} className="attr idle asleep" title={detailed ? undefined : `${a.tagline} ${a.desc}`}>
               <span className="attr-icon" aria-hidden="true"><Icon name="lock" /></span>
-              <span className="attr-name">{a.name}</span>
+              {name(a)}
               <span className="attr-level mono">Nv {a.unlockLevel}</span>
-              <span className="attr-asleep-text">Atributo avanzado: se despierta en el nivel global {a.unlockLevel}. Lo que hagas antes ya cuenta.</span>
-              {detailed && (
-              <span className="attr-desc">
-                <strong className="attr-tagline">{a.tagline}</strong> {a.desc}
-                <span className="attr-gains"><span className="eyebrow-inline">Sube con</span> {a.gains}</span>
-                <span className="muted">Ej.: {a.examples}</span>
-              </span>
-            )}
+              <span className="attr-asleep-text">{detailed ? `Se despierta en el nivel ${a.unlockLevel}` : `Atributo avanzado: se despierta en el nivel global ${a.unlockLevel}. Lo que hagas antes ya cuenta.`}</span>
+              {isOpen && desc(a)}
             </li>
           );
         }
         return (
-          <li key={a.id} className={xp[a.id] === 0 ? 'attr idle' : 'attr'} title={`${a.tagline} ${a.desc}`}>
+          <li key={a.id} className={xp[a.id] === 0 ? 'attr idle' : 'attr'} title={detailed ? undefined : `${a.tagline} ${a.desc}`}>
             <span className={`attr-icon a-${a.id}`} aria-hidden="true"><Icon name={a.icon} /></span>
-            <span className="attr-name">{a.name}</span>
+            {name(a)}
             <span className="attr-level mono">Nv {lvl.level}</span>
             <div className="attr-bar" role="progressbar" aria-label={`${a.name}: ${formatAttrXp(lvl.current)} de ${lvl.needed} XP`} aria-valuemin={0} aria-valuemax={lvl.needed} aria-valuenow={lvl.current}>
               <div style={{ width: `${Math.min(100, lvl.progress * 100)}%` }} />
             </div>
             <span className="attr-xp mono">{formatAttrXp(xp[a.id])} XP</span>
-            {detailed && (
-              <span className="attr-desc">
-                <strong className="attr-tagline">{a.tagline}</strong> {a.desc}
-                <span className="attr-gains"><span className="eyebrow-inline">Sube con</span> {a.gains}</span>
-                <span className="muted">Ej.: {a.examples}</span>
-              </span>
-            )}
-            {detailed && (
+            {isOpen && desc(a)}
+            {isOpen && (
               <span className="attr-last">
                 {last ? `Último: +${formatAttrXp(last.amount)} · ${last.label}` : 'Aún sin progreso'}
               </span>
