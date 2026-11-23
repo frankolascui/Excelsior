@@ -46,6 +46,7 @@ export const NEWS: NewsEntry[] = [
         'Pausa o vacaciones de las tarjetas: elige desde y hasta qué día. Mientras dura, el hábito de repasar no rompe la racha y, al volver, las fechas de repaso se mueven esos días.',
         'El hábito de Academy ahora se llama «Estudiar»: lo marca una ronda de 8 tarjetas o entregar un simulacro (también en papel), y así suma a tu racha. El tiempo de un simulacro hecho en la app cuenta como Deep Work de estudio.',
         '«Hoy» de Academy aparece al momento, sin esperar a calcularlo.',
+        'Los exámenes de Academy salen en tu calendario, en Hoy y en los avisos, con su asignatura. Desde el calendario puedes crear un examen de una asignatura, cambiarle el nombre o el día y borrarlo: se cambia también en Academy.',
       ] },
       { name: 'Hábitos y salud', items: [
         'Reino de la Salud y constancia: cada semana con el Templo del Sueño es una semana constante. A las 4, 12, 26 y 52 semanas constantes se levanta un monumento (+25, 50, 100 y 200 monedas), con tu racha de semanas seguidas.',
