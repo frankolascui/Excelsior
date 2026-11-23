@@ -25,6 +25,9 @@
 -- ---------- 1 y 2. Aportes ----------
 -- Desde cuándo era miembro quien aporta (para la victoria: ver 3).
 alter table public.guild_contributions add column if not exists member_since timestamptz;
+-- El relleno de abajo no debe pasar por la regla de aportes (los encargos viejos ya terminaron): se quita la
+-- regla mientras tanto y se vuelve a crear justo después.
+drop trigger if exists guild_contribution_check on public.guild_contributions;
 update public.guild_contributions x set member_since = m.joined_at
   from public.guild_members m, public.guild_challenges c
   where x.member_since is null and c.id = x.challenge_id and m.user_id = x.user_id and m.guild_id = c.guild_id;
