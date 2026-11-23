@@ -1723,3 +1723,14 @@ svg .node-icon { color: var(--fg); }
 .goal-form.idle { grid-template-columns: 1fr auto; }
 .goal-form.idle input:first-child { grid-column: auto; }
 .path-detail .ritual-cta { justify-self: start; align-self: flex-start; margin-top: 4px; }
+
+/* ---------- Mapa de reinos como tierra (2026-11-23): isla, costa, curvas de nivel, campos ---------- */
+.realm-sea { fill: color-mix(in srgb, var(--c3) 9%, #020207); }
+.realm-waves { fill: none; stroke: color-mix(in srgb, var(--c2) 22%, #6a6a8a); stroke-width: 1; stroke-linecap: round; opacity: 0.3; }
+.realm-shallows { fill: none; stroke: color-mix(in srgb, var(--c3) 22%, #0a0a18); stroke-width: 20; opacity: 0.35; }
+.realm-land { stroke: color-mix(in srgb, var(--c2) 38%, #8a86a0); stroke-width: 1.2; stroke-opacity: 0.55; }
+.realm-contour { fill: none; stroke: #fff; stroke-opacity: 0.035; stroke-width: 1; }
+.realm-farm { fill: color-mix(in srgb, var(--c1) 10%, #2a2418); stroke: color-mix(in srgb, var(--gold) 22%, transparent); stroke-width: 0.7; opacity: 0.55; }
+.realm-map .river { stroke-width: 7; opacity: 0.9; }
+.road-bed { fill: none; stroke: #07060c; stroke-width: 7; stroke-linecap: round; opacity: 0.75; }
+.node-base { fill: #000; opacity: 0.4; pointer-events: none; }
