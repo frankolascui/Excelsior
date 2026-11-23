@@ -11,7 +11,7 @@ export const COIN_RULES = {
   xpPerCoin: 7, // 1 moneda por cada 7 XP (desde xpPerCoinSince; antes 5)
   oldXpPerCoin: 5,
   /** Cambio de 5 a 7 XP por moneda: el XP ganado antes sigue a 5 para que nadie pierda monedas. Poner aquí el día de publicar. */
-  xpPerCoinSince: new Date('2026-11-19T00:00:00').getTime(),
+  xpPerCoinSince: new Date('2026-11-23T00:00:00').getTime(),
   kingdomBonusPerBuilding: 10, // tributo por construcción levantada, desde que el reino es Villa
   kingdomMinBuildings: 3, // Villa
 };
