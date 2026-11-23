@@ -483,7 +483,7 @@ button.tg-session { font-family: inherit; justify-content: flex-start; align-ite
 }
 
 /* «¿Seguro?» antes de borrar (confirm.tsx) */
-.sure-overlay { z-index: 80; }
+.overlay.sure-overlay { z-index: 80; } /* encima de las fichas del calendario (60) */
 .sure-card { width: min(400px, 100%); gap: 10px; }
 .sure-card h3 { margin: 0; font-family: var(--display); font-size: 21px; line-height: 1.25; }
 .sure-card p { margin: 0; }

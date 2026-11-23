@@ -3,7 +3,7 @@ import { useState, type CSSProperties, type FormEvent } from 'react';
 import type { Game } from './screens';
 import type { GameState } from './types';
 import { dayKey, daysUntil } from './game';
-import { dailyReport, dayLog, eventColor, eventIcon, isKeyEvent, priorityEvents, saveDayLog } from './life';
+import { dailyReport, dayLog, eventColor, eventIcon, eventLabel, isKeyEvent, priorityEvents, saveDayLog } from './life';
 import { saveFile } from './download';
 import { sfx } from './sfx';
 import { shortDate } from './ui';
@@ -120,7 +120,7 @@ export function UpcomingEvents({ state, now }: { state: GameState; now: number }
       <ul className="ev-strip">
         {list.slice(0, 6).map((e) => (
           <li key={e.id} className={`ev-chip ev-${e.kind}${e.day === dayKey(now) ? ' today' : ''}${isKeyEvent(e) ? ' key' : ''}`} style={eventColor(e) ? ({ '--ev': eventColor(e) } as CSSProperties) : undefined}>
-            <Icon name={eventIcon(e.kind)} /> <strong>{e.title}</strong>
+            <Icon name={eventIcon(e.kind)} /> <strong>{eventLabel(e)}</strong>
             <span className="muted"> · {isKeyEvent(e) ? countdown(e.day, now) : relDay(e.day, now)}{e.time ? ` ${e.time}` : ''}</span>
           </li>
         ))}

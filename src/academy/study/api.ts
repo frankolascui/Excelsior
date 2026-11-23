@@ -214,8 +214,8 @@ const DATE_COLS = 'id, subject_id, title, date, topic_ids, created_at';
 export async function listExamDates(): Promise<ExamDate[]> {
   return check(await sb().from('study_exam_dates').select(DATE_COLS).order('date'));
 }
-export async function createExamDate(e: Pick<ExamDate, 'subject_id' | 'title' | 'date' | 'topic_ids'>) {
-  check(await sb().from('study_exam_dates').insert(e));
+export async function createExamDate(e: Pick<ExamDate, 'subject_id' | 'title' | 'date' | 'topic_ids'>): Promise<ExamDate> {
+  return check(await sb().from('study_exam_dates').insert(e).select(DATE_COLS).single());
 }
 export async function updateExamDate(id: string, patch: Partial<Pick<ExamDate, 'title' | 'date' | 'topic_ids'>>) {
   check(await sb().from('study_exam_dates').update(patch).eq('id', id));

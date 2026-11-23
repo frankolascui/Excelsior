@@ -4,6 +4,7 @@ import { buildPlan, examTopics, upcoming } from '../study/plan';
 import { LEVELS } from '../study/srs';
 import type { ExamDate, Level, Topic } from '../study/types';
 import { sfx } from '../sfx';
+import { studyBridge } from '../bridge';
 import { askConfirm } from './Dialog';
 import { Icon } from './Icon';
 import { Menu, Modal } from './Kit';
@@ -18,7 +19,8 @@ export function ExamDatesPanel({ subjectId, topics, level = 'equilibrado' }: { s
   const [editing, setEditing] = useState<ExamDate | 'new' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const reload = () => listExamDates().then((all) => setExams(all.filter((e) => e.subject_id === subjectId))).catch((e) => setError(friendlyDates(e.message)));
+  const reload = () => listExamDates()
+    .then((all) => { studyBridge.onExamDates?.(all); return all; }).then((all) => setExams(all.filter((e) => e.subject_id === subjectId))).catch((e) => setError(friendlyDates(e.message)));
   useEffect(() => { reload(); }, [subjectId]);
 
   const next = exams ? upcoming(exams) : [];
@@ -33,7 +35,7 @@ export function ExamDatesPanel({ subjectId, topics, level = 'equilibrado' }: { s
       </header>
       {error && <p className="error">{error}</p>}
       {exams && next.length === 0 && (
-        <p className="empty-state">Sin exámenes a la vista. Añade la fecha y los temas que entran: la web repartirá las tarjetas nuevas hasta ese día y te dará un plan.</p>
+        <p className="empty-state">Sin exámenes a la vista. Añade la fecha y los temas que entran: la web repartirá las tarjetas nuevas hasta ese día y te dará un plan. También saldrá en tu calendario.</p>
       )}
       {next.map((e, i) => (
         <ExamCard key={e.id} exam={e} perDay={LEVELS[level]?.newPerDay ?? 20} daysLeft={e.daysLeft} open={i === 0} topicIds={examTopics(e, () => topics.map((t) => t.id))}

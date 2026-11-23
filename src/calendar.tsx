@@ -4,7 +4,7 @@ import type { Game } from './screens';
 import type { Quest } from './types';
 import { addQuest, completeQuest, dayKey, deleteQuest, pendingQuests, setQuestDeadline, undoQuest, updateQuest, xpOnDay } from './game';
 import { QuestItem, QuickAddQuest, shortDate } from './ui';
-import { eventColor, eventIcon, eventsOn, isKeyEvent, priorityEvents, remindersOn } from './life';
+import { eventColor, eventIcon, eventLabel, eventsOn, isKeyEvent, priorityEvents, remindersOn } from './life';
 import { countdown } from './life-ui';
 import { addDays, AgendaForm, mondayOf, ReminderRow, TimeGrid } from './agenda-ui';
 import { Fold } from './fold';
@@ -150,7 +150,7 @@ export function QuestCalendar({
               >
                 <span className="cal-num mono">{Number(day.slice(8))}</span>
                 <span className="cal-items" aria-hidden="true">
-                  {evs.slice(0, 2).map((e) => <span key={e.id} className={`cal-ev ev-${e.kind}${isKeyEvent(e) ? ' key' : ''}`} style={eventColor(e) ? ({ '--ev': eventColor(e) } as CSSProperties) : undefined}><Icon name={eventIcon(e.kind)} /> {e.time ? `${e.time} ` : ''}{e.title}</span>)}
+                  {evs.slice(0, 2).map((e) => <span key={e.id} className={`cal-ev ev-${e.kind}${isKeyEvent(e) ? ' key' : ''}`} style={eventColor(e) ? ({ '--ev': eventColor(e) } as CSSProperties) : undefined}><Icon name={eventIcon(e.kind)} /> {e.time ? `${e.time} ` : ''}{eventLabel(e)}</span>)}
                   {evs.length > 2 && <span className="cal-more">+{evs.length - 2} eventos</span>}
                 </span>
                 <span className="cal-dots" aria-hidden="true">
@@ -251,7 +251,7 @@ function KeyEvents({ game, now, onPick }: { game: Game; now: number; onPick: (da
     <div className="key-events" aria-label="Lo importante del próximo mes">
       {list.slice(0, 4).map((e) => (
         <button key={e.id} type="button" className={`key-ev ev-${e.kind}`} style={eventColor(e) ? ({ '--ev': eventColor(e) } as CSSProperties) : undefined} onClick={() => onPick(e.day)}>
-          <Icon name={eventIcon(e.kind)} /> <strong>{e.title}</strong>
+          <Icon name={eventIcon(e.kind)} /> <strong>{eventLabel(e)}</strong>
           <span className="key-when">{countdown(e.day, now)}{e.time ? ` · ${e.time}` : ''}</span>
         </button>
       ))}

@@ -1,5 +1,7 @@
 // Puente entre Academy y el juego: el repaso avisa al terminar y el RPG lo convierte en XP, racha y hábito.
 // Academy no sabe nada del juego; AcademyApp rellena `onStudy` al montarse.
+import type { ExamDate } from './study/types';
+
 export interface StudyReport {
   startedAt: number;
   /** Lo que tardaste en cada respuesta (ms), para contar solo el tiempo real de repaso. */
@@ -25,4 +27,6 @@ export const studyBridge: {
   setBudget: ((min: number | null) => void) | null;
   /** Pausa de las tarjetas en curso (vacaciones): «Hoy» lo dice en vez de contar repasos. `until` null = sin fecha de fin. */
   pause: { until: string | null } | null;
-} = { onStudy: null, onExam: null, budgetMin: null, setBudget: null, pause: null };
+  /** Academy leyó sus exámenes con fecha (todos): el calendario del RPG se pone al día con esa lista. */
+  onExamDates: ((exams: ExamDate[]) => void) | null;
+} = { onStudy: null, onExam: null, budgetMin: null, setBudget: null, pause: null, onExamDates: null };

@@ -440,7 +440,16 @@ export interface CalendarEvent {
   color?: string;
   /** Bloques: misiones y hábitos que haces en ese bloque (valen para toda la serie). */
   tasks?: BlockTask[];
+  /** Examen de Academy: el nombre y el día mandan en Academy (tabla study_exam_dates); hora y color son solo del calendario. */
+  academy?: AcademyLink;
   createdAt: number;
+}
+
+export interface AcademyLink {
+  examId: string;
+  subjectId: string;
+  /** Nombre de la asignatura, para enseñarlo en el calendario. */
+  subject: string;
 }
 
 export interface BlockTask {

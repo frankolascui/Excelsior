@@ -19,6 +19,7 @@ import { cloudEnabled, isTestEmail, useCloud } from './cloud';
 import { coinBalance } from './economy';
 import { Character, Dashboard, DeepWork, Habits, Kingdoms, Onboarding, Quests, type Tab } from './screens';
 import { useAgendaAlerts } from './agenda-ui';
+import { useAcademyExamsSync } from './academy-exams-cloud';
 import { SettingsScreen } from './settings';
 import { Friends } from './friends';
 import { useSocialAlerts } from './social-alerts';
@@ -56,6 +57,7 @@ export default function App() {
   const game = useGame();
   useHealthBridge(game); // Reino de la Salud: noches de la nube → hábito y obras
   useAgendaAlerts(game.state, game.toast);
+  useAcademyExamsSync(game); // exámenes de Academy → calendario
   const { state } = game;
   const [tab, setTab] = useState<Tab>(tabFromHash);
   const [handoff, setHandoff] = useState(hasHealthHandoff); // noches del Diario de Sueño por traer

@@ -1072,7 +1072,7 @@ i.q-side { background: var(--side); }
 .ev-bloque { --ev: var(--c2); }
 .ev-form { display: grid; gap: 10px; }
 .ev-form-top { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; }
-.ev-form-when, .ev-form-extra { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ev-form-when, .ev-form-extra, .ev-form-academy { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .ev-form > button[type='submit'] { justify-self: start; }
 .ev-form.compact > button[type='submit'] { justify-self: stretch; }
 .ev-form select, .rem-form select { width: auto; }
@@ -1141,6 +1141,8 @@ i.q-side { background: var(--side); }
 .swatch.auto { background: conic-gradient(var(--c1), var(--c2), var(--c3), var(--c1)); }
 .sheet-edit { display: grid; gap: 12px; }
 .sheet-edit .eyebrow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0; }
+.sheet-edit .ev-academy { padding-right: 36px; }
+.sheet-edit .ev-academy .link { margin-left: auto; letter-spacing: 0; text-transform: none; font-family: inherit; }
 .kind-select { width: auto; padding: 2px 6px; font: inherit; color: var(--ev, var(--c2)); background: none; border: 1px solid var(--line); border-radius: 8px; letter-spacing: inherit; text-transform: inherit; }
 .sheet-title-input {
   font-family: var(--display); font-size: 24px; padding: 4px 0; background: none; border: 0; border-bottom: 2px solid var(--ev, var(--c2)); border-radius: 0; width: 100%;
