@@ -218,10 +218,22 @@ check(JSON.stringify(db.saves) === realSave, 'modo admin: la partida de la nube 
 check(writes.length === 0, 'modo admin: ninguna escritura en la base de datos');
 check(await page.isVisible('.admin-note').catch(() => false), 'modo admin: se avisa en Amigos/Gremios de que la cuenta real es solo de lectura');
 
+// Borrar en modo admin borra solo la partida de pruebas (mismo email, pero tu personaje real no se toca).
+const realLocal = await page.evaluate(() => localStorage.getItem('excelsior:v1'));
+await page.evaluate(() => { location.hash = '#hoy'; location.hash = '#ajustes'; });
+await page.waitForSelector('[data-testid="admin-danger-note"]');
+check(!(await page.isVisible('button:has-text("Borrar mi cuenta")')), 'modo admin: no se ofrece borrar la cuenta');
+await page.click('button:has-text("Borrar la partida de pruebas")');
+await page.click('button:has-text("Sí, borrar todo")');
+await page.waitForTimeout(3000);
+check(await page.evaluate(() => localStorage.getItem('excelsior:v1')) === realLocal, 'modo admin: borrar no toca la partida real de este navegador');
+check(JSON.stringify(db.saves) === realSave && writes.length === 0, 'modo admin: ni la de la nube');
+
 // Al salir, la cuenta real sigue igual y vuelve a funcionar.
 await page.evaluate(() => { localStorage.removeItem('excelsior:admin-mode'); location.hash = ''; location.reload(); });
 await page.waitForSelector('text=¿Qué hago ahora?', { timeout: 5000 });
 await page.waitForTimeout(5500);
+check(await page.evaluate(() => JSON.parse(localStorage.getItem('excelsior:v1')).profile?.name) === 'Nicolas', 'al salir sigue tu personaje real');
 check(!(await page.$('.admin-bar')), 'al salir no queda la barra de admin');
 check(db.profiles.find((x) => x.user_id === ME).name === 'Nicolas', 'al salir el perfil sigue siendo el real');
 check(errors.length === 0, `sin errores de página ${errors.join(' | ')}`);

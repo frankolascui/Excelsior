@@ -3,7 +3,7 @@ import {
   addHabit, addQuest, completeQuest, createProfile, emptyState, startTimer, stopTimer, toggleHabit, totalXp, undoQuest, updateHabit, updateQuest,
 } from './game';
 import {
-  addReward, buyReward, coinBalance, consumePurchase, defaultRewards, unusedPurchases, nextReward, purchaseCounts, refundPurchase, rewardCategory, updateReward,
+  addReward, buyReward, COIN_RULES, coinBalance, coinsEarned, consumePurchase, defaultRewards, unusedPurchases, nextReward, purchaseCounts, refundPurchase, rewardCategory, updateReward,
 } from './economy';
 import { addBoss, bossReward, bossStatus, summonTemplate } from './bosses';
 import { attributeXp } from './attributes';
@@ -103,6 +103,15 @@ describe('tienda por categorías', () => {
     s = { ...s, rewards: s.rewards.filter((r) => r.cost <= 10) };
     expect(nextReward(s, NOW)).toBeNull();
   });
+
+  it('desde el cambio, 1 moneda cada 7 XP; lo ganado antes sigue a 5', () => {
+    const LATER = COIN_RULES.xpPerCoinSince + DAY;
+    let s = addQuest(base(), 'A', 'main', NOW);
+    s = completeQuest(s, s.quests[0].id, NOW).state; // 50 XP antes → 10 monedas
+    s = addQuest(s, 'B', 'main', LATER);
+    s = completeQuest(s, s.quests[1].id, LATER).state; // 50 XP después → 50/7
+    expect(coinsEarned(s, LATER).fromXp).toBe(Math.floor(10 + 50 / 7));
+  });
 });
 
 describe('bosses', () => {
@@ -169,5 +178,24 @@ describe('cofre de premios', () => {
     expect(unusedPurchases(s)).toHaveLength(1);
     expect(s.purchases[0].usedAt).toBe(NOW2 + 5);
     expect(consumePurchase(s, s.purchases[0].id, NOW2 + 9).purchases[0].usedAt).toBe(NOW2 + 5);
+  });
+});
+
+describe('cofre: devolver un premio usado', () => {
+  it('se puede devolver durante 24 h, luego no; los escudos nunca', async () => {
+    const eco = await import('./economy');
+    const { emptyState } = await import('./game');
+    const at = new Date(2026, 10, 20, 10).getTime();
+    const base = { ...emptyState(), purchases: [
+      { id: 'a', rewardId: 'r', name: 'Peli', icon: 'film', cost: 10, at, usedAt: at },
+      { id: 'b', rewardId: eco.SHIELD.id, name: 'Escudo', icon: 'shield', cost: 150, at, usedAt: at, shield: { habitId: 'h', day: '2026-11-19' } },
+      { id: 'c', rewardId: 'r', name: 'Peli', icon: 'film', cost: 10, at },
+    ] } as ReturnType<typeof emptyState>;
+    expect(eco.usedPurchases(base).map((p) => p.id)).toEqual(['a']);
+    const back = eco.returnPurchase(base, 'a', at + 3600_000);
+    expect(eco.unusedPurchases(back).map((p) => p.id)).toEqual(['a']);
+    expect(eco.returnPurchase(base, 'a', at + eco.UNDO_USE_MS + 1)).toBe(base);
+    expect(eco.returnPurchase(base, 'b', at + 1)).toBe(base);
+    expect(eco.returnPurchase(base, 'c', at + 1)).toBe(base);
   });
 });

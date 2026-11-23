@@ -271,7 +271,40 @@ export function addBoss(
  */
 export function summonTemplate(s: GameState, templateId: string, now: number): GameState {
   const t = templateById(templateId);
-  return t ? addBoss(s, { ...t, templateId: t.id }, now) : s;
+  if (!t) return s;
+  const { hp, reward } = scaledBoss(s, t, now);
+  return addBoss(s, { ...t, hp, reward, templateId: t.id }, now);
+}
+
+/** Días hacia atrás que se miran para medir tu ritmo, y cuánto por encima de él te pide un boss. */
+export const PACE_DAYS = 14;
+export const PACE_PUSH = 1.2;
+/** Límites del ajuste respecto a la vida de la plantilla (que nadie tenga bosses ridículos ni imposibles). */
+const PACE_MIN = 0.4;
+const PACE_MAX = 3;
+
+/** Unidades al día de una fuente (XP, minutos de foco, hábitos o XP de un atributo) en tus últimos 14 días. */
+export function dailyPace(s: GameState, source: BossSource, now: number): number {
+  const since = s.profile?.createdAt ?? now;
+  const days = Math.min(PACE_DAYS, Math.max(3, (now - since) / DAY));
+  const from = now - days * DAY;
+  const fake = { createdAt: from, deadline: now } as Boss;
+  const units = sourceHits(s, source, fake, false, false).reduce((n, h) => n + h.dmg, 0);
+  return units / days;
+}
+
+/**
+ * Vida y botín de un boss de la escalera ajustados a tu ritmo: su vida es lo que sueles hacer en su plazo
+ * más un 20 %, entre el 40 % y el triple de la de la plantilla. Sin actividad aún, la de la plantilla.
+ * El botín sigue a la vida (más vida, más monedas), entre el 60 % y el 150 % del de la plantilla.
+ */
+export function scaledBoss(s: GameState, t: BossTemplate, now: number): { hp: number; reward: number; ratio: number } {
+  const pace = dailyPace(s, t.source, now);
+  if (pace <= 0) return { hp: t.hp, reward: t.reward, ratio: 1 };
+  const ratio = Math.min(PACE_MAX, Math.max(PACE_MIN, (pace * t.days * PACE_PUSH) / t.hp));
+  const hp = Math.max(1, Math.round(t.hp * ratio));
+  const reward = Math.round(t.reward * Math.min(1.5, Math.max(0.6, ratio)));
+  return { hp, reward, ratio };
 }
 
 /** Invoca un boss de la escalera si está desbloqueado, no está ya en combate y hay hueco. */

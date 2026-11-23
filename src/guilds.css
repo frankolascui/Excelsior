@@ -37,10 +37,23 @@
 
 /* ---------- Inventario (Personaje) ---------- */
 .inventory .inv-tabs { margin-bottom: 12px; }
+.inventory .chest-items { list-style: none; margin: 10px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.inventory .chest-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; min-width: 0; }
+.inventory .chest-item .chest-name { flex: 1; min-width: 0; }
+.inventory .chest-icon { font-size: 24px; flex: none; }
+.inv-shields { margin: 10px 0 0; color: var(--ice, #9fd8f5); }
+.inv-shields .muted { color: var(--muted); }
+.inv-used { margin-top: 10px; }
+.inv-used summary { cursor: pointer; color: var(--muted); }
+.inv-used ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; max-width: 560px; }
+.inv-used li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; opacity: 0.85; }
+.inv-used .chest-icon { font-size: 18px; }
+.inv-used-name { flex: 1; min-width: 0; }
 .trophy-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
 .trophy { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--line); min-width: 0; }
 .trophy-icon { flex: none; width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; font-size: 26px; }
 .trophy.k-guild .trophy-icon { color: var(--c1); background: color-mix(in srgb, var(--c1) 14%, transparent); border: 1px solid color-mix(in srgb, var(--c1) 40%, transparent); }
+.trophy.k-friends .trophy-icon { color: #7dd3c0; background: color-mix(in srgb, #7dd3c0 14%, transparent); border: 1px solid color-mix(in srgb, #7dd3c0 45%, transparent); }
 .trophy.k-mvp .trophy-icon, .trophy.k-crown .trophy-icon { color: #f5c84c; background: color-mix(in srgb, #f5c84c 14%, transparent); border: 1px solid color-mix(in srgb, #f5c84c 45%, transparent); }
 .trophy-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .trophy-body strong { overflow-wrap: anywhere; }

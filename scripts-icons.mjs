@@ -22,7 +22,7 @@ const MAP = {
   search: 'l:search', eye: 'l:eye', 'eye-off': 'l:eye-off', 'log-out': 'l:log-out', 'log-in': 'l:log-in', send: 'l:send', mail: 'l:mail',
   'rotate-ccw': 'l:rotate-ccw', 'chevron-left': 'l:chevron-left', 'chevron-right': 'l:chevron-right', 'chevron-down': 'l:chevron-down',
   heart: 'l:heart', star: 'l:star', flag: 'l:flag', target: 'l:target', copy: 'l:copy', palette: 'l:palette', save: 'l:save',
-  sliders: 'l:sliders-horizontal', info: 'l:info', moon: 'l:moon', sunrise: 'l:sunrise', 'grip': 'l:grip-vertical',
+  sliders: 'l:sliders-horizontal', info: 'l:info', snowflake: 'l:snowflake', moon: 'l:moon', sunrise: 'l:sunrise', 'grip': 'l:grip-vertical',
   // Tipos de evento
   'ev-bloque': 'l:clock', 'ev-examen': 'l:notebook-pen', 'ev-lanzamiento': 'l:rocket', 'ev-llamada': 'l:phone', 'ev-reunion': 'l:users', 'ev-otro': 'l:pin',
   // Sonido de fondo

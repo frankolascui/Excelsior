@@ -1,6 +1,6 @@
 // Tu vida real dentro de Excelsior: cierre del día y eventos del calendario.
 // Funciones puras sobre GameState, como el resto de reglas.
-import type { BlockTask, CalendarEvent, DayLog, EventKind, EventRepeat, GameState, Quest, Reminder, RepeatRule } from './types';
+import type { AcademyLink, BlockTask, CalendarEvent, DayLog, EventKind, EventRepeat, GameState, Quest, Reminder, RepeatRule } from './types';
 import type { IconName } from './icon-data';
 import { dayKey, deepWorkMinutesOnDay, isHabitDone, levelInfo, totalXp, uid, xpOnDay } from './game';
 
@@ -51,9 +51,13 @@ export const EVENT_COLORS: { id: string; name: string; hex: string }[] = [
   { id: 'grafito', name: 'Grafito', hex: '#8b8d98' },
 ];
 
+/** Nombre para enseñar: un examen de Academy lleva delante su asignatura si el nombre no la dice ya. */
+export const eventLabel = (e: { title: string; academy?: AcademyLink }) =>
+  e.academy && !e.title.toLowerCase().includes(e.academy.subject.toLowerCase()) ? `${e.academy.subject} · ${e.title}` : e.title;
+
 export const eventColor = (e: { color?: string }) => (e.color ? EVENT_COLORS.find((c) => c.id === e.color)?.hex : undefined);
 
-type EventFields = { title: string; day: string; time?: string; end?: string; kind: EventKind; repeat?: EventRepeat; rule?: RepeatRule; until?: string; color?: string; tasks?: BlockTask[] };
+type EventFields = { title: string; day: string; time?: string; end?: string; kind: EventKind; repeat?: EventRepeat; rule?: RepeatRule; until?: string; color?: string; tasks?: BlockTask[]; academy?: AcademyLink };
 
 /** Evento limpio: sin campos vacíos, fin solo si va después del inicio. */
 function cleanEvent(ev: CalendarEvent): CalendarEvent {
@@ -66,6 +70,7 @@ function cleanEvent(ev: CalendarEvent): CalendarEvent {
   if (ev.repeat && ev.skip?.length) out.skip = ev.skip;
   if (ev.color) out.color = ev.color;
   if (ev.kind === 'bloque' && ev.tasks?.length) out.tasks = ev.tasks;
+  if (ev.academy) out.academy = ev.academy;
   return out;
 }
 
@@ -235,7 +240,7 @@ export function dueAlerts(s: GameState, now: number): { key: string; text: strin
   const fresh = (t: string) => hm(t) <= now && now - hm(t) < 30 * 60_000;
   const out: { key: string; text: string }[] = [];
   for (const r of s.reminders ?? []) if (!r.doneAt && r.day === today && r.time && fresh(r.time)) out.push({ key: `r:${r.id}:${today}`, text: `{i:bell} ${r.title}` });
-  for (const e of eventsOn(s, today)) if (e.time && fresh(e.time)) out.push({ key: `e:${e.id}:${today}`, text: `{i:${eventIcon(e.kind)}} ${e.time} · ${e.title}` });
+  for (const e of eventsOn(s, today)) if (e.time && fresh(e.time)) out.push({ key: `e:${e.id}:${today}`, text: `{i:${eventIcon(e.kind)}} ${e.time} · ${eventLabel(e)}` });
   return out;
 }
 

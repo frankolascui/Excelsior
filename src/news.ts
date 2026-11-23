@@ -16,6 +16,54 @@ export interface NewsEntry {
 /** La más nueva primero. Al publicar una versión, añade su entrada arriba y sube APP_VERSION en version.ts. */
 export const NEWS: NewsEntry[] = [
   {
+    version: '3.5', date: '2026-11-23', title: 'Reinos y desafío',
+    groups: [
+      { name: 'Reinos', items: [
+        'Cada reino tiene su propio mapa con ciudades (tus proyectos) alrededor de la capital. El reino suma todo lo levantado en ellas.',
+        'Los edificios dependen del atributo de cada construcción: biblioteca, templo, taberna y más. Su tamaño va según el impacto y las murallas crecen con el número de construcciones.',
+        'Tributo por lo levantado desde que el reino es Villa. Un reino terminado se puede cerrar como monumento, y si un reino lleva tiempo parado te avisa.',
+        'Mapas con más profundidad: sombras, tejas, sillares y la luz cálida del castillo, tanto desde arriba como de frente.',
+      ] },
+      { name: 'Inventario y premios', items: [
+        'Inventario: ves tus congelados guardados y lo ya usado, y puedes devolver al cofre un premio en las primeras 24 horas.',
+        'Trofeos de aliados con título al tener 1, 3 y 8 amigos.',
+      ] },
+      { name: 'Gremios', items: [
+        'Encargos más justos: lo que hiciste antes de entrar en el gremio ya no cuenta, y quien entra a mitad y se va deja de sumar.',
+        'Los aportes se comprueban en el servidor, así nadie puede inflar los rankings.',
+      ] },
+      { name: 'Arena', items: [
+        'Los bosses se ajustan a tu ritmo: su vida es lo que sueles hacer en su plazo (según tus últimas 2 semanas) más un 20 %, y el botín sube con ella.',
+        'El panel de invocar está siempre a la vista, con cada saga plegable y abierta la de tu siguiente boss.',
+      ] },
+      { name: 'Más desafío', items: [
+        'Topes diarios de XP más bajos (misiones 150 y hábitos 80, y suben menos con cada nivel).',
+        'Una moneda cada 7 XP desde esta versión. Lo que ganaste antes sigue contando a 5, así que no pierdes monedas.',
+        'Desgaste: desde el segundo día seguido sin hacer nada, pierdes un 5 % del progreso de tu nivel cada día. Nunca bajas de nivel y el primer día sin actividad es gratis.',
+        'Escudo de racha más caro (150) y con hielo: puedes guardar 2 como máximo y solo protegen el día de ayer.',
+      ] },
+      { name: 'Academy', items: [
+        'Pausa o vacaciones de las tarjetas: elige desde y hasta qué día. Mientras dura, el hábito de repasar no rompe la racha y, al volver, las fechas de repaso se mueven esos días.',
+        'El hábito de Academy ahora se llama «Estudiar»: lo marca una ronda de 8 tarjetas o entregar un simulacro (también en papel), y así suma a tu racha. El tiempo de un simulacro hecho en la app cuenta como Deep Work de estudio.',
+        '«Hoy» de Academy aparece al momento, sin esperar a calcularlo.',
+        'Los exámenes de Academy salen en tu calendario, en Hoy y en los avisos, con su asignatura. Desde el calendario puedes crear un examen de una asignatura, cambiarle el nombre o el día y borrarlo: se cambia también en Academy.',
+      ] },
+      { name: 'Hábitos y salud', items: [
+        'Reino de la Salud y constancia: cada semana con el Templo del Sueño es una semana constante. A las 4, 12, 26 y 52 semanas constantes se levanta un monumento (+25, 50, 100 y 200 monedas), con tu racha de semanas seguidas.',
+        'Escalera de hábitos: un plan por semanas en Hábitos, que Hiperión te explica. Cada semana entra un hábito nuevo con su mínimo; solo subes de escalón si todo va al 80 % o más, y si no, repites la semana.',
+        'Hábito de Deep Work: pon tú los minutos de foco al día y se marca solo al llegar.',
+        'Cada hábito muestra su meta, el siguiente escalón y cuánto te falta para subirlo.',
+        'Hábitos de varias veces al día: una marca cumple el día y las veces de más son estrellas que suman XP.',
+        'Arreglada la casilla del peso de la noche, que se montaba encima de lo de abajo.',
+      ] },
+      { name: 'En toda la app', items: [
+        'Si juegas en dos dispositivos, las partidas se unen solas. Solo te pregunta si cambiaste lo mismo de forma distinta en los dos.',
+        'Si una pantalla falla al dibujarse, ves un aviso con «Reintentar» en lugar de una pantalla en negro.',
+        'El sonido de fondo se queda plegado en un botón pequeño y ya no tapa la pantalla. Púlsalo para ver el volumen o pararlo.',
+      ] },
+    ],
+  },
+  {
     version: '3.1', date: '2026-11-16', title: 'Afinando',
     groups: [
       { name: 'Deep Work', items: [

@@ -1,8 +1,8 @@
 // Reinos: proyectos que se construyen como una ciudad. Cada construcción es una misión
 // normal (con kingdomId), así que da XP y atributos igual que cualquier otra.
-import type { GameState, Quest, QuestType } from './types';
+import type { AttributeId, GameState, Impact, Kingdom, Quest, QuestType } from './types';
 import type { IconName } from './icon-data';
-import { uid } from './game';
+import { impactOf, uid } from './game';
 
 // Ambientación medieval: cabañas, herrerías y torreones.
 export const BUILDINGS: Record<QuestType, { name: string; icon: IconName }> = {
@@ -11,8 +11,85 @@ export const BUILDINGS: Record<QuestType, { name: string; icon: IconName }> = {
   main: { name: 'Torreón', icon: 'stone-tower' },
 };
 
-export function addKingdom(s: GameState, name: string, now: number): GameState {
-  return { ...s, kingdoms: [...s.kingdoms, { id: uid(), name: name.trim(), createdAt: now }] };
+/**
+ * Edificios por atributo (2026-11-17): la ciudad enseña en qué te esfuerzas. El atributo elegido al construir
+ * (`Quest.focus`) decide el edificio y el impacto, su tamaño. Las construcciones antiguas sin atributo siguen
+ * con su dibujo de siempre según su tipo (Torreón → cuartel, Herrería → forja, Cabaña → casa).
+ */
+export type BuildingKind = 'cuartel' | 'biblioteca' | 'forja' | 'taberna' | 'templo' | 'casa';
+
+export const BUILDING_OF: Record<AttributeId, BuildingKind> = {
+  voluntad: 'cuartel', sabiduria: 'biblioteca', maestria: 'forja', conexion: 'taberna', creacion: 'templo',
+};
+
+export const KIND_INFO: Record<BuildingKind, { name: string; icon: IconName; attr?: AttributeId }> = {
+  cuartel: { name: 'Cuartel', icon: 'attr-voluntad', attr: 'voluntad' },
+  biblioteca: { name: 'Biblioteca', icon: 'attr-sabiduria', attr: 'sabiduria' },
+  forja: { name: 'Forja', icon: 'attr-maestria', attr: 'maestria' },
+  taberna: { name: 'Taberna', icon: 'attr-conexion', attr: 'conexion' },
+  templo: { name: 'Templo', icon: 'attr-creacion', attr: 'creacion' },
+  casa: { name: 'Cabaña', icon: 'cabin' },
+};
+
+/** Los cinco edificios que se pueden elegir al construir, en el orden de los atributos. */
+export const BUILDING_CHOICES: AttributeId[] = ['voluntad', 'sabiduria', 'maestria', 'conexion', 'creacion'];
+
+const LEGACY_KIND: Record<QuestType, BuildingKind> = { main: 'cuartel', daily: 'forja', side: 'casa' };
+
+export function buildingKind(q: Pick<Quest, 'focus' | 'type'>): BuildingKind {
+  return q.focus ? BUILDING_OF[q.focus] : LEGACY_KIND[q.type];
+}
+
+/** Tamaño del edificio según el impacto de la tarea. */
+export const IMPACT_SCALE: Record<Impact, number> = { alto: 1.22, medio: 1, bajo: 0.84 };
+export const buildingScale = (q: Pick<Quest, 'impact' | 'type'>) => IMPACT_SCALE[impactOf(q)];
+
+// Copia local (attributes.ts importa este módulo: importar de allí sería circular).
+const normalize = (t: string) => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const GUESS: [RegExp, AttributeId][] = [
+  [/llamar|llamada|famili|amig|pareja|novi[ao]|padre|madre|herman|abuel|quedar|reunion|agradec|visitar|cena con|desconocid|hablar con|conocer gente|cita|equipo|red de contactos/, 'conexion'],
+  [/estudi|leer|lectura|libro|aprend|curso|investig|repas|examen|teori|apunte|document|tutorial/, 'sabiduria'],
+  [/ayudar|voluntari|ensenar|mentor|publicar|lanzar|donar|usuarios|clientes|comunidad|compartir/, 'creacion'],
+  [/entren|madrug|gym|gimnas|correr|disciplin|dejar de|sin movil|ayuno/, 'voluntad'],
+];
+
+/** Atributo (y por tanto edificio) que se propone para una construcción según su nombre: por defecto, la forja. */
+export function guessBuildingAttr(title: string): AttributeId {
+  const t = normalize(title);
+  return GUESS.find(([re]) => re.test(t))?.[1] ?? 'maestria';
+}
+
+/** Funda un reino o, con `parentId`, una ciudad de ese reino (solo un nivel: las ciudades no tienen ciudades). */
+export function addKingdom(s: GameState, name: string, now: number, parentId?: string): GameState {
+  const parent = parentId ? s.kingdoms.find((k) => k.id === parentId && !k.parentId) : undefined;
+  if (parentId && !parent) return s;
+  const k: Kingdom = { id: uid(), name: name.trim(), createdAt: now };
+  if (parent) k.parentId = parent.id;
+  return { ...s, kingdoms: [...s.kingdoms, k] };
+}
+
+/** Reinos (lo que sale en el mapa general). */
+export function realms(s: GameState): Kingdom[] {
+  return s.kingdoms.filter((k) => !k.parentId);
+}
+
+/** Ciudades de un reino. */
+export function citiesOf(s: GameState, realmId: string): Kingdom[] {
+  return s.kingdoms.filter((k) => k.parentId === realmId);
+}
+
+/** Construcciones del reino entero: las de su capital y las de todas sus ciudades. */
+export function realmBuildings(s: GameState, realmId: string): Quest[] {
+  const ids = new Set([realmId, ...citiesOf(s, realmId).map((c) => c.id)]);
+  return s.quests.filter((q) => q.kingdomId && ids.has(q.kingdomId));
+}
+
+/** Progreso de un reino sumando su capital y sus ciudades (la etapa va por construcciones levantadas). */
+export function realmTotals(s: GameState, realmId: string) {
+  const all = realmBuildings(s, realmId);
+  const built = all.filter((q) => q.completedAt).length;
+  const st = stageFor(built, all.length);
+  return { built, total: all.length, progress: all.length ? built / all.length : 0, stage: st.name, icon: st.icon, cities: citiesOf(s, realmId).length, complete: all.length > 0 && built === all.length };
 }
 
 export function renameKingdom(s: GameState, id: string, name: string): GameState {
@@ -36,13 +113,65 @@ export function setKingdomDeadline(s: GameState, id: string, day: string | null)
 
 /** Borra el reino y sus construcciones pendientes; las ya construidas se conservan (su XP sigue en el historial). */
 export function deleteKingdom(s: GameState, id: string): GameState {
+  // Borrar un reino borra también sus ciudades.
+  const ids = new Set([id, ...s.kingdoms.filter((k) => k.parentId === id).map((k) => k.id)]);
   return {
     ...s,
-    kingdoms: s.kingdoms.filter((k) => k.id !== id),
+    kingdoms: s.kingdoms.filter((k) => !ids.has(k.id)),
     quests: s.quests
-      .filter((q) => !(q.kingdomId === id && !q.completedAt))
-      .map((q) => (q.kingdomId === id ? { ...q, kingdomId: undefined } : q)),
+      .filter((q) => !(q.kingdomId && ids.has(q.kingdomId) && !q.completedAt))
+      .map((q) => (q.kingdomId && ids.has(q.kingdomId) ? { ...q, kingdomId: undefined } : q)),
   };
+}
+
+/** Cierra el reino como monumento: quita lo pendiente (el proyecto terminó) y conserva lo construido. */
+export function closeKingdom(s: GameState, id: string, now: number): GameState {
+  // Cerrar un reino cierra también sus ciudades abiertas.
+  const ids = new Set([id, ...s.kingdoms.filter((k) => k.parentId === id).map((k) => k.id)]);
+  return {
+    ...s,
+    kingdoms: s.kingdoms.map((k) => (ids.has(k.id) && !k.closedAt ? { ...k, closedAt: now } : k)),
+    quests: s.quests.filter((q) => !(q.kingdomId && ids.has(q.kingdomId) && !q.completedAt)),
+  };
+}
+
+/** Vuelve a abrir un monumento para seguir construyendo. */
+export function reopenKingdom(s: GameState, id: string): GameState {
+  return {
+    ...s,
+    kingdoms: s.kingdoms.map((k) => {
+      if (k.id !== id) return k;
+      const next = { ...k };
+      delete next.closedAt;
+      return next;
+    }),
+  };
+}
+
+/** Días sin mover un reino abierto para que se considere parado. */
+export const STALE_KINGDOM_DAYS = 14;
+
+/** Días desde lo último que pasó en un reino (fundarlo, añadir o levantar una construcción). */
+export function kingdomIdleDays(s: GameState, kingdomId: string, now: number): number {
+  const k = s.kingdoms.find((x) => x.id === kingdomId);
+  if (!k) return 0;
+  const mine = k.parentId ? buildings(s, kingdomId) : realmBuildings(s, kingdomId);
+  const cities = k.parentId ? [] : citiesOf(s, kingdomId);
+  const last = [...mine.map((q) => Math.max(q.createdAt, q.completedAt ?? 0)), ...cities.map((c) => c.createdAt)].reduce((t, x) => Math.max(t, x), k.createdAt);
+  return Math.floor((now - last) / 86_400_000);
+}
+
+/** Reinos abiertos que llevan 14 días o más sin moverse. */
+export function staleKingdoms(s: GameState, now: number) {
+  return s.kingdoms.filter((k) => !k.closedAt && kingdomIdleDays(s, k.id, now) >= STALE_KINGDOM_DAYS);
+}
+
+/** Un reino «terminado»: cerrado como monumento, o con todo construido (3 o más). */
+export function kingdomFinished(s: GameState, kingdomId: string): boolean {
+  const k = s.kingdoms.find((x) => x.id === kingdomId);
+  if (!k) return false;
+  const p = kingdomProgress(s, kingdomId);
+  return (!!k.closedAt && p.built > 0) || (p.complete && p.total >= 3);
 }
 
 export function buildings(s: GameState, kingdomId: string): Quest[] {
@@ -87,6 +216,10 @@ export function realmProgress(s: GameState) {
   return { built, total: all.length, progress: all.length ? built / all.length : 0 };
 }
 
+/** Nombre para mostrar junto a una construcción: «Programación · Calculadora» si es una ciudad. */
 export function kingdomName(s: GameState, id: string | undefined): string | undefined {
-  return id ? s.kingdoms.find((k) => k.id === id)?.name : undefined;
+  const k = id ? s.kingdoms.find((x) => x.id === id) : undefined;
+  if (!k) return undefined;
+  const parent = k.parentId ? s.kingdoms.find((x) => x.id === k.parentId) : undefined;
+  return parent ? `${parent.name} · ${k.name}` : k.name;
 }

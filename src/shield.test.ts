@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { addHabit, dailyStreakInfo, emptyState, habitAtRisk, toggleHabit, updateHabit } from './game';
-import { buyShield, coinBalance, shieldableDay, shieldsLeft, spendShield, unusedPurchases } from './economy';
+import { addHabit, dailyStreakInfo, emptyState, habitAtRisk, SHIELD_MAX, toggleHabit, updateHabit } from './game';
+import { buyShield, coinBalance, SHIELD, shieldableDay, shieldsLeft, spendShield, unusedPurchases } from './economy';
 import { weekShareText } from './habits-ui';
 import type { GameState } from './types';
 
@@ -8,7 +8,7 @@ const MON = new Date('2026-11-09T10:00:00').getTime(); // lunes, ya sin escudo g
 const D = 86_400_000;
 
 function rich(s: GameState): GameState {
-  return { ...s, xp: [...s.xp, { id: 'x', at: MON - 30 * D, amount: 1000, source: 'admin', sourceId: 'test', label: 'test', attributes: {} }] };
+  return { ...s, xp: [...s.xp, { id: 'x', at: MON - 30 * D, amount: 5000, source: 'admin', sourceId: 'test', label: 'test', attributes: {} }] };
 }
 
 function leer(days: string[]): { s: GameState; id: string } {
@@ -32,7 +32,9 @@ describe('escudo de racha (tienda)', () => {
     let { s, id } = leer(['2026-11-05', '2026-11-06', '2026-11-07', '2026-11-09']);
     const before = coinBalance(s, MON);
     s = buyShield(s, MON).state;
-    expect(coinBalance(s, MON)).toBe(before - 50);
+    expect(coinBalance(s, MON)).toBe(before - SHIELD.cost);
+    expect(SHIELD.cost).toBe(150);
+    expect(SHIELD.max).toBe(SHIELD_MAX);
     expect(shieldsLeft(s)).toBe(1);
     expect(unusedPurchases(s)).toHaveLength(0); // el escudo no va al cofre de premios
     expect(shieldableDay(s, id, MON)).toBe('2026-11-08');
@@ -49,6 +51,38 @@ describe('escudo de racha (tienda)', () => {
     s = buyShield(buyShield(s, MON).state, MON).state;
     expect(shieldableDay(s, id, MON)).toBeNull();
     expect(spendShield(s, id, '2026-11-08', MON).ok).toBe(false);
+  });
+
+  it('máximo 2 guardados', () => {
+    let { s } = leer([]);
+    s = buyShield(buyShield(s, MON).state, MON).state;
+    expect(shieldsLeft(s)).toBe(2);
+    const third = buyShield(s, MON);
+    expect(third.ok).toBe(false);
+    expect(shieldsLeft(third.state)).toBe(2);
+  });
+
+  it('solo vale para ayer: ni anteayer ni días más antiguos', () => {
+    // falla el sábado 7, hace el domingo 8 (ayer): el sábado ya no se puede salvar
+    let { s, id } = leer(['2026-11-05', '2026-11-06', '2026-11-08']);
+    s = buyShield(s, MON).state;
+    expect(shieldableDay(s, id, MON)).toBeNull();
+    expect(spendShield(s, id, '2026-11-07', MON).ok).toBe(false);
+    // ni hoy ni mañana
+    expect(spendShield(s, id, '2026-11-09', MON).ok).toBe(false);
+    expect(spendShield(s, id, '2026-11-10', MON).ok).toBe(false);
+  });
+
+  it('si al marcar el día ya tienes 2 guardados, se devuelven las monedas', () => {
+    let { s, id } = leer(['2026-11-05', '2026-11-06', '2026-11-07']);
+    s = buyShield(s, MON).state;
+    s = spendShield(s, id, '2026-11-08', MON).state;
+    s = buyShield(buyShield(s, MON).state, MON).state;
+    expect(shieldsLeft(s)).toBe(2);
+    const before = coinBalance(s, MON);
+    s = toggleHabit(s, id, MON, '2026-11-08').state;
+    expect(shieldsLeft(s)).toBe(2);
+    expect(coinBalance(s, MON)).toBeGreaterThanOrEqual(before + SHIELD.cost);
   });
 
   it('sin monedas no se compra', () => {

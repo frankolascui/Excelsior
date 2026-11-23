@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type Reac
 import type { AttributeRewards, GameState, Habit, Impact, Quest, QuestType } from './types';
 import { ATTRIBUTES, attributeHistory, attributeLevel, attributeXp, avatarInfo, formatAttrXp, habitRewards, questRewards } from './attributes';
 import {
-  daysUntil, CUSTOM_LIMITS, dayKey, habitAtRisk, impactOf, TYPE_IMPACT, habitDayCount, habitStreak, habitWeekCount, habitXp, isHabitDone, levelInfo, QUEST_LABEL, repeatLabel, questXp, shiftDay, totalXp, XP_RULES,
+  daysUntil, CUSTOM_LIMITS, dayKey, deepWorkMinutesOnDay, FOCUS_HABIT_RULES, habitAtRisk, habitPausedOn, impactOf, TYPE_IMPACT, habitDayCount, habitStreak, habitWeekCount, habitXp, isHabitDone, levelInfo, QUEST_LABEL, repeatLabel, questXp, shiftDay, totalXp, XP_RULES,
 } from './game';
 import { CustomizeToggle, InlineEdit, RewardEditor, sameRewards, type CustomValue } from './customize';
 import { RitualCTA } from './ritual';
@@ -13,7 +13,7 @@ import { IMPACTS } from './priorities';
 
 const impactName = (v: Impact) => IMPACTS.find((x) => x.id === v)!.name;
 import './core.css';
-import { HabitHistory, habitShields, MinimumInput, PerDayInput, ProgressionInput, progressionDraft, type ProgressionDraft } from './habits-ui';
+import { DayPips, FocusMinInput, HabitGoal, HabitHistory, habitShields, MinimumInput, PerDayInput, ProgressionInput, progressionDraft, type ProgressionDraft } from './habits-ui';
 import { progressionText } from './progression';
 import { shieldableDay, shieldsLeft } from './economy';
 import { SubAdd } from './tree-ui';
@@ -359,18 +359,22 @@ export function useHabitFlip<T extends HTMLElement>() {
 }
 
 export function HabitItem({
-  state, habit, now, onToggle, onDelete, onEdit, onToggleDay, onShield, onRetire, handle, compact = false,
+  state, habit, now, onToggle, onSetCount, onDelete, onEdit, onToggleDay, onShield, onFocusMin, onRetire, handle, compact = false,
 }: {
   state: GameState;
   habit: Habit;
   now: number;
   onToggle: () => void;
+  /** Hábitos de varias veces al día: deja hoy en n marcas (las bolitas). */
+  onSetCount?: (n: number) => void;
   /** Con él, los puntos de la semana se pueden pulsar y el nombre abre el historial. */
   onToggleDay?: (day: string) => void;
   onDelete?: () => void;
   onEdit?: (name: string, v: CustomValue, minimum: string, progression: ProgressionDraft, perDay: number) => void;
   /** Usa un escudo de racha del cofre en ese día fallado. */
   onShield?: (day: string) => void;
+  /** Solo el hábito de Deep Work: cambiar sus minutos al día. */
+  onFocusMin?: (min: number) => void;
   /** Retirarlo a mano porque ya está consolidado (va a «Hábitos automatizados» con su historial). */
   onRetire?: () => void;
   /** Asa para ordenar arrastrando (la pone la lista). */
@@ -383,8 +387,11 @@ export function HabitItem({
     const kind = habit.system;
     onToggle = () => openSystemHabit(kind);
     if (onToggleDay) onToggleDay = () => openSystemHabit(kind);
-    onEdit = onDelete = onRetire = undefined;
+    onEdit = onRetire = undefined;
+    if (kind !== 'deepwork') onDelete = undefined; // el de Deep Work lo creas tú: también lo puedes borrar
   }
+  const focusMin = habit.system === 'deepwork' ? habit.focusMin ?? FOCUS_HABIT_RULES.default : 0;
+  const [focusDraft, setFocusDraft] = useState(focusMin);
   const [editing, setEditing] = useState(false);
   const [open, setOpen] = useState(false);
   const [minimum, setMinimum] = useState(habit.minimum ?? '');
@@ -399,9 +406,9 @@ export function HabitItem({
           initial={{ xp: habit.xp, rewards: sameRewards(habit.rewards, auto) ? undefined : habit.rewards }}
           maxXp={CUSTOM_LIMITS.habitXp} idPrefix={`edit-${habit.id}`}
           extra={<>
-            <MinimumInput id={`edit-${habit.id}-min`} value={minimum} onChange={setMinimum} />
-            <ProgressionInput id={`edit-${habit.id}-prog`} value={prog} onChange={setProg} perWeek={habit.frequency === 'weekly' ? habit.perWeek ?? 1 : 7} perDay={perDayDraft} />
             <PerDayInput id={`edit-${habit.id}-perday`} value={perDayDraft} onChange={setPerDayDraft} />
+            <ProgressionInput id={`edit-${habit.id}-prog`} value={prog} onChange={setProg} perWeek={habit.frequency === 'weekly' ? habit.perWeek ?? 1 : 7} perDay={perDayDraft} />
+            <MinimumInput id={`edit-${habit.id}-min`} value={minimum} onChange={setMinimum} />
             {onRetire && <button type="button" className="link retire-now" onClick={() => { setEditing(false); onRetire(); }}><Icon name="trophy" /> Ya lo tengo consolidado: retirarlo del seguimiento</button>}
           </>}
           onSave={(n, v) => { onEdit(n, v, minimum, prog, perDayDraft); setEditing(false); }} onCancel={() => { setMinimum(habit.minimum ?? ''); setProg(progressionDraft(habit)); setPerDayDraft(habit.perDay ?? 1); setEditing(false); }}
@@ -413,7 +420,6 @@ export function HabitItem({
   const done = isHabitDone(state, habit.id, today);
   const perDay = habit.perDay ?? 1;
   const todayCount = perDay > 1 ? habitDayCount(state, habit.id, today) : 0;
-  const more = perDay > 1 && todayCount < perDay;
   const streak = habitStreak(state, habit.id, now);
   const weekly = habit.frequency === 'weekly';
   const weekCount = weekly ? habitWeekCount(state, habit.id, now) : 0;
@@ -423,14 +429,20 @@ export function HabitItem({
   const risk = habitAtRisk(state, habit, now);
   const savable = onShield ? shieldableDay(state, habit.id, now) : null;
   const stock = shieldsLeft(state);
+  // Hielo: el día de ayer congelado con un escudo, y el destello justo al usarlo
+  const iced = !weekly && streak > 0 && shields.includes(dayKey(shiftDay(now, -1)));
+  const freeze = state.purchases.find((p) => p.shield?.habitId === habit.id && p.usedAt != null && Date.now() - p.usedAt < 2500);
+  // Varias veces al día: el botón es el de siempre (una marca cumple el día); las veces extra son estrellas.
+  const toggle = perDay > 1 && onSetCount ? () => onSetCount(todayCount > 0 ? 0 : 1) : onToggle;
   return (
-    <li className={done && !more ? 'item done' : risk ? 'item at-risk' : 'item'} data-habit={habit.id}>
+    <li className={[done ? 'item done' : risk ? 'item at-risk' : 'item', iced && 'iced', freeze && 'freezing'].filter(Boolean).join(' ')} data-habit={habit.id}>
+      {freeze && <IceBurst key={freeze.usedAt} />}
       <button
         className={done ? 'check checked' : 'check'}
-        onClick={onToggle}
+        onClick={toggle}
         aria-pressed={done}
-        aria-label={more && done ? `Marcar otra vez ${habit.name} (${todayCount}/${perDay} hoy)` : done ? `Desmarcar ${habit.name}` : `Completar ${habit.name}`}
-        title={more && done ? `Otra vez (${todayCount}/${perDay} hoy)` : done ? 'Desmarcar' : 'Completado'}
+        aria-label={done ? `Desmarcar ${habit.name}` : `Completar ${habit.name}`}
+        title={done ? 'Desmarcar' : 'Completado'}
       >
         ✓
       </button>
@@ -439,38 +451,54 @@ export function HabitItem({
           ? <button type="button" className="habit-open" aria-expanded={open} onClick={() => setOpen(!open)} title="Ver historial"><span className="item-title">{habit.name}</span><Icon name="chevron-down" /></button>
           : <span className="item-title">{habit.name}</span>}
         <span className="item-meta">
-          {habit.progression && habit.progression.kind !== 'freq' && <span className="freq-tag goal-tag" title="Meta actual (sobrecarga progresiva)"><Icon name="trend" /> {progressionText(habit)}</span>}
-          {perDay > 1 && <span className="freq-tag" title={`Se puede marcar hasta ${perDay} veces al día`}>{todayCount}/{perDay} hoy</span>}
-          {weekly && <span className={weekDone ? 'freq-tag done' : 'freq-tag'}>{weekCount}/{habit.perWeek} esta semana{weekDone && <> <Icon name="check" /></>}</span>}
+          {perDay > 1 && <DayPips name={habit.name} count={todayCount} max={perDay} onSet={onSetCount} />}
+          {!done && habitPausedOn(state, habit.id, today) && <span className="freq-tag paused-tag" title="Las tarjetas están en pausa: hoy no cuenta como fallado"><Icon name="pause" /> En pausa</span>}
+          {weekly && <span className={weekDone ? 'freq-tag done' : 'freq-tag'}>{weekCount}/{habit.perWeek} esta semana</span>}
           <span className="week" aria-label="Últimos 7 días">
             {week.map((d) => {
               const on = isHabitDone(state, habit.id, d);
-              const cls = on ? 'dot on' : shields.includes(d) ? 'dot shield' : 'dot';
-              const tip = `${dayWords(d)}${on ? ': hecho' : shields.includes(d) ? ': salvado por el escudo' : ''}`;
+              const rest = !on && habitPausedOn(state, habit.id, d);
+              const cls = on ? 'dot on' : shields.includes(d) ? 'dot shield' : rest ? 'dot paused' : 'dot';
+              const tip = `${dayWords(d)}${on ? ': hecho' : shields.includes(d) ? ': congelado con un escudo' : rest ? ': en pausa (vacaciones)' : ''}`;
               return onToggleDay && d !== today
                 ? <button type="button" key={d} className={cls} title={tip} aria-label={`${on ? 'Desmarcar' : 'Marcar'} ${habit.name} (${dayWords(d).toLowerCase()})`} aria-pressed={on} onClick={() => onToggleDay(d)} />
                 : <span key={d} className={cls} title={tip} />;
             })}
           </span>
-          <span className="mono streak">{streak > 0 ? `racha ${streak}${weekly ? ' sem' : ''}` : 'sin racha'}</span>
-          {!compact && <span className="mono xp-tag">+{habitXp(habit)} XP</span>}
-          {!compact && <RewardTags rewards={habit.rewards} />}
+          <span className="mono streak">{iced && <Icon name="snowflake" />}{streak > 0 ? `racha ${streak}${weekly ? ' sem' : ''}` : 'sin racha'}</span>
+          {habit.progression && <span className="goal-tag" title="Meta actual (sobrecarga progresiva)">meta {progressionText(habit)}</span>}
+          {focusMin > 0 && <span className="goal-tag" title="Minutos de Deep Work de hoy / los que lo marcan">{Math.min(deepWorkMinutesOnDay(state, today), focusMin)}/{focusMin} min</span>}
         </span>
         {(risk || (savable && stock > 0)) && (
           <p className="habit-risk small-text">
-            {risk && <span><Icon name="alert" /> Ayer fallaste: nunca dos días seguidos. {habit.minimum ? <>Si hoy es un día malo, vale con lo mínimo: <b>{habit.minimum}</b>.</> : 'Hoy cuenta aunque sea poco.'}</span>}
-            {savable && (stock > 0
-              ? <button type="button" className="link" onClick={() => onShield!(savable)}><Icon name="shield" /> Salvar {dayWords(savable) === 'Ayer' ? 'ayer' : `el ${dayWords(savable)}`} con un escudo (tienes {stock})</button>
-              : risk && <span className="muted"> O compra un escudo de racha en la Tienda de la Arena.</span>)}
+            {risk && <span>Ayer fallaste. {habit.minimum ? <>Hoy vale con el mínimo: <b>{habit.minimum}</b>.</> : 'Hoy cuenta aunque sea poco.'}</span>}
+            {savable && stock > 0 && <button type="button" className="link ice-link" onClick={() => onShield!(savable)}><Icon name="snowflake" /> Congelar ayer (tienes {stock})</button>}
           </p>
         )}
-        {open && onToggleDay && <HabitHistory state={state} habit={habit} now={now} onToggleDay={onToggleDay} />}
+        {open && onToggleDay && (
+          <div className="habit-detail">
+            {!compact && <HabitGoal state={state} habit={habit} now={now} />}
+            {!compact && focusMin > 0 && onFocusMin && (
+              <div className="focus-edit">
+                <FocusMinInput id={`focus-${habit.id}`} value={focusDraft} onChange={setFocusDraft} />
+                {focusDraft !== focusMin && <button className="primary small" disabled={focusDraft < FOCUS_HABIT_RULES.min || focusDraft > FOCUS_HABIT_RULES.max} onClick={() => onFocusMin(focusDraft)}>Guardar</button>}
+              </div>
+            )}
+            <HabitHistory state={state} habit={habit} now={now} onToggleDay={onToggleDay} />
+            {!compact && (
+              <div className="habit-detail-foot">
+                <span className="mono xp-tag">+{habitXp(habit)} XP</span>
+                <RewardTags rewards={habit.rewards} />
+                <span className="habit-detail-actions">
+                  {onEdit && <button className="ghost small edit-btn" onClick={() => setEditing(true)} aria-label={`Editar ${habit.name}`} title="Veces, meta, mínimo y XP"><Icon name="sliders" /> Editar</button>}
+                  {onDelete && <button className="ghost small danger" onClick={() => sureThen({ title: `¿Borrar el hábito «${habit.name}»?`, message: 'Se borra también su historial y su racha.', confirmLabel: 'Borrar hábito' }, onDelete)} aria-label={`Borrar ${habit.name}`} title="Borrar"><Icon name="trash" /> Borrar</button>}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
-      <div className="item-actions">
-        {handle}
-        {onEdit && <button className="icon-btn edit-btn" onClick={() => setEditing(true)} aria-label={`Editar ${habit.name}`} title="Editar XP y atributos"><Icon name="sliders" /></button>}
-        {onDelete && <button className="icon-btn" onClick={() => sureThen({ title: `¿Borrar el hábito «${habit.name}»?`, message: 'Se borra también su historial y su racha.', confirmLabel: 'Borrar hábito' }, onDelete)} aria-label={`Borrar ${habit.name}`} title="Borrar"><Icon name="trash" /></button>}
-      </div>
+      {handle && <div className="item-actions">{handle}</div>}
     </li>
   );
 }
@@ -538,46 +566,47 @@ export function AvatarCard({ state, now, showRequirements = false }: { state: Ga
 export function AttributeList({ state, detailed = false }: { state: GameState; detailed?: boolean }) {
   const xp = attributeXp(state);
   const level = levelInfo(totalXp(state)).level;
+  const [open, setOpen] = useState<string | null>(null);
+  // En Personaje (detailed) cada atributo es una línea; su explicación sale al pulsar el nombre.
+  const name = (a: (typeof ATTRIBUTES)[number]) => detailed
+    ? <button type="button" className="attr-name attr-open" aria-expanded={open === a.id} onClick={() => setOpen(open === a.id ? null : a.id)}>{a.name} <Icon name="chevron-down" /></button>
+    : <span className="attr-name">{a.name}</span>;
+  const desc = (a: (typeof ATTRIBUTES)[number]) => (
+    <span className="attr-desc">
+      <strong className="attr-tagline">{a.tagline}</strong> {a.desc}
+      <span className="attr-gains"><span className="eyebrow-inline">Sube con</span> {a.gains}</span>
+      <span className="muted">Ej.: {a.examples}</span>
+    </span>
+  );
   return (
     <ul className={detailed ? 'attrs detailed' : 'attrs'}>
       {ATTRIBUTES.map((a) => {
         const lvl = attributeLevel(xp[a.id]);
-        const last = detailed ? attributeHistory(state, a.id).slice(-1)[0] : undefined;
+        const isOpen = detailed && open === a.id;
+        const last = isOpen ? attributeHistory(state, a.id).slice(-1)[0] : undefined;
         const asleep = a.unlockLevel !== undefined && level < a.unlockLevel;
         if (asleep) {
           return (
-            <li key={a.id} className="attr idle asleep" title={`${a.tagline} ${a.desc}`}>
+            <li key={a.id} className="attr idle asleep" title={detailed ? undefined : `${a.tagline} ${a.desc}`}>
               <span className="attr-icon" aria-hidden="true"><Icon name="lock" /></span>
-              <span className="attr-name">{a.name}</span>
+              {name(a)}
               <span className="attr-level mono">Nv {a.unlockLevel}</span>
-              <span className="attr-asleep-text">Atributo avanzado: se despierta en el nivel global {a.unlockLevel}. Lo que hagas antes ya cuenta.</span>
-              {detailed && (
-              <span className="attr-desc">
-                <strong className="attr-tagline">{a.tagline}</strong> {a.desc}
-                <span className="attr-gains"><span className="eyebrow-inline">Sube con</span> {a.gains}</span>
-                <span className="muted">Ej.: {a.examples}</span>
-              </span>
-            )}
+              <span className="attr-asleep-text">{detailed ? `Se despierta en el nivel ${a.unlockLevel}` : `Atributo avanzado: se despierta en el nivel global ${a.unlockLevel}. Lo que hagas antes ya cuenta.`}</span>
+              {isOpen && desc(a)}
             </li>
           );
         }
         return (
-          <li key={a.id} className={xp[a.id] === 0 ? 'attr idle' : 'attr'} title={`${a.tagline} ${a.desc}`}>
+          <li key={a.id} className={xp[a.id] === 0 ? 'attr idle' : 'attr'} title={detailed ? undefined : `${a.tagline} ${a.desc}`}>
             <span className={`attr-icon a-${a.id}`} aria-hidden="true"><Icon name={a.icon} /></span>
-            <span className="attr-name">{a.name}</span>
+            {name(a)}
             <span className="attr-level mono">Nv {lvl.level}</span>
             <div className="attr-bar" role="progressbar" aria-label={`${a.name}: ${formatAttrXp(lvl.current)} de ${lvl.needed} XP`} aria-valuemin={0} aria-valuemax={lvl.needed} aria-valuenow={lvl.current}>
               <div style={{ width: `${Math.min(100, lvl.progress * 100)}%` }} />
             </div>
             <span className="attr-xp mono">{formatAttrXp(xp[a.id])} XP</span>
-            {detailed && (
-              <span className="attr-desc">
-                <strong className="attr-tagline">{a.tagline}</strong> {a.desc}
-                <span className="attr-gains"><span className="eyebrow-inline">Sube con</span> {a.gains}</span>
-                <span className="muted">Ej.: {a.examples}</span>
-              </span>
-            )}
-            {detailed && (
+            {isOpen && desc(a)}
+            {isOpen && (
               <span className="attr-last">
                 {last ? `Último: +${formatAttrXp(last.amount)} · ${last.label}` : 'Aún sin progreso'}
               </span>
@@ -586,5 +615,14 @@ export function AttributeList({ state, detailed = false }: { state: GameState; d
         );
       })}
     </ul>
+  );
+}
+
+/** Destello de hielo al usar un escudo de racha: la escarcha cubre el hábito y se deshace. Solo decorativo. */
+function IceBurst() {
+  return (
+    <span className="ice-burst" aria-hidden="true">
+      {[12, 30, 50, 70, 88].map((x, i) => <span key={x} className="ice-flake" style={{ left: `${x}%`, animationDelay: `${i * 70}ms` }}><Icon name="snowflake" /></span>)}
+    </span>
   );
 }

@@ -1,7 +1,7 @@
 // Reglas del juego: funciones puras sobre GameState. Toda la lógica de XP,
 // niveles, rachas y límites anti-farmeo vive aquí para poder probarla.
 import type {
-  ActiveTimer, AttributeId, AttributeRewards, GameState, Habit, Quest, QuestType, XPSource, XPTransaction, DeepWorkSession, DeepWorkArea, FocusPhase,
+  ActiveTimer, AttributeId, AttributeRewards, GameState, Habit, Quest, QuestType, XPSource, XPTransaction, DeepWorkSession, DeepWorkArea, FocusPhase, StudyPause,
 } from './types';
 import { ancestors, descendants, effectiveDeadline, hasOpenChildren, isLeaf } from './tree';
 import { deepWorkRewards, habitRewards, inferDeepWorkArea, questRewards } from './attributes';
@@ -15,8 +15,9 @@ export const XP_RULES = {
   deepWorkPerMinute: 1,
   // Anti-farmeo: tope diario de XP por misiones y por hábitos.
   // El Deep Work no tiene tope diario porque está limitado por tiempo real.
-  dailyCap: { quest: 200, habit: 100 },
-  capPerLevel: { quest: 25, habit: 10 }, // cada nivel sube el tope diario
+  // Dificultad subida el 2026-11-18 (pedido de Nicolas): antes 200/100 y +25/+10 por nivel.
+  dailyCap: { quest: 150, habit: 80 },
+  capPerLevel: { quest: 15, habit: 5 }, // cada nivel sube el tope diario
   maxSessionMinutes: 240,
   minSessionMinutes: 1,
 };
@@ -66,10 +67,16 @@ export function emptyState(): GameState {
  * v2 no daba Conexión/Creación y redondeaba la Voluntad del Deep Work).
  */
 export function migrate(raw: { version: number } & Record<string, unknown>): GameState {
-  const s = stepsToChildren(migrateToV4(raw));
+  const s = renameStudyHabit(stepsToChildren(migrateToV4(raw)));
   // v4 → v5: aparecen monedas, tienda de recompensas y bosses.
   if (raw.version < 5) return { ...s, rewards: defaultRewards(Date.now()), purchases: [], bosses: [] };
   return s;
+}
+
+/** V3.5: el hábito de Academy pasa de «Repasar las tarjetas» a «Estudiar» (también cuenta un simulacro). */
+function renameStudyHabit(s: GameState): GameState {
+  if (!s.habits.some((h) => h.system === 'academy' && h.name === 'Repasar las tarjetas')) return s;
+  return { ...s, habits: s.habits.map((h) => (h.system === 'academy' && h.name === 'Repasar las tarjetas' ? { ...h, name: 'Estudiar' } : h)) };
 }
 
 /** Los antiguos «pasos» pasan a ser submisiones (árbol de misiones). No da ni quita XP. */
@@ -94,7 +101,10 @@ function stepsToChildren(s: GameState): GameState {
 function migrateToV4(raw: { version: number } & Record<string, unknown>): GameState {
   const base = { ...emptyState(), ...raw, version: 6 } as GameState; // v5 → v6 (V3): solo campos nuevos opcionales
   // v3 → v4: los reinos pasan a tener construcciones (misiones) y aparecen las metas; no hay nada que recalcular.
-  if (raw.version >= 3) return { ...base, kingdoms: base.kingdoms.map(({ id, name, createdAt }) => ({ id, name, createdAt: createdAt ?? Date.now() })) };
+  // Antes se rehacía cada reino solo con id, nombre y fecha, y al recargar se perdían la fecha objetivo y lo demás.
+  // Solo los reinos de la v3 (con su `progress` viejo) se rehacen; desde la v4 se conservan enteros.
+  if (raw.version === 3) return { ...base, kingdoms: base.kingdoms.map(({ id, name, createdAt }) => ({ id, name, createdAt: createdAt ?? Date.now() })) };
+  if (raw.version > 3) return { ...base, kingdoms: base.kingdoms.map((k) => ({ ...k, createdAt: k.createdAt ?? Date.now() })) };
   const habits = base.habits.map((h) => ({ ...h, rewards: habitRewards(h.name) }));
   const sessions = base.sessions.map((x) => ({ ...x, area: x.area ?? ('general' as const) }));
   const xp = base.xp.map((t) => {
@@ -157,7 +167,13 @@ export function levelInfo(totalXp: number) {
 
 // ---------- Consultas ----------
 
+/** XP total: lo ganado menos el desgaste por inactividad (src/decay.ts). */
 export function totalXp(s: GameState): number {
+  return earnedXp(s) - (s.decay ?? []).reduce((n, d) => n + d.amount, 0);
+}
+
+/** XP ganado sin descontar el desgaste (las monedas salen de aquí: el desgaste no quita monedas). */
+export function earnedXp(s: GameState): number {
   return s.xp.reduce((sum, t) => sum + t.amount, 0);
 }
 
@@ -229,12 +245,93 @@ export function habitStreakDays(s: GameState, habitId: string, now: number): num
   return habit?.frequency === 'weekly' ? n * 7 : n;
 }
 
+// ---------- Pausa de las tarjetas (vacaciones) ----------
+
+/** El hábito que se pausa con las tarjetas (el mismo id que ACADEMY_HABIT_ID de academy-game.ts). */
+export const STUDY_PAUSE_HABIT = 'sys-academy';
+
+const addDay = (day: string, n: number) => dayKey(shiftDay(new Date(`${day}T12:00:00`).getTime(), n));
+
+/** Último día en pausa (incluido), o null si sigue abierta sin fecha de fin. */
+export function pauseLastDay(p: StudyPause): string | null {
+  const end = p.endedOn ? addDay(p.endedOn, -1) : null;
+  if (end && (!p.until || end < p.until)) return end;
+  return p.until;
+}
+
+/** ¿Ese día está dentro de alguna pausa de las tarjetas? */
+export function studyPausedOn(s: GameState, day: string): boolean {
+  return (s.studyPauses ?? []).some((p) => {
+    const last = pauseLastDay(p);
+    return p.from <= day && (last === null || day <= last);
+  });
+}
+
+/** La pausa en curso o la próxima programada (la que aún no ha terminado), si la hay. */
+export function currentStudyPause(s: GameState, now: number): StudyPause | null {
+  const today = dayKey(now);
+  return (s.studyPauses ?? []).find((p) => {
+    const last = pauseLastDay(p);
+    return !p.endedOn && (last === null || last >= today) && (last === null || p.from <= last);
+  }) ?? null;
+}
+
+/** Programa (o empieza hoy) una pausa. Sustituye a la que hubiera pendiente. */
+export function startStudyPause(s: GameState, from: string, until: string | null, now: number): GameState {
+  const today = dayKey(now);
+  const start = from < today ? today : from;
+  const end = until && until < start ? start : until;
+  const cur = currentStudyPause(s, now);
+  let pauses = s.studyPauses ?? [];
+  // Si ya había una: la que aún no empezó se cambia; la que está en curso se mantiene y se le cambia el final.
+  if (cur) pauses = pauses.map((p) => (p.id === cur.id ? { ...p, from: cur.from <= today ? cur.from : start, until: end } : p));
+  else pauses = [...pauses, { id: uid(), from: start, until: end }];
+  return { ...s, studyPauses: pauses };
+}
+
+/** Reanuda hoy la pausa en curso; si aún no había empezado, se borra. */
+export function endStudyPause(s: GameState, now: number): GameState {
+  const today = dayKey(now);
+  const cur = currentStudyPause(s, now);
+  if (!cur) return s;
+  const pauses = (s.studyPauses ?? []).flatMap((p) => (p.id !== cur.id ? [p] : p.from >= today ? [] : [{ ...p, endedOn: today }]));
+  return { ...s, studyPauses: pauses };
+}
+
+/** Pausas ya terminadas cuyas fechas de repaso aún no se han movido, con los días que hay que moverlas. */
+export function pausesToShift(s: GameState, now: number): { pause: StudyPause; days: number }[] {
+  const today = dayKey(now);
+  return (s.studyPauses ?? []).flatMap((p) => {
+    if (p.shifted !== undefined) return [];
+    const last = pauseLastDay(p);
+    if (last === null || last >= today) return [];
+    const days = Math.round((new Date(`${last}T12:00:00`).getTime() - new Date(`${p.from}T12:00:00`).getTime()) / 86_400_000) + 1;
+    return [{ pause: p, days: Math.max(0, days) }];
+  });
+}
+
+export function markPauseShifted(s: GameState, id: string, days: number): GameState {
+  return { ...s, studyPauses: (s.studyPauses ?? []).map((p) => (p.id === id ? { ...p, shifted: days } : p)) };
+}
+
+/** ¿Ese día no cuenta para el hábito (está en pausa)? Solo afecta al hábito de repasar. */
+export const habitPausedOn = (s: GameState, habitId: string, day: string) => habitId === STUDY_PAUSE_HABIT && studyPausedOn(s, day);
+
+/** El día anterior a `ts` que sí cuenta (saltando los días en pausa). */
+export function prevActiveDay(s: GameState, habitId: string, ts: number): number {
+  let c = shiftDay(ts, -1);
+  for (let i = 0; i < 400 && habitPausedOn(s, habitId, dayKey(c)); i++) c = shiftDay(c, -1);
+  return c;
+}
+
 function dailyStreak(s: GameState, habitId: string, now: number): number {
   return dailyStreakInfo(s, habitId, now).streak;
 }
 
 /** Hasta este día (incluido) seguía el escudo gratis de 1 fallo por semana; desde entonces los escudos se compran. */
 export const FREE_SHIELD_UNTIL = '2026-10-26';
+/** Escudos de racha que puedes tener guardados a la vez (SHIELD.max en economy.ts). */
+export const SHIELD_MAX = 2;
 
 /** Días de un hábito salvados con escudos comprados en la tienda. */
 export function shieldedDays(s: GameState, habitId: string): Set<string> {
@@ -256,12 +353,14 @@ export function dailyStreakInfo(s: GameState, habitId: string, now: number): { s
     const day = dayKey(cursor);
     if (days.has(day)) {
       streak++;
+    } else if (habitPausedOn(s, habitId, day)) {
+      // día de vacaciones de las tarjetas: ni suma ni rompe la racha
     } else {
-      const prevDone = days.has(dayKey(shiftDay(cursor, -1)));
+      const prevDone = days.has(dayKey(prevActiveDay(s, habitId, cursor)));
       if (!prevDone) break;
       if (!bought.has(day)) {
         // ayer fallado y aún no se ha perdido: hoy se puede salvar haciéndolo (o con un escudo)
-        const pending = streak === 0 && shields.length === 0 && day === dayKey(shiftDay(now, -1));
+        const pending = streak === 0 && shields.length === 0 && day === dayKey(prevActiveDay(s, habitId, now));
         const week = weekStart(cursor);
         const free = day <= FREE_SHIELD_UNTIL && !shields.some((d) => weekStart(new Date(`${d}T12:00:00`).getTime()) === week);
         if (!pending && !free) break;
@@ -279,10 +378,11 @@ export function dailyStreakInfo(s: GameState, habitId: string, now: number): { s
  * Devuelve el día fallado o null.
  */
 export function habitAtRisk(s: GameState, h: Habit, now: number): string | null {
-  if (h.frequency === 'weekly' || isHabitDone(s, h.id, dayKey(now))) return null;
-  const y = dayKey(shiftDay(now, -1));
-  if (isHabitDone(s, h.id, y) || shieldedDays(s, h.id).has(y) || y <= FREE_SHIELD_UNTIL) return null;
-  return isHabitDone(s, h.id, dayKey(shiftDay(now, -2))) ? y : null;
+  if (h.frequency === 'weekly' || isHabitDone(s, h.id, dayKey(now)) || habitPausedOn(s, h.id, dayKey(now))) return null;
+  const yTs = shiftDay(now, -1);
+  const y = dayKey(yTs);
+  if (isHabitDone(s, h.id, y) || habitPausedOn(s, h.id, y) || shieldedDays(s, h.id).has(y) || y <= FREE_SHIELD_UNTIL) return null;
+  return isHabitDone(s, h.id, dayKey(prevActiveDay(s, h.id, yTs))) ? y : null;
 }
 
 /** Tope diario de XP: crece con el nivel con el que empezaste el día (más nivel, más margen). */
@@ -591,9 +691,12 @@ export function updateHabit(s: GameState, id: string, patch: { name?: string; xp
   };
 }
 
-/** Ya no hay que hacerlo hoy: hecho hoy o, si es semanal, objetivo de la semana cumplido. */
+/**
+ * Ya no hay que hacerlo hoy: hecho hoy (una marca basta; las veces extra de perDay son opcionales)
+ * o, si es semanal, objetivo de la semana cumplido.
+ */
 export const habitCleared = (s: GameState, h: Habit, now: number) =>
-  habitDayCount(s, h.id, dayKey(now)) >= (h.perDay ?? 1) || habitSatisfied(s, h, now);
+  isHabitDone(s, h.id, dayKey(now)) || habitSatisfied(s, h, now);
 
 /** Orden en pantalla: los que faltan arriba y los ya cumplidos al final; dentro de cada grupo, el orden elegido. */
 export function habitsInOrder(s: GameState, now: number): Habit[] {
@@ -642,14 +745,17 @@ export function toggleHabit(s: GameState, habitId: string, now: number, day = da
   }
   const completion = { id: uid(), habitId, day, at: now };
   const base = habitXp(habit);
-  // si ese día tenía escudo, ya no hace falta: vuelve sin usar
+  // si ese día tenía escudo, ya no hace falta: vuelve sin usar (o se devuelven sus monedas si ya tienes el máximo guardado)
   if (s.purchases.some((p) => p.shield?.habitId === habitId && p.shield.day === day)) {
+    let stock = s.purchases.filter((p) => p.rewardId === 'streak-shield' && p.usedAt === null).length;
     s = {
       ...s,
-      purchases: s.purchases.map((p) => {
-        if (p.shield?.habitId !== habitId || p.shield.day !== day) return p;
+      purchases: s.purchases.flatMap((p) => {
+        if (p.shield?.habitId !== habitId || p.shield.day !== day) return [p];
+        if (stock >= SHIELD_MAX) return [];
+        stock++;
         const { shield: _, ...rest } = p;
-        return { ...rest, usedAt: null };
+        return [{ ...rest, usedAt: null }];
       }),
     };
   }
@@ -657,6 +763,32 @@ export function toggleHabit(s: GameState, habitId: string, now: number, day = da
   let state: GameState = { ...s, habitCompletions: [...s.habitCompletions, completion] };
   state = withXp(state, { at: now, amount, source: 'habit', sourceId: completion.id, label: habit.name, attributes: habit.rewards });
   return { state, xp: amount, capped: amount < base };
+}
+
+/**
+ * Hábitos de varias veces al día: deja el día en `n` marcas (0…perDay). Sube de una en una con su XP
+ * y, al bajar, quita las últimas con el XP que dieron. Así se corrige una marca de más sin perder las demás.
+ */
+export function setHabitDayCount(s: GameState, habitId: string, n: number, now: number, day = dayKey(now)): ActionResult {
+  const habit = s.habits.find((h) => h.id === habitId);
+  if (!habit || habit.system || day > dayKey(now)) return { state: s, xp: 0 };
+  const target = Math.max(0, Math.min(habit.perDay ?? 1, Math.round(n)));
+  const existing = s.habitCompletions.filter((c) => c.habitId === habitId && c.day === day).sort((a, b) => a.at - b.at);
+  if (target > existing.length) {
+    let res: ActionResult = { state: s, xp: 0 };
+    for (let i = existing.length; i < target; i++) {
+      const r = toggleHabit(res.state, habitId, now, day);
+      res = { state: r.state, xp: res.xp + r.xp, capped: res.capped || r.capped };
+    }
+    return res;
+  }
+  if (target === existing.length) return { state: s, xp: 0 };
+  const ids = new Set(existing.slice(target).map((c) => c.id));
+  const removed = s.xp.filter((t) => t.source === 'habit' && ids.has(t.sourceId)).reduce((sum, t) => sum + t.amount, 0);
+  return {
+    state: { ...s, habitCompletions: s.habitCompletions.filter((c) => !ids.has(c.id)), xp: s.xp.filter((t) => !(t.source === 'habit' && ids.has(t.sourceId))) },
+    xp: -removed,
+  };
 }
 
 // ---------- Deep Work ----------
@@ -793,7 +925,34 @@ export function stopTimer(s: GameState, now: number): StopResult {
   state = withXp(state, {
     at: now, amount, source: 'deepwork', sourceId: session.id, label: session.label, attributes: deepWorkRewards(minutes, session.area),
   });
-  return { state, xp: amount, session, capped: elapsed > XP_RULES.maxSessionMinutes };
+  const focus = checkFocusHabit(state, now);
+  return { state: focus.state, xp: amount + focus.xp, session, capped: elapsed > XP_RULES.maxSessionMinutes || focus.capped };
+}
+
+// ---------- Hábito de Deep Work (minutos al día que pones tú) ----------
+
+export const FOCUS_HABIT_ID = 'sys-deepwork';
+export const FOCUS_HABIT_RULES = { min: 10, max: 480, default: 60 };
+
+const clampFocus = (min: number) => Math.max(FOCUS_HABIT_RULES.min, Math.min(FOCUS_HABIT_RULES.max, Math.round(min)));
+
+/** Crea el hábito de Deep Work (o le cambia los minutos) y lo marca si hoy ya llegas. */
+export function setFocusHabit(s: GameState, minutes: number, now: number): ActionResult {
+  const focusMin = clampFocus(minutes);
+  const has = s.habits.some((h) => h.id === FOCUS_HABIT_ID);
+  const habits = has
+    ? s.habits.map((h) => (h.id === FOCUS_HABIT_ID ? { ...h, focusMin } : h))
+    : [...s.habits, { id: FOCUS_HABIT_ID, name: 'Deep Work', frequency: 'daily' as const, createdAt: now, rewards: { voluntad: 1, maestria: 1 }, system: 'deepwork' as const, focusMin }];
+  return checkFocusHabit({ ...s, habits }, now);
+}
+
+/** Si el hábito de Deep Work existe y hoy ya sumas sus minutos, se marca solo. */
+export function checkFocusHabit(s: GameState, now: number): ActionResult {
+  const habit = s.habits.find((h) => h.id === FOCUS_HABIT_ID);
+  const today = dayKey(now);
+  if (!habit || s.habitCompletions.some((c) => c.habitId === FOCUS_HABIT_ID && c.day === today)) return { state: s, xp: 0 };
+  if (deepWorkMinutesOnDay(s, today) < (habit.focusMin ?? FOCUS_HABIT_RULES.default)) return { state: s, xp: 0 };
+  return toggleHabit(s, FOCUS_HABIT_ID, now, today, true);
 }
 
 // ---------- ¿Qué hago ahora? ----------

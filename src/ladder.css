@@ -1,0 +1,64 @@
+/* Escalera de hábitos (ladder-ui.tsx) */
+.hladder { display: grid; gap: 8px; }
+.ladder-head { display: flex; align-items: center; gap: 10px; }
+.ladder-head > .ico { font-size: 1.25em; color: var(--muted); flex: none; }
+.ladder-head > div { flex: 1; min-width: 0; }
+.ladder-head h3, .ladder-head p { margin: 0; }
+.ladder-empty .secondary { justify-self: start; }
+.ladder-last { margin: 0; color: var(--muted); }
+.ladder-now { display: grid; gap: 6px; }
+.ladder-now p { margin: 0; }
+.ladder-now .hint { margin: 0; }
+
+.ladder-live { list-style: none; margin: 10px 0 4px; padding: 0; display: grid; gap: 4px; }
+.ladder-live li { display: grid; grid-template-columns: minmax(0, 9em) 1fr auto; align-items: center; gap: 10px; }
+.ladder-live-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ladder-bar { position: relative; height: 4px; border-radius: 2px; background: var(--line); }
+.ladder-bar i { position: absolute; inset: 0 auto 0 0; border-radius: 2px; background: color-mix(in srgb, var(--muted) 70%, transparent); }
+.ladder-live li.ok .ladder-bar i { background: var(--c2); }
+.ladder-bar em { position: absolute; top: -2px; bottom: -2px; width: 1px; background: var(--fg); opacity: 0.35; }
+.ladder-plan summary { cursor: pointer; color: var(--muted); font-size: 13.5px; }
+.ladder-plan .habit-hint-actions { margin-top: 6px; }
+.ladder-steps, .ladder-edit { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 2px; }
+.ladder-steps li, .ladder-edit li { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); }
+.ladder-step-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.ladder-dot { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 0.75em; border: 1px solid var(--line); font-family: var(--mono); }
+.ladder-steps li.ls-done .ladder-dot { background: color-mix(in srgb, var(--c2) 25%, transparent); border-color: transparent; color: var(--fg); }
+.ladder-steps li.ls-now .ladder-dot { border-color: var(--c2); color: var(--fg); }
+.ladder-steps li.ls-done .ladder-step-text { color: var(--muted); }
+.ladder-steps li.ls-rest .ladder-step-text b, .ladder-steps li.ls-audit .ladder-step-text b { font-weight: 500; font-style: italic; }
+.ladder-edit li { align-items: flex-start; border-top: 0; padding: 4px 0; }
+.ladder-edit li.locked { opacity: 0.6; align-items: center; }
+.ladder-edit-body { flex: 1; min-width: 0; display: grid; gap: 6px; }
+.ladder-edit-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ladder-edit-row input { flex: 1 1 10em; min-width: 0; }
+.ladder-min { width: 100%; }
+.ladder-edit-tools { display: flex; flex: none; }
+.ladder-edit-tools .icon-btn:nth-child(1) .ico, .ladder-edit-tools .icon-btn:nth-child(2) .ico { transform: rotate(90deg); }
+.ladder-start { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ladder-tip { margin: 0; }
+/* Editor: controles compactos y neutros */
+.ladder-edit input { padding: 8px 12px; font-size: 14.5px; }
+.ladder-edit .select-btn { padding-block: 7px; font-size: 14px; }
+.ladder-edit .select-btn.set { background: transparent; border-color: var(--line); }
+.ladder-edit .icon-btn { opacity: .55; }
+.ladder-edit .icon-btn:hover { opacity: 1; }
+.ladder-edit .ladder-dot { margin-top: 6px; }
+.ladder-add { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
+.ladder-add .link { font-size: 13.5px; }
+.ladder-start .seg { padding-block: 5px; font-size: 13.5px; }
+@media (max-width: 560px) {
+  .ladder-live li { grid-template-columns: minmax(0, 7em) 1fr auto; gap: 8px; }
+  .ladder-edit-tools { flex-direction: column; }
+}
+
+/* Hiperión explica la escalera */
+.ladder-guide { display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--c2) 6%, transparent); border: 1px solid var(--line); }
+.ladder-guide .tour-portrait { width: 40px; height: 40px; flex: none; animation: none; box-shadow: none; }
+.ladder-guide-text { display: grid; gap: 6px; min-width: 0; font-size: 14.5px; line-height: 1.45; }
+.ladder-guide-text p { margin: 0; }
+.ladder-guide-text .eyebrow { margin: 0; }
+.ladder-guide-text ol { margin: 0; padding-left: 1.2em; display: grid; gap: 3px; }
+.ladder-guide-text b { font-weight: 600; }
+.hladder .ladder-head .icon-btn.on { color: var(--fg); }
+@media (max-width: 560px) { .ladder-guide .tour-portrait { width: 32px; height: 32px; } }

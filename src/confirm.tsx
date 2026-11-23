@@ -3,9 +3,10 @@
 // El componente <SureHost /> se monta una vez en App.
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from './icons';
+import type { IconName } from './icon-data';
 import { sfx } from './sfx';
 
-interface SureReq { title: string; message?: string; confirmLabel?: string; resolve: (ok: boolean) => void }
+interface SureReq { title: string; message?: string; confirmLabel?: string; /** Para algo que no es borrar: otro símbolo y botón normal. */ icon?: IconName; resolve: (ok: boolean) => void }
 let show: ((r: SureReq) => void) | null = null;
 
 export function askSure(o: Omit<SureReq, 'resolve'>): Promise<boolean> {
@@ -43,12 +44,12 @@ export function SureHost() {
     <div className="overlay sure-overlay" role="alertdialog" aria-modal="true" aria-labelledby="sure-h" data-testid="sure-dialog"
       onMouseDown={(e) => e.target === e.currentTarget && close(false)}>
       <form className="overlay-card sure-card" onSubmit={(e) => { e.preventDefault(); close(true); }}>
-        <div className="sure-icon"><Icon name="trash" /></div>
+        <div className="sure-icon"><Icon name={req.icon ?? 'trash'} /></div>
         <h3 id="sure-h">{req.title}</h3>
         {req.message && <p className="muted">{req.message}</p>}
         <div className="sure-actions">
           <button type="button" className="ghost" onClick={() => close(false)}>Cancelar</button>
-          <button ref={okRef} type="submit" className="danger-solid">{req.confirmLabel ?? 'Sí, borrar'}</button>
+          <button ref={okRef} type="submit" className={req.icon ? 'primary' : 'danger-solid'}>{req.confirmLabel ?? 'Sí, borrar'}</button>
         </div>
       </form>
     </div>

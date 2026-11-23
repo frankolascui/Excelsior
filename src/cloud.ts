@@ -5,6 +5,7 @@ import { useSyncExternalStore } from 'react';
 import type { GameState } from './types';
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from './cloud-config';
 import { ADMIN } from './admin';
+import { mergeStates } from './merge';
 
 export const cloudEnabled = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 
@@ -20,10 +21,17 @@ export function adminBlocks(method: string, url: string): boolean {
   if (path.startsWith('/auth/')) return false; // entrar y salir de la cuenta
   return !ADMIN_WRITABLE.test(path);
 }
+/** Cuenta de pruebas: un email con «+» (p. ej. tucorreo+pruebas@gmail.com). Es otra cuenta, aparte de la real. */
+export const isTestEmail = (email: string | null | undefined) => !!email && /\+[^@]+@/.test(email);
+/**
+ * ¿El modo admin está en solo lectura? Sí con tu cuenta real (o sin saber aún cuál es);
+ * no con una cuenta de pruebas: ahí amigos, gremios, Salud y Academy se guardan de verdad, en esa cuenta.
+ */
+export const adminReadOnly = () => ADMIN && !isTestEmail(cloud.email);
 const adminFetch: typeof fetch = (input, init) => {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
   const method = init?.method ?? (input instanceof Request ? input.method : 'GET');
-  if (adminBlocks(method, url)) {
+  if (adminReadOnly() && adminBlocks(method, url)) {
     return Promise.resolve(new Response(JSON.stringify({ code: 'ADMIN', message: ADMIN_READONLY_MSG }), { status: 403, headers: { 'content-type': 'application/json' } }));
   }
   return fetch(input, init);
@@ -159,6 +167,28 @@ function writeRec(ver: string, hash: string) {
   }
 }
 
+// La partida tal cual quedó la última vez que este dispositivo y la nube coincidieron: la «base» para unir
+// los cambios de los dos lados sin preguntar (ver merge.ts). Va con su huella para no usar una base vieja.
+const BASE_KEY = 'excelsior:cloud-base';
+function writeBase(state: GameState, hash: string) {
+  try {
+    const raw = JSON.stringify({ userId: cloud.userId, hash, state });
+    // Una partida enorme no se duplica: el navegador da poco sitio y la partida de verdad va primero.
+    if (raw.length > 1_500_000) localStorage.removeItem(BASE_KEY);
+    else localStorage.setItem(BASE_KEY, raw);
+  } catch {
+    try { localStorage.removeItem(BASE_KEY); } catch { /* sin espacio: se preguntará como antes */ }
+  }
+}
+function readBase(userId: string, hash: string): GameState | null {
+  try {
+    const raw = JSON.parse(localStorage.getItem(BASE_KEY) ?? 'null');
+    return raw?.userId === userId && raw.hash === hash && raw.state ? raw.state as GameState : null;
+  } catch {
+    return null;
+  }
+}
+
 // Última vez que el jugador cambió algo en este dispositivo (solo para decidir con las marcas antiguas).
 const LOCAL_KEY = 'excelsior:local-at';
 export function markLocalChange() {
@@ -183,6 +213,10 @@ export interface SyncHooks {
   adopt(remote: GameState): GameState;
   /** Las dos partidas cambiaron por separado: el jugador elige. */
   conflict(remote: RemoteSave): void;
+  /** La partida de la nube como la dejaría `adopt` (migrada), sin cargarla: para unirla con la de aquí. */
+  normalize?(remote: GameState): GameState;
+  /** Se unieron las dos partidas sin preguntar. */
+  merged?(): void;
   /** ¿Sabe esta versión de la app leer esa partida? Si no, ni se carga ni se pisa. */
   supports?(remote: GameState): boolean;
   /** La nube tiene una partida de una versión más nueva de la app. */
@@ -226,6 +260,7 @@ async function write(state: GameState, hash: string, expected: string | null): P
   const ver = res.data?.[0]?.updated_at;
   if (!ver) return false;
   writeRec(ver, hash);
+  writeBase(state, hash);
   set({ status: 'saved' });
   announce(ver);
   return true;
@@ -233,16 +268,19 @@ async function write(state: GameState, hash: string, expected: string | null): P
 
 function adoptRemote(remote: RemoteSave) {
   const next = hooks!.adopt(remote.state);
-  writeRec(remote.version, digest(next));
+  const hash = digest(next);
+  writeRec(remote.version, hash);
+  writeBase(next, hash);
   set({ status: 'saved' });
 }
 
-/** Con la nube distinta de lo último visto: cargar, quedarse igual o preguntar. */
-function decide(remote: RemoteSave, rec: SyncRec | null) {
+/** Con la nube distinta de lo último visto: cargar, quedarse igual, unir las dos o, si chocan de verdad, preguntar. */
+async function decide(remote: RemoteSave, rec: SyncRec | null): Promise<void> {
   const local = hooks!.get(); // se relee: el jugador pudo tocar algo mientras llegaba la respuesta
   const hash = digest(local);
   if (digest(remote.state) === hash) {
     writeRec(remote.version, hash);
+    writeBase(local, hash);
     return set({ status: 'saved' });
   }
   if (!local.profile) return adoptRemote(remote);
@@ -251,6 +289,18 @@ function decide(remote: RemoteSave, rec: SyncRec | null) {
   else if ('legacyAt' in rec) dirty = localChangedAt() > rec.legacyAt;
   else dirty = hash !== rec.hash;
   if (!dirty) return adoptRemote(remote);
+  // Cambios en los dos lados: si sabemos en qué partida coincidimos por última vez, se unen.
+  const base = rec && 'ver' in rec ? readBase(cloud.userId!, rec.hash) : null;
+  if (base) {
+    const theirs = hooks!.normalize ? hooks!.normalize(remote.state) : remote.state;
+    const { state, conflicts } = mergeStates(base, local, theirs);
+    if (conflicts.length === 0) {
+      const next = hooks!.adopt(state);
+      hooks!.merged?.();
+      if (await write(next, digest(next), remote.version)) return;
+      return sync('check'); // otro dispositivo guardó justo ahora: se vuelve a mirar
+    }
+  }
   paused = true;
   hooks!.conflict(remote);
 }
@@ -289,7 +339,7 @@ async function sync(mode: 'push' | 'check'): Promise<void> {
       if (await write(local, digest(local), remote.version)) return;
       return sync('check');
     }
-    decide(remote, rec);
+    await decide(remote, rec);
   } catch (e) {
     failed();
     throw e;
@@ -415,6 +465,7 @@ export function resolveConflict(remote: RemoteSave, useRemote: boolean) {
   if (useRemote) adoptRemote(remote);
   else {
     writeRec(remote.version, ''); // la nube está en esa versión y aquí hay cambios: se sube encima
+    writeBase(remote.state, '');
     flush();
   }
 }

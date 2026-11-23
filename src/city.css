@@ -242,3 +242,33 @@
   .realm-map * { animation: none !important; }
 }
 .city-empty-text { paint-order: stroke; stroke: rgba(0, 0, 0, 0.7); stroke-width: 3px; stroke-linejoin: round; }
+
+/* Edificios por atributo (2026-11-17): biblioteca, templo y taberna. */
+.bld .marble { fill: #cfc8bb; }
+.bld .marble-dark { fill: #9d978c; }
+.bld .naos { fill: #2f2924; }
+.bld .book { fill: #f1e6c8; stroke: #6b5a3a; stroke-width: 0.8; }
+.bracket { stroke: #2d2d35; stroke-width: 1.4; stroke-linecap: round; }
+.sign { fill: #7a5431; stroke: #3a2513; stroke-width: 0.8; }
+.bld .sign-mug { fill: #ffd27a; }
+.m-marble.t { fill: #e2dccf; } .m-marble.l { fill: #c7c0b2; } .m-marble.r { fill: #9e978a; }
+.iso-bld.pending rect, .iso-bld.pending line { fill: none !important; stroke: var(--muted); stroke-width: 0.8; stroke-dasharray: 3 3; opacity: 0.5; }
+
+/* Profundidad de la vista desde arriba (2026-11-17): oclusión, sillares, tejas, arista iluminada y sombras de contacto. */
+.ao { pointer-events: none; }
+.masonry { fill: none; stroke: rgba(0, 0, 0, 0.22); stroke-width: 0.6; pointer-events: none; }
+.rim { fill: none; stroke: rgba(235, 228, 255, 0.22); stroke-width: 0.8; stroke-linejoin: round; pointer-events: none; }
+.tiles { fill: none; stroke: rgba(0, 0, 0, 0.3); stroke-width: 0.7; pointer-events: none; }
+.contact { pointer-events: none; }
+.warm-light { mix-blend-mode: screen; }
+.iso-bld.pending .ao, .iso-bld.pending .masonry, .iso-bld.pending .rim, .iso-bld.pending .tiles { display: none; }
+.tufts { fill: none; stroke: color-mix(in srgb, var(--c3) 10%, #3f6e47); stroke-width: 0.8; stroke-linecap: round; opacity: 0.75; pointer-events: none; }
+.flowers { fill: none; stroke: #e9d27a; stroke-width: 2.2; stroke-linecap: round; opacity: 0.55; pointer-events: none; }
+.road-cobbles { fill: none; stroke: rgba(0, 0, 0, 0.25); stroke-width: 1; stroke-dasharray: 1.5 3; pointer-events: none; }
+.road-cobbles.paved { stroke: rgba(255, 255, 255, 0.12); stroke-dasharray: 2 2.5; }
+
+/* Profundidad de la vista frontal: cara lateral oscura y máscara de luz. */
+.extrude * { fill: #17141d !important; stroke: none !important; filter: none !important; animation: none !important; }
+.extrude .c-ghost, .mask-shape .c-ghost, .extrude .c-crown, .extrude .smoke, .extrude .embers, .extrude .torch, .extrude .banner, .extrude .shadow, .extrude .light-pool, .extrude .pole, .extrude .dust { display: none; }
+.mask-shape * { fill: #fff !important; stroke: none !important; filter: none !important; animation: none !important; }
+.mask-shape .window, .mask-shape .forge, .mask-shape .torch, .mask-shape .smoke, .mask-shape .embers, .mask-shape .shadow, .mask-shape .light-pool, .mask-shape .banner, .mask-shape .sign-mug, .mask-shape .pole { display: none; }

@@ -88,3 +88,20 @@ describe('crónica y ánimos', () => {
     expect(cheersReceived(list, NOW)).toEqual({ ana: 2 });
   });
 });
+
+describe('trofeos de amigos', () => {
+  it('da un trofeo y un título por cada hito alcanzado, sin monedas ni repetir', async () => {
+    const { friendsCheck } = await import('./trophies');
+    const before = coinBalance(fresh(), NOW);
+    expect(friendsCheck(fresh(), 0, NOW).trophies ?? []).toHaveLength(0);
+    let s = friendsCheck(fresh(), 3, NOW);
+    expect((s.trophies ?? []).map((t) => t.sourceId)).toEqual(['friends-1', 'friends-3']);
+    expect(unlockedTitles(s)).toEqual(expect.arrayContaining(['Leal', 'Camarada']));
+    expect(coinBalance(s, NOW)).toBe(before);
+    s = friendsCheck(s, 3, NOW + DAY);
+    expect(s.trophies).toHaveLength(2);
+    // Quitar amigos no quita el trofeo.
+    expect(friendsCheck(s, 1, NOW + DAY)).toBe(s);
+    expect(friendsCheck(s, 8, NOW + DAY).trophies).toHaveLength(3);
+  });
+});

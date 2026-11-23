@@ -509,3 +509,11 @@
 .arena .trophy:not(.won) { opacity: 0.55; }
 .arena .trophy-name { font-size: 12px; line-height: 1.15; }
 @media (prefers-reduced-motion: reduce) { .stars-lg .star.on { animation: none; } }
+
+/* Invocar siempre a la vista; sagas plegables (2026-11-17). */
+.arena .summon-panel { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.arena .summon-title { display: flex; align-items: center; gap: 8px; margin: 0; font-family: var(--display); font-size: 18px; }
+.arena .saga-toggle { all: unset; box-sizing: border-box; width: 100%; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; }
+.arena .saga-toggle:focus-visible { outline: 2px solid var(--c1); outline-offset: 4px; border-radius: 6px; }
+.arena .saga:not(.open) .saga-head { margin-bottom: 0; }
+.arena .saga-count { display: inline-flex; align-items: center; gap: 4px; }

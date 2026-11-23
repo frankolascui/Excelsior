@@ -36,7 +36,7 @@ const state = {
   tours: ['intro', 'reinos', 'arena', 'gremios', 'v3'], newsSeen: (await import('node:fs')).readFileSync('src/version.ts', 'utf8').match(/APP_VERSION = '([^']+)'/)[1], balance: 2, ascended: ['aprendiz'],
 };
 const browser = await chromium.launch();
-const tabs = ['hoy', 'misiones', 'habitos', 'deepwork', 'reinos', 'arena', 'amigos', 'gremios', 'personaje', 'ajustes'];
+const tabs = (process.env.TABS ?? "hoy,misiones,habitos,deepwork,reinos,arena,amigos,gremios,personaje,ajustes").split(",");
 for (const [name, vp] of [['pc', { width: 1440, height: 900 }], ['movil', { width: 390, height: 844 }]]) {
   const ctx = await browser.newContext({ viewport: vp, deviceScaleFactor: 1 });
   const page = await ctx.newPage();

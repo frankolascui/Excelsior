@@ -3,7 +3,7 @@
 // Local primero: funciona sin cuenta y sin conexión; lo pendiente se sube cuando se puede.
 import { useSyncExternalStore } from 'react';
 import { ADMIN } from './admin';
-import { cloudClient, getUserId } from './cloud';
+import { adminReadOnly, cloudClient, getUserId } from './cloud';
 import {
   DEFAULT_SETTINGS, mergeRemote, normalizeNight, normalizeSettings, sortNights, validNight,
   type CloudRow, type HealthSettings, type Night,
@@ -118,7 +118,7 @@ let timer: number | undefined;
 let running: Promise<void> | null = null;
 let again = false;
 function schedule(ms: number) {
-  if (ADMIN || !getUserId()) return;
+  if (adminReadOnly() || !getUserId()) return;
   clearTimeout(timer);
   timer = window.setTimeout(() => void syncHealthCloud(), ms);
 }
@@ -133,7 +133,7 @@ function describe(e: unknown): string {
 /** Trae lo nuevo de la nube y sube lo pendiente. Sin cuenta no hace nada. */
 export function syncHealthCloud(): Promise<void> {
   const userId = getUserId();
-  if (ADMIN || !userId) return Promise.resolve();
+  if (adminReadOnly() || !userId) return Promise.resolve();
   if (running) {
     again = true;
     return running;

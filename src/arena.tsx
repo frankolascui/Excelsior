@@ -5,10 +5,10 @@ import type { Boss, BossSource, GameState, Reward } from './types';
 import {
   abilityText, bestStars, bossLoot, bossStars, combat, CRIT_RULES, STAR_BONUS, weaknessText, type BossAbility, type CombatEvent,
   activeBosses, addBoss, BOSS_TEMPLATES, bossLock, bossPhase, bossReward, bossStatus, deleteBoss, MAX_ACTIVE_BOSSES, nextInSaga,
-  SAGAS, sagaOf, SOURCE_LABEL, summonBoss, templateOf, TIERS, timesDefeated, isActiveTemplate, type BossTemplate, type BossTier,
+  SAGAS, sagaOf, scaledBoss, SOURCE_LABEL, summonBoss, templateOf, TIERS, timesDefeated, isActiveTemplate, type BossTemplate, type BossTier,
 } from './bosses';
 import {
-  addReward, buyReward, coinBalance, coinsEarned, coinsSpent, COIN_RULES, deleteReward, nextReward, purchaseCounts, refundPurchase, consumePurchase, unusedPurchases, buyShield, SHIELD, shieldsLeft,
+  addReward, buyReward, coinBalance, coinsEarned, coinsSpent, deleteReward, nextReward, purchaseCounts, refundPurchase, consumePurchase, unusedPurchases, buyShield, SHIELD, shieldsLeft, xpPerCoinAt,
   REWARD_CATEGORIES, REWARD_ICONS, rewardCategory, updateReward, type RewardCategory,
 } from './economy';
 import { dayKey, levelInfo, totalXp } from './game';
@@ -234,6 +234,32 @@ function BossCard({ boss: b, st, events, hero, onFlee }: { boss: Boss; st: Retur
   );
 }
 
+function SagaBlock({ saga, state, now, full, onSummon, defaultOpen }: {
+  saga: (typeof SAGAS)[number]; state: GameState; now: number; full: boolean; onSummon: (id: string) => void; defaultOpen: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const list = BOSS_TEMPLATES.filter((t) => t.saga === saga.id);
+  const won = list.filter((t) => timesDefeated(state, t.id, now) > 0).length;
+  return (
+    <section className={`saga${won === list.length ? ' done' : ''}${open ? ' open' : ''}`} aria-label={saga.name}>
+      <button type="button" className="saga-head saga-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <h5>{saga.name}</h5>
+        <span className="mono saga-count">{won}/{list.length}{won === list.length && <> <Icon name="crown" /></>} <Icon name={open ? 'chevron-down' : 'chevron-right'} /></span>
+        <p className="muted small-text">{saga.blurb}</p>
+      </button>
+      {open && (
+        <ol className="saga-chain">
+          {list.map((t) => (
+            <li key={t.id}>
+              <TemplateCard t={t} state={state} now={now} full={full} onSummon={() => onSummon(t.id)} />
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
+
 function TemplateCard({ t, state, now, full, onSummon }: { t: BossTemplate; state: GameState; now: number; full: boolean; onSummon: () => void }) {
   const lock = bossLock(state, t.id, now);
   const fighting = !lock && isActiveTemplate(state, t.id, now);
@@ -257,9 +283,14 @@ function TemplateCard({ t, state, now, full, onSummon }: { t: BossTemplate; stat
           <p className="muted small-text tpl-lore">{t.lore}</p>
         )}
         <p className="tpl-ability small-text" title={abilityText(t.ability, t.source)}><Icon name={ABILITY_ICON[t.ability.kind]} /> {t.ability.name}</p>
-        <p className="mono small-text tpl-stats">
-          {t.hp} {SOURCE_LABEL[t.source].unit} · {t.days} días · <span className="loot">{t.reward} <Icon name="coin" className="coin-ico" /></span>
-        </p>
+        {(() => {
+          const sc = scaledBoss(state, t, now);
+          return (
+            <p className="mono small-text tpl-stats" title={sc.ratio === 1 ? undefined : `Ajustado a tu ritmo: lo que sueles hacer en ${t.days} días más un 20 %`}>
+              {sc.hp} {SOURCE_LABEL[t.source].unit} · {t.days} días · <span className="loot">{sc.reward} <Icon name="coin" className="coin-ico" /></span>
+            </p>
+          );
+        })()}
         {!lock && (fighting ? (
           <span className="tpl-state"><Icon name="crossed-swords" /> En combate</span>
         ) : (
@@ -397,6 +428,9 @@ export function Arena({ game }: { game: Game }) {
   const unlockedCount = BOSS_TEMPLATES.filter((t) => !bossLock(state, t.id, now)).length;
   const beatenCount = BOSS_TEMPLATES.filter((t) => timesDefeated(state, t.id, now) > 0).length;
   const starCount = BOSS_TEMPLATES.reduce((n, t) => n + bestStars(state, t.id, now), 0);
+  // La saga con tu siguiente boss por vencer (desbloqueado y sin derrotar); si no hay, la primera sin terminar.
+  const nextSaga = (BOSS_TEMPLATES.find((t) => !bossLock(state, t.id, now) && timesDefeated(state, t.id, now) === 0)
+    ?? BOSS_TEMPLATES.find((t) => timesDefeated(state, t.id, now) === 0))?.saga;
   const finished = state.bosses
     .map((b) => ({ b, st: bossStatus(state, b, now) }))
     .filter(({ st }) => !st.active)
@@ -463,10 +497,10 @@ export function Arena({ game }: { game: Game }) {
       <div className="arena-top">
         <h1 className="screen-title">Arena</h1>
         <InfoTip label="Cómo funciona la Arena">
-          <p>Un boss es un reto con plazo: le haces daño con lo que hagas desde que lo invocas y, si cae a tiempo, te llevas su botín. Subir de nivel y vencer a cada bestia abre las siguientes de su saga. Cada boss tiene una habilidad y un punto débil que se revela a media vida.</p>
+          <p>Un boss es un reto con plazo: le haces daño con lo que hagas desde que lo invocas y, si cae a tiempo, te llevas su botín. Subir de nivel y vencer a cada bestia abre las siguientes de su saga. Cada boss tiene una habilidad y un punto débil que se revela a media vida. Su vida se ajusta a tu ritmo: lo que sueles hacer en su plazo (según tus últimas 2 semanas) más un 20 %.</p>
           <p className="crit-hint"><Icon name="sparkles" /> {CRIT_RULES}</p>
           <p className="muted small-text">
-            Tus monedas: {earned.fromXp} por XP (1 cada {COIN_RULES.xpPerCoin} XP) · {earned.fromBosses} por bosses · {earned.fromKingdoms} por reinos{earned.fromSocial > 0 && ` · ${earned.fromSocial} por trofeos`} · −{coinsSpent(state)} gastadas
+            Tus monedas: {earned.fromXp} por XP (1 cada {xpPerCoinAt(Date.now())} XP) · {earned.fromBosses} por bosses · {earned.fromKingdoms} por reinos{earned.fromSocial > 0 && ` · ${earned.fromSocial} por trofeos`} · −{coinsSpent(state)} gastadas
           </p>
         </InfoTip>
         <div className="arena-top-right">
@@ -497,32 +531,21 @@ export function Arena({ game }: { game: Game }) {
           </div>
         )}
 
-        <Fold label={full ? 'Sagas' : 'Invocar un boss'} icon="crossed-swords" count={`${unlockedCount}/${BOSS_TEMPLATES.length}`} className="sagas-fold" defaultOpen={active.length === 0}>
-        {full && <p className="muted small-text full-note">Ya tienes {MAX_ACTIVE_BOSSES} bosses activos. Derrota alguno antes de invocar más.</p>}
-        <div className="sagas">
-          {SAGAS.map((saga) => {
-            const list = BOSS_TEMPLATES.filter((t) => t.saga === saga.id);
-            const won = list.filter((t) => timesDefeated(state, t.id, now) > 0).length;
-            return (
-              <section key={saga.id} className={won === list.length ? 'saga done' : 'saga'} aria-label={saga.name}>
-                <header className="saga-head">
-                  <h5>{saga.name}</h5>
-                  <span className="mono saga-count">{won}/{list.length}{won === list.length && <> <Icon name="crown" /></>}</span>
-                  <p className="muted small-text">{saga.blurb}</p>
-                </header>
-                <ol className="saga-chain">
-                  {list.map((t) => (
-                    <li key={t.id}>
-                      <TemplateCard t={t} state={state} now={now} full={full} onSummon={() => summon(t.id)} />
-                    </li>
-                  ))}
-                </ol>
-              </section>
-            );
-          })}
+        {/* Invocar: siempre a la vista; cada saga se abre y se cierra (abierta la que tiene tu siguiente boss). */}
+        <div className="summon-panel">
+          <h4 className="summon-title"><Icon name="crossed-swords" /> {full ? 'Sagas' : 'Invocar un boss'} <span className="mono muted">{unlockedCount}/{BOSS_TEMPLATES.length}</span></h4>
+          {full && <p className="muted small-text full-note">Ya tienes {MAX_ACTIVE_BOSSES} bosses activos. Derrota alguno antes de invocar más.</p>}
+          <div className="sagas">
+            {SAGAS.map((saga) => (
+              <SagaBlock key={saga.id} saga={saga} state={state} now={now} full={full} onSummon={summon} defaultOpen={saga.id === nextSaga} />
+            ))}
+          </div>
+          {!full && (
+            <Fold label="Crear un boss propio" icon="plus" className="custom-boss-fold">
+              <CustomBossForm onCreate={summonCustom} />
+            </Fold>
+          )}
         </div>
-        {!full && <CustomBossForm onCreate={summonCustom} />}
-        </Fold>
 
         {finished.length > 0 && (
           <Fold label="Últimos combates" icon="crossed-swords" count={finished.length} className="combats-fold">
@@ -667,21 +690,22 @@ function ShieldCard({ game, balance }: { game: Game; balance: number }) {
   const { state, act, toast } = game;
   const left = shieldsLeft(state);
   const missing = SHIELD.cost - balance;
+  const full = left >= SHIELD.max;
   function buy() {
     const r = buyShield(state, Date.now());
     if (!r.ok) return;
     act(() => r.state);
     sfx.purchase();
-    toast(`{i:shield} Escudo de racha guardado (${left + 1}). −${SHIELD.cost} {i:coin}`, 'level');
+    toast(`{i:snowflake} Escudo de racha guardado (${left + 1} de ${SHIELD.max}). −${SHIELD.cost} {i:coin}`, 'level');
   }
   return (
-    <div className="shop-shield">
-      <span className="shop-next-icon" aria-hidden="true"><Icon name="shield" /></span>
+    <div className="shop-shield ice">
+      <span className="shop-next-icon" aria-hidden="true"><Icon name="snowflake" /></span>
       <div className="shop-next-body">
-        <p><strong>{SHIELD.name}</strong> {left > 0 && <span className="muted small-text nowrap">· tienes {left}</span>}</p>
-        <p className="muted small-text">Salva un día fallado de un hábito diario si el anterior lo hiciste. Nunca dos días seguidos. Se usa desde Hábitos.</p>
+        <p><strong>{SHIELD.name}</strong> <span className="muted small-text nowrap">· tienes {left} de {SHIELD.max}</span></p>
+        <p className="muted small-text">Congela la racha de un hábito diario: salva <b>solo el día de ayer</b>, si anteayer lo hiciste. Nunca dos días seguidos. Se usa desde Hábitos.</p>
       </div>
-      <button className="primary" disabled={missing > 0} onClick={buy} aria-label={`Comprar escudo de racha por ${SHIELD.cost} monedas`} title={missing > 0 ? `Te faltan ${missing} monedas` : undefined}>
+      <button className="primary" disabled={full || missing > 0} onClick={buy} aria-label={`Comprar escudo de racha por ${SHIELD.cost} monedas`} title={full ? `Ya tienes el máximo (${SHIELD.max})` : missing > 0 ? `Te faltan ${missing} monedas` : undefined}>
         <Icon name="coin" /> {SHIELD.cost}
       </button>
     </div>
@@ -819,7 +843,7 @@ function RewardForm({ onCreate }: { onCreate: (r: { name: string; icon: string; 
         <input id="reward-cost" type="number" min={1} value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} placeholder="Precio" aria-label="Precio en monedas" />
         <CategorySelect id="reward-cat" value={form.category} onChange={(category) => setForm({ ...form, category })} />
       </div>
-      <p className="muted small-text">Referencia: 1 <Icon name="coin" className="coin-ico" /> = {COIN_RULES.xpPerCoin} XP. Un episodio ~25, salir con amigos ~100, un día libre ~350.</p>
+      <p className="muted small-text">Referencia: 1 <Icon name="coin" className="coin-ico" /> = {xpPerCoinAt(Date.now())} XP. Un episodio ~25, salir con amigos ~100, un día libre ~350.</p>
       <span className="boss-form-actions">
         <button type="button" className="ghost" onClick={() => setOpen(false)}>Cerrar</button>
         <button type="submit" className="primary" disabled={!valid}><Icon name="plus" /> Añadir a la tienda</button>

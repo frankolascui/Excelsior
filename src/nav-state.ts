@@ -11,8 +11,11 @@ export const navState = {
 };
 
 /** Los hábitos del sistema no se marcan: te llevan al sitio donde se hacen. */
-export function openSystemHabit(kind: 'health' | 'academy') {
-  if (kind === 'health') {
+export function openSystemHabit(kind: 'health' | 'academy' | 'deepwork') {
+  if (kind === 'deepwork') {
+    navState.deepPanel = 'foco';
+    location.hash = '#deepwork';
+  } else if (kind === 'health') {
     navState.kingdom = HEALTH_KINGDOM;
     navState.healthRecord = true;
     location.hash = '#reinos';

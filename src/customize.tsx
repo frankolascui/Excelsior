@@ -61,10 +61,10 @@ export function RewardEditor({
 }
 
 /** Botón que despliega el editor dentro de un formulario de alta. */
-export function CustomizeToggle({ open, onToggle, custom }: { open: boolean; onToggle: () => void; custom: boolean }) {
+export function CustomizeToggle({ open, onToggle, custom, label = 'XP y atributos' }: { open: boolean; onToggle: () => void; custom: boolean; label?: string }) {
   return (
-    <button type="button" className={custom ? 'ghost small customize on' : 'ghost small customize'} aria-expanded={open} onClick={onToggle} title="Ajustar XP y atributos">
-      <Icon name="sliders" /> {custom ? 'A medida' : 'XP y atributos'}
+    <button type="button" className={custom ? 'ghost small customize on' : 'ghost small customize'} aria-expanded={open} onClick={onToggle} title={`Ajustar: ${label}`}>
+      <Icon name="sliders" /> {custom ? 'A medida' : label}
     </button>
   );
 }

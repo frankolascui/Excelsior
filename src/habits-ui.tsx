@@ -1,8 +1,9 @@
 // Historial de un hábito: las últimas 5 semanas en cuadrícula (lunes a domingo), escudos y números del mes.
+import { useState, type ReactNode } from 'react';
 import type { GameState, Habit, HabitProgression } from './types';
-import { clockText, habitHints, nextValue, parseClock, PROGRESSION_RULES, valueText } from './progression';
+import { atMax, clockText, constancy, habitHints, levelUpDue, nextValue, parseClock, PROGRESSION_RULES, valueText } from './progression';
 import { GuidePortrait } from './tutorial';
-import { dailyStreakInfo, dayKey, habitDayCount, habitStreakDays, isHabitDone, maxPerWeek, MINIMUM_MAX, PER_DAY_MAX, shiftDay, weekStart } from './game';
+import { dailyStreakInfo, dayKey, FOCUS_HABIT_RULES, habitDayCount, habitPausedOn, habitStreakDays, isHabitDone, maxPerWeek, MINIMUM_MAX, PER_DAY_MAX, shiftDay, weekStart } from './game';
 import { SHIELD } from './economy';
 import { Icon } from './icons';
 import { Select } from './pickers';
@@ -24,7 +25,7 @@ export function HabitHistory({ state, habit, now, onToggleDay }: { state: GameSt
   const days = Array.from({ length: 35 }, (_, i) => dayKey(shiftDay(first, i)));
   const shields = new Set(habitShields(state, habit, now));
   const born = dayKey(habit.createdAt);
-  const last30 = Array.from({ length: 30 }, (_, i) => dayKey(shiftDay(now, -i))).filter((d) => d >= born);
+  const last30 = Array.from({ length: 30 }, (_, i) => dayKey(shiftDay(now, -i))).filter((d) => d >= born && (isHabitDone(state, habit.id, d) || !habitPausedOn(state, habit.id, d)));
   const done30 = last30.filter((d) => isHabitDone(state, habit.id, d)).length;
   const weekly = habit.frequency === 'weekly';
   const total = state.habitCompletions.filter((c) => c.habitId === habit.id).length;
@@ -34,21 +35,22 @@ export function HabitHistory({ state, habit, now, onToggleDay }: { state: GameSt
         {WD.map((w) => <span key={w} className="hh-wd">{w}</span>)}
         {days.map((d) => {
           const done = isHabitDone(state, habit.id, d);
-          const cls = ['hh-day', done && 'on', shields.has(d) && 'shield', d === today && 'today', d > today && 'future', d < born && 'before'].filter(Boolean).join(' ');
-          const label = `${new Date(`${d}T12:00:00`).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}: ${done ? 'hecho' : shields.has(d) ? 'salvado por el escudo' : 'sin hacer'}`;
+          const rest = !done && habitPausedOn(state, habit.id, d);
+          const cls = ['hh-day', done && 'on', shields.has(d) && 'shield', rest && 'paused', d === today && 'today', d > today && 'future', d < born && 'before'].filter(Boolean).join(' ');
+          const label = `${new Date(`${d}T12:00:00`).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}: ${done ? 'hecho' : shields.has(d) ? 'congelado con un escudo' : rest ? 'en pausa (vacaciones)' : 'sin hacer'}`;
           return onToggleDay && editableDay(d, now)
             ? <button type="button" key={d} role="gridcell" className={cls} aria-pressed={done} aria-label={label} title={label} onClick={() => onToggleDay(d)}>{Number(d.slice(8))}</button>
-            : <span key={d} role="gridcell" className={cls} aria-label={label} title={label}>{shields.has(d) ? <Icon name="shield" /> : Number(d.slice(8))}</span>;
+            : <span key={d} role="gridcell" className={cls} aria-label={label} title={label}>{shields.has(d) ? <Icon name="snowflake" /> : Number(d.slice(8))}</span>;
         })}
       </div>
       <div className="hh-stats">
         <span><b className="mono">{done30}</b>{weekly ? ' veces' : `/${last30.length} días`} en los últimos 30 días</span>
         {!weekly && last30.length > 0 && <span><b className="mono">{Math.round((done30 / last30.length) * 100)} %</b> de constancia</span>}
         <span><b className="mono">{total}</b> en total</span>
-        {habitStreakDays(state, habit.id, now) > 0 && shields.size > 0 && <span><Icon name="shield" /> Escudo usado esta racha</span>}
+        {habitStreakDays(state, habit.id, now) > 0 && shields.size > 0 && <span className="ice-text"><Icon name="snowflake" /> Racha congelada con un escudo</span>}
       </div>
       {habit.minimum && <p className="small-text"><b>Mínimo para un día malo:</b> {habit.minimum}</p>}
-      <p className="hint">Puedes marcar o desmarcar los últimos 7 días si se te olvidó. {!weekly && `Nunca falles dos días seguidos. Un día fallado se puede salvar con un escudo de racha (Tienda, ${SHIELD.cost} monedas) si el anterior lo hiciste; ese día no suma.`}</p>
+      <p className="hint">{habit.system ? 'Se marca solo cuando lo haces de verdad.' : 'Pulsa un día de los últimos 7 para marcarlo o desmarcarlo.'}{!weekly && ` Si fallas un día, un escudo de la Tienda (${SHIELD.cost} monedas) congela el de ayer y la racha sigue.`}</p>
     </div>
   );
 }
@@ -66,13 +68,95 @@ export function MinimumInput({ id, value, onChange }: { id: string; value: strin
 /** Opción escondida en «XP y atributos»: poder marcarlo más de una vez el mismo día (p. ej. doble entreno). */
 export function PerDayInput({ id, value, onChange }: { id: string; value: number; onChange: (n: number) => void }) {
   return (
-    <label className="minimum-input" htmlFor={id}>
-      <span className="small-text">Veces al día que se puede marcar (opcional)</span>
-      <Select id={id} label="Veces al día" value={value} onChange={onChange}
-        options={[{ value: 1, label: 'Una vez al día' }, ...Array.from({ length: PER_DAY_MAX - 1 }, (_, i) => i + 2).map((n) => ({ value: n, label: `Hasta ${n} veces al día`, hint: n === 2 ? '(ej. doble entreno)' : undefined }))]} />
-    </label>
+    <div className="perday-input" id={id}>
+      <span className="small-text">Veces al día</span>
+      <div className="segmented" role="radiogroup" aria-label="Veces al día">
+        {Array.from({ length: PER_DAY_MAX }, (_, i) => i + 1).map((n) => (
+          <button type="button" key={n} role="radio" aria-checked={value === n} className={value === n ? 'seg on' : 'seg'} onClick={() => onChange(n)}>{n === 1 ? '1 vez' : `${n} veces`}</button>
+        ))}
+      </div>
+      <span className="hint">{value > 1
+        ? `El botón de siempre cumple el día. Si un día lo haces más veces, pulsa las estrellas: cada vez extra da su XP y cuenta para tu meta semanal.`
+        : 'Para cosas que haces más de una vez al día (ej. doble entreno, beber agua).'}</span>
+    </div>
   );
 }
+
+/**
+ * Veces extra de hoy en un hábito de varias veces al día: una estrella por cada vez de más (la primera es el botón).
+ * Pulsar una estrella deja el día en ese número; pulsar la última encendida la quita.
+ */
+export function DayPips({ name, count, max, onSet }: { name: string; count: number; max: number; onSet?: (n: number) => void }) {
+  return (
+    <span className="day-pips" role="group" aria-label={`${name}: ${count} de ${max} hoy`}>
+      {Array.from({ length: max - 1 }, (_, i) => i + 2).map((n) => {
+        const on = n <= count;
+        const next = on && n === count ? n - 1 : n;
+        const star = <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6-4.5-4.2 6.1-.8z" /></svg>;
+        return onSet
+          ? <button type="button" key={n} className={on ? 'pip on' : 'pip'} aria-pressed={on} onClick={() => onSet(next)}
+              aria-label={next < count ? `Quitar una vez extra de ${name}` : `${name}: ${n} veces hoy`} title={next < count ? 'Quitar esta vez extra' : `Vez extra: ${n} hoy (da su XP)`}>{star}</button>
+          : <span key={n} className={on ? 'pip on' : 'pip'}>{star}</span>;
+      })}
+      {count > 1 && <span className="pips-text mono">×{count} hoy</span>}
+    </span>
+  );
+}
+
+const DAY_MS = 86_400_000;
+/** Días enteros entre dos fechas YYYY-MM-DD. */
+const daysBetween = (a: string, b: string) => Math.round((new Date(`${b}T12:00:00`).getTime() - new Date(`${a}T12:00:00`).getTime()) / DAY_MS);
+
+/**
+ * La sobrecarga a la vista: meta de ahora, la siguiente y la final, los escalones subidos
+ * y cuánto falta para que Hiperión proponga subir (14 días al 80 %).
+ */
+export function HabitGoal({ state, habit, now }: { state: GameState; habit: Habit; now: number }) {
+  const p = habit.progression;
+  if (!p) return null;
+  const start = p.history?.[0]?.value ?? p.value;
+  const next = nextValue(p);
+  const reached = atMax(p);
+  const max = p.kind === 'freq' ? p.max ?? 7 : p.max;
+  const steps = max !== undefined && p.step ? Math.max(1, Math.round(Math.abs(max - start) / Math.abs(p.step))) : null;
+  const climbed = p.step ? Math.round(Math.abs(p.value - start) / Math.abs(p.step)) : 0;
+  const weekly = habit.frequency === 'weekly';
+  const need = PROGRESSION_RULES.levelDays;
+  const pctNeed = Math.round(PROGRESSION_RULES.levelPct * 100);
+
+  let line: ReactNode;
+  if (reached) line = <>Meta final alcanzada. Ahora a mantenerla.</>;
+  else if (next === null) line = <>Esta meta ya no puede subir más.</>;
+  else if (levelUpDue(state, habit, now) !== null) line = <><b>Listo para subir</b> a {valueText(p, next)}: Hiperión te lo propone arriba.</>;
+  else if (habit.snooze?.level && habit.snooze.level >= dayKey(now)) line = <>Dijiste «Aún no»: te lo vuelvo a proponer después del {dayLabel(habit.snooze.level)}.</>;
+  else if (weekly) {
+    const weeks = Math.max(0, Math.floor(daysBetween(dayKey(p.since), weekStart(now)) / 7));
+    const w = Math.min(weeks, need / 7);
+    const c = w > 0 ? constancy(state, habit, now, w * 7, p.since) : null;
+    line = <>Para subir: {need / 7} semanas completas al {pctNeed} %. Llevas {w} de {need / 7}{c !== null && <> · <b className={c >= PROGRESSION_RULES.levelPct ? 'good' : 'low'}>{Math.round(c * 100)} %</b></>}.</>;
+  } else {
+    const elapsed = Math.max(0, daysBetween(dayKey(p.since), dayKey(now)));
+    const d = Math.min(elapsed, need);
+    const c = d > 0 ? constancy(state, habit, now, d, p.since) : null;
+    line = <>Para subir: {need} días al {pctNeed} %. Llevas {d} de {need}{c !== null && <> · <b className={c >= PROGRESSION_RULES.levelPct ? 'good' : 'low'}>{Math.round(c * 100)} %</b></>}.</>;
+  }
+
+  return (
+    <div className="habit-goal" data-testid="habit-goal">
+      <p className="habit-goal-head">
+        <span className="muted">Meta</span> <b>{valueText(p, p.value)}</b>
+        {!reached && next !== null && <span className="muted"> · siguiente {valueText(p, next)}</span>}
+        {max !== undefined && !reached && <span className="muted"> · final {valueText(p, max)}</span>}
+      </p>
+      {steps !== null && (steps <= 16
+        ? <span className="goal-steps" aria-label={`Escalón ${climbed} de ${steps}`}>{Array.from({ length: steps }, (_, i) => <i key={i} className={i < climbed ? 'on' : ''} />)}</span>
+        : <span className="goal-bar" aria-label={`${Math.round((climbed / steps) * 100)} % del camino`}><i style={{ width: `${Math.min(100, (climbed / steps) * 100)}%` }} /></span>)}
+      <p className="habit-goal-line small-text">{line}</p>
+    </div>
+  );
+}
+
+const dayLabel = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }).replace('.', '');
 
 /** Texto de «Compartir mi semana»: % de cada hábito de lunes a hoy, para mandarlo a un amigo. */
 export function weekShareText(state: GameState, now: number): string {
@@ -245,10 +329,7 @@ export function HabitHints({ state, now, guide, onLevel, onRetire, onSnooze }: {
     <section className="panel habit-hints" aria-labelledby="habit-hints-h">
       <header className="habit-hints-head">
         <span className="tour-portrait" aria-hidden="true"><GuidePortrait /></span>
-        <div>
-          <p className="eyebrow">{guide}</p>
-          <h3 id="habit-hints-h">{hints.length === 1 ? 'Tengo algo que decirte de un hábito' : 'Tengo algo que decirte de tus hábitos'}</h3>
-        </div>
+        <h3 id="habit-hints-h" className="eyebrow">{guide}</h3>
       </header>
       <ul className="list plain">
         {hints.map((x) => {
@@ -257,18 +338,18 @@ export function HabitHints({ state, now, guide, onLevel, onRetire, onSnooze }: {
           const canLevel = p && nextValue(p) !== null;
           return x.kind === 'auto' ? (
             <li key={h.id} className="habit-hint auto">
-              <p><b>{h.name}</b>: {Math.round(x.pct * 100)} % de constancia en los últimos {PROGRESSION_RULES.autoDays} días. Ya lo has automatizado: te sale solo. Puedes retirarlo de la lista y poner tu energía en otro hábito.{canLevel && <> O súbelo a <b>{valueText(p!, nextValue(p!)!)}</b> si quieres seguir creciendo ahí.</>}</p>
+              <p><b>{h.name}</b> ya te sale solo ({Math.round(x.pct * 100)} % en {PROGRESSION_RULES.autoDays} días). ¿Lo retiras de la lista para centrarte en otro?</p>
               <div className="habit-hint-actions">
                 <button className="primary small" onClick={() => onRetire(h.id)}><Icon name="check" /> Retirarlo</button>
-                {canLevel && <button className="ghost small" onClick={() => onLevel(h.id)}><Icon name="trend" /> Subir la meta</button>}
+                {canLevel && <button className="ghost small" onClick={() => onLevel(h.id)} title={`Siguiente meta: ${valueText(p!, nextValue(p!)!)}`}><Icon name="trend" /> Subir la meta</button>}
                 <button className="ghost small" onClick={() => onSnooze(h.id, 'auto')}>Seguir con él</button>
               </div>
             </li>
           ) : (
             <li key={h.id} className="habit-hint level">
-              <p><b>{h.name}</b>: llevas {PROGRESSION_RULES.levelDays} días cumpliendo <b>{valueText(p!, p!.value)}</b>. Toca subir un poco: <b>{valueText(p!, x.next)}</b>{p!.max === x.next && ', tu meta final'}.</p>
+              <p><b>{h.name}</b>: {PROGRESSION_RULES.levelDays} días cumpliendo. Siguiente meta: <b>{valueText(p!, x.next)}</b>{p!.max === x.next && ' (la final)'}.</p>
               <div className="habit-hint-actions">
-                <button className="primary small" onClick={() => onLevel(h.id)}><Icon name="trend" /> Subir la meta ({valueText(p!, x.next)})</button>
+                <button className="primary small" onClick={() => onLevel(h.id)}><Icon name="trend" /> Subir la meta</button>
                 <button className="ghost small" onClick={() => onSnooze(h.id, 'level')}>Aún no</button>
               </div>
             </li>
@@ -295,5 +376,33 @@ export function RetiredHabits({ state, onRestore }: { state: GameState; onRestor
         ))}
       </ul>
     </details>
+  );
+}
+
+/** Minutos de foco al día del hábito de Deep Work (los pones tú). */
+export function FocusMinInput({ id, value, onChange }: { id: string; value: number; onChange: (n: number) => void }) {
+  return (
+    <label className="focus-min" htmlFor={id}>
+      <Icon name="hourglass" />
+      <input id={id} type="number" inputMode="numeric" min={FOCUS_HABIT_RULES.min} max={FOCUS_HABIT_RULES.max} step={5} value={value || ''}
+        onChange={(e) => onChange(Number(e.target.value))} aria-label="Minutos de Deep Work al día" />
+      <span className="muted small-text">min de Deep Work al día</span>
+    </label>
+  );
+}
+
+/** «+ Hábito de Deep Work»: un hábito que se marca solo al sumar tus minutos de foco del día. */
+export function FocusHabitAdd({ onAdd }: { onAdd: (min: number) => void }) {
+  const [open, setOpen] = useState(false);
+  const [min, setMin] = useState(FOCUS_HABIT_RULES.default);
+  const ok = min >= FOCUS_HABIT_RULES.min && min <= FOCUS_HABIT_RULES.max;
+  if (!open) return <button type="button" className="link focus-add-link" onClick={() => setOpen(true)}><Icon name="hourglass" /> Hábito de Deep Work</button>;
+  return (
+    <form className="focus-add" onSubmit={(e) => { e.preventDefault(); if (ok) { onAdd(min); setOpen(false); } }}>
+      <FocusMinInput id="new-focus-min" value={min} onChange={setMin} />
+      <button type="submit" className="primary small" disabled={!ok}><Icon name="plus" /> Añadir</button>
+      <button type="button" className="ghost small" onClick={() => setOpen(false)}>Cancelar</button>
+      <p className="hint">Se marca solo cuando tus sesiones de Deep Work (y los repasos de Academy) del día suman esos minutos.</p>
+    </form>
   );
 }

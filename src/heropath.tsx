@@ -7,6 +7,7 @@ import { DEFAULT_GUIDE } from './tutorial';
 import { Birds, Clouds, Mist, ShootingStars } from './sky-fx';
 import { Icon } from './icons';
 import { InfoTip } from './infotip';
+import { RitualCTA } from './ritual';
 
 const W = 1000;
 const H = 470;
@@ -187,7 +188,7 @@ export function HeroPath({ state, now }: { state: GameState; now: number }) {
             ))}
           </ul>
         )}
-        {/* El botón del ritual va solo en la tarjeta «Avatar actual», más abajo: aquí basta la etiqueta «Ritual disponible». */}
+        {st === 'next' && info.ready && <RitualCTA state={state} now={now} />}
       </div>
     </section>
   );

@@ -1072,7 +1072,7 @@ i.q-side { background: var(--side); }
 .ev-bloque { --ev: var(--c2); }
 .ev-form { display: grid; gap: 10px; }
 .ev-form-top { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; }
-.ev-form-when, .ev-form-extra { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ev-form-when, .ev-form-extra, .ev-form-academy { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .ev-form > button[type='submit'] { justify-self: start; }
 .ev-form.compact > button[type='submit'] { justify-self: stretch; }
 .ev-form select, .rem-form select { width: auto; }
@@ -1141,6 +1141,8 @@ i.q-side { background: var(--side); }
 .swatch.auto { background: conic-gradient(var(--c1), var(--c2), var(--c3), var(--c1)); }
 .sheet-edit { display: grid; gap: 12px; }
 .sheet-edit .eyebrow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0; }
+.sheet-edit .ev-academy { padding-right: 36px; }
+.sheet-edit .ev-academy .link { margin-left: auto; letter-spacing: 0; text-transform: none; font-family: inherit; }
 .kind-select { width: auto; padding: 2px 6px; font: inherit; color: var(--ev, var(--c2)); background: none; border: 1px solid var(--line); border-radius: 8px; letter-spacing: inherit; text-transform: inherit; }
 .sheet-title-input {
   font-family: var(--display); font-size: 24px; padding: 4px 0; background: none; border: 0; border-bottom: 2px solid var(--ev, var(--c2)); border-radius: 0; width: 100%;
@@ -1662,3 +1664,121 @@ svg .node-icon { color: var(--fg); }
 .dw-screen :is(.primary, .secondary, .ghost, .danger-solid).big { min-height: 50px; padding: 13px 22px; border-radius: 14px; font-size: 18px; }
 .dw-screen .ghost { background: transparent; box-shadow: none; }
 .dw-screen .ghost > .ico:first-child { color: inherit; }
+
+/* ---------- Hábitos tranquilos (V3.5, «cuanto más simple, mejor»): una línea por hábito, lo demás al abrirlo ---------- */
+.streak { color: var(--muted); }
+.dot.on { box-shadow: none; }
+.freq-tag { border: 0; padding: 0; color: var(--muted); font-size: 12.5px; }
+.freq-tag.done { color: var(--c1); border: 0; }
+.goal-tag { color: var(--muted); font-size: 12.5px; }
+.item.at-risk { box-shadow: inset 2px 0 0 color-mix(in srgb, var(--gold) 70%, transparent); }
+.habit-risk { color: var(--muted); margin: 2px 0 0; }
+.habit-risk b { color: var(--fg); font-weight: 600; }
+.habit-detail { display: grid; gap: 10px; margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
+.habit-detail .habit-history, .habit-detail .habit-goal { margin: 0; }
+.habit-detail-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 13px; }
+.habit-detail-actions { display: flex; gap: 6px; margin-left: auto; }
+.habit-goal { margin: 0; padding: 0; border: 0; background: none; gap: 4px; }
+.habit-goal-head { font-size: 13.5px; }
+.habit-goal-head b { font-size: 14px; }
+.habit-hints-head { gap: 8px; margin-bottom: 2px; }
+.habit-hints .tour-portrait { width: 30px; height: 30px; font-size: 18px; animation: none; box-shadow: none; }
+.habit-hint { padding: 8px 0; }
+.habit-hint p { margin: 0 0 6px; font-size: 14.5px; }
+.share-week { margin-bottom: 8px; }
+.share-week .link { font-size: 13px; }
+.item-actions:has(> .drag-handle:only-child) { opacity: .55; }
+@media (max-width: 560px) {
+  /* En Hábitos solo queda el asa: la fila no baja a otra línea */
+  .item:has(> .item-actions > .drag-handle:only-child) { flex-wrap: nowrap; }
+  .habit-detail-actions { margin-left: 0; }
+}
+/* Nuevo hábito en reposo: campo y botón en la misma línea también en móvil */
+@media (max-width: 560px) {
+  .quick-add.habit-add:not(.typing) > input:first-child { flex: 1 1 auto; min-width: 0; }
+  .quick-add.habit-add:not(.typing) { flex-wrap: nowrap; }
+}
+.habit-hints-head h3.eyebrow { font-size: 11px; font-weight: 600; }
+/* Historial dentro del hábito abierto: calendario discreto */
+.habit-detail .hh-grid { grid-template-columns: repeat(7, minmax(0, 28px)); gap: 3px; }
+.habit-detail .hh-day { font-size: 11px; }
+.habit-detail .hh-day.on { background: color-mix(in srgb, var(--c2) 30%, var(--surface-2)); color: var(--fg); box-shadow: none; }
+.item:has(> .item-body > .habit-detail) { align-items: flex-start; }
+.item.done:has(> .item-body > .habit-detail) > :not(.check) { opacity: 1; }
+
+/* ---------- Personaje más tranquilo (V3.5) ---------- */
+.attr-open { background: none; border: 0; padding: 0; color: inherit; font: inherit; font-weight: 500; cursor: pointer; text-align: left; display: inline-flex; align-items: center; gap: 4px; }
+.attr-open .ico-line { opacity: .45; transition: transform .2s; }
+.attr-open[aria-expanded='true'] .ico-line { transform: rotate(180deg); }
+.attr-open:hover { color: var(--c1); }
+.attrs.detailed .attr-desc { margin-top: 0; font-size: 13px; color: var(--muted); }
+.attrs.detailed .attr-desc .attr-tagline { color: var(--fg); }
+.attrs.detailed .attr-last { margin-top: 0; }
+.attrs.detailed .attr.asleep .attr-asleep-text { font-size: 12.5px; }
+@media (min-width: 900px) { .attrs.detailed { gap: 10px 28px; align-items: start; } }
+@media (max-width: 480px) { .attrs.detailed .attr-last { grid-row: auto; } }
+.attr-bar { height: 6px; }
+.heat-1 { fill: color-mix(in srgb, var(--c2) 22%, #0b0b0f); background: color-mix(in srgb, var(--c2) 22%, #0b0b0f); }
+.heat-2 { fill: color-mix(in srgb, var(--c2) 42%, #0b0b0f); background: color-mix(in srgb, var(--c2) 42%, #0b0b0f); }
+.heat-3 { fill: color-mix(in srgb, var(--c2) 66%, #0b0b0f); background: color-mix(in srgb, var(--c2) 66%, #0b0b0f); }
+.heat-4 { fill: var(--c2); background: var(--c2); }
+.goal-form.idle { grid-template-columns: 1fr auto; }
+.goal-form.idle input:first-child { grid-column: auto; }
+.path-detail .ritual-cta { justify-self: start; align-self: flex-start; margin-top: 4px; }
+
+/* Sonido de fondo plegado: un botón redondo en la esquina; los controles solo al abrirlo (no tapa la pantalla) */
+.ambient-dock { padding: 6px; }
+.ambient-dock .dock-toggle { align-self: flex-start; width: 34px; height: 34px; color: var(--c2); }
+.ambient-dock.folded { border-radius: 50%; padding: 3px; background: color-mix(in srgb, var(--c3) 10%, #0b0b0f); opacity: .8; }
+.ambient-dock.folded:hover { opacity: 1; }
+.ambient-dock.folded > :not(.dock-toggle):not(iframe) { display: none; }
+.ambient-dock.folded iframe { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; left: 0; bottom: 0; }
+.ambient-dock.folded .dock-toggle::after { content: ''; position: absolute; top: 5px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--c2); }
+.ambient-dock .dock-toggle { position: relative; }
+.ambient-dock.open { padding: 8px 10px; }
+.ambient-dock.open .dock-toggle { color: var(--muted); width: 28px; height: 28px; }
+
+/* Hábito de Deep Work: minutos al día */
+.focus-add-link { margin-top: 8px; font-size: 13.5px; }
+.focus-add { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.focus-add .hint, .focus-edit .hint { flex-basis: 100%; margin: 0; }
+.focus-min { display: inline-flex; align-items: center; gap: 8px; }
+.focus-min .ico { color: var(--muted); }
+.focus-min input { width: 5.5em; padding: 7px 10px; text-align: center; }
+.focus-edit { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+.focus-min input[type=number] { width: 72px; flex: none; }
+.ambient-dock.open { padding-right: 40px; }
+.ambient-dock.open .dock-toggle { position: absolute; top: 4px; right: 4px; }
+
+/* ---------- Mapa de reinos como tierra (2026-11-23): isla, costa, curvas de nivel, campos ---------- */
+.realm-sea { fill: color-mix(in srgb, var(--c3) 9%, #020207); }
+.realm-waves { fill: none; stroke: color-mix(in srgb, var(--c2) 22%, #6a6a8a); stroke-width: 1; stroke-linecap: round; opacity: 0.3; }
+.realm-shallows { fill: none; stroke: color-mix(in srgb, var(--c3) 22%, #0a0a18); stroke-width: 20; opacity: 0.35; }
+.realm-land { stroke: color-mix(in srgb, var(--c2) 38%, #8a86a0); stroke-width: 1.2; stroke-opacity: 0.55; }
+.realm-contour { fill: none; stroke: #fff; stroke-opacity: 0.035; stroke-width: 1; }
+.realm-farm { fill: color-mix(in srgb, var(--c1) 10%, #2a2418); stroke: color-mix(in srgb, var(--gold) 22%, transparent); stroke-width: 0.7; opacity: 0.55; }
+.realm-map .river { stroke-width: 7; opacity: 0.9; }
+.road-bed { fill: none; stroke: #07060c; stroke-width: 7; stroke-linecap: round; opacity: 0.75; }
+.node-base { fill: #000; opacity: 0.4; pointer-events: none; }
+
+/* Ciudades de un reino en pequeño (2026-11-23): sustituyen al segundo mapa */
+.city-list-h { margin: 0; font-size: 15px; }
+.city-list-h .muted { font-weight: 400; font-size: 13px; }
+.city-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+.city-tile { display: flex; align-items: center; gap: 10px; padding: 6px 10px 6px 6px; border-radius: 12px; text-align: left; color: var(--fg);
+  background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); cursor: pointer; min-width: 0; }
+.city-tile:hover, .city-tile:focus-visible { border-color: color-mix(in srgb, var(--c1) 55%, var(--line)); }
+.city-tile-ring { flex: none; }
+.city-tile-ring .ct-track { fill: color-mix(in srgb, var(--c3) 12%, #060606); stroke: rgba(255, 255, 255, 0.07); stroke-width: 3; }
+.city-tile-ring .ct-fill { fill: none; stroke: var(--c1); stroke-width: 3; stroke-linecap: round; }
+.city-tile-ring .ico { color: var(--fg); fill: currentColor; }
+.city-tile.monument .ct-fill { stroke: var(--gold); }
+.city-tile-text { display: flex; flex-direction: column; min-width: 0; }
+.city-tile-name { font-family: var(--display); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.city-tile-sub { font-family: var(--mono); font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Los iconos dentro de textos de la escena no son el dibujo: en línea (antes saltaban a su propia línea) */
+.city-scene .castle-cap .ico, .city-scene .chart-tip .ico { display: inline-block; vertical-align: -0.15em; }
+/* «Capital del reino» encima del nombre (antes, en fila, partía el nombre en el móvil: «Program-ación») */
+.kingdom-name:has(.kingdom-capital) { flex-wrap: wrap; row-gap: 0; }
+.kingdom-name .kingdom-capital { flex-basis: 100%; }
+@media (max-width: 640px) { .city-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; } .city-tile { gap: 8px; padding: 5px 8px 5px 5px; } }

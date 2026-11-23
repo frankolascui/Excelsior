@@ -8,7 +8,7 @@ import { completeQuest, dayKey, pendingQuests, toggleHabit, uid, undoQuest } fro
 import {
   addEvent, addReminder, deleteEvent, deleteReminder, dueAlerts, EVENT_COLORS, EVENT_KINDS, eventColor, eventIcon, eventSpan, eventsOn, fromMin,
   addBlockTask, blockItems, removeBlockTask, type BlockItem,
-  cleanRule, laterReminders, layoutLanes, editOccurrence, isKeyEvent, moveEvent, REPEAT_NAMES, skipEventDay, todayReminders, toggleReminder, toMin, updateEvent,
+  cleanRule, eventLabel, laterReminders, layoutLanes, editOccurrence, isKeyEvent, moveEvent, REPEAT_NAMES, skipEventDay, todayReminders, toggleReminder, toMin, updateEvent,
 } from './life';
 import { relDay } from './life-ui';
 import { DatePicker, DurationChips, Select, TimePicker, durationWords } from './pickers';
@@ -16,6 +16,7 @@ import { sfx } from './sfx';
 import { Icon, plain } from './icons';
 import { shortDate } from './ui';
 import { SessionEdit } from './session-ui';
+import { createAcademyExam, deleteAcademyExam, pushAcademyExam, useAcademySubjects } from './academy-exams-cloud';
 
 export const WEEKDAY_NAMES = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
 
@@ -232,8 +233,13 @@ export function AgendaForm({ game, day, time, end: initialEnd, onDone, compact, 
   const [end, setEnd] = useState<string | null>(time ? initialEnd ?? plusHour(time) : null);
   const [rep, setRep] = useState<RepeatValue>({});
   const [color, setColor] = useState<string | undefined>();
+  const subjects = useAcademySubjects();
+  const [subjectId, setSubjectId] = useState('');
+  const [busy, setBusy] = useState(false);
   useEffect(() => setDate(day), [day]);
   const isRem = kind === 'recordatorio';
+  // Un examen con asignatura va a Academy (y desde ahí, aquí): no se repite.
+  const toAcademy = kind === 'examen' && !!subjectId && !!subjects?.some((x) => x.id === subjectId);
   function pickStart(v: string | null) {
     if (v && start && end) setEnd(fromMin(Math.min(toMin(v) + toMin(end) - toMin(start), LAST))); // mantiene la duración
     else if (v) setEnd(plusHour(v));
@@ -241,7 +247,18 @@ export function AgendaForm({ game, day, time, end: initialEnd, onDone, compact, 
   }
   function submit(e: FormEvent) {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim() || busy) return;
+    if (toAcademy) {
+      setBusy(true);
+      void createAcademyExam(game, { subjectId, title, day: date, time: start ?? undefined, end: start ? end ?? undefined : undefined, color }).then((err) => {
+        setBusy(false);
+        if (err) { sfx.error(); game.toast(`{i:alert} No se pudo guardar en Academy: ${err}`, 'info', 6000); return; }
+        sfx.place();
+        setTitle('');
+        onDone?.();
+      });
+      return;
+    }
     if (isRem) game.act((s) => addReminder(s, { title, day: date, time: start ?? undefined }, Date.now()));
     else game.act((s) => addEvent(s, { title, day: date, kind: kind as EventKind, time: start ?? undefined, end: start ? end ?? undefined : undefined, ...rep, color }, Date.now()));
     sfx.place();
@@ -260,13 +277,20 @@ export function AgendaForm({ game, day, time, end: initialEnd, onDone, compact, 
         {compact && <DatePicker value={date} onChange={(d) => d && setDate(d)} label="Día" />}
         <TimeFields start={start} end={end} onStart={pickStart} onEnd={setEnd} reminder={isRem} />
       </div>
+      {kind === 'examen' && !!subjects?.length && (
+        <div className="ev-form-academy">
+          <Select<string> label="Asignatura de Academy" icon="graduate-cap" value={subjectId} onChange={setSubjectId}
+            options={[{ value: '', label: 'Sin asignatura' }, ...subjects.map((x) => ({ value: x.id, label: x.name }))]} />
+          {toAcademy && <span className="muted small-text">También sale en Academy, con su plan de repaso.</span>}
+        </div>
+      )}
       {!isRem && (
         <div className="ev-form-extra">
-          <RepeatEditor value={rep} day={date} onChange={(p) => setRep({ ...rep, ...p })} />
+          {!toAcademy && <RepeatEditor value={rep} day={date} onChange={(p) => setRep({ ...rep, ...p })} />}
           <ColorSwatches value={color} onChange={setColor} />
         </div>
       )}
-      <button type="submit" className={compact ? 'primary' : 'secondary'} disabled={!title.trim()}><Icon name="plus" /> Añadir</button>
+      <button type="submit" className={compact ? 'primary' : 'secondary'} disabled={!title.trim() || busy}><Icon name="plus" /> {busy ? 'Guardando…' : 'Añadir'}</button>
     </form>
   );
 }
@@ -310,6 +334,10 @@ function EventSheet({ game, id: firstId, day, onClose, startFocus }: { game: Gam
   const series = (game.state.events ?? []).find((e) => e.id === id) ?? ev; // ev es el de ese día; series, el guardado (con su primer día)
   const one = !!ev.repeat && scope === 'one';
   const set = (patch: Parameters<typeof updateEvent>[2]) => {
+    if (ev.academy && (patch.title !== undefined || patch.day !== undefined)) {
+      // nombre y día también en Academy
+      void pushAcademyExam({ academy: ev.academy, title: patch.title ?? ev.title, day: patch.day ?? ev.day }).then((err) => err && game.toast(`{i:alert} No se pudo cambiar en Academy: ${err}`, 'info', 6000));
+    }
     if (!one) return game.act((s) => updateEvent(s, id, patch));
     // Solo este día: sale de la serie como evento suelto y la ficha sigue con ese.
     const newId = uid();
@@ -323,9 +351,15 @@ function EventSheet({ game, id: firstId, day, onClose, startFocus }: { game: Gam
   return (
     <Sheet label={ev.title} onClose={() => { saveTitle(); onClose(); }}>
       <div className="sheet-edit" style={evStyle(ev)}>
-        <p className="eyebrow">
-          <Select<EventKind> label="Tipo" className="kind-select" value={ev.kind} onChange={(v) => set({ kind: v })} options={EVENT_KINDS.map((k) => ({ value: k.id, label: k.name }))} />
-        </p>
+        {ev.academy ? (
+          <p className="eyebrow ev-academy"><Icon name="ev-examen" /> Examen · {ev.academy.subject}
+            <button type="button" className="link" onClick={() => { saveTitle(); onClose(); location.hash = `#academy/a/${ev.academy!.subjectId}`; }}>Abrir en Academy <Icon name="arrow-right" /></button>
+          </p>
+        ) : (
+          <p className="eyebrow">
+            <Select<EventKind> label="Tipo" className="kind-select" value={ev.kind} onChange={(v) => set({ kind: v })} options={EVENT_KINDS.map((k) => ({ value: k.id, label: k.name }))} />
+          </p>
+        )}
         {ev.repeat && (
           <div className="segmented ev-scope" role="radiogroup" aria-label="Qué cambiar">
             <button type="button" role="radio" aria-checked={scope === 'one'} className={scope === 'one' ? 'seg on' : 'seg'} onClick={() => setScope('one')}>Solo este día</button>
@@ -348,14 +382,21 @@ function EventSheet({ game, id: firstId, day, onClose, startFocus }: { game: Gam
         </div>
         {ev.kind === 'bloque' && <BlockTasks game={game} eventId={id} ev={ev} day={onDay} />}
         <div className="ev-form-extra">
-          {!one && <RepeatEditor value={series} day={series.day} onChange={(p) => set(p)} />}
+          {!one && !ev.academy && <RepeatEditor value={series} day={series.day} onChange={(p) => set(p)} />}
           <ColorSwatches value={ev.color} onChange={(c) => set({ color: c })} />
         </div>
       </div>
       <div className="row sheet-actions">
         {focusFn && <button className="primary" onClick={() => { saveTitle(); onClose(); focusFn(title.trim() || ev.title); }}><Icon name="play" /> Empezar Deep Work</button>}
         {ev.repeat && <button className="ghost" onClick={() => { sfx.remove(); game.act((s) => skipEventDay(s, ev.id, onDay)); onClose(); }}><Icon name="x" /> Quitar solo este día</button>}
-        <button className="ghost danger-text" onClick={() => sureThen({ title: ev.repeat ? `¿Borrar toda la serie «${ev.title}»?` : `¿Borrar «${ev.title}»?`, message: ev.repeat ? 'Se borran todas sus repeticiones.' : undefined, confirmLabel: ev.repeat ? 'Borrar la serie' : 'Borrar' }, () => { sfx.remove(); game.act((s) => deleteEvent(s, ev.id)); onClose(); })}><Icon name="trash" /> {ev.repeat ? 'Borrar la serie' : 'Borrar'}</button>
+        {ev.academy ? (
+          <button className="ghost danger-text" onClick={() => sureThen({ title: `¿Borrar «${ev.title}»?`, message: 'También se borra de Academy. Tus tarjetas y simulacros se quedan.', confirmLabel: 'Borrar' }, () => {
+            void deleteAcademyExam(ev.academy!.examId).then((err) => {
+              if (err) { sfx.error(); game.toast(`{i:alert} No se pudo borrar en Academy: ${err}`, 'info', 6000); return; }
+              sfx.remove(); game.act((s) => deleteEvent(s, ev.id)); onClose();
+            });
+          })}><Icon name="trash" /> Borrar</button>
+        ) : <button className="ghost danger-text" onClick={() => sureThen({ title: ev.repeat ? `¿Borrar toda la serie «${ev.title}»?` : `¿Borrar «${ev.title}»?`, message: ev.repeat ? 'Se borran todas sus repeticiones.' : undefined, confirmLabel: ev.repeat ? 'Borrar la serie' : 'Borrar' }, () => { sfx.remove(); game.act((s) => deleteEvent(s, ev.id)); onClose(); })}><Icon name="trash" /> {ev.repeat ? 'Borrar la serie' : 'Borrar'}</button>}
       </div>
       <p className="hint sheet-hint"><Icon name="info" /> Consejo: en la vista Día o Semana puedes arrastrar el evento para moverlo y estirar su borde de abajo para cambiar lo que dura.</p>
     </Sheet>
@@ -529,6 +570,7 @@ export function TimeGrid({ game, days, now, onPickDay, startFocus }: {
       if (to.day === d.ev.day && d.start === span[0] && d.end === span[1]) return;
       sfx.drop();
       game.act((s) => moveEvent(s, d.ev, to, Date.now()));
+      if (d.ev.academy && to.day !== d.ev.day) void pushAcademyExam({ academy: d.ev.academy, title: d.ev.title, day: to.day }).then((err) => err && game.toast(`{i:alert} No se pudo cambiar en Academy: ${err}`, 'info', 6000));
     };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
@@ -622,7 +664,7 @@ function AllDay({ state, day, onOpen }: { state: GameState; day: string; onOpen:
   const evs = eventsOn(state, day).filter((e) => !e.time);
   return (
     <div className="tg-cell">
-      {evs.map((e) => <button key={e.id} className={`tg-chip ev-${e.kind}`} style={evStyle(e)} onClick={() => onOpen(e)}><Icon name={eventIcon(e.kind)} /> {e.title}</button>)}
+      {evs.map((e) => <button key={e.id} className={`tg-chip ev-${e.kind}`} style={evStyle(e)} onClick={() => onOpen(e)}><Icon name={eventIcon(e.kind)} /> {eventLabel(e)}</button>)}
     </div>
   );
 }
@@ -665,9 +707,9 @@ function DayBlocks({ state, day, hour, now, drag, onOpen, onGrab, onSession }: {
             style={{ ...evStyle(e), top: top(a), height: Math.max(16, top(b - a) - 2), left: `calc(${(lane / n) * 100}% + 2px)`, width: `calc(${100 / n}% - 4px)` }}
             onPointerDown={(ev) => onGrab(ev, e, 'move')}
             onClick={() => onOpen(e)} onKeyDown={(ev) => (ev.key === 'Enter' || ev.key === ' ') && (ev.preventDefault(), onOpen(e))}
-            aria-label={`${e.title}, ${timeRange({ time: fromMin(a), end: fromMin(Math.min(b, LAST)) })}`}
+            aria-label={`${eventLabel(e)}, ${timeRange({ time: fromMin(a), end: fromMin(Math.min(b, LAST)) })}`}
           >
-            <b>{e.kind !== 'bloque' && <><Icon name={eventIcon(e.kind)} /> </>}{e.title}{e.tasks?.length ? <span className="tg-tasks mono"> {blockItems(state, e, e.day).filter((x) => x.done).length}/{blockItems(state, e, e.day).length}</span> : null}</b>
+            <b>{e.kind !== 'bloque' && <><Icon name={eventIcon(e.kind)} /> </>}{eventLabel(e)}{e.tasks?.length ? <span className="tg-tasks mono"> {blockItems(state, e, e.day).filter((x) => x.done).length}/{blockItems(state, e, e.day).length}</span> : null}</b>
             <span className="mono">{fromMin(a)} – {fromMin(Math.min(b, LAST))}{isDragged ? ` · ${durationWords(b - a)}` : ''}{!isDragged && e.repeat && <> <Icon name="repeat" /></>}</span>
             <span className="tg-resize" onPointerDown={(ev) => onGrab(ev, e, 'resize')} onClick={(ev) => ev.stopPropagation()} aria-hidden="true" />
           </div>

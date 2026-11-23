@@ -4,7 +4,7 @@ import type { GameState } from './types';
 import type { IconName } from './icon-data';
 import { attributeLevel, attributeXp, avatarInfo } from './attributes';
 import { bossStatus } from './bosses';
-import { kingdomBonus } from './economy';
+import { kingdomFinished } from './kingdoms';
 import { dayKey, habitStreakDays, levelInfo, totalXp } from './game';
 
 export type AchievementTier = 'bronce' | 'plata' | 'oro' | 'leyenda';
@@ -68,7 +68,7 @@ export function stats(s: GameState, now: number): Stats {
     bestStreak: Math.max(0, ...s.habits.map((h) => habitStreakDays(s, h.id, now))),
     level: levelInfo(totalXp(s)).level,
     bosses: s.bosses.filter((b) => bossStatus(s, b, now).defeated).length,
-    kingdoms: s.kingdoms.filter((k) => kingdomBonus(s, k.id) > 0).length,
+    kingdoms: s.kingdoms.filter((k) => kingdomFinished(s, k.id)).length,
     activeDays: byDay.size,
     dayLogs: (s.dayLogs ?? []).length,
     purchases: s.purchases.length,

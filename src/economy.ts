@@ -1,16 +1,19 @@
 // Monedas y tienda de recompensas. El saldo se deriva: lo ganado (XP, bosses, reinos) menos lo gastado.
 import type { GameState, Purchase, Reward } from './types';
 import type { IconName } from './icon-data';
-import { dayKey, isHabitDone, shiftDay, shieldedDays, totalXp, uid } from './game';
+import { dayKey, earnedXp, habitPausedOn, isHabitDone, prevActiveDay, shiftDay, shieldedDays, uid } from './game';
 import { bossLoot, defeatedBosses } from './bosses';
 import { kingdomProgress } from './kingdoms';
 import { trophyCoins } from './trophies';
 import { healthCoins } from './health';
 
 export const COIN_RULES = {
-  xpPerCoin: 5, // 1 moneda por cada 5 XP
-  kingdomBonusPerBuilding: 10, // al completar un reino (mín. 3 construcciones)
-  kingdomMinBuildings: 3,
+  xpPerCoin: 7, // 1 moneda por cada 7 XP (desde xpPerCoinSince; antes 5)
+  oldXpPerCoin: 5,
+  /** Cambio de 5 a 7 XP por moneda: el XP ganado antes sigue a 5 para que nadie pierda monedas. Poner aquí el día de publicar. */
+  xpPerCoinSince: new Date('2026-11-23T00:00:00').getTime(),
+  kingdomBonusPerBuilding: 10, // tributo por construcción levantada, desde que el reino es Villa
+  kingdomMinBuildings: 3, // Villa
 };
 
 /** Categorías de la tienda, de lo pequeño a lo grande. */
@@ -54,14 +57,18 @@ export function rewardCategory(r: Pick<Reward, 'name' | 'cost'> & { category?: s
   return 'ocio';
 }
 
+/** XP que vale una moneda en ese momento (5 antes del cambio, 7 después). */
+export const xpPerCoinAt = (now: number) => (now < COIN_RULES.xpPerCoinSince ? COIN_RULES.oldXpPerCoin : COIN_RULES.xpPerCoin);
+
 /** Monedas ganadas por reino completado (0 si no cuenta). */
 export function kingdomBonus(s: GameState, kingdomId: string): number {
-  const p = kingdomProgress(s, kingdomId);
-  return p.complete && p.total >= COIN_RULES.kingdomMinBuildings ? p.total * COIN_RULES.kingdomBonusPerBuilding : 0;
+  const { built } = kingdomProgress(s, kingdomId);
+  return built >= COIN_RULES.kingdomMinBuildings ? built * COIN_RULES.kingdomBonusPerBuilding : 0;
 }
 
 export function coinsEarned(s: GameState, now: number) {
-  const fromXp = Math.floor(totalXp(s) / COIN_RULES.xpPerCoin);
+  const oldXp = s.xp.reduce((n, t) => n + (t.at < COIN_RULES.xpPerCoinSince ? t.amount : 0), 0);
+  const fromXp = Math.floor(oldXp / COIN_RULES.oldXpPerCoin + (earnedXp(s) - oldXp) / COIN_RULES.xpPerCoin);
   const fromBosses = defeatedBosses(s, now).reduce((n, b) => n + bossLoot(s, b, now), 0);
   const fromKingdoms = s.kingdoms.reduce((n, k) => n + kingdomBonus(s, k.id), 0);
   const fromSocial = trophyCoins(s); // MVP de gremio y coronas semanales
@@ -119,8 +126,12 @@ export function unusedPurchases(s: GameState): Purchase[] {
 
 // ---------- Escudo de racha ----------
 
-/** Objeto fijo de la tienda: salva un día fallado de un hábito diario si el anterior lo hiciste. */
-export const SHIELD = { id: 'streak-shield', name: 'Escudo de racha', icon: 'shield', cost: 50 } as const;
+/**
+ * Objeto fijo de la tienda: congela la racha de un hábito diario salvando el día de ayer, si anteayer lo hiciste.
+ * Precio subido de 50 a 150 el 2026-11-18 (≈ 750 XP, unos 3 días normales) y máximo 2 guardados (pedido de Nicolas).
+ * Los escudos ya comprados conservan el precio que costaron.
+ */
+export const SHIELD = { id: 'streak-shield', name: 'Escudo de racha', icon: 'shield', cost: 150, max: 2 } as const; // max = SHIELD_MAX de game.ts (import circular: no se puede leer aquí al cargar)
 
 /** Escudos comprados que aún no has usado. */
 export function shieldsLeft(s: GameState): number {
@@ -128,27 +139,21 @@ export function shieldsLeft(s: GameState): number {
 }
 
 export function buyShield(s: GameState, now: number): { state: GameState; ok: boolean } {
-  if (coinBalance(s, now) < SHIELD.cost) return { state: s, ok: false };
+  if (shieldsLeft(s) >= SHIELD.max || coinBalance(s, now) < SHIELD.cost) return { state: s, ok: false };
   const purchase: Purchase = { id: uid(), rewardId: SHIELD.id, name: SHIELD.name, icon: SHIELD.icon, cost: SHIELD.cost, at: now, usedAt: null };
   return { state: { ...s, purchases: [...s.purchases, purchase] }, ok: true };
 }
 
 /**
- * Día que un escudo puede salvar ahora: el último fallo de los 7 últimos días con el día anterior hecho
- * y todo hecho desde entonces hasta ayer (si no, la racha ya se perdió). Null si no hay ninguno.
+ * Día que un escudo puede salvar ahora: solo ayer, si lo fallaste, anteayer lo hiciste y el hábito ya existía.
+ * Ni días más antiguos ni futuros. Null si no se puede.
  */
 export function shieldableDay(s: GameState, habitId: string, now: number): string | null {
   const h = s.habits.find((x) => x.id === habitId);
   if (!h || h.frequency === 'weekly') return null;
-  const saved = shieldedDays(s, habitId);
-  const ok = (d: string) => isHabitDone(s, habitId, d) || saved.has(d);
-  for (let i = 1; i <= 6; i++) {
-    const d = dayKey(shiftDay(now, -i));
-    if (ok(d)) continue;
-    if (d < dayKey(h.createdAt)) return null;
-    return isHabitDone(s, habitId, dayKey(shiftDay(now, -i - 1))) ? d : null;
-  }
-  return null;
+  const y = dayKey(shiftDay(now, -1));
+  if (y < dayKey(h.createdAt) || isHabitDone(s, habitId, y) || shieldedDays(s, habitId).has(y) || habitPausedOn(s, habitId, y)) return null;
+  return isHabitDone(s, habitId, dayKey(prevActiveDay(s, habitId, shiftDay(now, -1)))) ? y : null;
 }
 
 /** Usa un escudo del cofre en ese día fallado. */
@@ -156,6 +161,21 @@ export function spendShield(s: GameState, habitId: string, day: string, now: num
   const p = s.purchases.find((x) => x.rewardId === SHIELD.id && x.usedAt === null);
   if (!p || shieldableDay(s, habitId, now) !== day) return { state: s, ok: false };
   return { state: { ...s, purchases: s.purchases.map((x) => (x.id === p.id ? { ...x, usedAt: now, shield: { habitId, day } } : x)) }, ok: true };
+}
+
+/** Puedes devolver al cofre un premio usado durante este rato (por si lo pulsaste sin querer). */
+export const UNDO_USE_MS = 24 * 3600_000;
+
+/** Premios del cofre ya usados, del más reciente al más antiguo (sin escudos ni canjes antiguos sin fecha). */
+export function usedPurchases(s: GameState): Purchase[] {
+  return s.purchases.filter((p) => typeof p.usedAt === 'number' && p.rewardId !== SHIELD.id).sort((a, b) => (b.usedAt as number) - (a.usedAt as number));
+}
+
+/** Devuelve al cofre un premio usado hace menos de UNDO_USE_MS. Los escudos no (los gasta un hábito). */
+export function returnPurchase(s: GameState, purchaseId: string, now: number): GameState {
+  const p = s.purchases.find((x) => x.id === purchaseId);
+  if (!p || p.rewardId === SHIELD.id || typeof p.usedAt !== 'number' || now - p.usedAt > UNDO_USE_MS) return s;
+  return { ...s, purchases: s.purchases.map((x) => (x.id === purchaseId ? { ...x, usedAt: null } : x)) };
 }
 
 /** Usa un premio del cofre. */
@@ -181,5 +201,5 @@ export function nextReward(s: GameState, now: number): { reward: Reward; missing
   const next = s.rewards.filter((r) => r.cost > balance).sort((a, b) => a.cost - b.cost)[0];
   if (!next) return null;
   const missing = next.cost - balance;
-  return { reward: next, missing, xp: missing * COIN_RULES.xpPerCoin };
+  return { reward: next, missing, xp: missing * xpPerCoinAt(now) };
 }

@@ -9,6 +9,7 @@ import {
   IMPACTS, MAX_PRIORITIES, dropQuest, keepQuest, postponeQuest, priorityCandidates, priorityIds, priorityQuests, setPriorities, staleAge, staleQuests, tomorrowQuests,
 } from './priorities';
 import { currentChange, previousReview, saveWeeklyReview, VERDICTS, weekFocus, weeklyReview } from './review';
+import { STALE_KINGDOM_DAYS, staleKingdoms } from './kingdoms';
 import { Icon } from './icons';
 import { pathLabel } from './tree';
 import './priorities.css';
@@ -218,6 +219,7 @@ export function WeeklyReviewForm({ game, week, onSaved }: { game: Game; week: st
   const [focus, setFocus] = useState(saved?.focus ?? '');
   const [verdict, setVerdict] = useState<WeeklyReview['prevVerdict']>(saved?.prevVerdict);
   const stale = staleQuests(state, Date.now()).length;
+  const idleKingdoms = staleKingdoms(state, Date.now());
   function submit(e: FormEvent) {
     e.preventDefault();
     act((s) => saveWeeklyReview(s, week, { worked, failed, change, focus, prevVerdict: verdict }, Date.now()));
@@ -247,6 +249,7 @@ export function WeeklyReviewForm({ game, week, onSaved }: { game: Game; week: st
       <label className="field"><span>¿Qué es lo más importante esta semana?</span>
         <input id="wr-focus" maxLength={200} value={focus} onChange={(e) => setFocus(e.target.value)} placeholder="El resultado que, si lo consigues, hace buena la semana" /></label>
       {stale > 0 && <p className="muted small-text"><Icon name="info" /> Tienes {stale} {stale === 1 ? 'misión' : 'misiones'} para limpiar en Misiones.</p>}
+      {idleKingdoms.length > 0 && <p className="muted small-text"><Icon name="hourglass" /> {idleKingdoms.length === 1 ? `El reino ${idleKingdoms[0].name} lleva` : `${idleKingdoms.length} reinos llevan`} {STALE_KINGDOM_DAYS} días o más parado{idleKingdoms.length === 1 ? '' : 's'}: sigue con él o ciérralo como monumento en Reinos.</p>}
       <button type="submit" className="primary"><Icon name="save" /> Guardar la revisión</button>
     </form>
   );

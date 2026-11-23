@@ -5,7 +5,7 @@ import { levelInfo, totalXp } from './game';
 import { attributeLevel, attributeXp, avatarInfo } from './attributes';
 import { bossStatus } from './bosses';
 import { ADMIN } from './admin';
-import { ADMIN_READONLY_MSG, cloudClient, getUserId } from './cloud';
+import { ADMIN_READONLY_MSG, adminReadOnly, cloudClient, getUserId } from './cloud';
 import { publicWeeks, type WeekStats } from './ranking';
 
 // ---------- Reglas puras ----------
@@ -168,7 +168,7 @@ export async function publishProfile(s: GameState, now = Date.now()): Promise<Pu
   const { data: existing, error } = await db.from('profiles').select(FIELDS).eq('user_id', userId).maybeSingle();
   if (error) throw error;
   // Modo admin: se enseña tu perfil real tal cual; la partida de pruebas nunca se publica.
-  if (ADMIN) {
+  if (adminReadOnly()) {
     set({ me: (existing as PublicProfile) ?? null });
     return (existing as PublicProfile) ?? null;
   }
@@ -194,7 +194,7 @@ export async function publishProfile(s: GameState, now = Date.now()): Promise<Pu
 
 /** Tras cada cambio de la partida: si cambió algo público, se sube (agrupando cambios seguidos). */
 export function schedulePublish(s: GameState) {
-  if (ADMIN || !getUserId() || !s.profile) return;
+  if (adminReadOnly() || !getUserId() || !s.profile) return;
   if (JSON.stringify(publicFields(s, Date.now())) === published) return;
   clearTimeout(publishTimer);
   publishTimer = window.setTimeout(() => {

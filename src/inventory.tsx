@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import type { Game } from './screens';
 import { Chest } from './arena';
-import { unusedPurchases } from './economy';
+import { returnPurchase, shieldsLeft, SHIELD, UNDO_USE_MS, unusedPurchases, usedPurchases } from './economy';
 import { equipTitle, TROPHY_KIND, trophies, unlockedTitles } from './trophies';
 import { Glyph, Icon } from './icons';
 import './guilds.css';
@@ -13,6 +13,9 @@ const day = (t: number) => new Date(t).toLocaleDateString('es-ES', { day: 'numer
 export function Inventory({ game }: { game: Game }) {
   const { state, act } = game;
   const unused = unusedPurchases(state).length;
+  const shields = shieldsLeft(state);
+  const used = usedPurchases(state).slice(0, 12);
+  const now = Date.now();
   const list = [...trophies(state)].sort((a, b) => b.at - a.at);
   const titles = unlockedTitles(state);
   const [tab, setTab] = useState<Tab>(unused === 0 && list.length > 0 ? 'trofeos' : 'cofre');
@@ -33,13 +36,41 @@ export function Inventory({ game }: { game: Game }) {
         </div>
       </header>
 
-      {tab === 'cofre' && (unused === 0
-        ? <p className="empty">Tu cofre está vacío. Lo que canjees en la tienda de la Arena se guarda aquí hasta que lo uses.</p>
-        : <Chest game={game} />)}
+      {tab === 'cofre' && (
+        <>
+          {unused === 0
+            ? <p className="empty">Tu cofre está vacío. Lo que canjees en la tienda de la Arena se guarda aquí hasta que lo uses.</p>
+            : <Chest game={game} />}
+          {shields > 0 && (
+            <p className="inv-shields small-text">
+              <Icon name="snowflake" /> <strong>{shields === 1 ? '1 congelado guardado' : `${shields} congelados guardados`}</strong> <span className="muted">de {SHIELD.max}. Se usa desde Hábitos cuando ayer fallaste uno.</span>
+            </p>
+          )}
+          {used.length > 0 && (
+            <details className="inv-used">
+              <summary className="small-text">Ya usados <span className="mono">{used.length}</span></summary>
+              <ul>
+                {used.map((p) => (
+                  <li key={p.id}>
+                    <span className="chest-icon" aria-hidden="true"><Glyph icon={p.icon} /></span>
+                    <span className="inv-used-name">{p.name}</span>
+                    <span className="muted small-text">{day(p.usedAt as number)}</span>
+                    {now - (p.usedAt as number) < UNDO_USE_MS && (
+                      <button type="button" className="ghost small" onClick={() => { act((s) => returnPurchase(s, p.id, Date.now())); game.toast(`${p.name} vuelve a tu cofre.`, 'info'); }}>
+                        <Icon name="rotate-ccw" /> Devolver al cofre
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </>
+      )}
 
       {tab === 'trofeos' && (
         <>
-          <p className="muted small-text">Lo que ganas con otros: el estandarte de cada encargo de gremio, ser el MVP de un encargo y la corona de la semana entre amigos. Se quedan aunque cambies de gremio.</p>
+          <p className="muted small-text">Lo que ganas con otros: tus primeros aliados (1, 3 y 8 amigos), el estandarte de cada encargo de gremio, ser el MVP de un encargo y la corona de la semana entre amigos. Se quedan aunque cambies de gremio.</p>
           {titles.length > 0 && (
             <>
               <p className="eyebrow">Tu título</p>
@@ -52,7 +83,7 @@ export function Inventory({ game }: { game: Game }) {
             </>
           )}
           {list.length === 0 ? (
-            <p className="empty">Aún no tienes trofeos. Gana un encargo con tu gremio o termina primero la semana entre tus amigos.</p>
+            <p className="empty">Aún no tienes trofeos. Añade a tu primer amigo, gana un encargo con tu gremio o termina primero la semana entre tus amigos.</p>
           ) : (
             <ul className="trophy-grid">
               {list.map((t) => (

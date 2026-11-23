@@ -123,15 +123,14 @@ const before = log.length;
 await pc.waitForTimeout(4000);
 check(!log.slice(before).some((l) => l.startsWith('PATCH') || l.startsWith('POST')), 'en reposo no se escribe nada en Supabase');
 
-// Sin tiempo real (p. ej. la conexión cayó): el PC desfasado no pisa lo del móvil.
+// Sin tiempo real (p. ej. la conexión cayó): el PC desfasado no pisa lo del móvil; une las dos partidas.
 hub.live = false;
 await addQuest(phone, 'M3 móvil');
 check(await until(() => remoteHas('M3 móvil')), 'el móvil guarda M3');
 await addQuest(pc, 'M4 PC');
-check(await pc.waitForSelector('text=Tienes dos partidas', { timeout: 6000 }).then(() => true, () => false), 'el PC desfasado pregunta en vez de pisar');
-check(remoteHas('M3 móvil') && !remoteHas('M4 PC'), 'la nube conserva lo del móvil hasta que el jugador elija');
-await pc.click('button:has-text("La de este dispositivo")');
-check(await until(() => remoteHas('M4 PC')), 'elegir este dispositivo lo sube');
+check(await until(() => remoteHas('M3 móvil') && remoteHas('M4 PC')), 'el PC desfasado une su cambio con el del móvil, sin pisarlo');
+check(!(await pc.isVisible('text=Tienes dos partidas')), 'y sin preguntar «Tienes dos partidas»');
+check(await until(async () => (await quests(pc)).includes('M3 móvil')), 'el PC ve también lo del móvil');
 
 // Al volver a la app (o recuperar la conexión) se lee la nube: el móvil sin cambios carga lo del PC.
 await phone.evaluate(() => window.dispatchEvent(new Event('online')));

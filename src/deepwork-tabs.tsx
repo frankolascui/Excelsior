@@ -1,5 +1,6 @@
 // Deep Work con dos paneles (V3): el temporizador de foco de siempre y Academy entera.
 // Academy usa direcciones «#academy/…» (asignatura, hoja, simulacro…), así que «atrás» del navegador funciona dentro.
+import { ErrorBoundary } from './error-boundary';
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import type { Game } from './screens';
 import { Icon } from './icons';
@@ -31,7 +32,7 @@ export function DeepWorkTabs({ game, force, children }: { game: Game; force: boo
       </div></div>
       {panel === 'foco' ? children : (
         <div className="screen screen-wide">
-          <Suspense fallback={<p className="muted">Abriendo Academy…</p>}><AcademyApp game={game} /></Suspense>
+          <ErrorBoundary label="Academy"><Suspense fallback={<p className="muted">Abriendo Academy…</p>}><AcademyApp game={game} /></Suspense></ErrorBoundary>
         </div>
       )}
     </>

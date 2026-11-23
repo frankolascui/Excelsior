@@ -140,6 +140,23 @@ describe('más de una vez al día (opcional)', () => {
     expect(s.habitCompletions).toHaveLength(0);
   });
 
+  it('las bolitas dejan el día en N marcas: suben con su XP y bajan quitando solo las de más', async () => {
+    const { habitDayCount, setHabitDayCount, totalXp } = await import('./game');
+    let s = addHabit(emptyState(), 'Agua', NOW - 30 * D, { perDay: 3 });
+    const id = s.habits[0].id;
+    let r = setHabitDayCount(s, id, 3, NOW);
+    expect(habitDayCount(r.state, id, dayKey(NOW))).toBe(3);
+    expect(r.xp).toBe(30);
+    s = r.state;
+    r = setHabitDayCount(s, id, 2, NOW); // una de más: se quita esa, no las tres
+    expect(habitDayCount(r.state, id, dayKey(NOW))).toBe(2);
+    expect(r.xp).toBe(-10);
+    expect(totalXp(r.state)).toBe(20);
+    expect(setHabitDayCount(r.state, id, 9, NOW).state.habitCompletions).toHaveLength(3); // no pasa del tope
+    expect(setHabitDayCount(r.state, id, 0, NOW).state.habitCompletions).toHaveLength(0);
+    expect(setHabitDayCount(r.state, id, 1, NOW, dayKey(shiftDay(NOW, 1))).state).toBe(r.state); // mañana no
+  });
+
   it('la sobrecarga de veces por semana puede pasar de 7 con perDay', () => {
     const p = draftToProgression({ kind: 'freq', value: '', step: '', unit: '', dir: 'earlier', max: '8' }, 5, 2)!;
     expect(p).toEqual({ kind: 'freq', value: 5, step: 1, max: 8 });

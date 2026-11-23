@@ -10,7 +10,8 @@ const browser = await chromium.launch();
 const errors = [];
 const check = (cond, msg) => { if (!cond) { console.error('FALLO:', msg); process.exitCode = 1; } else console.log('ok:', msg); };
 const ME = '11111111-1111-1111-1111-111111111111';
-const USER = { id: ME, email: 'nico@test.com', aud: 'authenticated', role: 'authenticated', app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() };
+const EMAIL = process.env.TEST_ACCOUNT ? 'nico+pruebas@test.com' : 'nico@test.com'; // TEST_ACCOUNT=1: cuenta de pruebas (email con «+»)
+const USER = { id: ME, email: EMAIL, aud: 'authenticated', role: 'authenticated', app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() };
 const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*', 'access-control-expose-headers': '*' };
 const DAY = 86_400_000;
 const now = Date.now();
@@ -98,7 +99,7 @@ async function login(viewport) {
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => m.type() === 'error' && !/Failed to load resource|WebSocket/.test(m.text()) && errors.push(m.text()));
   await page.goto(url);
-  await page.fill('#login-email', 'nico@test.com');
+  await page.fill('#login-email', EMAIL);
   await page.click('text=Enviarme un código');
   await page.fill('#login-code', '123456');
   await page.click('button:has-text("Entrar")');
@@ -124,8 +125,23 @@ for (let i = 0; i < 4; i++) {
 await page.evaluate(() => { location.hash = '#deepwork'; });
 await page.click('[data-testid="tab-academy"]');
 await page.waitForSelector('[data-testid="academy-panel"] .shelf', { timeout: 8000 });
+if (process.env.TEST_ACCOUNT) {
+  // Con una cuenta de pruebas el modo admin sí guarda: es otra cuenta, no la real.
+  check(!(await page.isVisible('[data-testid="academy-panel"] .admin-note')), 'cuenta de pruebas: sin aviso de solo lectura');
+  check((await page.locator('[data-testid="admin-account"]').innerText()).includes('cuenta de pruebas'), 'cuenta de pruebas: la barra de admin lo dice');
+  await page.click('.today a:has-text("Repasar todo")');
+  await page.waitForSelector('.flashcard', { timeout: 8000 });
+  await page.keyboard.press('Space');
+  await page.waitForSelector('.grades');
+  await page.keyboard.press('4');
+  await page.waitForTimeout(1500);
+  check(db.study_reviews.length === 1, 'cuenta de pruebas: el repaso se guarda en esa cuenta');
+  check(errors.length === 0, `sin errores de página ${errors.join(' | ')}`);
+  await browser.close();
+  process.exit(process.exitCode ?? 0);
+}
 check(await page.isVisible('[data-testid="academy-panel"] .admin-note'), 'modo admin: Academy avisa de que no se guarda nada en la cuenta');
-check(await page.isVisible('.today-num:has-text("3 tarjetas")'), 'modo admin: se ven las tarjetas reales');
+check(await page.waitForSelector('.today-num:has-text("3 tarjetas")', { timeout: 8000 }).then(() => true, () => false), 'modo admin: se ven las tarjetas reales');
 await page.click('.today a:has-text("Repasar todo")');
 await page.waitForSelector('.flashcard', { timeout: 8000 });
 for (let i = 0; i < 3; i++) {
@@ -141,6 +157,14 @@ const sandbox = await page.evaluate(() => JSON.parse(localStorage.getItem('excel
 check(db.study_reviews.length === 0, 'modo admin: el repaso no se guarda en study_reviews');
 check(JSON.stringify(db.study_cards) === cardsBefore, 'modo admin: las tarjetas reales mantienen sus fechas');
 check(sandbox.sessions.some((x) => x.area === 'estudio'), 'modo admin: el repaso cuenta en la partida de pruebas');
+// Borrar una tarjeta en modo admin no la borra de la cuenta real.
+await page.evaluate(() => { location.hash = '#academy/'; });
+await page.click('.today a:has-text("Repasar todo")');
+await page.waitForSelector('.flashcard', { timeout: 8000 });
+await page.click('.delete-card');
+await page.click('.acad [role="dialog"] button:has-text("Borrar tarjeta"), [role="dialog"] button:has-text("Borrar tarjeta")');
+await page.waitForTimeout(800);
+check(JSON.stringify(db.study_cards) === cardsBefore, 'modo admin: borrar una tarjeta no la borra de tu cuenta');
 console.log('escrituras en modo admin:', writes.join(', ') || 'ninguna');
 check(writes.length === 0, 'modo admin: ninguna escritura en la base de datos');
 check(!(await page.isVisible('text=No se ha podido guardar')), 'modo admin: sin mensaje de error rojo al repasar');

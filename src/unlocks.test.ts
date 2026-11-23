@@ -21,11 +21,11 @@ describe('secciones por nivel', () => {
 
   it('el tope diario crece con el nivel con el que empiezas el día', () => {
     const s = base();
-    expect(dailyCap(s, 'quest', 0)).toBe(200);
+    expect(dailyCap(s, 'quest', 0)).toBe(150);
     const lvl5 = grantAdminXp(s, 1000, 0); // ayer
-    expect(dailyCap(lvl5, 'quest', 86_400_000 * 2)).toBe(300);
-    expect(dailyCap(lvl5, 'habit', 86_400_000 * 2)).toBe(140);
-    expect(dailyCap(lvl5, 'quest', 1)).toBe(200); // el XP de hoy no sube el tope de hoy
+    expect(dailyCap(lvl5, 'quest', 86_400_000 * 2)).toBe(210);
+    expect(dailyCap(lvl5, 'habit', 86_400_000 * 2)).toBe(100);
+    expect(dailyCap(lvl5, 'quest', 1)).toBe(150); // el XP de hoy no sube el tope de hoy
   });
 
   it('anuncia lo que se abre al subir varios niveles de golpe', () => {

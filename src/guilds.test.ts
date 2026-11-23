@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { addHabit, createProfile, emptyState, startTimer, stopTimer, toggleHabit, totalXp } from './game';
 import { attributeXp } from './attributes';
 import {
-  buildGoal, byRank, canCommand, canKick, rankOf, successor, challengeProgress, challengeState, challengeTemplate, claimReward, contributionFor, guildLevel, guildXpFrom, memberShare,
+  buildGoal, byRank, canCommand, canKick, rankOf, successor, challengeProgress, challengeState, challengeTemplate, claimReward, contributionFor, contributionWindow, countedContributions, guildLevel, guildXpFrom, memberShare,
   type ChallengeRow,
 } from './guilds';
 
@@ -53,6 +53,20 @@ describe('aportación y recompensa', () => {
     const got = contributionFor(s, NOW, NOW + 7 * DAY);
     expect(got).toMatchObject({ deep: 40, habits: 1 });
     expect(got.xp).toBe(50);
+  });
+
+  it('lo hecho antes de entrar en el gremio no cuenta', () => {
+    const c = { starts_at: new Date(NOW).toISOString(), ends_at: new Date(NOW + 7 * DAY).toISOString() };
+    expect(contributionWindow(c)).toEqual([NOW, NOW + 7 * DAY]);
+    expect(contributionWindow(c, new Date(NOW - DAY).toISOString())).toEqual([NOW, NOW + 7 * DAY]);
+    expect(contributionWindow(c, new Date(NOW + DAY).toISOString())).toEqual([NOW + DAY, NOW + 7 * DAY]);
+  });
+
+  it('para ganar cuentan los miembros actuales y quienes estaban desde el principio', () => {
+    const c = { starts_at: new Date(NOW).toISOString() };
+    const row = (user_id: string, since: number | null) => ({ user_id, deep: 100, habits: 0, xp: 0, member_since: since === null ? null : new Date(since).toISOString() });
+    const rows = [row('sigue', NOW + DAY), row('fundador-se-fue', NOW - DAY), row('relleno-se-fue', NOW + DAY), row('antiguo', null)];
+    expect(countedContributions(c, rows, ['sigue']).map((x) => x.user_id)).toEqual(['sigue', 'fundador-se-fue', 'antiguo']);
   });
 
   it('el reto ganado da XP a Conexión y Voluntad una sola vez', () => {

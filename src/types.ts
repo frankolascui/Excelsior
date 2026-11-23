@@ -97,9 +97,12 @@ export interface Habit {
   retiredAt?: number;
   /**
    * Hábito del sistema (V3): no se marca a mano. Lo marca la app cuando haces la cosa de verdad:
-   * 'health' al apuntar la noche en el Reino de la Salud, 'academy' al repasar tus tarjetas.
+   * 'health' al apuntar la noche en el Reino de la Salud, 'academy' al estudiar (repasar tarjetas o hacer
+   * un simulacro), 'deepwork' al sumar en el día los minutos de foco de `focusMin`.
    */
-  system?: 'health' | 'academy';
+  system?: 'health' | 'academy' | 'deepwork';
+  /** Solo el hábito de Deep Work: minutos de foco al día que lo marcan (los pones tú). */
+  focusMin?: number;
 }
 
 /**
@@ -118,6 +121,31 @@ export interface HabitProgression {
   since: number;
   /** Valores anteriores, del más antiguo al más nuevo. */
   history?: { value: number; at: number }[];
+}
+
+/** Un escalón de la escalera: un hábito nuevo (con su mínimo) o una semana sin nada nuevo. */
+export interface LadderStep {
+  id: string;
+  /** 'new': añade un hábito; 'rest': consolidar lo que ya tienes; 'audit': revisar el % de cada hábito. */
+  kind: 'new' | 'rest' | 'audit';
+  name?: string;
+  minimum?: string;
+  /** Veces por semana (7 = cada día). */
+  perWeek?: number;
+}
+
+export interface HabitLadder {
+  steps: LadderStep[];
+  /** Lunes (YYYY-MM-DD) de la semana 1. */
+  startedOn: string;
+  /** Escalón de esta semana (-1 = aún no ha empezado). */
+  current: number;
+  /** Lunes de la semana en curso del escalón actual (lo anterior ya se evaluó). */
+  week?: string;
+  /** Resultado de cada semana: 'up' sube, 'repeat' algún hábito < 80 %, 'full' ya tenías 7, 'manual' «Subir ya». */
+  log: { id: string; week: string; step: string; result: 'up' | 'repeat' | 'full' | 'manual'; below?: string[] }[];
+  /** Lunes en que se terminó el último escalón. */
+  finishedOn?: string;
 }
 
 export interface HabitCompletion {
@@ -192,6 +220,10 @@ export interface Kingdom {
   name: string;
   createdAt: number;
   deadline?: string; // fecha objetivo del proyecto (YYYY-MM-DD local)
+  /** Cerrado como monumento: el proyecto terminó y queda en el mapa como trofeo. */
+  closedAt?: number;
+  /** Si tiene, es una ciudad de ese reino (p. ej. «Calculadora» dentro de «Programación»). Sin él, es un reino. */
+  parentId?: string;
 }
 
 /** Meta personal medible (dinero, peso, personas…) que se exige para desbloquear un avatar. */
@@ -251,6 +283,19 @@ export interface Boss {
   rules?: 2;
 }
 
+/**
+ * Una pausa de las tarjetas (vacaciones). Cubre del día `from` al `until` (incluidos; null = hasta reanudarla).
+ * `endedOn`: día en que la reanudaste antes de tiempo (ese día ya no está en pausa).
+ * `shifted`: días que se movieron las fechas de repaso al terminar (sin campo = aún sin mover).
+ */
+export interface StudyPause {
+  id: string;
+  from: string;
+  until: string | null;
+  endedOn?: string;
+  shifted?: number;
+}
+
 export interface GameState {
   version: 6;
   profile: Profile | null;
@@ -258,6 +303,8 @@ export interface GameState {
   habits: Habit[];
   /** Hábitos retirados porque ya están automatizados (conservan su historial). */
   retiredHabits?: Habit[];
+  /** Escalera de hábitos: plan por semanas con la regla del 80 % (ladder.ts). */
+  ladder?: HabitLadder;
   habitCompletions: HabitCompletion[];
   sessions: DeepWorkSession[];
   xp: XPTransaction[];
@@ -275,6 +322,8 @@ export interface GameState {
   tours?: string[];
   /** Última versión cuyo aviso de novedades ya viste. Viaja con la partida. */
   newsSeen?: string;
+  /** XP perdido por inactividad, un apunte por día (src/decay.ts). Resta del XP total, no del historial. */
+  decay?: { day: string; amount: number }[];
   /**
    * La versión más nueva cuyas novedades viste (desde la V3.1). Campo aparte de `newsSeen` porque
    * la V3.0 compara `newsSeen` con su versión exacta: si la web de prueba escribiera ahí «3.1»,
@@ -283,6 +332,8 @@ export interface GameState {
   newsLatest?: string;
   /** Minutos al día para repasar en Academy (sin campo = sin límite). */
   academyBudgetMin?: number;
+  /** Pausas de las tarjetas de Academy (vacaciones): esos días no vencen repasos ni cuenta el hábito. */
+  studyPauses?: StudyPause[];
   /** Avatares a los que ya has ascendido con su ritual. Sin el campo (partidas antiguas) se calculan como antes. */
   ascended?: string[];
   /** Respuestas que diste a Hiperión en cada ritual de ascensión. */
@@ -317,7 +368,7 @@ export interface GameState {
 /** Trofeo ganado con otros: estandarte de un encargo de gremio, MVP del encargo o corona de la semana entre amigos. */
 export interface Trophy {
   id: string;
-  kind: 'guild' | 'mvp' | 'crown';
+  kind: 'guild' | 'mvp' | 'crown' | 'friends';
   /** Encargo o semana que lo dio (no se gana dos veces el mismo). */
   sourceId: string;
   name: string;
@@ -389,7 +440,16 @@ export interface CalendarEvent {
   color?: string;
   /** Bloques: misiones y hábitos que haces en ese bloque (valen para toda la serie). */
   tasks?: BlockTask[];
+  /** Examen de Academy: el nombre y el día mandan en Academy (tabla study_exam_dates); hora y color son solo del calendario. */
+  academy?: AcademyLink;
   createdAt: number;
+}
+
+export interface AcademyLink {
+  examId: string;
+  subjectId: string;
+  /** Nombre de la asignatura, para enseñarlo en el calendario. */
+  subject: string;
 }
 
 export interface BlockTask {

@@ -6,7 +6,7 @@ import { uid } from './game';
 import { addTrophy, MVP_TITLE } from './trophies';
 import { canFoundGuild, GUILD_FOUND_LEVEL } from './unlocks';
 import { ADMIN } from './admin';
-import { ADMIN_READONLY_MSG, cloudClient, getUserId } from './cloud';
+import { ADMIN_READONLY_MSG, adminReadOnly, cloudClient, getUserId } from './cloud';
 import type { PublicProfile } from './social';
 
 // ---------- Retos ----------
@@ -119,6 +119,28 @@ export interface Contribution {
   deep: number;
   habits: number;
   xp: number;
+  /** Desde cuándo era miembro quien aporta (lo pone el servidor: supabase-gremios-3.sql). */
+  member_since?: string | null;
+}
+
+/**
+ * Ventana que cuenta para mi aportación: desde que empezó el encargo o desde que entré en el gremio (lo más tarde)
+ * hasta que acaba. Lo hecho antes de entrar no cuenta (el servidor aplica la misma regla).
+ */
+export function contributionWindow(c: Pick<ChallengeRow, 'starts_at' | 'ends_at'>, joinedAt?: string | null): [number, number] {
+  const start = Date.parse(c.starts_at);
+  const joined = joinedAt ? Date.parse(joinedAt) : NaN;
+  return [Number.isFinite(joined) ? Math.max(start, joined) : start, Date.parse(c.ends_at)];
+}
+
+/**
+ * Aportes que cuentan para ganar (igual que guild_check_victory): los de quien sigue en el gremio y los de quien
+ * ya estaba al empezar el encargo. Quien entra a mitad, aporta y se va deja de contar.
+ */
+export function countedContributions<T extends Contribution>(c: Pick<ChallengeRow, 'starts_at'>, rows: T[], memberIds: Iterable<string>): T[] {
+  const members = new Set(memberIds);
+  const start = Date.parse(c.starts_at);
+  return rows.filter((x) => members.has(x.user_id) || !x.member_since || Date.parse(x.member_since) <= start);
 }
 
 /** Lo que has hecho entre dos fechas: minutos de foco, hábitos cumplidos y XP (sin contar recompensas de gremio). */
@@ -324,6 +346,7 @@ function set(patch: Partial<GuildState>) {
 export function useGuild(): GuildState {
   return useSyncExternalStore((l) => (listeners.add(l), () => listeners.delete(l)), () => gs);
 }
+const myJoinedAt = () => gs.members.find((m) => m.user_id === getUserId())?.joined_at ?? null;
 export const activeChallenge = (now: number) => gs.challenges.find((c) => challengeState(c, now) === 'active') ?? null;
 
 const PROFILE = 'user_id, tag, name, bio, photo, level, xp, avatar_index, avatar_name, stats';
@@ -378,9 +401,11 @@ export async function refreshGuild(s: GameState, now = Date.now()): Promise<void
     const active = challenges.find((c) => challengeState(c, now) === 'active');
     // Si falla la subida de mi aportación, el gremio se muestra igual y el fallo se enseña (antes se perdía en silencio).
     let reportError: string | null = null;
+    // Mi fecha de entrada hace falta para calcular mi aportación (lo de antes de entrar no cuenta).
+    gs = { ...gs, members: (members ?? []) as Member[] };
     if (active) await reportContribution(s, active).catch((e) => { reportError = `No se pudo subir tu aportación. ${describe(e)}`; });
     const { data: contribs, error: e8 } = challenges.length
-      ? await db.from('guild_contributions').select('challenge_id, user_id, deep, habits, xp').in('challenge_id', challenges.map((c) => c.id))
+      ? await db.from('guild_contributions').select('*').in('challenge_id', challenges.map((c) => c.id))
       : { data: [], error: null };
     if (e8) throw e8;
     // Crónica: si aún no existe la tabla (falta supabase-gremios-2.sql), el gremio funciona sin ella.
@@ -395,7 +420,8 @@ export async function refreshGuild(s: GameState, now = Date.now()): Promise<void
     });
     // Si con lo subido ya se ha ganado, se marca para todo el gremio.
     if (active) {
-      const p = challengeProgress(active.goal, gs.contributions.filter((c) => c.challenge_id === active.id));
+      const rows = gs.contributions.filter((c) => c.challenge_id === active.id);
+      const p = challengeProgress(active.goal, countedContributions(active, rows, gs.members.map((m) => m.user_id)));
       if (p.won) await finishChallenge(active.id);
     }
   } catch (e) {
@@ -412,9 +438,9 @@ const reported = new Set<string>();
  */
 async function reportContribution(s: GameState, c: ChallengeRow) {
   const me = getUserId();
-  if (!me || ADMIN) return; // la partida de pruebas no aporta al gremio real
+  if (!me || adminReadOnly()) return; // la partida de pruebas no aporta al gremio real
   const db = cloudClient();
-  const mine = { ...contributionFor(s, Date.parse(c.starts_at), Date.parse(c.ends_at)), updated_at: new Date().toISOString() };
+  const mine = { ...contributionFor(s, ...contributionWindow(c, myJoinedAt())), updated_at: new Date().toISOString() };
   if (!reported.has(c.id)) {
     const { error } = await db.from('guild_contributions').insert({ challenge_id: c.id, user_id: me, ...mine });
     reported.add(c.id);
@@ -427,7 +453,7 @@ async function reportContribution(s: GameState, c: ChallengeRow) {
 
 /** Pide al servidor que compruebe la victoria: él recalcula la regla del 30 %, la marca y elige al MVP. */
 async function finishChallenge(id: string) {
-  if (ADMIN) return;
+  if (adminReadOnly()) return;
   const db = cloudClient();
   const { data: won, error } = await db.rpc('guild_check_victory', { c: id });
   if (error || !won) return;
@@ -440,8 +466,8 @@ let lastReport = '';
 /** Tras cada cambio de la partida: si hay reto activo, sube tu aportación (agrupando cambios seguidos). */
 export function scheduleGuildReport(s: GameState) {
   const c = activeChallenge(Date.now());
-  if (ADMIN || !getUserId() || !c) return;
-  const key = `${c.id}:${JSON.stringify(contributionFor(s, Date.parse(c.starts_at), Date.parse(c.ends_at)))}`;
+  if (adminReadOnly() || !getUserId() || !c) return;
+  const key = `${c.id}:${JSON.stringify(contributionFor(s, ...contributionWindow(c, myJoinedAt())))}`;
   if (key === lastReport) return;
   clearTimeout(reportTimer);
   reportTimer = window.setTimeout(() => { lastReport = key; void refreshGuild(s); }, 4000);

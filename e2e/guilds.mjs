@@ -239,6 +239,8 @@ check(db.guild_contributions.some((c) => c.user_id === ME && c.challenge_id === 
 // Nicolas hace 50 min de foco dentro del reto: se gana.
 const t0 = Date.now() - 60 * 60_000;
 ch.starts_at = iso(t0 - 60_000);
+// Lo hecho antes de entrar en el gremio no cuenta: aquí Nicolas ya era miembro al empezar el reto.
+for (const m of db.guild_members) if (m.guild_id === ch.guild_id) m.joined_at = iso(t0 - 120_000);
 await page.evaluate(({ t0 }) => {
   const KEY = 'excelsior:v1';
   const st = JSON.parse(localStorage.getItem(KEY));

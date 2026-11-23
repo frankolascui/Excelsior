@@ -11,8 +11,8 @@ import { sfx } from './sfx';
 import { shortDate } from './ui';
 import { useCloud } from './cloud';
 import {
-  addDays, bedtimeGoal, fmtMin, foundHealth, healthBuildings, healthFounded, nightStats, syncHealth, vigor,
-  weekProgress, weekStart, workDef, WORK_COINS, WORKS,
+  addDays, bedtimeGoal, constantWeeks, fmtMin, foundHealth, healthBuildings, healthFounded, healthMonuments, healthStructures,
+  MONUMENTS, nextMonument, nightStats, syncHealth, vigor, weekProgress, weekStart, weekStreak, workDef, WORK_COINS, WORKS,
 } from './health';
 import { healthNights, healthSettings, importLegacyDiary, onHealthChange, syncHealthCloud, useHealth } from './health-store';
 import { CAP_NOTE, DiaryData, DiaryHistory, DiaryToday, NightForm, ScheduleFields } from './health-diary-ui';
@@ -85,6 +85,7 @@ export function HealthKingdom({ game }: { game: Game }) {
         <ul className="health-rules">
           <li><Icon name="moon" /> <b>Apuntar la noche</b> pasa a ser un hábito con su racha y su XP. Se marca solo al guardarla.</li>
           {WORKS.map((w) => <li key={w.kind}><Icon name={w.icon} /> <b>{w.name}:</b> {w.rule(settings).toLowerCase()} en la semana. +{WORK_COINS} <Icon name="coin" className="coin-ico" /></li>)}
+          <li><Icon name="laurel-crown" /> <b>Monumentos:</b> cada semana con el Templo del Sueño es una semana constante. A las {MONUMENTS.map((m) => m.weeks).join(', ')} semanas constantes se levanta un monumento.</li>
           <li><Icon name="heart" /> El reino premia la constancia, no las cifras: dormir poco una noche no te quita nada; no apuntarla, sí.</li>
         </ul>
         <div className="health-setup" data-testid="health-setup">
@@ -101,8 +102,13 @@ export function HealthKingdom({ game }: { game: Game }) {
   }
 
   const works = state.health?.works ?? [];
-  const stage = stageFor(works.length);
-  const next = nextStage(works.length);
+  const structures = healthStructures(state);
+  const stage = stageFor(structures);
+  const next = nextStage(structures);
+  const constant = constantWeeks(state).length;
+  const streak = weekStreak(state, today);
+  const monuments = healthMonuments(state);
+  const nextMon = nextMonument(state);
   const v = vigor(nights, today);
   const week = weekProgress(nights, settings, weekStart(today));
   const dayNight = nights.find((n) => n.fecha === day);
@@ -138,13 +144,14 @@ export function HealthKingdom({ game }: { game: Game }) {
               <h2 id="health-h" className="kingdom-name"><Icon name="caduceus" /> Reino de la Salud</h2>
               <InfoTip label="Cómo funciona el Reino de la Salud">
                 <p>Apunta la noche cada mañana. Cada semana (de lunes a domingo) puedes levantar cuatro obras con constancia: {WORKS.map((x) => x.name).join(', ')}. Cada obra se queda para siempre, hace crecer el reino y da {WORK_COINS} monedas.</p>
+                <p>Una semana con el Templo del Sueño es una semana constante. Al sumar {MONUMENTS.map((m) => m.weeks).join(', ')} semanas constantes (no hace falta que sean seguidas) se levanta un monumento con más monedas.</p>
               </InfoTip>
             </div>
             <p className="kingdom-stage"><Icon name={stage.icon} /> {stage.name}</p>
             {next && (
               <div className="kingdom-next">
                 <span className="kingdom-next-bar" aria-hidden="true"><span style={{ width: `${next.ratio * 100}%` }} /></span>
-                <span className="muted small-text"><Icon name={next.icon} /> {next.name} con {next.missing} {next.missing === 1 ? 'obra' : 'obras'} más</span>
+                <span className="muted small-text"><Icon name={next.icon} /> {next.name} con {next.missing} {next.missing === 1 ? 'estructura' : 'estructuras'} más</span>
               </div>
             )}
             <div className="health-vigor" aria-label={`Vigor: ${v.days} de 7 noches apuntadas`}>
@@ -155,9 +162,9 @@ export function HealthKingdom({ game }: { game: Game }) {
               <span className="mono small-text">{v.days}/7</span>
             </div>
           </div>
-          <div className="kingdom-count" aria-label={`${works.length} obras levantadas`}>
-            <span className="kingdom-pct mono">{works.length}</span>
-            <span className="muted small-text">{works.length === 1 ? 'obra' : 'obras'}</span>
+          <div className="kingdom-count" aria-label={`${works.length} obras y ${monuments.length} monumentos`}>
+            <span className="kingdom-pct mono">{structures}</span>
+            <span className="muted small-text">{structures === 1 ? 'estructura' : 'estructuras'}</span>
           </div>
         </header>
         <CityScene quests={healthBuildings(state)} progress={1} complete={false} stage={stage.name} icon={stage.icon} />
@@ -207,6 +214,36 @@ export function HealthKingdom({ game }: { game: Game }) {
           })}
         </ul>
         <p className="muted small-text">Tu horario: cama {bedtimeGoal(settings)}, arriba {settings.levantar} · {settings.entrenosMin} entrenos por semana. <button className="link small" onClick={() => setView('datos')}>Cambiar</button></p>
+      </section>
+
+      <section className="panel" aria-labelledby="constancy-h" data-testid="health-constancy">
+        <div className="with-info">
+          <h3 id="constancy-h"><Icon name="laurel-crown" /> Constancia</h3>
+          <InfoTip label="Cómo se levantan los monumentos">
+            <p>Cada semana en la que levantas el Templo del Sueño (5 noches apuntadas) es una semana constante. Los monumentos piden semanas constantes en total, no seguidas: fallar una semana no te quita lo ganado. Si borras noches y el Templo de esa semana cae, la semana deja de contar.</p>
+          </InfoTip>
+        </div>
+        <p className="health-constancy-nums">
+          <span><b className="mono">{constant}</b> <span className="muted small-text">{constant === 1 ? 'semana constante' : 'semanas constantes'}</span></span>
+          <span><Icon name="flame" /> <b className="mono">{streak}</b> <span className="muted small-text">{streak === 1 ? 'semana seguida' : 'semanas seguidas'}</span></span>
+        </p>
+        {nextMon && (
+          <div className="kingdom-next">
+            <span className="kingdom-next-bar" aria-hidden="true"><span style={{ width: `${nextMon.ratio * 100}%` }} /></span>
+            <span className="muted small-text"><Icon name={nextMon.icon} /> {nextMon.name} con {nextMon.missing} {nextMon.missing === 1 ? 'semana constante' : 'semanas constantes'} más · +{nextMon.coins} <Icon name="coin" className="coin-ico" /></span>
+          </div>
+        )}
+        <ul className="health-monuments">
+          {MONUMENTS.map((m) => {
+            const got = monuments.some((x) => x.id === m.id);
+            return (
+              <li key={m.id} className={got ? 'done' : ''} title={got ? `${m.name}: levantado` : `${m.name}: ${m.weeks} semanas constantes`}>
+                <span className="health-work-ico"><Icon name={got ? m.icon : 'lock'} /></span>
+                <span className="small-text"><b>{m.name}</b><br /><span className="muted">{m.weeks} semanas · +{m.coins}</span></span>
+              </li>
+            );
+          })}
+        </ul>
       </section>
 
     </>

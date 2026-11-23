@@ -3,7 +3,7 @@ import { sureThen } from './confirm';
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import type { Game } from './screens';
 import { RequireAccount } from './account';
-import { useCloud } from './cloud';
+import { adminReadOnly, useCloud } from './cloud';
 import { sfx } from './sfx';
 import { ATTRIBUTES } from './attributes';
 import { AvatarPortrait, initialOf } from './portrait';
@@ -15,7 +15,6 @@ import {
 import { Icon } from './icons';
 import { InfoTip } from './infotip';
 import { inviteLink } from './invite';
-import { ADMIN } from './admin';
 
 export function Face({ p, size = 56 }: { p: Pick<PublicProfile, 'name' | 'photo' | 'avatar_index' | 'avatar_name'>; size?: number }) {
   return <AvatarPortrait tier={p.avatar_index} label={initialOf(p.name)} photo={p.photo ?? undefined} size={size} title={p.avatar_name} />;
@@ -215,7 +214,8 @@ function AddByTag({ game, open }: { game: Game; open: (p: PublicProfile) => void
 
 /** Modo admin: lo social se ve con tu cuenta real, pero solo para mirar. */
 export function AdminSocialNote() {
-  if (!ADMIN) return null;
+  useCloud(); // se repinta al cambiar de cuenta
+  if (!adminReadOnly()) return null;
   return (
     <section className="panel admin-note">
       <p className="hint"><Icon name="wrench" /> <strong>Modo admin:</strong> ves tus amigos y tu gremio reales solo para mirar. La partida de pruebas no se publica en tu perfil ni aporta al gremio, y desde aquí no se puede cambiar nada de tu cuenta.</p>

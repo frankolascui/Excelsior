@@ -13,7 +13,8 @@ import { friendly } from './CardsPanel';
 import { Icon } from './Icon';
 import { studyBridge } from '../bridge';
 import { askConfirm } from './Dialog';
-import { ADMIN } from '../../admin';
+import { adminReadOnly } from '../../cloud';
+import { ErrorBoundary } from '../../error-boundary';
 
 const Markdown = lazy(() => import('./Markdown').then((m) => ({ default: m.Markdown })));
 
@@ -172,7 +173,7 @@ export function Review({ subjectId, topicIds }: { subjectId?: string; topicIds?:
     durations.current.push(ms);
     const reviewId = saveReview(card.id, next, {
       rating: grade, state: card.state, scheduled_days: next.scheduled_days, duration_ms: ms,
-    }).catch((e) => { if (!ADMIN) setError(`No se ha podido guardar una respuesta: ${friendly(e.message)}`); return null; }); // en modo admin no se guarda a propósito
+    }).catch((e) => { if (!adminReadOnly()) setError(`No se ha podido guardar una respuesta: ${friendly(e.message)}`); return null; }); // en modo admin no se guarda a propósito
     history.current.push({ queue, card, reviewId });
     if (history.current.length > 30) history.current.shift();
     setCanUndo(true);
@@ -330,10 +331,12 @@ export function Review({ subjectId, topicIds }: { subjectId?: string; topicIds?:
       {leech && <LeechNote card={leech} onClose={() => setLeech(null)} />}
       <article className="flashcard" onClick={reveal}>
         {topic && <p className="eyebrow">{topic.title}{early.current.has(card.id) && <span className="pill learn early-pill">repaso final</span>}</p>}
+        <ErrorBoundary key={card.id} label="esta tarjeta">
         <Suspense fallback={<p>{card.front}</p>}>
           <div className="fc-front"><Markdown text={card.front} /></div>
           {revealed && <><hr /><div className="fc-back"><Markdown text={card.back || '_(sin respuesta)_'} /></div></>}
         </Suspense>
+        </ErrorBoundary>
       </article>
 
       {!revealed ? (
@@ -375,24 +378,68 @@ function LeechNote({ card, onClose }: { card: CardRow; onClose: () => void }) {
 }
 
 /** Panel «Hoy» de la estantería: cuántas tarjetas tocan, en total y por asignatura. */
+type TodayData = {
+  total: ReturnType<typeof countsFor>; bySubject: { s: Subject; n: number }[];
+  exams: { e: ExamDate; daysLeft: number; s?: Subject }[]; budget: Awaited<ReturnType<typeof loadQueue>>['budget'];
+};
+
+/**
+ * «Hoy» sale al instante: se pinta lo último que se calculó (de hoy) y se refresca por detrás.
+ * La cuenta tarda varias consultas a la base de datos; sin esto el panel aparecía con retraso y movía la estantería.
+ */
+const TODAY_KEY = 'excelsior:acad-today';
+const localDay = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
+let todayMem: { day: string; data: TodayData } | null = null;
+let todayLoad: Promise<TodayData> | null = null;
+
+function cachedToday(): TodayData | null {
+  if (!todayMem) {
+    try { todayMem = JSON.parse(localStorage.getItem(TODAY_KEY) ?? 'null'); } catch { todayMem = null; }
+  }
+  return todayMem?.day === localDay() ? todayMem.data : null;
+}
+
+/** Olvida el «Hoy» guardado (p. ej. tras mover las fechas al terminar una pausa). */
+export function resetTodayCache() {
+  todayMem = null;
+  todayLoad = null;
+  try { localStorage.removeItem(TODAY_KEY); } catch { /* sin almacenamiento */ }
+}
+
+/** Empieza a calcular «Hoy» (la estantería lo llama al abrirse, a la vez que carga las asignaturas). */
+export function prefetchToday(): Promise<TodayData> {
+  todayLoad ??= Promise.all([loadQueue(), listSubjects()])
+    .then(([{ queue, topics, exams, budget }, subjects]) => {
+      const subjectOf = new Map(topics.map((t) => [t.id, t.subject_id]));
+      const bySubject = subjects
+        .map((s) => ({ s, n: queue.filter((c) => subjectOf.get(c.topic_id) === s.id).length }))
+        .filter((x) => x.n > 0);
+      const soon = exams.filter((e) => e.daysLeft <= 14).map((e) => ({ e, daysLeft: e.daysLeft, s: subjects.find((s) => s.id === e.subject_id) }));
+      const data: TodayData = { total: countsFor(queue), bySubject, exams: soon, budget };
+      todayMem = { day: localDay(), data };
+      try { localStorage.setItem(TODAY_KEY, JSON.stringify(todayMem)); } catch { /* sin espacio: solo memoria */ }
+      return data;
+    })
+    .finally(() => { todayLoad = null; });
+  return todayLoad;
+}
+
 export function TodayPanel() {
-  type Budget = Awaited<ReturnType<typeof loadQueue>>['budget'];
-  const [data, setData] = useState<{ total: ReturnType<typeof countsFor>; bySubject: { s: Subject; n: number }[]; exams: { e: ExamDate; daysLeft: number; s?: Subject }[]; budget: Budget } | null>(null);
+  const [data, setData] = useState<TodayData | null>(cachedToday);
   const [error, setError] = useState<string | null>(null);
   const [editBudget, setEditBudget] = useState(false);
   const [budgetMin, setBudgetMin] = useState(studyBridge.budgetMin);
+  const first = useRef(true);
 
   useEffect(() => {
-    Promise.all([loadQueue(), listSubjects()])
-      .then(([{ queue, topics, exams, budget }, subjects]) => {
-        const subjectOf = new Map(topics.map((t) => [t.id, t.subject_id]));
-        const bySubject = subjects
-          .map((s) => ({ s, n: queue.filter((c) => subjectOf.get(c.topic_id) === s.id).length }))
-          .filter((x) => x.n > 0);
-        const soon = exams.filter((e) => e.daysLeft <= 14).map((e) => ({ e, daysLeft: e.daysLeft, s: subjects.find((s) => s.id === e.subject_id) }));
-        setData({ total: countsFor(queue), bySubject, exams: soon, budget });
-      })
-      .catch((e) => setError(friendly(e.message)));
+    let alive = true;
+    // Al cambiar los minutos hay que recalcular aunque ya hubiera una cuenta en marcha.
+    if (!first.current) todayLoad = null;
+    first.current = false;
+    prefetchToday()
+      .then((d) => { if (alive) { setData(d); setError(null); } })
+      .catch((e) => { if (alive) setError(friendly(e.message)); });
+    return () => { alive = false; };
   }, [budgetMin]);
 
   function pickBudget(min: number | null) {
@@ -403,8 +450,25 @@ export function TodayPanel() {
     sfx.tick();
   }
 
-  if (error) return <div className="today panel"><p className="eyebrow">Hoy</p><p className="muted small">{error}</p></div>;
-  if (!data) return null;
+  const pause = studyBridge.pause;
+  if (pause) return (
+    <div className="today panel" data-testid="today-paused">
+      <div className="today-main">
+        <div>
+          <p className="eyebrow">Hoy</p>
+          <p className="today-num">Tarjetas en pausa</p>
+          <p className="small muted">{pause.until ? `Vuelven el ${new Date(new Date(`${pause.until}T12:00:00`).getTime() + 86_400_000).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}.` : 'Hasta que la reanudes.'} Al volver, las fechas de repaso se mueven los días de pausa.</p>
+        </div>
+        {data && data.total.nuevas + data.total.aprendiendo + data.total.repaso > 0 && <a className="secondary" href={routeToHash({ view: 'repasar' })} onClick={() => sfx.open()}><Icon name="play" /> Repasar igualmente</a>}
+      </div>
+    </div>
+  );
+  if (error && !data) return <div className="today panel"><p className="eyebrow">Hoy</p><p className="muted small">{error}</p></div>;
+  if (!data) return (
+    <div className="today panel" aria-busy="true" data-testid="today-loading">
+      <div className="today-main"><div><p className="eyebrow">Hoy</p><p className="today-num muted">Contando tarjetas…</p></div></div>
+    </div>
+  );
   const sum = data.total.nuevas + data.total.aprendiendo + data.total.repaso;
 
   return (
