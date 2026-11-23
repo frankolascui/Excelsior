@@ -1734,3 +1734,25 @@ svg .node-icon { color: var(--fg); }
 .realm-map .river { stroke-width: 7; opacity: 0.9; }
 .road-bed { fill: none; stroke: #07060c; stroke-width: 7; stroke-linecap: round; opacity: 0.75; }
 .node-base { fill: #000; opacity: 0.4; pointer-events: none; }
+
+/* Ciudades de un reino en pequeño (2026-11-23): sustituyen al segundo mapa */
+.city-list-h { margin: 0; font-size: 15px; }
+.city-list-h .muted { font-weight: 400; font-size: 13px; }
+.city-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+.city-tile { display: flex; align-items: center; gap: 10px; padding: 6px 10px 6px 6px; border-radius: 12px; text-align: left; color: var(--fg);
+  background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); cursor: pointer; min-width: 0; }
+.city-tile:hover, .city-tile:focus-visible { border-color: color-mix(in srgb, var(--c1) 55%, var(--line)); }
+.city-tile-ring { flex: none; }
+.city-tile-ring .ct-track { fill: color-mix(in srgb, var(--c3) 12%, #060606); stroke: rgba(255, 255, 255, 0.07); stroke-width: 3; }
+.city-tile-ring .ct-fill { fill: none; stroke: var(--c1); stroke-width: 3; stroke-linecap: round; }
+.city-tile-ring .ico { color: var(--fg); fill: currentColor; }
+.city-tile.monument .ct-fill { stroke: var(--gold); }
+.city-tile-text { display: flex; flex-direction: column; min-width: 0; }
+.city-tile-name { font-family: var(--display); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.city-tile-sub { font-family: var(--mono); font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Los iconos dentro de textos de la escena no son el dibujo: en línea (antes saltaban a su propia línea) */
+.city-scene .castle-cap .ico, .city-scene .chart-tip .ico { display: inline-block; vertical-align: -0.15em; }
+/* «Capital del reino» encima del nombre (antes, en fila, partía el nombre en el móvil: «Program-ación») */
+.kingdom-name:has(.kingdom-capital) { flex-wrap: wrap; row-gap: 0; }
+.kingdom-name .kingdom-capital { flex-basis: 100%; }
+@media (max-width: 640px) { .city-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; } .city-tile { gap: 8px; padding: 5px 8px 5px 5px; } }

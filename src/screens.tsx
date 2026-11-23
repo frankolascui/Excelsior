@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { sureThen } from './confirm';
 import type { useGame } from './store';
-import type { AttributeId, DeepWorkArea, FocusPhase, GameState, Impact, Quest, QuestType } from './types';
+import type { AttributeId, DeepWorkArea, FocusPhase, GameState, Impact, Kingdom, Quest, QuestType } from './types';
 import { addGoal, attributeDef, avatarInfo, DEEP_WORK_AREA_HINT, deepWorkRewards, inferDeepWorkArea, deleteGoal, formatAttrXp, goalProgress, habitRewards, questRewards, updateGoal } from './attributes';
 import { CustomizeToggle, RewardEditor, sameRewards, type CustomValue } from './customize';
-import { addKingdom, citiesOf, realms, BUILDING_CHOICES, BUILDING_OF, buildings, guessBuildingAttr, KIND_INFO, closeKingdom, deleteKingdom, kingdomIdleDays, kingdomName, kingdomProgress, nextStage, renameKingdom, reopenKingdom, setKingdomDeadline, STALE_KINGDOM_DAYS } from './kingdoms';
+import { addKingdom, citiesOf, realms, realmTotals, BUILDING_CHOICES, BUILDING_OF, buildings, guessBuildingAttr, KIND_INFO, closeKingdom, deleteKingdom, kingdomIdleDays, kingdomName, kingdomProgress, nextStage, renameKingdom, reopenKingdom, setKingdomDeadline, STALE_KINGDOM_DAYS } from './kingdoms';
 import { DatePicker, ImpactPicker, Select } from './pickers';
 import { CityScene } from './city';
 import { kingdomBonus, spendShield } from './economy';
@@ -986,13 +986,11 @@ export function Kingdoms({ game, focusQuest }: { game: Game; focusQuest: (q: Que
             ))}
           </div>
         </div>
-        <RealmMap state={state} realmId={current.id} onSelect={(id) => open(id)} />
-        <section className="panel city-list" aria-label={`Ciudades de ${current.name}`}>
+        <section className="panel city-list" aria-labelledby="city-list-h">
+          <h3 id="city-list-h" className="city-list-h">Ciudades de {current.name} <span className="muted">· {cities.length} · {realmTotals(state, current.id).built} levantadas</span></h3>
           {cities.length > 0 && (
-            <div className="kingdom-tabs kingdom-pick">
-              {cities.map((k) => (
-                <button key={k.id} type="button" className={k.closedAt ? 'chip-btn monument-chip' : 'chip-btn'} onClick={() => open(k.id)}><Icon name={k.closedAt ? 'laurel-crown' : 'village'} /> {k.name}</button>
-              ))}
+            <div className="city-tiles">
+              {cities.map((k) => <CityTile key={k.id} state={state} city={k} onOpen={() => open(k.id)} />)}
             </div>
           )}
           {!current.closedAt && <CityForm onCreate={(n) => { const next = addKingdom(state, n, Date.now(), current.id); act(() => next); open(next.kingdoms.at(-1)!.id); }} />}
@@ -1022,6 +1020,27 @@ export function Kingdoms({ game, focusQuest }: { game: Game; focusQuest: (q: Que
       </section>
       {state.kingdoms.length === 0 && !healthFounded(state) && <p className="empty">Aún no has fundado ningún reino.</p>}
     </div>
+  );
+}
+
+/** Ciudad en pequeño: anillo de progreso con su etapa, nombre y construcciones. Sustituye al segundo mapa. */
+function CityTile({ state, city, onOpen }: { state: GameState; city: Kingdom; onOpen: () => void }) {
+  const p = kingdomProgress(state, city.id);
+  const done = !!city.closedAt;
+  const pct = done ? 1 : p.progress;
+  const C = 2 * Math.PI * 17;
+  return (
+    <button type="button" className={done ? 'city-tile monument' : 'city-tile'} onClick={onOpen} aria-label={`${city.name}: ${done ? 'Monumento' : p.stage}, ${p.built} construcciones`}>
+      <svg className="city-tile-ring" width={42} height={42} viewBox="-21 -21 42 42" aria-hidden="true">
+        <circle r={17} className="ct-track" />
+        <circle r={17} className="ct-fill" strokeDasharray={`${pct * C} ${C}`} transform="rotate(-90)" />
+        <Icon name={done ? 'laurel-crown' : p.icon} x={-10} y={-10} size={20} />
+      </svg>
+      <span className="city-tile-text">
+        <span className="city-tile-name">{city.name}</span>
+        <span className="city-tile-sub">{p.built} · {done ? 'Monumento' : p.stage}</span>
+      </span>
+    </button>
   );
 }
 
