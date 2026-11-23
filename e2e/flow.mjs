@@ -306,7 +306,7 @@ check(await seen('.realm') && !(await page.$('.kingdom')), 'el mapa se ve solo, 
 check(await seen('.kingdom-node[aria-label*="Aldea, 1 construcciones"]'), 'el mapa muestra el reino como Aldea con 1 construcción');
 check(await seen('.realm .chart-sub:has-text("1/2 construcciones en 1 reino")'), 'el mapa cuenta 1/2 construcciones en 1 reino');
 await page.click('.kingdom-node');
-check(await seen('.kingdom .kingdom-name:has-text("Reino de la Programación")') && await seen('.realm #realm-h:has-text("Mapa de Reino de la Programación")'), 'pulsar el reino en el mapa abre su propia vista, con su mapa de ciudades');
+check(await seen('.kingdom .kingdom-name:has-text("Reino de la Programación")') && await seen('.city-list-h:has-text("Ciudades de Reino de la Programación")'), 'pulsar el reino en el mapa abre su propia vista, con sus ciudades en pequeño');
 await page.evaluate(() => window.scrollTo(0, 0));
 await page.screenshot({ path: `${out}/08-kingdom.png`, fullPage: true });
 
