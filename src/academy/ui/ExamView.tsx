@@ -4,6 +4,7 @@ import { correctionPrompt, examStatus, formatClock, formatGrade, gradeFromCorrec
 import { routeToHash } from '../study/logic';
 import type { Exam, Subject } from '../study/types';
 import { sfx } from '../sfx';
+import { studyBridge } from '../bridge';
 import { askConfirm, askText } from './Dialog';
 import { friendlyExam, gradeClass, STATUS_LABEL } from './Exams';
 import { Icon } from './Icon';
@@ -29,11 +30,12 @@ export function ExamView({ subjectId, examId }: { subjectId: string; examId: str
   }, [examId, subjectId]);
 
   /** Cambia el simulacro en pantalla y en la base de datos. */
-  async function patch(p: Partial<Exam>, sound?: () => void) {
-    if (!exam) return;
+  async function patch(p: Partial<Exam>, sound?: () => void): Promise<boolean> {
+    if (!exam) return false;
     setExam({ ...exam, ...p });
-    try { await updateExam(exam.id, p); sound?.(); } catch (e) { setError((e as Error).message); sfx.error(); }
+    try { await updateExam(exam.id, p); sound?.(); return true; } catch (e) { setError((e as Error).message); sfx.error(); return false; }
   }
+  const examLabel = () => (subject ? `${subject.name} · ${exam?.title ?? ''}` : exam?.title ?? 'Simulacro');
 
   const back = routeToHash({ view: 'simulacros', subjectId });
   if (!exam) return <p className="muted">{error ?? 'Abriendo simulacro…'}</p>;
@@ -68,10 +70,13 @@ export function ExamView({ subjectId, examId }: { subjectId: string; examId: str
       </header>
 
       {st === 'pendiente' && <Start exam={exam} onStart={() => patch({ started_at: new Date().toISOString() }, sfx.start)}
-        onPaper={() => patch({ finished_at: new Date().toISOString() }, sfx.page)} />}
+        onPaper={async () => {
+          if (await patch({ finished_at: new Date().toISOString() }, sfx.page)) studyBridge.onExam?.({ label: examLabel(), startedAt: Date.now(), seconds: null });
+        }} />}
       {st === 'en-curso' && <Doing exam={exam} onError={setError} onFinish={async (answers) => {
-        const sec = Math.round((Date.now() - new Date(exam.started_at!).getTime()) / 1000);
-        await patch({ answers, finished_at: new Date().toISOString(), duration_sec: sec }, sfx.done);
+        const started = new Date(exam.started_at!).getTime();
+        const sec = Math.round((Date.now() - started) / 1000);
+        if (await patch({ answers, finished_at: new Date().toISOString(), duration_sec: sec }, sfx.done)) studyBridge.onExam?.({ label: examLabel(), startedAt: started, seconds: sec });
       }} />}
       {st === 'sin-corregir' && <Correct exam={exam} subjectName={subject?.name ?? ''} onSave={(correction, grade) => patch({ correction, grade }, sfx.victory)} />}
       {st === 'corregido' && <Result exam={exam} />}

@@ -1,5 +1,5 @@
 // Pausa de las tarjetas (vacaciones): eliges desde qué día y hasta cuál (o hasta que la reanudes).
-// Mientras dura, el hábito «Repasar las tarjetas» ni suma ni rompe la racha, y al terminar las fechas de repaso
+// Mientras dura, el hábito «Estudiar» ni suma ni rompe la racha, y al terminar las fechas de repaso
 // se mueven los días de pausa (academy-app.tsx), así al volver no te espera una montaña de repasos atrasados.
 import { useState } from 'react';
 import type { Game } from './screens';
@@ -56,7 +56,7 @@ export function StudyPauseControl({ game }: { game: Game }) {
       )}
       {editing && (
         <div className="study-pause-form" role="group" aria-label="Pausar las tarjetas">
-          <p className="small-text">Mientras dure la pausa no vencen repasos: al volver, las fechas de tus tarjetas se mueven los días que estuviste fuera. El hábito «Repasar las tarjetas» no cuenta como fallado.</p>
+          <p className="small-text">Mientras dure la pausa no vencen repasos: al volver, las fechas de tus tarjetas se mueven los días que estuviste fuera. El hábito «Estudiar» no cuenta como fallado.</p>
           <div className="study-pause-fields">
             <label>Desde
               {running

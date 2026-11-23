@@ -121,7 +121,7 @@ await page.evaluate(() => { location.hash = '#academy/'; });
 await page.waitForSelector('[data-testid="academy-panel"] .shelf', { timeout: 8000 });
 check(await page.isVisible('.today-num:has-text("3 tarjetas")') && await page.locator('[data-testid="today-loading"]').count() === 0, '«Hoy» de Academy sale sin retraso al volver');
 let g = await game(page);
-check(g.habits.some((h) => h.system === 'academy'), 'abrir Academy con cuenta crea el hábito «Repasar las tarjetas»');
+check(g.habits.some((h) => h.system === 'academy'), 'abrir Academy con cuenta crea el hábito «Estudiar»');
 await page.screenshot({ path: `${out}/academy-01-inicio.png` });
 
 await page.click('.today a:has-text("Repasar todo")');

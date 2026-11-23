@@ -445,7 +445,11 @@ check(await seen('.boss:has-text("Hidra")'), 'tras importar se conserva la parti
 // 7b. Pomodoro con «¿Qué vas a hacer?»
 await page.click('.nav-item:has-text("Deep Work")');
 await page.click('.chip-btn:has-text("Lluvia")');
-check(await seen('.chip-btn[aria-pressed=true]:has-text("Lluvia")') && await seen('.ambient-dock:has-text("Lluvia")'), 'sonido de lluvia de fondo');
+check(await seen('.chip-btn[aria-pressed=true]:has-text("Lluvia")') && await seen('.ambient-dock.folded .dock-toggle'), 'sonido de lluvia de fondo, plegado en un botón');
+const dockBox = await page.locator('.ambient-dock').boundingBox();
+check(dockBox && dockBox.width <= 48 && dockBox.height <= 48, `plegado no tapa la pantalla (${Math.round(dockBox?.width)}×${Math.round(dockBox?.height)} px)`);
+await page.click('.ambient-dock .dock-toggle');
+check(await seen('.ambient-dock.open:has-text("Lluvia")') && await seen('.ambient-dock .dock-vol'), 'al pulsarlo se abren el nombre, parar y el volumen');
 await page.locator('.panel.ambient').screenshot({ path: `${out}/09-ambient.png` });
 check(await page.$('.ambient-dock iframe.audio-only[src*="RvdF_EB64vA"]') && (await page.$eval('.ambient-dock iframe', (f) => f.getBoundingClientRect().width)) <= 1, 'la lluvia suena con la grabación real, solo audio (sin vídeo)');
 await page.click('.ambient-source [role=radio]:has-text("Sintetizado")');

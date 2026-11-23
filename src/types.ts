@@ -97,9 +97,12 @@ export interface Habit {
   retiredAt?: number;
   /**
    * Hábito del sistema (V3): no se marca a mano. Lo marca la app cuando haces la cosa de verdad:
-   * 'health' al apuntar la noche en el Reino de la Salud, 'academy' al repasar tus tarjetas.
+   * 'health' al apuntar la noche en el Reino de la Salud, 'academy' al estudiar (repasar tarjetas o hacer
+   * un simulacro), 'deepwork' al sumar en el día los minutos de foco de `focusMin`.
    */
-  system?: 'health' | 'academy';
+  system?: 'health' | 'academy' | 'deepwork';
+  /** Solo el hábito de Deep Work: minutos de foco al día que lo marcan (los pones tú). */
+  focusMin?: number;
 }
 
 /**

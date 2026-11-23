@@ -8,6 +8,7 @@ import { Icon } from './icons';
 import { Select } from './pickers';
 import { sureThen } from './confirm';
 import { sfx } from './sfx';
+import { GuidePortrait } from './tutorial';
 import './ladder.css';
 
 type Act = (fn: (s: GameState) => GameState) => void;
@@ -27,25 +28,44 @@ function stepDetail(x: LadderStep): string {
   return [freqText(x.perWeek), x.minimum && `mínimo: ${x.minimum}`].filter(Boolean).join(' · ');
 }
 
-export function LadderPanel({ state, act, toast, now }: { state: GameState; act: Act; toast: Toast; guide?: string; now: number }) {
+/** Hiperión explica la escalera con palabras sencillas (en la escalera vacía, en el editor y en «¿Cómo funciona?»). */
+export function LadderGuide({ guide }: { guide: string }) {
+  const P = Math.round(LADDER_RULES.pct * 100);
+  return (
+    <div className="ladder-guide" data-testid="ladder-guide">
+      <span className="tour-portrait" aria-hidden="true"><GuidePortrait /></span>
+      <div className="ladder-guide-text">
+        <p className="eyebrow">{guide}</p>
+        <p>La escalera sirve para meter hábitos <b>de uno en uno</b>, sin agobiarte.</p>
+        <ol>
+          <li>Cada semana es un escalón: entra <b>un solo hábito nuevo</b>.</li>
+          <li>El domingo miro tus hábitos. Si todos llegan al <b>{P} %</b>, el lunes subes y entra el siguiente.</li>
+          <li>Si alguno se queda corto, <b>repites la semana</b>. No pasa nada: el plan se corre solo.</li>
+        </ol>
+        <p className="muted small-text">«Consolidar» es una semana sin nada nuevo, para afianzar lo que ya tienes. «Auditoría», una semana para revisar cada hábito.</p>
+      </div>
+    </div>
+  );
+}
+
+export function LadderPanel({ state, act, toast, now, guide = 'Hiperión' }: { state: GameState; act: Act; toast: Toast; guide?: string; now: number }) {
   const L = state.ladder;
   const [editing, setEditing] = useState(false);
+  const [help, setHelp] = useState(false);
   if (editing || !L) {
     if (!editing) {
       return (
         <section className="panel hladder ladder-empty" aria-labelledby="ladder-h">
           <div className="ladder-head">
             <Icon name="mountain-climb" />
-            <div>
-              <h3 id="ladder-h">Escalera de hábitos</h3>
-              <p className="muted small-text">Un hábito nuevo cada semana, con su mínimo. Solo subes si el domingo todo va al {Math.round(LADDER_RULES.pct * 100)} % o más; si no, repites la semana y el plan se corre solo.</p>
-            </div>
+            <h3 id="ladder-h">Escalera de hábitos</h3>
           </div>
+          <LadderGuide guide={guide} />
           <button className="secondary" onClick={() => setEditing(true)}><Icon name="plus" /> Crear mi escalera</button>
         </section>
       );
     }
-    return <LadderEditor state={state} now={now} onCancel={() => setEditing(false)} onSave={(steps, start) => {
+    return <LadderEditor state={state} now={now} guide={guide} onCancel={() => setEditing(false)} onSave={(steps, start) => {
       if (L) act((s) => updateLadderSteps(s, steps));
       else {
         act((s) => createLadder(s, steps, start, Date.now()));
@@ -75,8 +95,10 @@ export function LadderPanel({ state, act, toast, now }: { state: GameState; act:
           <h3 id="ladder-h">Escalera de hábitos</h3>
           <p className="muted small-text">{L.finishedOn ? 'Terminada' : started ? `Escalón ${L.current + 1} de ${L.steps.length}${weekN > 1 ? ` · semana ${weekN}` : ''}` : `Empieza el ${fmt(L.startedOn)}`}</p>
         </div>
+        <button className={help ? 'icon-btn on' : 'icon-btn'} onClick={() => setHelp(!help)} aria-expanded={help} aria-label="¿Cómo funciona la escalera?" title="¿Cómo funciona?"><Icon name="info" /></button>
         <button className="icon-btn" onClick={() => setEditing(true)} aria-label="Editar la escalera" title="Editar los escalones que faltan"><Icon name="pencil" /></button>
       </div>
+      {help && <LadderGuide guide={guide} />}
 
       {L.finishedOn ? (
         <p className="ladder-now">Has subido la escalera entera. Retira los hábitos que ya te salen solos, o añade escalones.</p>
@@ -142,8 +164,8 @@ export function LadderPanel({ state, act, toast, now }: { state: GameState; act:
 }
 
 /** Editor de escalones. Con la escalera en marcha, los ya pasados y el de esta semana no se tocan. */
-function LadderEditor({ state, now, onSave, onCancel }: {
-  state: GameState; now: number; onSave: (steps: LadderStep[], start: string) => void; onCancel: () => void;
+function LadderEditor({ state, now, guide, onSave, onCancel }: {
+  state: GameState; now: number; guide: string; onSave: (steps: LadderStep[], start: string) => void; onCancel: () => void;
 }) {
   const L = state.ladder;
   const locked = L ? L.current + 1 : 0;
@@ -168,7 +190,8 @@ function LadderEditor({ state, now, onSave, onCancel }: {
         <Icon name="mountain-climb" />
         <h3 id="ladder-edit-h">{L ? 'Editar la escalera' : 'Crear mi escalera'}</h3>
       </div>
-      <p className="hint ladder-tip">Un escalón por semana. Primero lo nuevo y lo que más te cuesta; cada 3 o 4 escalones, una semana de consolidar. Mejor no pasar de {LADDER_RULES.maxHabits} hábitos a la vez.</p>
+      {!L && <LadderGuide guide={guide} />}
+      <p className="hint ladder-tip">Consejo: pon primero lo que más te cuesta y, cada 3 o 4 escalones, una semana de consolidar. Mejor no pasar de {LADDER_RULES.maxHabits} hábitos a la vez.</p>
       <ol className="ladder-edit">
         {steps.map((x, i) => i < locked ? (
           <li key={x.id} className="locked">

@@ -67,10 +67,16 @@ export function emptyState(): GameState {
  * v2 no daba Conexión/Creación y redondeaba la Voluntad del Deep Work).
  */
 export function migrate(raw: { version: number } & Record<string, unknown>): GameState {
-  const s = stepsToChildren(migrateToV4(raw));
+  const s = renameStudyHabit(stepsToChildren(migrateToV4(raw)));
   // v4 → v5: aparecen monedas, tienda de recompensas y bosses.
   if (raw.version < 5) return { ...s, rewards: defaultRewards(Date.now()), purchases: [], bosses: [] };
   return s;
+}
+
+/** V3.5: el hábito de Academy pasa de «Repasar las tarjetas» a «Estudiar» (también cuenta un simulacro). */
+function renameStudyHabit(s: GameState): GameState {
+  if (!s.habits.some((h) => h.system === 'academy' && h.name === 'Repasar las tarjetas')) return s;
+  return { ...s, habits: s.habits.map((h) => (h.system === 'academy' && h.name === 'Repasar las tarjetas' ? { ...h, name: 'Estudiar' } : h)) };
 }
 
 /** Los antiguos «pasos» pasan a ser submisiones (árbol de misiones). No da ni quita XP. */
@@ -919,7 +925,34 @@ export function stopTimer(s: GameState, now: number): StopResult {
   state = withXp(state, {
     at: now, amount, source: 'deepwork', sourceId: session.id, label: session.label, attributes: deepWorkRewards(minutes, session.area),
   });
-  return { state, xp: amount, session, capped: elapsed > XP_RULES.maxSessionMinutes };
+  const focus = checkFocusHabit(state, now);
+  return { state: focus.state, xp: amount + focus.xp, session, capped: elapsed > XP_RULES.maxSessionMinutes || focus.capped };
+}
+
+// ---------- Hábito de Deep Work (minutos al día que pones tú) ----------
+
+export const FOCUS_HABIT_ID = 'sys-deepwork';
+export const FOCUS_HABIT_RULES = { min: 10, max: 480, default: 60 };
+
+const clampFocus = (min: number) => Math.max(FOCUS_HABIT_RULES.min, Math.min(FOCUS_HABIT_RULES.max, Math.round(min)));
+
+/** Crea el hábito de Deep Work (o le cambia los minutos) y lo marca si hoy ya llegas. */
+export function setFocusHabit(s: GameState, minutes: number, now: number): ActionResult {
+  const focusMin = clampFocus(minutes);
+  const has = s.habits.some((h) => h.id === FOCUS_HABIT_ID);
+  const habits = has
+    ? s.habits.map((h) => (h.id === FOCUS_HABIT_ID ? { ...h, focusMin } : h))
+    : [...s.habits, { id: FOCUS_HABIT_ID, name: 'Deep Work', frequency: 'daily' as const, createdAt: now, rewards: { voluntad: 1, maestria: 1 }, system: 'deepwork' as const, focusMin }];
+  return checkFocusHabit({ ...s, habits }, now);
+}
+
+/** Si el hábito de Deep Work existe y hoy ya sumas sus minutos, se marca solo. */
+export function checkFocusHabit(s: GameState, now: number): ActionResult {
+  const habit = s.habits.find((h) => h.id === FOCUS_HABIT_ID);
+  const today = dayKey(now);
+  if (!habit || s.habitCompletions.some((c) => c.habitId === FOCUS_HABIT_ID && c.day === today)) return { state: s, xp: 0 };
+  if (deepWorkMinutesOnDay(s, today) < (habit.focusMin ?? FOCUS_HABIT_RULES.default)) return { state: s, xp: 0 };
+  return toggleHabit(s, FOCUS_HABIT_ID, now, today, true);
 }
 
 // ---------- ¿Qué hago ahora? ----------

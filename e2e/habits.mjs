@@ -75,5 +75,31 @@ const m = await open({ width: 390, height: 844 });
 check(await m.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), 'móvil: sin scroll horizontal');
 await m.screenshot({ path: `${out}/habits-02-movil.png`, fullPage: true });
 
+// Hábito de Deep Work: tú pones los minutos y se marca solo al llegar.
+await p.click('button.focus-add-link');
+await p.fill('#new-focus-min', '30');
+await p.click('.focus-add button:has-text("Añadir")');
+await p.waitForSelector('[data-habit="sys-deepwork"]');
+check((await p.locator('[data-habit="sys-deepwork"] .goal-tag').innerText()).includes('0/30 min'), 'hábito de Deep Work: 0/30 min hoy');
+check(await p.locator('button.focus-add-link').count() === 0, 'solo hay uno (el enlace desaparece)');
+await p.click('[data-habit="sys-deepwork"] .habit-open');
+await p.fill('#focus-sys-deepwork', '20');
+await p.click('[data-habit="sys-deepwork"] .focus-edit button:has-text("Guardar")');
+check((await game(p)).habits.find((h) => h.id === 'sys-deepwork')?.focusMin === 20, 'se pueden cambiar los minutos');
+await p.click('[data-habit="sys-deepwork"] .habit-open');
+await p.locator('[data-habit="sys-deepwork"]').screenshot({ path: `${out}/habits-03-deepwork.png` });
+await p.evaluate(() => { location.hash = '#deepwork'; });
+await p.waitForSelector('button:has-text("Empezar")');
+await p.click('[role=radio]:has-text("Libre")').catch(() => {});
+await p.click('button:has-text("Empezar")');
+await p.clock.fastForward('21:00');
+await p.click('text=Terminar sesión');
+await p.waitForTimeout(400);
+if (await p.isVisible('#rate-h')) await p.click('[aria-labelledby="rate-h"] button:has-text("Omitir")');
+check((await game(p)).habitCompletions.some((c) => c.habitId === 'sys-deepwork'), 'tras 21 min de Deep Work el hábito se marca solo');
+await p.evaluate(() => { location.hash = '#habitos'; });
+await p.waitForSelector('[data-habit="sys-deepwork"].done');
+check(true, 'en Hábitos sale hecho');
+
 check(errs.length === 0, `sin errores de la app ${errs.join(' | ')}`);
 await b.close();

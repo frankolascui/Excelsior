@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type Reac
 import type { AttributeRewards, GameState, Habit, Impact, Quest, QuestType } from './types';
 import { ATTRIBUTES, attributeHistory, attributeLevel, attributeXp, avatarInfo, formatAttrXp, habitRewards, questRewards } from './attributes';
 import {
-  daysUntil, CUSTOM_LIMITS, dayKey, habitAtRisk, habitPausedOn, impactOf, TYPE_IMPACT, habitDayCount, habitStreak, habitWeekCount, habitXp, isHabitDone, levelInfo, QUEST_LABEL, repeatLabel, questXp, shiftDay, totalXp, XP_RULES,
+  daysUntil, CUSTOM_LIMITS, dayKey, deepWorkMinutesOnDay, FOCUS_HABIT_RULES, habitAtRisk, habitPausedOn, impactOf, TYPE_IMPACT, habitDayCount, habitStreak, habitWeekCount, habitXp, isHabitDone, levelInfo, QUEST_LABEL, repeatLabel, questXp, shiftDay, totalXp, XP_RULES,
 } from './game';
 import { CustomizeToggle, InlineEdit, RewardEditor, sameRewards, type CustomValue } from './customize';
 import { RitualCTA } from './ritual';
@@ -13,7 +13,7 @@ import { IMPACTS } from './priorities';
 
 const impactName = (v: Impact) => IMPACTS.find((x) => x.id === v)!.name;
 import './core.css';
-import { DayPips, HabitGoal, HabitHistory, habitShields, MinimumInput, PerDayInput, ProgressionInput, progressionDraft, type ProgressionDraft } from './habits-ui';
+import { DayPips, FocusMinInput, HabitGoal, HabitHistory, habitShields, MinimumInput, PerDayInput, ProgressionInput, progressionDraft, type ProgressionDraft } from './habits-ui';
 import { progressionText } from './progression';
 import { shieldableDay, shieldsLeft } from './economy';
 import { SubAdd } from './tree-ui';
@@ -359,7 +359,7 @@ export function useHabitFlip<T extends HTMLElement>() {
 }
 
 export function HabitItem({
-  state, habit, now, onToggle, onSetCount, onDelete, onEdit, onToggleDay, onShield, onRetire, handle, compact = false,
+  state, habit, now, onToggle, onSetCount, onDelete, onEdit, onToggleDay, onShield, onFocusMin, onRetire, handle, compact = false,
 }: {
   state: GameState;
   habit: Habit;
@@ -373,6 +373,8 @@ export function HabitItem({
   onEdit?: (name: string, v: CustomValue, minimum: string, progression: ProgressionDraft, perDay: number) => void;
   /** Usa un escudo de racha del cofre en ese día fallado. */
   onShield?: (day: string) => void;
+  /** Solo el hábito de Deep Work: cambiar sus minutos al día. */
+  onFocusMin?: (min: number) => void;
   /** Retirarlo a mano porque ya está consolidado (va a «Hábitos automatizados» con su historial). */
   onRetire?: () => void;
   /** Asa para ordenar arrastrando (la pone la lista). */
@@ -385,8 +387,11 @@ export function HabitItem({
     const kind = habit.system;
     onToggle = () => openSystemHabit(kind);
     if (onToggleDay) onToggleDay = () => openSystemHabit(kind);
-    onEdit = onDelete = onRetire = undefined;
+    onEdit = onRetire = undefined;
+    if (kind !== 'deepwork') onDelete = undefined; // el de Deep Work lo creas tú: también lo puedes borrar
   }
+  const focusMin = habit.system === 'deepwork' ? habit.focusMin ?? FOCUS_HABIT_RULES.default : 0;
+  const [focusDraft, setFocusDraft] = useState(focusMin);
   const [editing, setEditing] = useState(false);
   const [open, setOpen] = useState(false);
   const [minimum, setMinimum] = useState(habit.minimum ?? '');
@@ -462,6 +467,7 @@ export function HabitItem({
           </span>
           <span className="mono streak">{iced && <Icon name="snowflake" />}{streak > 0 ? `racha ${streak}${weekly ? ' sem' : ''}` : 'sin racha'}</span>
           {habit.progression && <span className="goal-tag" title="Meta actual (sobrecarga progresiva)">meta {progressionText(habit)}</span>}
+          {focusMin > 0 && <span className="goal-tag" title="Minutos de Deep Work de hoy / los que lo marcan">{Math.min(deepWorkMinutesOnDay(state, today), focusMin)}/{focusMin} min</span>}
         </span>
         {(risk || (savable && stock > 0)) && (
           <p className="habit-risk small-text">
@@ -472,6 +478,12 @@ export function HabitItem({
         {open && onToggleDay && (
           <div className="habit-detail">
             {!compact && <HabitGoal state={state} habit={habit} now={now} />}
+            {!compact && focusMin > 0 && onFocusMin && (
+              <div className="focus-edit">
+                <FocusMinInput id={`focus-${habit.id}`} value={focusDraft} onChange={setFocusDraft} />
+                {focusDraft !== focusMin && <button className="primary small" disabled={focusDraft < FOCUS_HABIT_RULES.min || focusDraft > FOCUS_HABIT_RULES.max} onClick={() => onFocusMin(focusDraft)}>Guardar</button>}
+              </div>
+            )}
             <HabitHistory state={state} habit={habit} now={now} onToggleDay={onToggleDay} />
             {!compact && (
               <div className="habit-detail-foot">

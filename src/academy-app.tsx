@@ -1,14 +1,14 @@
 // Excelsior Academy entera dentro de Deep Work (V3): estantería, asignaturas, hojas de apuntes, tarjetas,
 // simulacros, fechas de examen, estadísticas, importar de Anki y ajustar FSRS. Va en su propio trozo de código
 // (se carga al abrir la pestaña) y con sus estilos dentro de `.acad`.
-// El juego la envuelve: racha y hábito «Repasar las tarjetas», y cada repaso se convierte en Deep Work de estudio.
+// El juego la envuelve: racha y hábito «Estudiar» (tarjetas o simulacros), y cada repaso se convierte en Deep Work de estudio.
 import { useEffect, useRef, useState } from 'react';
 import type { Game } from './screens';
 import { adminReadOnly, useCloud } from './cloud';
 import { Icon } from './icons';
 import { InfoTip } from './infotip';
 import { confetti } from './confetti';
-import { academyFounded, cardsToday, foundAcademy, recordStudy, STUDY_RULES } from './academy-game';
+import { academyFounded, cardsToday, foundAcademy, recordExam, recordStudy, STUDY_RULES } from './academy-game';
 import { currentStudyPause, dayKey, habitStreak, markPauseShifted, pausesToShift, studyPausedOn } from './game';
 import { StudyPauseControl } from './study-pause-ui';
 import { shiftDueForPause } from './academy/study/api';
@@ -52,16 +52,16 @@ function StudyStrip({ game }: { game: Game }) {
   const paused = studyPausedOn(state, dayKey(now));
   return (
     <section className="panel study-strip" data-testid="study-strip" aria-label="Tu estudio en el juego">
-      <span className={`study-streak${doneToday ? ' on' : ''}`} title="Días seguidos repasando"><Icon name="flame" /> {streak} {streak === 1 ? 'día' : 'días'}</span>
+      <span className={`study-streak${doneToday ? ' on' : ''}`} title="Días seguidos estudiando"><Icon name="flame" /> {streak} {streak === 1 ? 'día' : 'días'}</span>
       <span className="study-today-line">
         {doneToday
           ? <><Icon name="check" /> Hábito de hoy cumplido · {today} {today === 1 ? 'tarjeta' : 'tarjetas'}</>
           : paused
             ? <>Hoy descansas: el hábito no cuenta como fallado</>
-            : <>Hoy {today} {today === 1 ? 'tarjeta' : 'tarjetas'} · vacía la cola o repasa {left} más para el hábito</>}
+            : <>Hoy {today} {today === 1 ? 'tarjeta' : 'tarjetas'} · repasa {left} más o haz un simulacro para el hábito</>}
       </span>
       <InfoTip label="Cómo da XP Academy">
-        <p>Repasar cuenta como Deep Work de estudio: 1 XP por minuto de repaso real (como mucho 2 min por tarjeta) y sube Sabiduría. Vaciar la cola del día da +{STUDY_RULES.clearBonus} XP una vez al día. Vaciarla o repasar {STUDY_RULES.habitCards} tarjetas marca solo tu hábito «Repasar las tarjetas».</p>
+        <p>Repasar cuenta como Deep Work de estudio: 1 XP por minuto de repaso real (como mucho 2 min por tarjeta) y sube Sabiduría. Vaciar la cola del día da +{STUDY_RULES.clearBonus} XP una vez al día. Tu hábito «Estudiar» (y la racha) se marca solo al vaciar la cola, al repasar {STUDY_RULES.habitCards} tarjetas o al entregar un simulacro. El tiempo de un simulacro hecho aquí también cuenta como Deep Work de estudio.</p>
       </InfoTip>
       <StudyPauseControl game={game} />
     </section>
@@ -86,6 +86,9 @@ export default function AcademyApp({ game }: { game: Game }) {
     const { academyBudgetMin: _old, ...rest } = s;
     return min ? { ...rest, academyBudgetMin: min } : rest;
   });
+  studyBridge.onExam = (r) => {
+    actRef.current((s) => recordExam(s, r, Date.now()), undefined, { sound: 'reward' });
+  };
   studyBridge.onStudy = (r) => {
     const save = (cleared: boolean) => {
       actRef.current((s) => recordStudy(s, { ...r, cleared }, Date.now()), undefined, { sound: 'reward', party: cleared });

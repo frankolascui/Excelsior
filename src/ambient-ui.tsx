@@ -80,6 +80,10 @@ export function AmbientDock() {
   const frame = useRef<HTMLIFrameElement>(null);
   const audio = useRef<HTMLAudioElement>(null);
 
+  // Plegado por defecto: un botón pequeño en la esquina que no tapa la pantalla (Academy, Deep Work…). Al pulsarlo se abre.
+  const [open, setOpen] = useState(false);
+  // Spotify necesita su reproductor a la vista para darle al play: al ponerlo, se abre.
+  useEffect(() => { if (embed?.kind === 'spotify') setOpen(true); }, [embed?.kind, embed?.src]);
   const ambientYt = embed?.kind === 'youtube' && !a.linkOn;
   const volume = useRef(a.volume);
   volume.current = a.volume;
@@ -132,8 +136,13 @@ export function AmbientDock() {
   }
 
   if (!embed && !synth) return null;
+  const what = synth ? synth.name : embed?.kind === 'spotify' ? 'Spotify' : 'Música';
   return (
-    <div className={embed?.kind === 'spotify' ? 'ambient-dock with-player' : 'ambient-dock'}>
+    <div className={`ambient-dock${embed?.kind === 'spotify' ? ' with-player' : ''}${open ? ' open' : ' folded'}`} data-testid="ambient-dock">
+      <button type="button" className="icon-btn dock-toggle" onClick={() => setOpen(!open)} aria-expanded={open}
+        aria-label={open ? 'Plegar el sonido de fondo' : `Sonido de fondo: ${what}. Abrir controles`} title={open ? 'Plegar' : `${what} · controles`}>
+        <Icon name={open ? 'chevron-down' : synth ? synth.icon : 'music'} />
+      </button>
       {synth && (
         <span className="ambient-now">
           <Icon name={synth.icon} /> {synth.name}

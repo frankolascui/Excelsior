@@ -2,14 +2,15 @@
 // - Cada sesión de repaso se guarda como una sesión de Deep Work (área «estudio»): da 1 XP por minuto
 //   de repaso real, como cualquier foco, y sube Sabiduría. El tiempo se mide por tarjeta (máximo 2 min cada una)
 //   para que dejar la pantalla abierta no cuente.
-// - El hábito del sistema «Repasar las tarjetas» se marca solo el día que vacías la cola o repasas una ronda (8 tarjetas).
+// - El hábito del sistema «Estudiar» se marca solo el día que vacías la cola, repasas una ronda (8 tarjetas)
+//   o entregas un simulacro (V3.5: antes solo contaban las tarjetas y se llamaba «Repasar las tarjetas»).
 // - Vaciar la cola del día da un pequeño bonus (una vez al día).
 import type { DeepWorkSession, GameState, Habit } from './types';
-import { dayKey, toggleHabit, uid, XP_RULES, type ActionResult } from './game';
+import { checkFocusHabit, dayKey, toggleHabit, uid, XP_RULES, type ActionResult } from './game';
 import { deepWorkRewards } from './attributes';
 
 export const ACADEMY_HABIT_ID = 'sys-academy';
-export const ACADEMY_HABIT_NAME = 'Repasar las tarjetas';
+export const ACADEMY_HABIT_NAME = 'Estudiar';
 export const STUDY_RULES = {
   /** Tarjetas que bastan para dar el hábito por hecho aunque la cola no se vacíe. */
   habitCards: 8, // una ronda de repaso (BATCH en Review.tsx); antes 20 = casi 3 rondas
@@ -81,5 +82,43 @@ export function recordStudy(s: GameState, run: StudyRun, now: number): ActionRes
     xp += r.xp;
     capped = !!r.capped;
   }
-  return { state, xp, capped };
+  const focus = checkFocusHabit(state, now);
+  return { state: focus.state, xp: xp + focus.xp, capped: capped || !!focus.capped };
+}
+
+export interface ExamRun {
+  /** «Mates · Simulacro 1» (para el historial). */
+  label: string;
+  startedAt: number;
+  /** Segundos que duró en la app; null si lo hiciste en papel (no se sabe el tiempo). */
+  seconds: number | null;
+}
+
+/**
+ * Entregar un simulacro es estudiar: marca el hábito «Estudiar» (la racha de Academy) y, si se hizo en la app,
+ * su tiempo cuenta como Deep Work de estudio (1 XP por minuto, con el mismo tope que cualquier sesión).
+ */
+export function recordExam(s: GameState, run: ExamRun, now: number): ActionResult {
+  let state = foundAcademy(s, now);
+  let xp = 0;
+  let capped = false;
+  const minutes = run.seconds === null ? 0 : Math.min(Math.floor(run.seconds / 60), XP_RULES.maxSessionMinutes);
+  if (minutes >= XP_RULES.minSessionMinutes) {
+    const session: DeepWorkSession = {
+      id: uid(), questId: null, label: `Simulacro · ${run.label}`, area: 'estudio',
+      startedAt: run.startedAt, endedAt: now, minutes, focusPct: 100,
+    };
+    const amount = minutes * XP_RULES.deepWorkPerMinute;
+    state = { ...state, sessions: [...state.sessions, session], xp: [...state.xp, { id: uid(), at: now, amount, source: 'deepwork', sourceId: session.id, label: session.label, attributes: deepWorkRewards(minutes, 'estudio') }] };
+    xp += amount;
+  }
+  const today = dayKey(now);
+  if (!state.habitCompletions.some((c) => c.habitId === ACADEMY_HABIT_ID && c.day === today)) {
+    const r = toggleHabit(state, ACADEMY_HABIT_ID, now, today, true);
+    state = r.state;
+    xp += r.xp;
+    capped = !!r.capped;
+  }
+  const focus = checkFocusHabit(state, now);
+  return { state: focus.state, xp: xp + focus.xp, capped: capped || !!focus.capped };
 }

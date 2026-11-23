@@ -1,9 +1,9 @@
 // Historial de un hábito: las últimas 5 semanas en cuadrícula (lunes a domingo), escudos y números del mes.
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { GameState, Habit, HabitProgression } from './types';
 import { atMax, clockText, constancy, habitHints, levelUpDue, nextValue, parseClock, PROGRESSION_RULES, valueText } from './progression';
 import { GuidePortrait } from './tutorial';
-import { dailyStreakInfo, dayKey, habitDayCount, habitPausedOn, habitStreakDays, isHabitDone, maxPerWeek, MINIMUM_MAX, PER_DAY_MAX, shiftDay, weekStart } from './game';
+import { dailyStreakInfo, dayKey, FOCUS_HABIT_RULES, habitDayCount, habitPausedOn, habitStreakDays, isHabitDone, maxPerWeek, MINIMUM_MAX, PER_DAY_MAX, shiftDay, weekStart } from './game';
 import { SHIELD } from './economy';
 import { Icon } from './icons';
 import { Select } from './pickers';
@@ -50,7 +50,7 @@ export function HabitHistory({ state, habit, now, onToggleDay }: { state: GameSt
         {habitStreakDays(state, habit.id, now) > 0 && shields.size > 0 && <span className="ice-text"><Icon name="snowflake" /> Racha congelada con un escudo</span>}
       </div>
       {habit.minimum && <p className="small-text"><b>Mínimo para un día malo:</b> {habit.minimum}</p>}
-      <p className="hint">Pulsa un día de los últimos 7 para marcarlo o desmarcarlo.{!weekly && ` Si fallas un día, un escudo de la Tienda (${SHIELD.cost} monedas) congela el de ayer y la racha sigue.`}</p>
+      <p className="hint">{habit.system ? 'Se marca solo cuando lo haces de verdad.' : 'Pulsa un día de los últimos 7 para marcarlo o desmarcarlo.'}{!weekly && ` Si fallas un día, un escudo de la Tienda (${SHIELD.cost} monedas) congela el de ayer y la racha sigue.`}</p>
     </div>
   );
 }
@@ -376,5 +376,33 @@ export function RetiredHabits({ state, onRestore }: { state: GameState; onRestor
         ))}
       </ul>
     </details>
+  );
+}
+
+/** Minutos de foco al día del hábito de Deep Work (los pones tú). */
+export function FocusMinInput({ id, value, onChange }: { id: string; value: number; onChange: (n: number) => void }) {
+  return (
+    <label className="focus-min" htmlFor={id}>
+      <Icon name="hourglass" />
+      <input id={id} type="number" inputMode="numeric" min={FOCUS_HABIT_RULES.min} max={FOCUS_HABIT_RULES.max} step={5} value={value || ''}
+        onChange={(e) => onChange(Number(e.target.value))} aria-label="Minutos de Deep Work al día" />
+      <span className="muted small-text">min de Deep Work al día</span>
+    </label>
+  );
+}
+
+/** «+ Hábito de Deep Work»: un hábito que se marca solo al sumar tus minutos de foco del día. */
+export function FocusHabitAdd({ onAdd }: { onAdd: (min: number) => void }) {
+  const [open, setOpen] = useState(false);
+  const [min, setMin] = useState(FOCUS_HABIT_RULES.default);
+  const ok = min >= FOCUS_HABIT_RULES.min && min <= FOCUS_HABIT_RULES.max;
+  if (!open) return <button type="button" className="link focus-add-link" onClick={() => setOpen(true)}><Icon name="hourglass" /> Hábito de Deep Work</button>;
+  return (
+    <form className="focus-add" onSubmit={(e) => { e.preventDefault(); if (ok) { onAdd(min); setOpen(false); } }}>
+      <FocusMinInput id="new-focus-min" value={min} onChange={setMin} />
+      <button type="submit" className="primary small" disabled={!ok}><Icon name="plus" /> Añadir</button>
+      <button type="button" className="ghost small" onClick={() => setOpen(false)}>Cancelar</button>
+      <p className="hint">Se marca solo cuando tus sesiones de Deep Work (y los repasos de Academy) del día suman esos minutos.</p>
+    </form>
   );
 }

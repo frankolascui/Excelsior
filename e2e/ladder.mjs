@@ -38,7 +38,10 @@ const game = (p) => p.evaluate(() => JSON.parse(localStorage.getItem('excelsior:
 
 // 1) Crear la escalera
 let p = await open(state(), MON);
+check(await p.isVisible('.ladder-empty [data-testid="ladder-guide"]:has-text("un solo hábito nuevo")'), 'sin escalera, Hiperión explica cómo funciona');
+await p.locator('.ladder-empty').screenshot({ path: `${out}/ladder-00-hiperion.png` });
 await p.getByRole('button', { name: 'Crear mi escalera' }).click();
+check(await p.isVisible('[data-testid="ladder-editor"] [data-testid="ladder-guide"]'), 'el editor también lleva la explicación de Hiperión');
 await p.getByLabel('Hábito del escalón 1').fill('Escribir diario');
 await p.getByLabel('Mínimo del escalón 1').fill('3 líneas');
 await p.getByRole('button', { name: 'Consolidar', exact: true }).click();
@@ -50,6 +53,10 @@ await p.getByRole('button', { name: 'Empezar la escalera' }).click();
 await p.waitForSelector('[data-testid="ladder"]');
 let g = await game(p);
 check(g.ladder?.current === 0 && g.ladder.steps.length === 4, 'escalera creada en el escalón 1');
+check(await p.locator('[data-testid="ladder"] [data-testid="ladder-guide"]').count() === 0, 'en marcha, la explicación va plegada');
+await p.getByRole('button', { name: '¿Cómo funciona la escalera?' }).click();
+check(await p.isVisible('[data-testid="ladder"] [data-testid="ladder-guide"]'), '«¿Cómo funciona?» la vuelve a abrir');
+await p.getByRole('button', { name: '¿Cómo funciona la escalera?' }).click();
 check(g.habits.some((h) => h.name === 'Escribir diario' && h.minimum === '3 líneas' && h.id.startsWith('ladder-')), 'entra el hábito del escalón 1 con su mínimo');
 
 // 2) Semana siguiente: un hábito por debajo del 80 % → repite

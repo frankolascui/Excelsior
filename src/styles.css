@@ -1723,3 +1723,27 @@ svg .node-icon { color: var(--fg); }
 .goal-form.idle { grid-template-columns: 1fr auto; }
 .goal-form.idle input:first-child { grid-column: auto; }
 .path-detail .ritual-cta { justify-self: start; align-self: flex-start; margin-top: 4px; }
+
+/* Sonido de fondo plegado: un botón redondo en la esquina; los controles solo al abrirlo (no tapa la pantalla) */
+.ambient-dock { padding: 6px; }
+.ambient-dock .dock-toggle { align-self: flex-start; width: 34px; height: 34px; color: var(--c2); }
+.ambient-dock.folded { border-radius: 50%; padding: 3px; background: color-mix(in srgb, var(--c3) 10%, #0b0b0f); opacity: .8; }
+.ambient-dock.folded:hover { opacity: 1; }
+.ambient-dock.folded > :not(.dock-toggle):not(iframe) { display: none; }
+.ambient-dock.folded iframe { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; left: 0; bottom: 0; }
+.ambient-dock.folded .dock-toggle::after { content: ''; position: absolute; top: 5px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--c2); }
+.ambient-dock .dock-toggle { position: relative; }
+.ambient-dock.open { padding: 8px 10px; }
+.ambient-dock.open .dock-toggle { color: var(--muted); width: 28px; height: 28px; }
+
+/* Hábito de Deep Work: minutos al día */
+.focus-add-link { margin-top: 8px; font-size: 13.5px; }
+.focus-add { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.focus-add .hint, .focus-edit .hint { flex-basis: 100%; margin: 0; }
+.focus-min { display: inline-flex; align-items: center; gap: 8px; }
+.focus-min .ico { color: var(--muted); }
+.focus-min input { width: 5.5em; padding: 7px 10px; text-align: center; }
+.focus-edit { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+.focus-min input[type=number] { width: 72px; flex: none; }
+.ambient-dock.open { padding-right: 40px; }
+.ambient-dock.open .dock-toggle { position: absolute; top: 4px; right: 4px; }

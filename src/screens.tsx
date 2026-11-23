@@ -23,7 +23,7 @@ import { XpChart } from './charts';
 import {
   addHabit, addQuest, IMPACT_TYPE, cancelTimer, CUSTOM_LIMITS, maxPerWeek, updateHabit, updateQuest, completeQuest, createProfile, dayKey, deepWorkMinutesOnDay,
   deleteHabit, deleteQuest, focusPercent, habitStreakDays, levelInfo, pendingQuests, scheduledQuests, setQuestDeadline, setQuestRepeat, setPhase, timerTotals,
-  pomodoroStatus, pomodoroStep, startTimer, stopTimer, suggest, questXp, PRIORITY_BONUS, impactOf, toggleHabit, setHabitDayCount, habitCleared, habitsInOrder, reorderHabits, totalXp, undoQuest, XP_RULES,
+  pomodoroStatus, pomodoroStep, startTimer, stopTimer, suggest, questXp, setFocusHabit, FOCUS_HABIT_ID, PRIORITY_BONUS, impactOf, toggleHabit, setHabitDayCount, habitCleared, habitsInOrder, reorderHabits, totalXp, undoQuest, XP_RULES,
 } from './game';
 import {
   AttributeList, ConfirmButton, deadlineLabel, formatClock, shortDate, formatMinutes, HabitItem, LevelBar, QuestItem,
@@ -46,7 +46,7 @@ import { RateDialog, SessionRating } from './productivity-ui';
 import { formatHours, productivityWeek, sessionProductivity } from './productivity';
 import { QuestTemplates } from './templates-ui';
 import { LadderPanel } from './ladder-ui';
-import { DragHandle, draftToProgression, HabitHints, MinimumInput, PerDayInput, ProgressionInput, progressionDraft, RetiredHabits, weekShareText, type ProgressionDraft } from './habits-ui';
+import { DragHandle, draftToProgression, FocusHabitAdd, HabitHints, MinimumInput, PerDayInput, ProgressionInput, progressionDraft, RetiredHabits, weekShareText, type ProgressionDraft } from './habits-ui';
 import { atMax, levelUp, restoreHabit, retireHabit, setProgression, snoozeHint } from './progression';
 import { InfoTip } from './infotip';
 import { QuestHistory } from './quest-history';
@@ -190,7 +190,7 @@ export function Dashboard({
                   {(() => {
                     const sys = state.habits.find((h) => h.id === s.habitId)?.system;
                     return sys
-                      ? <button className="primary big" onClick={() => openSystemHabit(sys)}><Icon name="arrow-right" /> {sys === 'health' ? 'Apuntarla ahora' : 'Repasar ahora'}</button>
+                      ? <button className="primary big" onClick={() => openSystemHabit(sys)}><Icon name="arrow-right" /> {sys === 'health' ? 'Apuntarla ahora' : sys === 'deepwork' ? 'Empezar Deep Work' : 'Estudiar ahora'}</button>
                       : <button className="primary big" onClick={() => act((st) => toggleHabit(st, s.habitId, Date.now()), CAP_HABIT, { sound: 'habit' })}><Icon name="check" /> Hecho</button>;
                   })()}
                 </div>
@@ -818,6 +818,9 @@ export function Habits({ game, guide }: { game: Game; guide: string }) {
             <button type="button" className="link" onClick={shareWeek}><Icon name="send" /> Compartir mi semana</button>
           </div>
         )}
+        {!state.habits.some((h) => h.id === FOCUS_HABIT_ID) && (
+          <FocusHabitAdd onAdd={(m) => { act((s) => setFocusHabit(s, m, Date.now()), CAP_HABIT, { sound: 'habit' }); game.toast(`{i:hourglass} Hábito de Deep Work: ${m} min al día. Se marca solo.`, 'info'); }} />
+        )}
         {state.habits.length === 0 ? (
           <div>
             <p className="empty">Aún no tienes hábitos. Escribe uno arriba o elige alguno:</p>
@@ -838,6 +841,7 @@ export function Habits({ game, guide }: { game: Game; guide: string }) {
                   return setProgression(next, h.id, draftToProgression(d, hh.frequency === 'weekly' ? hh.perWeek ?? 1 : 7, hh.perDay), Date.now());
                 })}
                   onShield={(d) => spendHabitShield(game, h.id, d)}
+                  onFocusMin={(m) => act((s) => setFocusHabit(s, m, Date.now()), CAP_HABIT)}
                   onRetire={() => { act((s) => retireHabit(s, h.id, Date.now())); sfx.victory(); game.toast('{i:trophy} Hábito consolidado. Elige el siguiente que quieras desarrollar.', 'level'); }}
                   handle={<DragHandle name={h.name} group={group} onDrop={(order) => act((s) => reorderHabits(s, order))} />} />
               );

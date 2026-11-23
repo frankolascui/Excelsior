@@ -81,7 +81,7 @@ export const TOURS: Record<string, Step[]> = {
       target: 'academy',
       title: 'Academy',
       text: () =>
-        'Aquí arriba está Academy: tus asignaturas, apuntes, tarjetas y simulacros. El repaso espaciado te pregunta cada tarjeta justo a tiempo. Repasar cuenta como foco de estudio y, si vacías la cola del día, se marca solo tu hábito «Repasar las tarjetas». Necesita cuenta.',
+        'Aquí arriba está Academy: tus asignaturas, apuntes, tarjetas y simulacros. El repaso espaciado te pregunta cada tarjeta justo a tiempo. Repasar cuenta como foco de estudio y, si vacías la cola del día o entregas un simulacro, se marca solo tu hábito «Estudiar». Necesita cuenta.',
     },
     {
       tab: 'hoy',
@@ -140,7 +140,7 @@ export const TOURS: Record<string, Step[]> = {
       target: 'academy',
       title: 'Academy',
       text: () =>
-        'Aquí arriba está Academy: tus asignaturas, apuntes, tarjetas y simulacros. El repaso espaciado te pregunta cada tarjeta justo a tiempo. Repasar cuenta como foco de estudio y, si vacías la cola del día, se marca solo tu hábito «Repasar las tarjetas». Necesita cuenta.',
+        'Aquí arriba está Academy: tus asignaturas, apuntes, tarjetas y simulacros. El repaso espaciado te pregunta cada tarjeta justo a tiempo. Repasar cuenta como foco de estudio y, si vacías la cola del día o entregas un simulacro, se marca solo tu hábito «Estudiar». Necesita cuenta.',
     },
     {
       tab: 'reinos',
@@ -161,7 +161,7 @@ export const TOURS: Record<string, Step[]> = {
       target: 'academy',
       title: 'Academy',
       text: () =>
-        'Aquí arriba está Academy: tus asignaturas, apuntes, tarjetas y simulacros. El repaso espaciado te pregunta cada tarjeta justo a tiempo. Repasar cuenta como foco de estudio y, si vacías la cola del día, se marca solo tu hábito «Repasar las tarjetas». Necesita cuenta.',
+        'Aquí arriba está Academy: tus asignaturas, apuntes, tarjetas y simulacros. El repaso espaciado te pregunta cada tarjeta justo a tiempo. Repasar cuenta como foco de estudio y, si vacías la cola del día o entregas un simulacro, se marca solo tu hábito «Estudiar». Necesita cuenta.',
     },
     {
       tab: 'hoy',

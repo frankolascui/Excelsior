@@ -44,12 +44,13 @@ export const NEWS: NewsEntry[] = [
       ] },
       { name: 'Academy', items: [
         'Pausa o vacaciones de las tarjetas: elige desde y hasta qué día. Mientras dura, el hábito de repasar no rompe la racha y, al volver, las fechas de repaso se mueven esos días.',
-        'Una ronda de 8 tarjetas ya marca el hábito «Repasar las tarjetas».',
+        'El hábito de Academy ahora se llama «Estudiar»: lo marca una ronda de 8 tarjetas o entregar un simulacro (también en papel), y así suma a tu racha. El tiempo de un simulacro hecho en la app cuenta como Deep Work de estudio.',
         '«Hoy» de Academy aparece al momento, sin esperar a calcularlo.',
       ] },
       { name: 'Hábitos y salud', items: [
         'Reino de la Salud y constancia: cada semana con el Templo del Sueño es una semana constante. A las 4, 12, 26 y 52 semanas constantes se levanta un monumento (+25, 50, 100 y 200 monedas), con tu racha de semanas seguidas.',
-        'Escalera de hábitos: un plan por semanas en Hábitos. Cada semana entra un hábito nuevo con su mínimo; solo subes de escalón si todo va al 80 % o más, y si no, repites la semana.',
+        'Escalera de hábitos: un plan por semanas en Hábitos, que Hiperión te explica. Cada semana entra un hábito nuevo con su mínimo; solo subes de escalón si todo va al 80 % o más, y si no, repites la semana.',
+        'Hábito de Deep Work: pon tú los minutos de foco al día y se marca solo al llegar.',
         'Cada hábito muestra su meta, el siguiente escalón y cuánto te falta para subirlo.',
         'Hábitos de varias veces al día: una marca cumple el día y las veces de más son estrellas que suman XP.',
         'Arreglada la casilla del peso de la noche, que se montaba encima de lo de abajo.',
@@ -57,6 +58,7 @@ export const NEWS: NewsEntry[] = [
       { name: 'En toda la app', items: [
         'Si juegas en dos dispositivos, las partidas se unen solas. Solo te pregunta si cambiaste lo mismo de forma distinta en los dos.',
         'Si una pantalla falla al dibujarse, ves un aviso con «Reintentar» en lugar de una pantalla en negro.',
+        'El sonido de fondo se queda plegado en un botón pequeño y ya no tapa la pantalla. Púlsalo para ver el volumen o pararlo.',
       ] },
     ],
   },

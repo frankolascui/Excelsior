@@ -51,3 +51,14 @@
   .ladder-live li { grid-template-columns: minmax(0, 7em) 1fr auto; gap: 8px; }
   .ladder-edit-tools { flex-direction: column; }
 }
+
+/* Hiperión explica la escalera */
+.ladder-guide { display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--c2) 6%, transparent); border: 1px solid var(--line); }
+.ladder-guide .tour-portrait { width: 40px; height: 40px; flex: none; animation: none; box-shadow: none; }
+.ladder-guide-text { display: grid; gap: 6px; min-width: 0; font-size: 14.5px; line-height: 1.45; }
+.ladder-guide-text p { margin: 0; }
+.ladder-guide-text .eyebrow { margin: 0; }
+.ladder-guide-text ol { margin: 0; padding-left: 1.2em; display: grid; gap: 3px; }
+.ladder-guide-text b { font-weight: 600; }
+.hladder .ladder-head .icon-btn.on { color: var(--fg); }
+@media (max-width: 560px) { .ladder-guide .tour-portrait { width: 32px; height: 32px; } }

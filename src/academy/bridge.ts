@@ -9,11 +9,20 @@ export interface StudyReport {
   label: string;
 }
 
+/** Un simulacro entregado (en la app, con su tiempo) o marcado como hecho en papel (seconds null). */
+export interface ExamReport {
+  label: string;
+  startedAt: number;
+  seconds: number | null;
+}
+
 export const studyBridge: {
   onStudy: ((r: StudyReport) => void) | null;
+  /** Entregar un simulacro también es estudiar: marca el hábito y la racha. */
+  onExam: ((r: ExamReport) => void) | null;
   /** Minutos al día para Academy (null = sin límite). Vive en la partida del RPG, así viaja entre dispositivos. */
   budgetMin: number | null;
   setBudget: ((min: number | null) => void) | null;
   /** Pausa de las tarjetas en curso (vacaciones): «Hoy» lo dice en vez de contar repasos. `until` null = sin fecha de fin. */
   pause: { until: string | null } | null;
-} = { onStudy: null, budgetMin: null, setBudget: null, pause: null };
+} = { onStudy: null, onExam: null, budgetMin: null, setBudget: null, pause: null };
