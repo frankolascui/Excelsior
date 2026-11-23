@@ -1443,7 +1443,9 @@ function IsoCity({ quests, complete, stage, icon, W, fresh, setHover, castle }: 
   // Cuadrícula de solares (impar, con el castillo en el centro y una avenida hasta la puerta). En cuanto la
   // ciudad crece, el castillo se reserva los 3×3 solares centrales para seguir siendo el protagonista.
   const free = (l: number) => (l < 5 ? l * l - 1 - (l - 1) / 2 : l * l - 9 - ((l - 1) / 2 - 1));
-  let L = 3;
+  // Desde Villa el castillo ya tiene varias piezas y no cabe en un solar: pasa a sus 3×3 solares centrales
+  // (antes se montaba encima de las construcciones de alrededor).
+  let L = built >= 3 ? 5 : 3;
   while (free(L) < n) L += 2;
   const S = 3;
   const m = 1;
@@ -1957,7 +1959,7 @@ export function CityScene({ quests, progress, complete, stage, icon }: { quests:
       {quests.length > 0 && (
         <p
           className={`castle-cap${castle.upgraded ? ' up' : ''}${castle.tier >= CASTLE_MAX ? ' max' : ''}`}
-          style={{ top: W >= 560 ? 36 : 48 }} title={`${castle.label} · ${castle.name}. ${castle.next}`} aria-live="polite"
+          style={W >= 560 ? { top: 36 } : { bottom: 8 }} title={`${castle.label} · ${castle.name}. ${castle.next}`} aria-live="polite"
         >
           <Icon name="castle" /> {castle.label}
           {W >= 640 && <span className="cap-name"> · {castle.name}</span>}

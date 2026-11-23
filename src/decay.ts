@@ -8,7 +8,7 @@ export const DECAY_RULES = {
   pct: 0.05, // del progreso dentro del nivel actual, por día
   graceDays: 1, // el primer día sin hacer nada no cuesta nada
   /** Primer día que cuenta. Poner aquí el día de publicar para no cobrar días de antes. */
-  since: '2026-11-20',
+  since: '2026-11-23',
 };
 
 /** Días con algo hecho: XP ganado (salvo el de admin), hábitos marcados o sesiones de Deep Work. */
