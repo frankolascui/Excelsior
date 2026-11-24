@@ -6,8 +6,9 @@
 //   o entregas un simulacro (V3.5: antes solo contaban las tarjetas y se llamaba «Repasar las tarjetas»).
 // - Vaciar la cola del día da un pequeño bonus (una vez al día).
 import type { DeepWorkSession, GameState, Habit } from './types';
-import { checkFocusHabit, dayKey, toggleHabit, uid, XP_RULES, type ActionResult } from './game';
+import { checkFocusHabit, completeQuest, dayKey, toggleHabit, uid, XP_RULES, type ActionResult } from './game';
 import { deepWorkRewards } from './attributes';
+import { pendingSimQuest } from './academy-exams';
 
 export const ACADEMY_HABIT_ID = 'sys-academy';
 export const ACADEMY_HABIT_NAME = 'Estudiar';
@@ -87,6 +88,8 @@ export function recordStudy(s: GameState, run: StudyRun, now: number): ActionRes
 }
 
 export interface ExamRun {
+  /** Simulacro entregado: si tiene misión, se completa. */
+  examId?: string;
   /** «Mates · Simulacro 1» (para el historial). */
   label: string;
   startedAt: number;
@@ -118,6 +121,13 @@ export function recordExam(s: GameState, run: ExamRun, now: number): ActionResul
     state = r.state;
     xp += r.xp;
     capped = !!r.capped;
+  }
+  const quest = run.examId ? pendingSimQuest(state, run.examId) : undefined;
+  if (quest) {
+    const r = completeQuest(state, quest.id, now);
+    state = r.state;
+    xp += r.xp;
+    capped = capped || !!r.capped;
   }
   const focus = checkFocusHabit(state, now);
   return { state: focus.state, xp: xp + focus.xp, capped: capped || !!focus.capped };

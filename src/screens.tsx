@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { sureThen } from './confirm';
 import type { useGame } from './store';
-import type { AttributeId, DeepWorkArea, FocusPhase, GameState, Impact, Kingdom, Quest, QuestType } from './types';
+import type { AttributeId, BlockTask, DeepWorkArea, FocusPhase, GameState, Impact, Kingdom, Quest, QuestType } from './types';
 import { addGoal, attributeDef, avatarInfo, DEEP_WORK_AREA_HINT, deepWorkRewards, inferDeepWorkArea, deleteGoal, formatAttrXp, goalProgress, habitRewards, questRewards, updateGoal } from './attributes';
 import { CustomizeToggle, RewardEditor, sameRewards, type CustomValue } from './customize';
 import { addKingdom, citiesOf, realms, realmTotals, BUILDING_CHOICES, BUILDING_OF, buildings, guessBuildingAttr, KIND_INFO, closeKingdom, deleteKingdom, kingdomIdleDays, kingdomName, kingdomProgress, nextStage, renameKingdom, reopenKingdom, setKingdomDeadline, STALE_KINGDOM_DAYS } from './kingdoms';
@@ -45,6 +45,8 @@ import { SessionEdit } from './session-ui';
 import { RateDialog, SessionRating } from './productivity-ui';
 import { formatHours, productivityWeek, sessionProductivity } from './productivity';
 import { QuestTemplates } from './templates-ui';
+import { addBlockFor } from './life';
+import type { BlockWhen } from './block-add';
 import { LadderPanel } from './ladder-ui';
 import { DragHandle, draftToProgression, FocusHabitAdd, HabitHints, MinimumInput, PerDayInput, ProgressionInput, progressionDraft, RetiredHabits, weekShareText, type ProgressionDraft } from './habits-ui';
 import { atMax, levelUp, restoreHabit, retireHabit, setProgression, snoozeHint } from './progression';
@@ -57,6 +59,13 @@ import { IMPACTS, priorityIds, priorityQuests, pushToTomorrow, setQuestImpact } 
 import { ACHIEVEMENTS } from './achievements';
 
 export type Game = ReturnType<typeof useGame>;
+
+/** Bloque de tiempo en el calendario para una misión o un hábito, con aviso de dónde quedó. */
+function addBlock(game: Game, task: BlockTask, title: string, w: BlockWhen) {
+  game.act((s) => addBlockFor(s, task, title, w, Date.now()));
+  sfx.place();
+  game.toast(`{i:ev-bloque} Bloque puesto: ${shortDate(w.day)}, ${w.time}–${w.end}. Está en el calendario.`, 'info', 4000);
+}
 
 /** Partir una misión: submisiones a mano o sesiones repartidas hasta su fecha. */
 function treeActions(act: Game['act'], questId: string) {
@@ -396,6 +405,7 @@ export function Quests({ game, focusQuest, startFocus }: { game: Game; focusQues
                   onImpact={(v) => act((st) => setQuestImpact(st, q.id, v))}
                   priority={prio.includes(q.id)}
                   {...treeActions(act, q.id)}
+                  onBlock={(w) => addBlock(game, { kind: 'quest', id: q.id }, q.title, w)}
                   onDelete={() => act((st) => deleteQuest(st, q.id))}
                 />
               )} />
@@ -842,6 +852,7 @@ export function Habits({ game, guide }: { game: Game; guide: string }) {
                 })}
                   onShield={(d) => spendHabitShield(game, h.id, d)}
                   onFocusMin={(m) => act((s) => setFocusHabit(s, m, Date.now()), CAP_HABIT)}
+                  onBlock={(w) => addBlock(game, { kind: 'habit', id: h.id }, h.name, w)}
                   onRetire={() => { act((s) => retireHabit(s, h.id, Date.now())); sfx.victory(); game.toast('{i:trophy} Hábito consolidado. Elige el siguiente que quieras desarrollar.', 'level'); }}
                   handle={<DragHandle name={h.name} group={group} onDrop={(order) => act((s) => reorderHabits(s, order))} />} />
               );

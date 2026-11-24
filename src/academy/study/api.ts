@@ -196,6 +196,10 @@ const EXAM_SUMMARY = 'id, subject_id, title, topic_ids, time_limit_min, started_
 export async function listExams(subjectId: string): Promise<ExamSummary[]> {
   return check(await sb().from('study_exams').select(EXAM_SUMMARY).eq('subject_id', subjectId).order('created_at', { ascending: false }));
 }
+/** Todos los simulacros (de todas las asignaturas), para convertirlos en misiones en el RPG. */
+export async function listAllExams(): Promise<ExamSummary[]> {
+  return check(await sb().from('study_exams').select(EXAM_SUMMARY).order('created_at'));
+}
 export async function getExam(id: string): Promise<Exam> {
   return check(await sb().from('study_exams').select('*').eq('id', id).single());
 }

@@ -31,7 +31,7 @@ const db = {
   study_subjects: [{ id: 's1', name: 'Matemáticas', color: '#a855f7', position: 0, level: 'equilibrado' }],
   study_topics: [{ id: 't1', subject_id: 's1', title: 'Derivadas', position: 0, exam_date: null }],
   study_cards: [card('c1', 't1', '¿Derivada de $x^2$?', '$2x$'), card('c2', 't1', '¿Derivada de $\\sin x$?', '$\\cos x$'), card('c3', 't1', 'Regla de la cadena', "$(f\\circ g)' = f'(g)\\,g'$", 0)],
-  study_reviews: [], study_exam_dates: [{ id: 'x1', subject_id: 's1', title: 'Parcial de derivadas', date: new Date(now + 6 * DAY).toISOString().slice(0, 10), topic_ids: [], created_at: iso(now) }], study_settings: [], study_pages: [], study_exams: [], nights: [], settings: [],
+  study_reviews: [], study_exam_dates: [{ id: 'x1', subject_id: 's1', title: 'Parcial de derivadas', date: new Date(now + 6 * DAY).toISOString().slice(0, 10), topic_ids: [], created_at: iso(now) }], study_settings: [], study_pages: [], study_exams: [{ id: 'e1', subject_id: 's1', title: 'Derivadas', statement: '1. Deriva $x^3$.', topic_ids: [], time_limit_min: null, answers: '', started_at: null, finished_at: null, duration_sec: null, correction: '', grade: null, created_at: iso(now - DAY) }], nights: [], settings: [],
 };
 
 function filter(rows, params) {
@@ -116,10 +116,21 @@ const evs = (g) => (g.events ?? []).filter((e) => e.academy);
 const page = await login({ width: 1280, height: 900 });
 await page.waitForTimeout(1200);
 let g = await game(page);
+const simQ = (g) => g.quests.find((q) => q.id === 'acad-sim-e1');
+check(simQ(g) && !simQ(g).completedAt && simQ(g).deadline === dayOf(0), 'el simulacro es una misión, con fecha el día que le da el plan (S1 hoy, faltan 6 días)');
 check(evs(g).length === 1 && evs(g)[0].day === dayOf(6) && evs(g)[0].kind === 'examen', 'el examen de Academy entra en el calendario');
 check(await page.isVisible('.upcoming .ev-chip:has-text("Matemáticas · Parcial de derivadas")'), 'Hoy lo enseña en Próximos eventos, con la asignatura');
 
 await page.click('.nav-item:has-text("Misiones")');
+check(await page.isVisible('.item:has-text("Simulacro de Matemáticas: Derivadas")'), 'la misión del simulacro sale en Misiones');
+await page.click('button[aria-label="Más acciones de Simulacro de Matemáticas: Derivadas"]');
+await page.click('button[aria-label="Bloque de tiempo para Simulacro de Matemáticas: Derivadas"]');
+await page.waitForTimeout(800);
+await page.screenshot({ path: `${out}/acal-06-bloque-mision.png` });
+await page.click('.block-add button:has-text("Poner bloque")');
+g = await game(page);
+const blk = (g.events ?? []).find((e) => e.kind === 'bloque' && e.title === 'Simulacro de Matemáticas: Derivadas');
+check(blk && blk.tasks?.[0]?.id === 'acad-sim-e1' && blk.time, 'una misión pone su bloque de tiempo en el calendario, con la misión dentro');
 await page.click('[role=radio]:has-text("Calendario")');
 await page.click('[role=radio]:has-text("Mes")');
 check(await page.isVisible('.key-events .key-ev:has-text("Parcial de derivadas")'), 'arriba del calendario, con su cuenta atrás');
@@ -168,6 +179,23 @@ await page.screenshot({ path: `${out}/acal-05-academy.png` });
 await page.waitForTimeout(800);
 g = await game(page);
 check(evs(g).some((e) => e.title === 'Oral'), 'al abrir los exámenes en Academy, sus exámenes pasan al calendario');
+
+// Plan del examen: tareas con tipo, simulacro enlazado y bloque desde un día
+check(await page.isVisible('.exam-date .plan-item.k-simulacro'), 'el plan pone los simulacros del método');
+check(await page.isVisible('.exam-date .plan-item.k-repaso, .exam-date .plan-item.k-tema'), 'y repasos o tema del día');
+await page.screenshot({ path: `${out}/acal-07-plan.png`, fullPage: true });
+const before = ((await game(page)).events ?? []).filter((e) => e.kind === 'bloque').length;
+await page.click('.exam-date .plan li.today .plan-block');
+await page.click('.exam-date .block-add button:has-text("Poner bloque")');
+await page.waitForTimeout(300);
+check(((await game(page)).events ?? []).filter((e) => e.kind === 'bloque').length === before + 1, 'cada día del plan puede poner un bloque en el calendario');
+// Entregar el simulacro en Academy completa su misión
+await page.evaluate(() => { location.hash = '#academy/a/s1/simulacros/e1'; });
+await page.waitForSelector('.exam-start', { timeout: 8000 });
+await page.click('button:has-text("Ya lo he hecho en papel")');
+await page.waitForTimeout(1200);
+g = await game(page);
+check(simQ(g)?.completedAt, 'hacer el simulacro completa su misión');
 
 const mob = await login({ width: 390, height: 844 });
 await mob.waitForTimeout(1000);

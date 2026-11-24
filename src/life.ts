@@ -334,6 +334,11 @@ export function addBlockTask(s: GameState, eventId: string, task: BlockTask): Ga
   };
 }
 
+/** Bloque de tiempo para una misión o un hábito: lleva su nombre y lo tiene dentro para marcarlo desde la ficha. */
+export function addBlockFor(s: GameState, task: BlockTask, title: string, when: { day: string; time: string; end: string }, now: number): GameState {
+  return addEvent(s, { title, kind: 'bloque', ...when, tasks: [task] }, now);
+}
+
 export function removeBlockTask(s: GameState, eventId: string, task: BlockTask): GameState {
   return { ...s, events: (s.events ?? []).map((e) => (e.id === eventId ? cleanEvent({ ...e, tasks: (e.tasks ?? []).filter((x) => !(x.kind === task.kind && x.id === task.id)) }) : e)) };
 }

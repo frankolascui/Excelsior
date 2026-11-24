@@ -68,36 +68,164 @@ export function finalReview(cards: readonly CardRow[], examDate: string, now: Da
     .map((x) => x.c);
 }
 
-export interface PlanDay { date: Date; daysLeft: number; items: string[] }
+// ---------- Plan día a día (método de los 3 simulacros) ----------
+
+export type PlanItemKind = 'nuevas' | 'repaso' | 'tema' | 'simulacro' | 'fallos' | 'examen' | 'descanso';
+
+export interface PlanItem {
+  kind: PlanItemKind;
+  /** Lo que lee el alumno. */
+  text: string;
+  /** Para abrir el repaso de ese tema. */
+  topicId?: string;
+  /** Simulacro ya importado. */
+  examId?: string;
+  /** Número del simulacro del método (1–3), en simulacros y fallos. */
+  sim?: number;
+  minutes?: number;
+  done?: boolean;
+}
+
+export interface PlanDay { date: Date; daysLeft: number; items: PlanItem[]; minutes: number }
+
+export interface PlanSim { id: string; title: string; grade: number | null; finishedAt: string | null }
+
+export interface PlanInput {
+  daysLeft: number;
+  today: Date;
+  /** Temas del examen, en orden. */
+  topics: { id: string; title: string }[];
+  /** Tarjetas sin empezar de cada tema. */
+  newByTopic: Map<string, number>;
+  /** Nuevas al día según tu nivel. */
+  levelPerDay: number;
+  /** Tarjetas que tocan cada día (hoy = 0), ya con la parte del repaso final. */
+  dueByDay: number[];
+  /** Segundos por tarjeta (10 si no hay datos). */
+  secPerCard: number;
+  /** Simulacros de la asignatura con temas del examen, del más antiguo al más nuevo. */
+  sims: PlanSim[];
+}
+
+export interface Plan {
+  days: PlanDay[];
+  /** «Plan comprimido: faltan N días» (menos de 10). */
+  note?: string;
+  /** No da tiempo a ver todas las nuevas. */
+  warn?: string;
+}
+
+/** Por debajo de esta nota, dos días de fallos en vez de uno. */
+export const LOW_GRADE = 6.5;
+const FALLOS_MIN = 25;
 
 /**
- * Plan sugerido día a día, del hoy al examen:
- * - nuevas al ritmo de tu nivel, o repartidas para terminar la víspera si así no llegas;
- * - simulacros sin apuntes a 6 y 3 días (si da tiempo), para que haya días de repaso entre medias;
- * - los 3 últimos días, repaso final de lo que olvidarías;
- * - el día del examen, nada nuevo.
+ * Qué día (días que faltan) va cada simulacro según lo que queda:
+ * ≥10 → D-10, D-4, D-1 · 6–9 → hoy, D-3, D-1 · 4–5 → hoy, D-2 · 2–3 → hoy · 1 → hoy, corto.
  */
-export function buildPlan(daysLeft: number, newLeft: number, today = new Date(), levelPerDay = 0): PlanDay[] {
-  const sims = daysLeft >= 7 ? [6, 3] : daysLeft >= 4 ? [3] : daysLeft >= 2 ? [daysLeft] : [];
-  // Al ritmo de tu nivel, o más rápido si a ese ritmo no te da tiempo.
-  const per = Math.max(levelPerDay, pacedNewPerDay(newLeft, daysLeft));
-  let left = newLeft;
-  const out: PlanDay[] = [];
+export function simDays(daysLeft: number): number[] {
+  if (daysLeft >= 10) return [10, 4, 1];
+  if (daysLeft >= 6) return [daysLeft, 3, 1];
+  if (daysLeft >= 4) return [daysLeft, 2];
+  if (daysLeft >= 1) return [daysLeft];
+  return [];
+}
+
+export function buildPlan(p: PlanInput): Plan {
+  const { daysLeft, today, topics, secPerCard } = p;
+  const when = simDays(daysLeft);
+  const nSims = when.length;
+  const lastNewDay = 2; // a partir de D-2, nada nuevo
+  const newDays = Math.max(0, daysLeft - lastNewDay);
+  const newLeft = [...p.newByTopic.values()].reduce((a, b) => a + b, 0);
+  const per = Math.max(p.levelPerDay, pacedNewPerDay(newLeft, newDays));
+  const left = new Map(topics.map((t) => [t.id, p.newByTopic.get(t.id) ?? 0]));
+  const name = new Map(topics.map((t, i) => [t.id, t.title || `Tema ${i + 1}`]));
+
+  // Días de fallos: el siguiente a cada simulacro (dos si la nota fue baja); si el siguiente es el examen, el mismo día.
+  const fallos = new Map<number, number>(); // días que faltan → número de simulacro
+  // Con 2–5 días no hay tercer simulacro: los fallos del último se hacen la víspera.
+  const eve = daysLeft >= 2 && nSims < 3 && !when.includes(1);
+  when.forEach((rest, k) => {
+    const grade = p.sims[k]?.grade ?? null;
+    const n = grade !== null && grade < LOW_GRADE ? 2 : 1;
+    const first = eve && k === nSims - 1 ? 1 : rest - 1;
+    for (let j = 0; j < n; j++) {
+      const r = first - j;
+      if (r >= 1 && r < rest && !when.includes(r) && !fallos.has(r)) fallos.set(r, k + 1);
+    }
+  });
+
+  let topicTurn = 0;
+  const days: PlanDay[] = [];
   for (let i = 0; i <= daysLeft; i++) {
     const rest = daysLeft - i;
     const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
-    const items: string[] = [];
+    const items: PlanItem[] = [];
     if (rest === 0) {
-      items.push('Examen', 'Solo un repaso corto de lo que falles al despertar. Nada nuevo.');
-    } else {
-      const n = Math.min(per, left);
-      left -= n;
-      if (n > 0) items.push(n === 1 ? '1 tarjeta nueva' : `${n} tarjetas nuevas`);
-      items.push(rest <= FINAL_DAYS ? 'Repasos + repaso final de los temas del examen' : 'Repasos del día');
-      if (sims.includes(rest)) items.push(sims.length === 2 && rest === 6 ? 'Simulacro 1 sin apuntes' : sims.length === 2 ? 'Simulacro 2 sin apuntes' : 'Simulacro sin apuntes');
-      if (rest === 1) items.push('Repasa los fallos del último simulacro y duerme bien');
+      items.push({ kind: 'examen', text: 'Examen. Solo 10 min de tus errores al despertar', minutes: 10 });
+      days.push({ date, daysLeft: rest, items, minutes: 10 });
+      continue;
     }
-    out.push({ date, daysLeft: rest, items });
+    const k = when.indexOf(rest);
+    if (k >= 0) {
+      const sim = p.sims[k];
+      const short = k === 2 || (daysLeft === 1);
+      const kind = k === 0 ? (daysLeft >= 10 ? 'diagnóstico, completo' : 'en frío, completo') : k === 1 ? 'completo, otra formulación' : 'corto, formato real';
+      const label = `Simulacro ${k + 1}`;
+      const done = !!sim?.finishedAt;
+      const text = sim
+        ? `${label} (${short && daysLeft === 1 ? 'corto' : kind})${sim.grade !== null ? ` · ${String(sim.grade).replace('.', ',')}` : done ? ' · hecho' : ''}`
+        : `${label} (${short && daysLeft === 1 ? 'corto' : kind}) · pídelo a Claude e impórtalo`;
+      items.push({ kind: 'simulacro', text, sim: k + 1, examId: sim?.id, minutes: short ? 30 : 60, done });
+      if (rest === 1) items.push({ kind: 'fallos', text: `Rehaz sus fallos`, sim: k + 1, minutes: 15 });
+    }
+    const f = fallos.get(rest);
+    if (f) items.push({ kind: 'fallos', text: `Rehaz los fallos del Simulacro ${f}`, sim: f, minutes: FALLOS_MIN });
+    // Nuevas, por temas en orden, hasta D-3.
+    if (rest > lastNewDay) {
+      let room = per;
+      for (const t of topics) {
+        const n = Math.min(room, left.get(t.id) ?? 0);
+        if (n <= 0) continue;
+        left.set(t.id, (left.get(t.id) ?? 0) - n);
+        room -= n;
+        items.push({ kind: 'nuevas', text: `${n} ${n === 1 ? 'nueva' : 'nuevas'} del ${name.get(t.id)}`, topicId: t.id, minutes: Math.ceil((n * secPerCard * 3) / 60) });
+        if (room <= 0) break;
+      }
+    }
+    // Tema del día, por turnos, los días sin simulacro (primero los que aún tienen nuevas).
+    if (k < 0 && topics.length > 0 && rest > 1) {
+      const order = [...topics].sort((a, b) => Number((left.get(b.id) ?? 0) > 0) - Number((left.get(a.id) ?? 0) > 0));
+      const t = order[topicTurn % order.length];
+      topicTurn++;
+      items.push({ kind: 'tema', text: `${name.get(t.id)}: esquema sin mirar (3 min) y repasa solo sus tarjetas`, topicId: t.id, minutes: 3 });
+    }
+    const cards = Math.max(0, Math.round(p.dueByDay[i] ?? 0));
+    if (cards > 0) {
+      const mins = Math.max(1, Math.round((cards * secPerCard) / 60));
+      items.push({ kind: 'repaso', text: `~${cards} ${cards === 1 ? 'tarjeta' : 'tarjetas'} de repaso · ${mins} min`, minutes: mins });
+    } else if (i === 0) {
+      items.push({ kind: 'repaso', text: 'Repasos de hoy', done: true, minutes: 0 });
+    }
+    if (rest === 1) items.push({ kind: 'descanso', text: 'Nada nuevo. Duerme 8 h' });
+    days.push({ date, daysLeft: rest, items, minutes: items.reduce((a, x) => a + (x.minutes ?? 0), 0) });
   }
-  return out;
+  const leftOver = [...left.values()].reduce((a, b) => a + b, 0);
+  return {
+    days,
+    note: daysLeft > 0 && daysLeft < 10 ? `Plan comprimido: faltan ${daysLeft} ${daysLeft === 1 ? 'día' : 'días'}` : undefined,
+    warn: leftOver > 0 ? 'No te da tiempo a ver todas las tarjetas nuevas: prioriza los simulacros' : undefined,
+  };
+}
+
+/** Día (YYYY-MM-DD) que el plan da al simulacro número `n` (1–3) de un examen, o undefined si no lleva. */
+export function simDay(examDate: string, n: number, today = new Date()): string | undefined {
+  const left = daysUntil(examDate, today);
+  if (left === null || left < 0) return undefined;
+  const rest = simDays(left)[n - 1];
+  if (rest === undefined) return undefined;
+  const [y, m, d] = examDate.split('-').map(Number);
+  const at = new Date(y, m - 1, d - rest, 12);
+  return `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')}`;
 }

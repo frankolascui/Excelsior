@@ -171,3 +171,8 @@ html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted) 2
 .tomorrow-list li.done .tomorrow-title { text-decoration: line-through; color: var(--muted); }
 /* Móvil: los dos botones de «¿Qué hago ahora?» a lo ancho, uno debajo del otro (antes uno largo y otro corto) */
 @media (max-width: 560px) { .now-actions > * { flex: 1 1 100%; } }
+
+/* Bloque de tiempo desde una misión o un hábito */
+.block-add { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--c1) 6%, transparent); }
+.block-add-label { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--muted); }
+.block-add-when { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }

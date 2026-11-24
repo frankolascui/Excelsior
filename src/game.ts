@@ -639,7 +639,10 @@ function undoOne(s: GameState, id: string): GameState {
 /** Borra la misión y todas sus submisiones. */
 export function deleteQuest(s: GameState, id: string): GameState {
   const gone = new Set([id, ...descendants(s, id).map((q) => q.id)]);
-  return { ...s, quests: s.quests.filter((x) => !gone.has(x.id)) };
+  const sims = s.quests.filter((x) => gone.has(x.id) && x.academy && !x.completedAt).map((x) => x.academy!.simId);
+  const next = { ...s, quests: s.quests.filter((x) => !gone.has(x.id)) };
+  // la misión de un simulacro borrada no vuelve a salir
+  return sims.length ? { ...next, academyIgnored: [...new Set([...(s.academyIgnored ?? []), ...sims])] } : next;
 }
 
 // ---------- Hábitos ----------

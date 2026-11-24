@@ -1,6 +1,8 @@
 // Puente entre Academy y el juego: el repaso avisa al terminar y el RPG lo convierte en XP, racha y hábito.
 // Academy no sabe nada del juego; AcademyApp rellena `onStudy` al montarse.
-import type { ExamDate } from './study/types';
+import type { Exam, ExamDate } from './study/types';
+
+type ExamSummaryLike = Pick<Exam, 'id' | 'subject_id' | 'title' | 'topic_ids' | 'finished_at' | 'created_at'>;
 
 export interface StudyReport {
   startedAt: number;
@@ -13,6 +15,8 @@ export interface StudyReport {
 
 /** Un simulacro entregado (en la app, con su tiempo) o marcado como hecho en papel (seconds null). */
 export interface ExamReport {
+  /** Id del simulacro (su misión se completa sola). */
+  examId?: string;
   label: string;
   startedAt: number;
   seconds: number | null;
@@ -29,4 +33,8 @@ export const studyBridge: {
   pause: { until: string | null } | null;
   /** Academy leyó sus exámenes con fecha (todos): el calendario del RPG se pone al día con esa lista. */
   onExamDates: ((exams: ExamDate[]) => void) | null;
-} = { onStudy: null, onExam: null, budgetMin: null, setBudget: null, pause: null, onExamDates: null };
+  /** Academy leyó los simulacros de una asignatura (o, con null, creó uno): sus misiones se ponen al día. */
+  onSims: ((subjectId: string, sims: ExamSummaryLike[] | null) => void) | null;
+  /** Reservar un bloque de tiempo en el calendario del RPG (lo rellena App). */
+  addBlock: ((title: string, when: { day: string; time: string; end: string }) => void) | null;
+} = { onStudy: null, onExam: null, budgetMin: null, setBudget: null, pause: null, onExamDates: null, onSims: null, addBlock: null };

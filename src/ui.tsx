@@ -17,6 +17,7 @@ import { DayPips, FocusMinInput, HabitGoal, HabitHistory, habitShields, MinimumI
 import { progressionText } from './progression';
 import { shieldableDay, shieldsLeft } from './economy';
 import { SubAdd } from './tree-ui';
+import { BlockAdd, type BlockWhen } from './block-add';
 import { AvatarPortrait, initialOf } from './portrait';
 import { openSystemHabit } from './nav-state';
 import { Icon } from './icons';
@@ -109,7 +110,7 @@ export function deadlineLabel(day: string, now: number): { text: string; tone: '
 
 export function QuestItem({
   quest, kingdom, onComplete, onStart, onDelete, onUndo, onEdit, onDeadline, onRepeat, onImpact, priority,
-  path, progress, inherited, onAddChild, onSplit, children,
+  path, progress, inherited, onAddChild, onSplit, onBlock, children,
 }: {
   quest: Quest;
   kingdom?: string;
@@ -133,6 +134,8 @@ export function QuestItem({
   /** Con ellos se puede partir en submisiones o repartir sesiones. */
   onAddChild?: (title: string) => void;
   onSplit?: (n: number) => void;
+  /** Con él se le puede reservar un bloque de tiempo en el calendario. */
+  onBlock?: (w: BlockWhen) => void;
   /** Las submisiones, debajo de la fila. */
   children?: ReactNode;
 }) {
@@ -140,6 +143,7 @@ export function QuestItem({
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);
   const [tools, setTools] = useState(false);
+  const [blocking, setBlocking] = useState(false);
   const [open, setOpen] = useState(true);
   const container = !!progress && progress.total > 0;
   const blocked = container && progress.done < progress.total; // con hojas pendientes no se cierra
@@ -148,7 +152,7 @@ export function QuestItem({
   const imp = impactOf(quest);
   const impLabel = <><Icon name="target" /> {impactName(imp)} · +{questXp(quest)} XP</>;
   const canSplit = !done && !!onAddChild;
-  const hasTools = !done && !!(onDeadline || canSplit || onRepeat || onEdit || onDelete);
+  const hasTools = !done && !!(onDeadline || canSplit || onRepeat || onEdit || onDelete || onBlock);
   if (editing && onEdit) {
     const initial: CustomValue = { xp: quest.xp, rewards: quest.rewards ?? (quest.focus ? questRewards(quest.type, quest.title, quest.focus) : undefined) };
     return (
@@ -199,6 +203,9 @@ export function QuestItem({
             {canSplit && (
               <button className="ghost small split-btn" onClick={() => { setAdding(true); setOpen(true); setTools(false); }} aria-label={`Partir ${quest.title} en submisiones`}><Icon name="list" /> {container ? 'Submisión' : 'Partir'}</button>
             )}
+            {onBlock && !container && (
+              <button className="ghost small block-btn" onClick={() => { setBlocking(true); setTools(false); }} aria-label={`Bloque de tiempo para ${quest.title}`}><Icon name="ev-bloque" /> Bloque</button>
+            )}
             {onRepeat && !quest.repeat && !container && (
               <RepeatPicker value={null} onChange={onRepeat} label={`Repetir ${quest.title}`} describe={repeatLabel} className="ghost small repeat-add"><Icon name="repeat" /> Repetir</RepeatPicker>
             )}
@@ -210,6 +217,7 @@ export function QuestItem({
             )}
           </div>
         )}
+        {blocking && onBlock && !done && <BlockAdd name={quest.title} onAdd={(w) => { onBlock(w); setBlocking(false); }} onClose={() => setBlocking(false)} />}
         {adding && canSplit && !container && <SubAdd quest={quest} inherited={quest.deadline ?? inherited} onAdd={onAddChild} onSplit={onSplit} onClose={() => setAdding(false)} />}
       </div>
       <div className="item-actions">
@@ -218,7 +226,7 @@ export function QuestItem({
         )}
         {onUndo && done && <button className="ghost small" onClick={onUndo}><Icon name="rotate-ccw" /> Deshacer</button>}
         {hasTools && (
-          <button className={tools ? 'icon-btn more-btn on' : 'icon-btn more-btn'} onClick={() => setTools(!tools)} aria-expanded={tools} aria-label={`Más acciones de ${quest.title}`} title="Fecha, partir, repetir, editar o borrar">
+          <button className={tools ? 'icon-btn more-btn on' : 'icon-btn more-btn'} onClick={() => setTools(!tools)} aria-expanded={tools} aria-label={`Más acciones de ${quest.title}`} title="Fecha, bloque, partir, repetir, editar o borrar">
             <span className="dots" aria-hidden="true"><i /><i /><i /></span>
           </button>
         )}
@@ -359,7 +367,7 @@ export function useHabitFlip<T extends HTMLElement>() {
 }
 
 export function HabitItem({
-  state, habit, now, onToggle, onSetCount, onDelete, onEdit, onToggleDay, onShield, onFocusMin, onRetire, handle, compact = false,
+  state, habit, now, onToggle, onSetCount, onDelete, onEdit, onToggleDay, onShield, onFocusMin, onRetire, onBlock, handle, compact = false,
 }: {
   state: GameState;
   habit: Habit;
@@ -377,6 +385,8 @@ export function HabitItem({
   onFocusMin?: (min: number) => void;
   /** Retirarlo a mano porque ya está consolidado (va a «Hábitos automatizados» con su historial). */
   onRetire?: () => void;
+  /** Reservar un bloque de tiempo para este hábito en el calendario. */
+  onBlock?: (w: BlockWhen) => void;
   /** Asa para ordenar arrastrando (la pone la lista). */
   handle?: ReactNode;
   /** En Hoy: sin XP ni atributos (están en Hábitos). */
@@ -393,6 +403,7 @@ export function HabitItem({
   const focusMin = habit.system === 'deepwork' ? habit.focusMin ?? FOCUS_HABIT_RULES.default : 0;
   const [focusDraft, setFocusDraft] = useState(focusMin);
   const [editing, setEditing] = useState(false);
+  const [blocking, setBlocking] = useState(false);
   const [open, setOpen] = useState(false);
   const [minimum, setMinimum] = useState(habit.minimum ?? '');
   const [prog, setProg] = useState(() => progressionDraft(habit));
@@ -490,11 +501,13 @@ export function HabitItem({
                 <span className="mono xp-tag">+{habitXp(habit)} XP</span>
                 <RewardTags rewards={habit.rewards} />
                 <span className="habit-detail-actions">
+                  {onBlock && <button className="ghost small block-btn" onClick={() => setBlocking(!blocking)} aria-expanded={blocking} aria-label={`Bloque de tiempo para ${habit.name}`} title="Reservar un hueco en el calendario"><Icon name="ev-bloque" /> Bloque</button>}
                   {onEdit && <button className="ghost small edit-btn" onClick={() => setEditing(true)} aria-label={`Editar ${habit.name}`} title="Veces, meta, mínimo y XP"><Icon name="sliders" /> Editar</button>}
                   {onDelete && <button className="ghost small danger" onClick={() => sureThen({ title: `¿Borrar el hábito «${habit.name}»?`, message: 'Se borra también su historial y su racha.', confirmLabel: 'Borrar hábito' }, onDelete)} aria-label={`Borrar ${habit.name}`} title="Borrar"><Icon name="trash" /> Borrar</button>}
                 </span>
               </div>
             )}
+            {!compact && blocking && onBlock && <BlockAdd name={habit.name} onAdd={(w) => { onBlock(w); setBlocking(false); }} onClose={() => setBlocking(false)} />}
           </div>
         )}
       </div>

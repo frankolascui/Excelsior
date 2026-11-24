@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { academyEventId, addAcademyEvent, syncAcademyExams } from './academy-exams';
+import { academyEventId, addAcademyEvent, simDeadline, simQuestId, syncAcademyExams, syncSimulacros, type SimSummary } from './academy-exams';
+import { foundAcademy, recordExam } from './academy-game';
 import { eventLabel, eventsOn, updateEvent } from './life';
-import { emptyState } from './game';
+import { deleteQuest, emptyState } from './game';
 import type { ExamDate } from './academy/study/types';
 import type { GameState } from './types';
 
@@ -45,5 +46,43 @@ describe('exámenes de Academy en el calendario', () => {
     s = syncAcademyExams(s, [exam('e9', 'Test', '2026-12-10', 's2')], subjects, NOW);
     expect(s.events).toHaveLength(1);
     expect(s.events![0]).toMatchObject({ time: '08:00', academy: { subject: 'Historia' } });
+  });
+});
+
+describe('simulacros como misiones', () => {
+  const sim = (id: string, over: Partial<SimSummary> = {}): SimSummary => ({ id, subject_id: 's1', title: 'Derivadas', topic_ids: [], finished_at: null, created_at: `2026-11-0${id.slice(-1)}`, ...over });
+  const none = () => undefined;
+
+  it('cada simulacro sin entregar es una misión; se quita si se entrega o se borra en Academy', () => {
+    let s = syncSimulacros(emptyState(), [sim('x1'), sim('x2', { finished_at: '2026-11-20' })], subjects, none, NOW);
+    expect(s.quests).toHaveLength(1);
+    expect(s.quests[0]).toMatchObject({ id: simQuestId('x1'), title: 'Simulacro de Física: Derivadas', impact: 'medio', academy: { simId: 'x1', subjectId: 's1' } });
+    expect(syncSimulacros(s, [sim('x1')], subjects, none, NOW)).toBe(s);
+    s = syncSimulacros(s, [], subjects, none, NOW);
+    expect(s.quests).toHaveLength(0);
+  });
+
+  it('borrar la misión la deja fuera para siempre', () => {
+    let s = syncSimulacros(emptyState(), [sim('x1')], subjects, none, NOW);
+    s = deleteQuest(s, simQuestId('x1'));
+    expect(syncSimulacros(s, [sim('x1')], subjects, none, NOW).quests).toHaveLength(0);
+  });
+
+  it('entregar el simulacro en Academy completa su misión (con su XP)', () => {
+    let s = foundAcademy(syncSimulacros(emptyState(), [sim('x1')], subjects, none, NOW), NOW);
+    const r = recordExam(s, { examId: 'x1', label: 'Física', startedAt: NOW, seconds: null }, NOW);
+    s = r.state;
+    expect(s.quests[0].completedAt).toBe(NOW);
+    expect(r.xp).toBeGreaterThan(0);
+  });
+
+  it('la fecha límite es el día que el plan da a ese simulacro', () => {
+    const today = new Date(2026, 10, 10, 12);
+    const all = [sim('x1'), sim('x2'), sim('x3')];
+    const dates = [exam('e1', 'Final', '2026-11-22')];
+    expect(simDeadline(all[0], all, dates, today)).toBe('2026-11-12'); // D-10
+    expect(simDeadline(all[1], all, dates, today)).toBe('2026-11-18'); // D-4
+    expect(simDeadline(all[2], all, dates, today)).toBe('2026-11-21'); // D-1
+    expect(simDeadline(sim('y', { subject_id: 's2' }), all, dates, today)).toBeUndefined();
   });
 });

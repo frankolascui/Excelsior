@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createExam, deleteExam, listExams, type ExamSummary } from '../study/api';
+import { studyBridge } from '../bridge';
 import { examStatus, formatGrade, gradeTrend, timeLimitFromStatement, type ExamStatus } from '../study/exams';
 import { routeToHash, titleFromMarkdown } from '../study/logic';
 import { tidyText } from '../study/format';
@@ -22,7 +23,7 @@ export function ExamsPanel({ subjectId, topics }: { subjectId: string; topics: T
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const reload = () => listExams(subjectId).then(setExams).catch((e) => setError(friendlyExam(e.message)));
+  const reload = () => listExams(subjectId).then((list) => { studyBridge.onSims?.(subjectId, list); setExams(list); }).catch((e) => setError(friendlyExam(e.message)));
   useEffect(() => { reload(); }, [subjectId]);
 
   const topicName = new Map(topics.map((t, i) => [t.id, `${i + 1}`]));
@@ -127,6 +128,7 @@ function ImportExam({ subjectId, topics, onClose, onDone }: { subjectId: string;
         time_limit_min: Number.isInteger(n) && n > 0 && n <= 600 ? n : null,
       });
       sfx.place();
+      studyBridge.onSims?.(subjectId, null);
       onDone(e.id);
     } catch (err) { setError(friendlyExam((err as Error).message)); setBusy(false); sfx.error(); }
   }

@@ -1,13 +1,16 @@
 // Exámenes de Academy ↔ calendario: leer de Supabase, y subir lo que se cambia desde el calendario.
 // Lecturas mínimas: al entrar con cuenta, al volver a la app tras un rato, y cuando Academy ya leyó su lista.
-import { useEffect, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useSyncExternalStore } from 'react';
 import type { Game } from './screens';
-import type { CalendarEvent } from './types';
+import type { CalendarEvent, GameState } from './types';
 import type { ExamDate, Subject } from './academy/study/types';
-import { createExamDate, deleteExamDate, listExamDates, listSubjects, updateExamDate } from './academy/study/api';
+import { createExamDate, deleteExamDate, listAllExams, listExamDates, listSubjects, updateExam, updateExamDate } from './academy/study/api';
 import { studyBridge } from './academy/bridge';
 import { useCloud } from './cloud';
-import { addAcademyEvent, syncAcademyExams } from './academy-exams';
+import { addAcademyEvent, simDeadline, syncAcademyExams, syncSimulacros, type SimSummary } from './academy-exams';
+import { addEvent } from './life';
+import { sfx } from './sfx';
+import { shortDate } from './ui';
 
 /**
  * Lo último que se sabe de Academy: asignaturas (para elegir una al crear un examen) y exámenes con fecha.
@@ -16,11 +19,13 @@ import { addAcademyEvent, syncAcademyExams } from './academy-exams';
  */
 let subjects: Pick<Subject, 'id' | 'name'>[] | null = null;
 let exams: ExamDate[] | null = null;
+let sims: SimSummary[] | null = null;
 let version = 0;
 const listeners = new Set<() => void>();
-function setCache(patch: { subjects?: typeof subjects; exams?: typeof exams }) {
+function setCache(patch: { subjects?: typeof subjects; exams?: typeof exams; sims?: typeof sims }) {
   if ('subjects' in patch) subjects = patch.subjects!;
   if ('exams' in patch) exams = patch.exams!;
+  if ('sims' in patch) sims = patch.sims!;
   version++;
   listeners.forEach((f) => f());
 }
@@ -36,8 +41,8 @@ async function pull(force = false) {
   if (!active || (!force && Date.now() - lastPull < AGAIN_MS)) return;
   lastPull = Date.now();
   try {
-    const [ex, subs] = await Promise.all([listExamDates(), listSubjects()]);
-    if (active) setCache({ exams: ex, subjects: subs.map((x) => ({ id: x.id, name: x.name })) });
+    const [ex, subs, sm] = await Promise.all([listExamDates(), listSubjects(), listAllExams().catch(() => null)]);
+    if (active) setCache({ exams: ex, subjects: subs.map((x) => ({ id: x.id, name: x.name })), ...(sm ? { sims: sm } : {}) });
   } catch {
     /* sin tabla de exámenes, sin red o sin Academy: el calendario sigue con lo que tenía */
   }
@@ -47,6 +52,8 @@ async function pull(force = false) {
 export function useAcademyExamsSync(game: Game) {
   const userId = useCloud().userId;
   const v = useVersion();
+  const gameRef = useRef(game);
+  gameRef.current = game;
   useEffect(() => {
     if (!userId) return;
     active = true;
@@ -55,21 +62,48 @@ export function useAcademyExamsSync(game: Game) {
       if (!subjects || list.some((e) => !subjects!.some((x) => x.id === e.subject_id))) void pull(true);
       else setCache({ exams: list });
     };
+    studyBridge.onSims = (subjectId, list) => {
+      if (!list || !sims) return void pull(true);
+      setCache({ sims: [...sims.filter((x) => x.subject_id !== subjectId), ...list] });
+    };
+    studyBridge.addBlock = (title, when) => {
+      gameRef.current.act((s) => addEvent(s, { title, kind: 'bloque', ...when }, Date.now()));
+      sfx.place();
+      gameRef.current.toast(`{i:ev-bloque} Bloque puesto: ${shortDate(when.day)}, ${when.time}–${when.end}. Está en el calendario.`, 'info', 4000);
+    };
     void pull(true);
     const onVisible = () => document.visibilityState === 'visible' && void pull();
     document.addEventListener('visibilitychange', onVisible);
     return () => {
       document.removeEventListener('visibilitychange', onVisible);
       studyBridge.onExamDates = null;
+      studyBridge.onSims = null;
+      studyBridge.addBlock = null;
       active = false;
-      setCache({ exams: null, subjects: null });
+      setCache({ exams: null, subjects: null, sims: null });
     };
   }, [userId]);
   useEffect(() => {
     if (!userId || !exams || !subjects) return;
-    const list = exams, subs = subjects, now = Date.now();
+    const list = exams, subs = subjects, sm = sims, now = Date.now();
+    // Una misión de simulacro completada aquí (a mano) = simulacro hecho en papel en Academy.
+    if (sm) {
+      for (const q of game.state.quests) {
+        const sim = q.academy && q.completedAt ? sm.find((x) => x.id === q.academy!.simId && !x.finished_at) : undefined;
+        if (!sim) continue;
+        const at = new Date(q.completedAt!).toISOString();
+        setCache({ sims: sm.map((x) => (x.id === sim.id ? { ...x, finished_at: at } : x)) });
+        void updateExam(sim.id, { finished_at: at }).catch(() => pull(true));
+        return; // el efecto vuelve a pasar con la caché nueva
+      }
+    }
+    const deadline = (x: SimSummary) => simDeadline(x, sm ?? [], list);
+    const apply = (s: GameState) => {
+      const a = syncAcademyExams(s, list, subs, now);
+      return sm ? syncSimulacros(a, sm, subs, deadline, now) : a;
+    };
     // Solo se toca la partida si algo cambió (si no, cada lectura sería un guardado).
-    if (syncAcademyExams(game.state, list, subs, now) !== game.state) game.act((s) => syncAcademyExams(s, list, subs, now));
+    if (apply(game.state) !== game.state) game.act(apply);
   }, [game.state, v, userId]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 

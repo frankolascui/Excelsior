@@ -47,6 +47,8 @@ export interface Quest {
   impact?: Impact;
   /** Cuándo decidiste conservarla en la limpieza (no vuelve a preguntar en 14 días). */
   keptAt?: number;
+  /** Misión de un simulacro de Academy: se completa sola al entregarlo y «Empezar» lo abre. */
+  academy?: { simId: string; subjectId: string };
 }
 
 export type Impact = 'alto' | 'medio' | 'bajo';
@@ -332,6 +334,8 @@ export interface GameState {
   newsLatest?: string;
   /** Minutos al día para repasar en Academy (sin campo = sin límite). */
   academyBudgetMin?: number;
+  /** Simulacros de Academy cuya misión borraste: no vuelve a crearse. */
+  academyIgnored?: string[];
   /** Pausas de las tarjetas de Academy (vacaciones): esos días no vencen repasos ni cuenta el hábito. */
   studyPauses?: StudyPause[];
   /** Avatares a los que ya has ascendido con su ritual. Sin el campo (partidas antiguas) se calculan como antes. */

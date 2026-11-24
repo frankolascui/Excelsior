@@ -71,12 +71,12 @@ export function ExamView({ subjectId, examId }: { subjectId: string; examId: str
 
       {st === 'pendiente' && <Start exam={exam} onStart={() => patch({ started_at: new Date().toISOString() }, sfx.start)}
         onPaper={async () => {
-          if (await patch({ finished_at: new Date().toISOString() }, sfx.page)) studyBridge.onExam?.({ label: examLabel(), startedAt: Date.now(), seconds: null });
+          if (await patch({ finished_at: new Date().toISOString() }, sfx.page)) studyBridge.onExam?.({ examId, label: examLabel(), startedAt: Date.now(), seconds: null });
         }} />}
       {st === 'en-curso' && <Doing exam={exam} onError={setError} onFinish={async (answers) => {
         const started = new Date(exam.started_at!).getTime();
         const sec = Math.round((Date.now() - started) / 1000);
-        if (await patch({ answers, finished_at: new Date().toISOString(), duration_sec: sec }, sfx.done)) studyBridge.onExam?.({ label: examLabel(), startedAt: started, seconds: sec });
+        if (await patch({ answers, finished_at: new Date().toISOString(), duration_sec: sec }, sfx.done)) studyBridge.onExam?.({ examId, label: examLabel(), startedAt: started, seconds: sec });
       }} />}
       {st === 'sin-corregir' && <Correct exam={exam} subjectName={subject?.name ?? ''} onSave={(correction, grade) => patch({ correction, grade }, sfx.victory)} />}
       {st === 'corregido' && <Result exam={exam} />}

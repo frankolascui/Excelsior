@@ -1,8 +1,9 @@
 // Exámenes de Academy en el calendario. Academy guarda cada examen (nombre, día, temas) en Supabase;
 // el calendario tiene una copia como evento «examen» con id `acad-<id>`, para que salga en el mes, en Hoy y en los avisos.
 // Nombre y día mandan en Academy: si cambian en el calendario, se suben; hora y color son solo del calendario.
-import type { AcademyLink, CalendarEvent, GameState } from './types';
-import type { ExamDate, Subject } from './academy/study/types';
+import type { AcademyLink, CalendarEvent, GameState, Quest } from './types';
+import type { Exam, ExamDate, Subject } from './academy/study/types';
+import { simDay, upcoming } from './academy/study/plan';
 
 export const ACADEMY_EVENT_PREFIX = 'acad-';
 export const academyEventId = (examId: string) => `${ACADEMY_EVENT_PREFIX}${examId}`;
@@ -52,4 +53,73 @@ const same = (a: CalendarEvent, b: CalendarEvent) =>
 export function addAcademyEvent(s: GameState, exam: ExamDate, subject: string, extra: Pick<CalendarEvent, 'time' | 'end' | 'color'>, now: number): GameState {
   const ev = toEvent(exam, subject, { ...extra, createdAt: now } as CalendarEvent, now);
   return { ...s, events: [...(s.events ?? []).filter((e) => e.id !== ev.id), ev] };
+}
+
+// ---------- Simulacros como misiones ----------
+
+/** Lo que el RPG necesita de un simulacro (sin enunciado ni respuestas). */
+export type SimSummary = Pick<Exam, 'id' | 'subject_id' | 'title' | 'topic_ids' | 'finished_at' | 'created_at'>;
+
+export const SIM_QUEST_PREFIX = 'acad-sim-';
+export const simQuestId = (simId: string) => `${SIM_QUEST_PREFIX}${simId}`;
+
+export function simQuestTitle(sim: Pick<SimSummary, 'title'>, subject: string): string {
+  const t = sim.title.trim() || 'Simulacro';
+  return /simulacro/i.test(t) ? `${subject}: ${t}` : `Simulacro de ${subject}: ${t}`;
+}
+
+/**
+ * Cada simulacro sin entregar es una misión (impacto medio, Sabiduría). Su fecha límite la da `deadlineFor`
+ * (el día que el plan del examen le asigna). Un simulacro entregado o borrado en Academy quita su misión pendiente;
+ * las misiones ya completadas no se tocan. Las que borraste a mano (`academyIgnored`) no vuelven.
+ */
+export function syncSimulacros(
+  s: GameState, sims: SimSummary[], subjects: Pick<Subject, 'id' | 'name'>[],
+  deadlineFor: (sim: SimSummary) => string | undefined, now: number,
+): GameState {
+  const names = new Map(subjects.map((x) => [x.id, x.name]));
+  const ignored = new Set(s.academyIgnored ?? []);
+  const open = new Map(sims.filter((x) => !x.finished_at).map((x) => [x.id, x]));
+  let changed = false;
+  const quests: Quest[] = [];
+  for (const q of s.quests) {
+    if (!q.academy || q.completedAt) { quests.push(q); continue; }
+    const sim = open.get(q.academy.simId);
+    if (!sim) { changed = true; continue; } // entregado o borrado en Academy
+    const next = simQuest(sim, names.get(sim.subject_id) ?? 'Academy', deadlineFor(sim), q);
+    if (next.title !== q.title || next.deadline !== q.deadline) changed = true;
+    quests.push(next);
+  }
+  for (const sim of open.values()) {
+    if (ignored.has(sim.id) || s.quests.some((q) => q.academy?.simId === sim.id)) continue;
+    quests.push(simQuest(sim, names.get(sim.subject_id) ?? 'Academy', deadlineFor(sim), undefined, now));
+    changed = true;
+  }
+  return changed ? { ...s, quests } : s;
+}
+
+function simQuest(sim: SimSummary, subject: string, deadline: string | undefined, prev?: Quest, now = 0): Quest {
+  const q: Quest = prev
+    ? { ...prev, title: simQuestTitle(sim, subject) }
+    : { id: simQuestId(sim.id), title: simQuestTitle(sim, subject), type: 'side', impact: 'medio', focus: 'sabiduria', createdAt: now, completedAt: null, academy: { simId: sim.id, subjectId: sim.subject_id } };
+  if (deadline) q.deadline = deadline; else delete q.deadline;
+  return q;
+}
+
+/** La misión pendiente de un simulacro, si existe. */
+export const pendingSimQuest = (s: GameState, simId: string) => s.quests.find((q) => q.academy?.simId === simId && !q.completedAt);
+
+/**
+ * Fecha límite de la misión de un simulacro: el día que el plan del examen le da. El simulacro N de una asignatura
+ * (por orden de creación, entre los que entran en ese examen) es el «Simulacro N» del plan del examen más cercano.
+ * Sin examen a la vista, sin fecha.
+ */
+export function simDeadline(sim: SimSummary, allSims: SimSummary[], exams: ExamDate[], today = new Date()): string | undefined {
+  const overlaps = (a: string[], b: string[]) => !a.length || !b.length || a.some((t) => b.includes(t));
+  const exam = upcoming(exams.filter((e) => e.subject_id === sim.subject_id && overlaps(e.topic_ids, sim.topic_ids)), today)[0];
+  if (!exam) return undefined;
+  const mine = allSims.filter((x) => x.subject_id === sim.subject_id && overlaps(exam.topic_ids, x.topic_ids))
+    .sort((a, b) => a.created_at.localeCompare(b.created_at));
+  const n = mine.findIndex((x) => x.id === sim.id) + 1;
+  return (n >= 1 ? simDay(exam.date, n, today) : undefined) ?? exam.date;
 }
