@@ -114,4 +114,26 @@ describe('escalera de hábitos', () => {
     expect(state.ladder!.log).toHaveLength(1);
     expect(conflicts.filter((c) => c.startsWith('ladder'))).toEqual([]);
   });
+  it('la semana en que la creas solo cuenta desde ese día', () => {
+    let s = createLadder(base(), [newStep('rest'), newStep('rest')], MON, at('2026-11-26')); // jueves
+    s = mark(s, 'Leer', '2026-11-26', 4); // jueves a domingo; lunes a miércoles sin marcar
+    const next = advanceLadder(s, at('2026-11-30'));
+    expect(next.ladder!.log.at(-1)!.result).toBe('up');
+    // las semanas siguientes cuentan enteras
+    const later = advanceLadder(mark(next, 'Leer', '2026-12-03', 4), at('2026-12-07'));
+    expect(later.ladder!.finishedOn).toBeUndefined();
+    expect(later.ladder!.log.at(-1)).toMatchObject({ result: 'repeat', below: ['Leer'] });
+  });
+
+  it('los días de vacaciones de las tarjetas no cuentan como fallo del hábito de Academy', () => {
+    let s = addHabit(base(), 'Estudiar', at('2026-11-01'));
+    s = { ...s, habits: s.habits.map((h) => (h.name === 'Estudiar' ? { ...h, system: 'academy' as const } : h)) };
+    s = createLadder(s, [newStep('rest'), newStep('rest')], MON, at(MON));
+    s = mark(s, 'Leer', MON, 7);
+    s = { ...s, habitCompletions: [...s.habitCompletions, { id: 'e1', habitId: s.habits.find((h) => h.name === 'Estudiar')!.id, day: MON, at: at(MON) }] };
+    const noPause = advanceLadder(s, at('2026-11-30'));
+    expect(noPause.ladder!.log.at(-1)).toMatchObject({ result: 'repeat', below: ['Estudiar'] });
+    const paused = advanceLadder({ ...s, studyPauses: [{ id: 'p', from: '2026-11-24', until: '2026-11-29' }] }, at('2026-11-30'));
+    expect(paused.ladder!.log.at(-1)!.result).toBe('up');
+  });
 });

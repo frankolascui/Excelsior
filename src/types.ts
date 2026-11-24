@@ -140,6 +140,8 @@ export interface HabitLadder {
   steps: LadderStep[];
   /** Lunes (YYYY-MM-DD) de la semana 1. */
   startedOn: string;
+  /** Día en que la creaste: esa primera semana solo cuenta desde ahí. */
+  createdOn?: string;
   /** Escalón de esta semana (-1 = aún no ha empezado). */
   current: number;
   /** Lunes de la semana en curso del escalón actual (lo anterior ya se evaluó). */

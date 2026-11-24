@@ -2,7 +2,7 @@
 // semana de consolidar o de auditoría, sin nada nuevo. Regla del 80 %: si al acabar la semana algún hábito
 // queda por debajo, no se sube y la semana se repite; el calendario se corre solo en vez de hundirse.
 import type { GameState, Habit, HabitLadder, LadderStep } from './types';
-import { addHabit, dayKey, habitDayCount, isHabitDone, MINIMUM_MAX, shiftDay, uid, weekStart } from './game';
+import { addHabit, dayKey, studyPausedOn, habitDayCount, isHabitDone, MINIMUM_MAX, shiftDay, uid, weekStart } from './game';
 
 export const LADDER_RULES = {
   pct: 0.8, // mínimo de cada hábito en la semana para subir
@@ -37,7 +37,7 @@ function cleanStep(x: LadderStep): LadderStep | null {
 export function createLadder(s: GameState, steps: LadderStep[], start: string, now: number): GameState {
   const clean = steps.map(cleanStep).filter((x): x is LadderStep => !!x).slice(0, LADDER_RULES.maxSteps);
   if (clean.length === 0) return s;
-  const ladder: HabitLadder = { steps: clean, startedOn: weekStart(noon(start)), current: -1, log: [] };
+  const ladder: HabitLadder = { steps: clean, startedOn: weekStart(noon(start)), createdOn: dayKey(now), current: -1, log: [] };
   return advanceLadder({ ...s, ladder }, now);
 }
 
@@ -74,15 +74,18 @@ function enterStep(s: GameState, step: LadderStep, now: number): GameState {
  * Cuánto cumpliste cada hábito en la semana que empieza en `monday` (hasta `until`, sin incluir ese día,
  * para medir la semana en curso). Diarios: días hechos / días; semanales: veces / meta (proporcional si
  * el hábito nació a mitad de semana). Se saltan los que nacieron el viernes o después: aún no cuentan.
+ * `from`: la semana en que creaste la escalera solo cuenta desde ese día. Los días de vacaciones de las
+ * tarjetas no cuentan para el hábito de Academy (ni suman ni fallan).
  */
-export function weekPcts(s: GameState, monday: string, until?: string): { habit: Habit; pct: number; done: number; need: number }[] {
+export function weekPcts(s: GameState, monday: string, until?: string, from?: string): { habit: Habit; pct: number; done: number; need: number }[] {
   const start = noon(monday);
-  const days = Array.from({ length: 7 }, (_, i) => dayKey(shiftDay(start, i))).filter((d) => !until || d < until);
+  const first = from && from > monday ? from : monday;
+  const days = Array.from({ length: 7 }, (_, i) => dayKey(shiftDay(start, i))).filter((d) => d >= first && (!until || d < until));
   const out: { habit: Habit; pct: number; done: number; need: number }[] = [];
   for (const h of s.habits) {
     const born = dayKey(h.createdAt);
-    if (born > dayKey(shiftDay(start, 3))) continue;
-    const counted = days.filter((d) => d >= born);
+    if (born > dayKey(shiftDay(noon(first), 3))) continue;
+    const counted = days.filter((d) => d >= born && !(h.system === 'academy' && studyPausedOn(s, d)));
     if (counted.length === 0) continue;
     if (h.frequency === 'weekly') {
       const need = Math.max(1, Math.ceil(((h.perWeek ?? 1) * counted.length) / 7));
@@ -115,7 +118,7 @@ export function advanceLadder(s: GameState, now: number): GameState {
   }
   while (L.week! < monday) {
     const week = L.week!;
-    const pcts = weekPcts(st, week);
+    const pcts = weekPcts(st, week, undefined, week === L.startedOn ? L.createdOn : undefined);
     const below = pcts.filter((x) => x.pct < LADDER_RULES.pct).map((x) => x.habit.name);
     const step = L.steps[L.current];
     const next = L.steps[L.current + 1];

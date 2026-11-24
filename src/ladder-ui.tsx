@@ -82,7 +82,7 @@ export function LadderPanel({ state, act, toast, now, guide = 'Hiperión' }: { s
   const step = started ? L.steps[L.current] : null;
   const next = started ? L.steps[L.current + 1] : L.steps[0];
   const last = lastWeekResult(L, now);
-  const live = started && !L.finishedOn ? weekPcts(state, weekStart(now), today) : [];
+  const live = started && !L.finishedOn ? weekPcts(state, weekStart(now), today, L.week === L.startedOn ? L.createdOn : undefined) : [];
   const weekN = weeksOnStep(L);
 
   const P = Math.round(LADDER_RULES.pct * 100);
