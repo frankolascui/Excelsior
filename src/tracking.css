@@ -1,0 +1,26 @@
+/* Hábitos del mes en pequeño e informe semanal para la IA (2026-11-25) */
+.habit-month { gap: 8px; }
+.hm-head { display: flex; align-items: center; justify-content: space-between; }
+.hm-head h3 { margin: 0; font-size: 15px; }
+.hm-nav { display: flex; gap: 2px; }
+.hm-nav .icon-btn { width: 28px; height: 28px; }
+.hm-grid { display: grid; grid-template-columns: minmax(0, 8.5rem) repeat(var(--hm-days, 31), minmax(0, 1fr)) 2.4rem; gap: 3px 2px; align-items: center; }
+.hm-name { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 8px; color: var(--fg); }
+.hm-num { font: 500 9.5px var(--mono); color: var(--muted); text-align: center; overflow: visible; white-space: nowrap; }
+.hm-num.today { color: var(--c1); }
+.hm-day { height: 11px; border-radius: 3px; background: var(--surface-2); }
+.hm-day.on { background: color-mix(in srgb, var(--c2) 70%, var(--c1)); }
+.hm-day.paused { opacity: .4; background: repeating-linear-gradient(45deg, var(--surface-2) 0 2px, transparent 2px 4px); }
+.hm-day.out { opacity: .25; }
+.hm-day.today { outline: 1px solid var(--c1); outline-offset: 1px; }
+.hm-pct { font-size: 11px; color: var(--muted); text-align: right; }
+@media (max-width: 560px) {
+  .hm-grid { gap: 3px 1px; grid-template-columns: minmax(0, 5.2rem) repeat(var(--hm-days, 31), minmax(0, 1fr)) 2.1rem; }
+  .hm-name { font-size: 11.5px; padding-right: 4px; }
+  .hm-day { height: 10px; border-radius: 2px; }
+}
+
+.ai-report { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.ai-week { display: inline-flex; align-items: center; gap: 2px; font-size: 13.5px; margin-right: auto; }
+.ai-week span { min-width: 8.5rem; text-align: center; }
+.ai-week .icon-btn { width: 28px; height: 28px; }

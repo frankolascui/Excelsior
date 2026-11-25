@@ -2,7 +2,7 @@
 import { NewsHistory, VersionButton } from './news-ui';
 import { WeeklyReviewForm } from './priorities-ui';
 import { weeklyReview } from './review';
-import { XpHistory } from './history-ui';
+import { CopyReportButton, XpHistory } from './history-ui';
 import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import type { Game, Tab } from './screens';
 import { avatarInfo, ATTRIBUTES, formatAttrXp } from './attributes';
@@ -310,6 +310,7 @@ export function WeeklyChronicle({ game, guide, now, go }: { game: Game; guide: s
           </button>
         )}
         <button className="ghost" onClick={close}>{reviewing ? 'Ahora no' : 'Entendido'}</button>
+        <CopyReportButton state={state} monday={w.weekKey} />
       </div>
     </section>
   );

@@ -48,7 +48,7 @@ import { QuestTemplates } from './templates-ui';
 import { addBlockFor } from './life';
 import type { BlockWhen } from './block-add';
 import { LadderPanel } from './ladder-ui';
-import { DragHandle, draftToProgression, FocusHabitAdd, HabitHints, MinimumInput, PerDayInput, ProgressionInput, progressionDraft, RetiredHabits, weekShareText, type ProgressionDraft } from './habits-ui';
+import { DragHandle, draftToProgression, FocusHabitAdd, HabitHints, HabitMonth, MinimumInput, PerDayInput, ProgressionInput, progressionDraft, RetiredHabits, weekShareText, type ProgressionDraft } from './habits-ui';
 import { atMax, levelUp, restoreHabit, retireHabit, setProgression, snoozeHint } from './progression';
 import { InfoTip } from './infotip';
 import { QuestHistory } from './quest-history';
@@ -860,6 +860,7 @@ export function Habits({ game, guide }: { game: Game; guide: string }) {
           </ul>
         )}
       </section>
+      <HabitMonth state={state} now={now} />
       <LadderPanel state={state} act={act} toast={game.toast} guide={guide} now={now} />
       <RetiredHabits state={state} onRestore={(id) => act((s) => restoreHabit(s, id))} />
       </div>

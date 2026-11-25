@@ -1,5 +1,5 @@
 // Historial de un hábito: las últimas 5 semanas en cuadrícula (lunes a domingo), escudos y números del mes.
-import { useState, type ReactNode } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import type { GameState, Habit, HabitProgression } from './types';
 import { atMax, clockText, constancy, habitHints, levelUpDue, nextValue, parseClock, PROGRESSION_RULES, valueText } from './progression';
 import { GuidePortrait } from './tutorial';
@@ -7,6 +7,7 @@ import { dailyStreakInfo, dayKey, FOCUS_HABIT_RULES, habitDayCount, habitPausedO
 import { SHIELD } from './economy';
 import { Icon } from './icons';
 import { Select } from './pickers';
+import './tracking.css';
 
 const WD = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
@@ -404,5 +405,64 @@ export function FocusHabitAdd({ onAdd }: { onAdd: (min: number) => void }) {
       <button type="button" className="ghost small" onClick={() => setOpen(false)}>Cancelar</button>
       <p className="hint">Se marca solo cuando tus sesiones de Deep Work (y los repasos de Academy) del día suman esos minutos.</p>
     </form>
+  );
+}
+
+/**
+ * Hábitos del mes en pequeño: una fila por hábito y una casilla por día. Ocupa poco y se pasa de mes con las flechas.
+ * Cuenta a la derecha: % de días hechos (diarios) o veces (semanales).
+ */
+export function HabitMonth({ state, now }: { state: GameState; now: number }) {
+  const today = dayKey(now);
+  const [offset, setOffset] = useState(0);
+  const base = new Date(now);
+  const first = new Date(base.getFullYear(), base.getMonth() + offset, 1, 12);
+  const n = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+  const days = Array.from({ length: n }, (_, i) => dayKey(new Date(first.getFullYear(), first.getMonth(), i + 1, 12).getTime()));
+  const month = days[0].slice(0, 7);
+  const habits = [...state.habits, ...(state.retiredHabits ?? []).filter((h) => state.habitCompletions.some((c) => c.habitId === h.id && c.day.startsWith(month)))]
+    .filter((h) => dayKey(h.createdAt) <= days[n - 1]);
+  const oldest = Math.min(...state.habits.map((h) => h.createdAt), ...state.habitCompletions.map((c) => new Date(`${c.day}T12:00:00`).getTime()), now);
+  const canBack = dayKey(oldest).slice(0, 7) < month;
+  const title = first.toLocaleDateString('es-ES', { month: 'long', year: offset === 0 ? undefined : 'numeric' });
+  if (state.habits.length === 0 && !state.retiredHabits?.length) return null;
+  return (
+    <section className="panel habit-month" aria-labelledby="hm-h">
+      <header className="hm-head">
+        <h3 id="hm-h">{title.charAt(0).toUpperCase() + title.slice(1)}</h3>
+        <span className="hm-nav">
+          <button type="button" className="icon-btn" aria-label="Mes anterior" disabled={!canBack} onClick={() => setOffset(offset - 1)}><Icon name="chevron-left" /></button>
+          <button type="button" className="icon-btn" aria-label="Mes siguiente" disabled={offset >= 0} onClick={() => setOffset(offset + 1)}><Icon name="chevron-right" /></button>
+        </span>
+      </header>
+      <div className="hm-grid" style={{ '--hm-days': n } as CSSProperties} role="table" aria-label={`Hábitos de ${title}`}>
+        <span className="hm-corner" />
+        {days.map((d) => {
+          const num = Number(d.slice(8));
+          const nearToday = d !== today && d.slice(0, 7) === today.slice(0, 7) && Math.abs(num - Number(today.slice(8))) <= 2;
+          return <span key={d} className={`hm-num${d === today ? ' today' : ''}`}>{d === today || (!nearToday && (num === 1 || num % 5 === 0)) ? num : ''}</span>;
+        })}
+        <span className="hm-num" />
+        {habits.map((h) => {
+          const born = dayKey(h.createdAt);
+          let done = 0, open = 0, times = 0;
+          const cells = days.map((d) => {
+            const c = habitDayCount(state, h.id, d);
+            const out = d < born || d > today;
+            const rest = !c && !out && habitPausedOn(state, h.id, d);
+            if (c) { done++; times += c; }
+            if (!out && (c || !rest)) open++;
+            const label = `${h.name}, ${Number(d.slice(8))}: ${c ? 'hecho' : out ? '—' : rest ? 'en pausa' : 'sin hacer'}`;
+            return <span key={d} className={['hm-day', c && 'on', rest && 'paused', out && 'out', d === today && 'today'].filter(Boolean).join(' ')} title={label} aria-label={label} />;
+          });
+          const weekly = h.frequency === 'weekly';
+          return [
+            <span key={`${h.id}-n`} className="hm-name" title={h.name}>{h.name}</span>,
+            ...cells,
+            <span key={`${h.id}-p`} className="hm-pct mono" title={weekly ? `${times} veces este mes` : `${done} de ${open} días`}>{weekly ? `×${times}` : open ? `${Math.round((done / open) * 100)}%` : '—'}</span>,
+          ];
+        })}
+      </div>
+    </section>
   );
 }
