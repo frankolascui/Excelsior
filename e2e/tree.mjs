@@ -51,7 +51,6 @@ check(await seen('.item.has-sub:has-text("Responder correos") .tree-count:has-te
 check(await seen('.item:has-text("Examen tema 4") .due:has-text("vence en 4 días")'), 'el examen lleva su fecha');
 
 // Repartir sesiones para el examen del tema 4
-await page.click('button[aria-label="Más acciones de Examen tema 4: derivadas"]');
 await page.click('button[aria-label="Partir Examen tema 4: derivadas en submisiones"]');
 check(await seen('.sub-add .split-row:has-text("hasta el 14 nov (4 días)")'), 'repartir sabe cuántos días quedan');
 await page.fill('.sub-add .split-n', '4');

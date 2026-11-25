@@ -142,7 +142,6 @@ export function QuestItem({
   const done = !!quest.completedAt;
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);
-  const [tools, setTools] = useState(false);
   const [blocking, setBlocking] = useState(false);
   const [open, setOpen] = useState(true);
   const container = !!progress && progress.total > 0;
@@ -195,28 +194,6 @@ export function QuestItem({
           {quest.startsOn && !done && quest.startsOn > dayKey(Date.now()) && <span className="starts">sale {dayWords(quest.startsOn).toLowerCase()}</span>}
           {kingdom && <span className="kingdom-tag"><Icon name="castle" /> {kingdom}</span>}
         </span>
-        {tools && hasTools && (
-          <div className="item-tools" role="group" aria-label={`Acciones de ${quest.title}`}>
-            {onDeadline && !quest.deadline && (
-              <DatePicker value={null} onChange={onDeadline} label={`Poner fecha límite a ${quest.title}`} className="ghost small due-add"><Icon name="calendar-plus" /> Fecha</DatePicker>
-            )}
-            {canSplit && (
-              <button className="ghost small split-btn" onClick={() => { setAdding(true); setOpen(true); setTools(false); }} aria-label={`Partir ${quest.title} en submisiones`}><Icon name="list" /> {container ? 'Submisión' : 'Partir'}</button>
-            )}
-            {onBlock && !container && (
-              <button className="ghost small block-btn" onClick={() => { setBlocking(true); setTools(false); }} aria-label={`Bloque de tiempo para ${quest.title}`}><Icon name="ev-bloque" /> Bloque</button>
-            )}
-            {onRepeat && !quest.repeat && !container && (
-              <RepeatPicker value={null} onChange={onRepeat} label={`Repetir ${quest.title}`} describe={repeatLabel} className="ghost small repeat-add"><Icon name="repeat" /> Repetir</RepeatPicker>
-            )}
-            {onEdit && (
-              <button className="ghost small edit-btn" onClick={() => setEditing(true)} aria-label={`Editar ${quest.title}`}><Icon name="pencil" /> Editar</button>
-            )}
-            {onDelete && (
-              <button className="ghost small danger" onClick={() => sureThen({ title: `¿Borrar la misión «${quest.title}»?`, confirmLabel: 'Borrar misión' }, onDelete)} aria-label={`Borrar ${quest.title}`}><Icon name="trash" /> Borrar</button>
-            )}
-          </div>
-        )}
         {blocking && onBlock && !done && <BlockAdd name={quest.title} onAdd={(w) => { onBlock(w); setBlocking(false); }} onClose={() => setBlocking(false)} />}
         {adding && canSplit && !container && <SubAdd quest={quest} inherited={quest.deadline ?? inherited} onAdd={onAddChild} onSplit={onSplit} onClose={() => setAdding(false)} />}
       </div>
@@ -226,9 +203,26 @@ export function QuestItem({
         )}
         {onUndo && done && <button className="ghost small" onClick={onUndo}><Icon name="rotate-ccw" /> Deshacer</button>}
         {hasTools && (
-          <button className={tools ? 'icon-btn more-btn on' : 'icon-btn more-btn'} onClick={() => setTools(!tools)} aria-expanded={tools} aria-label={`Más acciones de ${quest.title}`} title="Fecha, bloque, partir, repetir, editar o borrar">
-            <span className="dots" aria-hidden="true"><i /><i /><i /></span>
-          </button>
+          <span className="item-quick" role="group" aria-label={`Acciones de ${quest.title}`}>
+            {onBlock && !container && (
+              <button className={blocking ? 'icon-btn quick on' : 'icon-btn quick'} onClick={() => setBlocking(!blocking)} aria-expanded={blocking} aria-label={`Bloque de tiempo para ${quest.title}`} title="Bloque de tiempo en el calendario"><Icon name="ev-bloque" /></button>
+            )}
+            {onDeadline && !quest.deadline && (
+              <DatePicker value={null} onChange={onDeadline} label={`Poner fecha límite a ${quest.title}`} className="icon-btn quick due-add"><Icon name="calendar-plus" /></DatePicker>
+            )}
+            {canSplit && (
+              <button className="icon-btn quick split-btn" onClick={() => { setAdding(true); setOpen(true); }} aria-label={`Partir ${quest.title} en submisiones`} title={container ? 'Añadir submisión' : 'Partir en submisiones'}><Icon name="list" /></button>
+            )}
+            {onRepeat && !quest.repeat && !container && (
+              <RepeatPicker value={null} onChange={onRepeat} label={`Repetir ${quest.title}`} describe={repeatLabel} className="icon-btn quick repeat-add"><Icon name="repeat" /></RepeatPicker>
+            )}
+            {onEdit && (
+              <button className="icon-btn quick edit-btn" onClick={() => setEditing(true)} aria-label={`Editar ${quest.title}`} title="Editar"><Icon name="pencil" /></button>
+            )}
+            {onDelete && (
+              <button className="icon-btn quick danger" onClick={() => sureThen({ title: `¿Borrar la misión «${quest.title}»?`, confirmLabel: 'Borrar misión' }, onDelete)} aria-label={`Borrar ${quest.title}`} title="Borrar"><Icon name="trash" /></button>
+            )}
+          </span>
         )}
       </div>
       {container && open && (
@@ -501,17 +495,25 @@ export function HabitItem({
                 <span className="mono xp-tag">+{habitXp(habit)} XP</span>
                 <RewardTags rewards={habit.rewards} />
                 <span className="habit-detail-actions">
-                  {onBlock && <button className="ghost small block-btn" onClick={() => setBlocking(!blocking)} aria-expanded={blocking} aria-label={`Bloque de tiempo para ${habit.name}`} title="Reservar un hueco en el calendario"><Icon name="ev-bloque" /> Bloque</button>}
-                  {onEdit && <button className="ghost small edit-btn" onClick={() => setEditing(true)} aria-label={`Editar ${habit.name}`} title="Veces, meta, mínimo y XP"><Icon name="sliders" /> Editar</button>}
                   {onDelete && <button className="ghost small danger" onClick={() => sureThen({ title: `¿Borrar el hábito «${habit.name}»?`, message: 'Se borra también su historial y su racha.', confirmLabel: 'Borrar hábito' }, onDelete)} aria-label={`Borrar ${habit.name}`} title="Borrar"><Icon name="trash" /> Borrar</button>}
                 </span>
               </div>
             )}
-            {!compact && blocking && onBlock && <BlockAdd name={habit.name} onAdd={(w) => { onBlock(w); setBlocking(false); }} onClose={() => setBlocking(false)} />}
           </div>
         )}
       </div>
-      {handle && <div className="item-actions">{handle}</div>}
+      {!compact && blocking && onBlock && <div className="habit-block"><BlockAdd name={habit.name} onAdd={(w) => { onBlock(w); setBlocking(false); }} onClose={() => setBlocking(false)} /></div>}
+      {(handle || (!compact && (onBlock || onEdit))) && (
+        <div className="item-actions">
+          {!compact && (onBlock || onEdit) && (
+            <span className="item-quick" role="group" aria-label={`Acciones de ${habit.name}`}>
+              {onBlock && <button className={blocking ? 'icon-btn quick on' : 'icon-btn quick'} onClick={() => setBlocking(!blocking)} aria-expanded={blocking} aria-label={`Bloque de tiempo para ${habit.name}`} title="Bloque de tiempo en el calendario"><Icon name="ev-bloque" /></button>}
+              {onEdit && <button className="icon-btn quick edit-btn" onClick={() => setEditing(true)} aria-label={`Editar ${habit.name}`} title="Veces, meta, mínimo y XP"><Icon name="pencil" /></button>}
+            </span>
+          )}
+          {handle}
+        </div>
+      )}
     </li>
   );
 }

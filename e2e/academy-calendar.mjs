@@ -123,7 +123,6 @@ check(await page.isVisible('.upcoming .ev-chip:has-text("Matemáticas · Parcial
 
 await page.click('.nav-item:has-text("Misiones")');
 check(await page.isVisible('.item:has-text("Simulacro de Matemáticas: Derivadas")'), 'la misión del simulacro sale en Misiones');
-await page.click('button[aria-label="Más acciones de Simulacro de Matemáticas: Derivadas"]');
 await page.click('button[aria-label="Bloque de tiempo para Simulacro de Matemáticas: Derivadas"]');
 await page.waitForTimeout(800);
 await page.screenshot({ path: `${out}/acal-06-bloque-mision.png` });

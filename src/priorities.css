@@ -176,3 +176,16 @@ html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted) 2
 .block-add { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--c1) 6%, transparent); }
 .block-add-label { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--muted); }
 .block-add-when { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* Acciones a un toque al lado de cada misión y hábito (antes, tras los tres puntitos) */
+.item-quick { display: inline-flex; align-items: center; gap: 2px; }
+.item-quick .icon-btn.quick, .item-quick .quick { width: 30px; height: 30px; min-width: 30px; padding: 0; display: inline-grid; place-items: center; border: 0; background: none; color: var(--muted); border-radius: 8px; font-size: 15px; }
+.item-quick .quick:hover, .item-quick .quick:focus-visible, .item-quick .quick.on { color: var(--fg); background: color-mix(in srgb, var(--c1) 12%, transparent); }
+.item-quick .quick.danger:hover { color: var(--danger); }
+/* en PC salen al pasar por encima (la lista queda tranquila); en táctil, siempre */
+@media (hover: hover) {
+  .item .item-quick { opacity: 0.45; transition: opacity 0.15s; }
+  .item:hover .item-quick, .item:focus-within .item-quick { opacity: 1; }
+}
+.item:has(> .habit-block) { flex-wrap: wrap; }
+.item > .habit-block { flex-basis: 100%; order: 10; }

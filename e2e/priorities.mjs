@@ -126,8 +126,7 @@ check(await seen(page, '.item:has-text("Llamar al tutor") .impact-tag.imp-alto:h
 await page.click('.item:has-text("Responder correos") .impact-tag');
 await page.click('.pop-impact-opt:has-text("Medio")');
 check(await seen(page, '.item:has-text("Responder correos") .impact-tag.imp-medio:has-text("+20 XP")'), 'cambiar el impacto cambia el XP');
-await page.click('button[aria-label="Más acciones de Llamar al tutor del TFG"]');
-check(await seen(page, '.item-tools button:has-text("Borrar")') && !(await page.isVisible('.item:has-text("Responder correos") button:has-text("Borrar")')), 'las acciones de una misión salen solo al pulsar ⋯');
+check(await seen(page, '.item:has-text("Llamar al tutor del TFG") .item-quick button[aria-label="Borrar Llamar al tutor del TFG"]'), 'las acciones de una misión están a un toque, al lado (sin ⋯)');
 await page.screenshot({ path: `${out}/p4-misiones-limpieza.png`, fullPage: true });
 await page.click('.cleanup-item:has-text("Ver el curso de Notion") button:has-text("Eliminar")');
 await page.click('[data-testid="sure-dialog"] button.danger-solid');

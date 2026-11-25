@@ -116,6 +116,49 @@ export function editOccurrence(s: GameState, id: string, day: string, patch: Par
   return { ...skipped, events: [...skipped.events!, cleanEvent({ ...one, ...fields })] };
 }
 
+/** Qué cambia al tocar un evento que se repite (como en Google Calendar). */
+export type EditScope = 'one' | 'following' | 'all';
+
+const shiftDay = (day: string, n: number) => {
+  const [y, m, d] = day.split('-').map(Number);
+  const t = new Date(y, m - 1, d + n, 12);
+  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+};
+const daysBetween = (a: string, b: string) => Math.round((new Date(`${b}T12:00:00`).getTime() - new Date(`${a}T12:00:00`).getTime()) / 86_400_000);
+
+/**
+ * Cambiar un evento que se repite desde su ocurrencia del día `day`:
+ * - 'one': solo ese día (sale de la serie como evento suelto con id `newId`);
+ * - 'following': ese día y los siguientes (la serie se corta la víspera y sigue otra, con id `newId`, con los cambios);
+ * - 'all': toda la serie. Si cambia el día, toda la serie se mueve los mismos días.
+ * Sin repetición, cambia el evento y ya.
+ */
+export function editSeries(s: GameState, id: string, day: string, patch: Partial<EventFields>, scope: EditScope, newId: string, now: number): GameState {
+  const e = (s.events ?? []).find((x) => x.id === id);
+  if (!e) return s;
+  if (!e.repeat) return updateEvent(s, id, patch);
+  if (scope === 'one') return editOccurrence(s, id, day, patch, newId, now);
+  const moveBy = patch.day ? daysBetween(day, patch.day) : 0;
+  if (scope === 'all' || day <= e.day) {
+    const { day: _d, ...rest } = patch;
+    return updateEvent(s, id, { ...rest, day: shiftDay(e.day, moveBy) });
+  }
+  const { day: _d, ...rest } = patch;
+  const head: CalendarEvent = { ...e, until: shiftDay(day, -1), skip: e.skip?.filter((x) => x < day) };
+  const tail: CalendarEvent = { ...e, ...rest, id: newId, day: shiftDay(day, moveBy), skip: e.skip?.filter((x) => x >= day).map((x) => shiftDay(x, moveBy)), createdAt: now };
+  if (e.until && 'until' in patch === false) tail.until = e.until;
+  return { ...s, events: [...(s.events ?? []).map((x) => (x.id === id ? cleanEvent(head) : x)), cleanEvent(tail)] };
+}
+
+/** Borrar un evento que se repite desde el día `day`: solo ese día, ese y los siguientes, o toda la serie. */
+export function deleteSeries(s: GameState, id: string, day: string, scope: EditScope): GameState {
+  const e = (s.events ?? []).find((x) => x.id === id);
+  if (!e) return s;
+  if (!e.repeat || scope === 'all' || (scope === 'following' && day <= e.day)) return deleteEvent(s, id);
+  if (scope === 'one') return skipEventDay(s, id, day);
+  return { ...s, events: (s.events ?? []).map((x) => (x.id === id ? cleanEvent({ ...x, until: shiftDay(day, -1), skip: x.skip?.filter((k) => k < day) }) : x)) };
+}
+
 /** Quita un solo día de un evento que se repite (el resto de la serie sigue). */
 export function skipEventDay(s: GameState, id: string, day: string): GameState {
   return { ...s, events: (s.events ?? []).map((e) => (e.id === id ? { ...e, skip: [...(e.skip ?? []), day] } : e)) };

@@ -25,10 +25,12 @@ async function deepWork(minutes, keepLevelUp = false) {
   if (!keepLevelUp && await seen('.tour')) await page.click('.tour button:has-text("Saltar")');
   if (!keepLevelUp && await quick('#rate-h')) await page.click('[aria-labelledby="rate-h"] button:has-text("Omitir")');
 }
+/** Elige a qué eventos de una serie se aplica el cambio (este, este y los siguientes, todos). */
+async function scope(name) { await page.click(`.scope-opt:has-text("${name}")`); await page.click('.scope-card button:has-text("Aceptar")'); }
 /** Acción de una misión que vive tras «⋯» (fecha, pasos, repetir, editar, borrar). */
 async function questAction(title, label) {
   const sel = `button[aria-label="${label} ${title}"]`;
-  if (!(await page.isVisible(sel))) await page.click(`button[aria-label="Más acciones de ${title}"]`);
+
   await page.click(sel);
   if (label === 'Borrar') await sure();
 }
@@ -131,7 +133,6 @@ await page.click('.pop-repeat .pop-chip:has-text("Lunes a viernes")');
 check(await seen('#new-quest-repeat:has-text("Lunes a viernes")'), 'repetir: el botón dice los días');
 await page.click('[data-tour="quest-add"] button:has-text("Crear")');
 check(await seen('.item:has-text("Leer la prensa") .repeat-tag:has-text("Lunes a viernes")'), 'la misión muestra que se repite');
-await page.click('button[aria-label="Más acciones de Leer la prensa"]');
 await page.click('button[aria-label="Partir Leer la prensa en submisiones"]');
 await page.fill('[aria-label="Nueva submisión de Leer la prensa"]', 'Titulares');
 await page.press('[aria-label="Nueva submisión de Leer la prensa"]', 'Enter');
@@ -728,17 +729,21 @@ await page.mouse.move(bb.x + 40, bb.y + 30, { steps: 3 });
 await page.mouse.move(bb.x + 40, bb.y + 10 + 52, { steps: 5 });
 check(await seen('.tg-block.lifted:has-text("17:00 – 18:00")'), 'al arrastrar, el evento enseña su nueva hora');
 await page.mouse.up();
+check(await seen('.scope-card:has-text("Este y los siguientes")'), 'mover un evento que se repite pregunta a cuáles, como Google');
+await scope('Todos los eventos');
 check(await seen('.tg-day .tg-block:has-text("17:00 – 18:00")') && !(await page.$('.sheet')), 'soltar lo deja a las 17:00 (sin abrir la ficha)');
 const bb2 = await (await page.$('.tg-day .tg-block:has-text("Estudiar física") .tg-resize')).boundingBox();
 await page.mouse.move(bb2.x + 20, bb2.y + 4);
 await page.mouse.down();
 await page.mouse.move(bb2.x + 20, bb2.y + 4 + 26, { steps: 5 });
 await page.mouse.up();
+await scope('Todos los eventos');
 check(await seen('.tg-day .tg-block:has-text("17:00 – 18:30")'), 'estirar el borde de abajo lo alarga media hora');
 await page.click('.tg-day .tg-block:has-text("Estudiar física")');
 await page.click('.sheet .swatch[aria-label="Albahaca"]');
+await page.click('.sheet button:has-text("Guardar")');
+await scope('Todos los eventos');
 check(await page.$eval('.tg-day .tg-block:has-text("Estudiar física")', (el) => el.style.getPropertyValue('--ev')) === '#30a46c', 'el evento cambia de color');
-await page.keyboard.press('Escape');
 await page.screenshot({ path: `${out}/17-calendar-day.png` });
 await page.click('.cal-views [role=radio]:has-text("Semana")');
 check((await page.$$('.tg-week .tg-dayhead')).length === 7, 'la semana tiene 7 días');
@@ -748,20 +753,19 @@ await page.click('.cal-views [role=radio]:has-text("4 días")');
 check((await page.$$('.tg-few .tg-dayhead')).length === 4 && (await page.$$('.tg-few .tg-block:has-text("Estudiar física")')).length === 4, 'vista de 4 días: 4 columnas con el bloque diario');
 // Editar un evento que se repite: solo ese día (lo concreto) o todos (lo general).
 await page.click('.tg-few .tg-col >> nth=1 >> .tg-block');
-check(await seen('.sheet .ev-scope [aria-checked=true]:has-text("Solo este día")'), 'un evento que se repite pregunta si cambiar solo ese día o todos');
 await page.fill('.sheet .sheet-title-input', 'Estudiar química');
 await page.press('.sheet .sheet-title-input', 'Enter');
-check(await seen('.sheet .ev-detached:has-text("Estudiar física")'), 'al cambiar solo ese día avisa de que los demás siguen igual');
-await page.keyboard.press('Escape');
+await page.click('.sheet button:has-text("Guardar")');
+await scope('Este evento');
 const fewTitles = async () => page.$$eval('.tg-few .tg-col', (cols) => cols.map((c) => c.querySelector('.tg-block')?.textContent ?? ''));
 let ft = await fewTitles();
 check(ft[1].includes('Estudiar química') && ft[2].includes('Estudiar física') && ft[3].includes('Estudiar física'), 'solo ese día cambia de nombre');
 await page.click('.tg-few .tg-col >> nth=2 >> .tg-block');
-await page.click('.sheet .ev-scope button:has-text("Todos los días")');
 await page.click('.sheet .swatch[aria-label="Uva"]');
-await page.keyboard.press('Escape');
+await page.keyboard.press('Escape'); // cerrar con cambios también pregunta
+await scope('Todos los eventos');
 const fewColors = await page.$$eval('.tg-few .tg-col', (cols) => cols.map((c) => c.querySelector('.tg-block')?.style.getPropertyValue('--ev') ?? ''));
-check(fewColors[2] === '#8e4ec6' && fewColors[3] === '#8e4ec6' && fewColors[1] !== '#8e4ec6', '«Todos los días» cambia la serie y respeta el día cambiado aparte');
+check(fewColors[2] === '#8e4ec6' && fewColors[3] === '#8e4ec6' && fewColors[1] !== '#8e4ec6', '«Todos los eventos» cambia la serie y respeta el día cambiado aparte');
 await page.click('.cal-views [role=radio]:has-text("Semana")');
 await page.click('.tg-week .tg-block:has-text("Estudiar física") >> nth=0');
 await page.click('.sheet button:has-text("Deep Work")');

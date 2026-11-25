@@ -565,3 +565,11 @@ button.tg-session { font-family: inherit; justify-content: flex-start; align-ite
 .decay-note .ico { flex: none; margin-top: 2px; }
 .decay-note b { color: var(--fg); }
 
+
+/* Evento que se repite: a cuáles se aplica el cambio (como en Google Calendar) */
+.scope-list { display: grid; gap: 4px; margin: 4px 0 6px; }
+.scope-opt { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; cursor: pointer; }
+.scope-opt:hover { background: color-mix(in srgb, var(--c1) 8%, transparent); }
+.scope-opt.on { background: color-mix(in srgb, var(--c1) 14%, transparent); }
+.scope-opt input { accent-color: var(--c1); width: 16px; height: 16px; margin: 0; }
+.ev-repeat-tag { display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; color: var(--muted); text-transform: none; letter-spacing: 0; font-family: var(--body, inherit); }

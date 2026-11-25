@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { createProfile, emptyState } from './game';
+import type { GameState } from './types';
 import {
   addEvent, addReminder, deleteReminder, dueAlerts, editOccurrence, eventColor, eventSpan, eventsOn, laterReminders, layoutLanes, moveEvent, occursOn, remindersOn,
-  repeatText, skipEventDay, todayReminders, toggleReminder, upcomingEvents, updateEvent,
+  deleteSeries, editSeries, repeatText, skipEventDay, todayReminders, toggleReminder, upcomingEvents, updateEvent,
 } from './life';
 
 const NOW = new Date(2026, 9, 6, 10, 0).getTime(); // martes 6 de octubre, 10:00
@@ -196,5 +197,45 @@ describe('misiones y hábitos dentro de un bloque', () => {
     expect(next[1].questId).not.toBe(daily.id);
     s = removeBlockTask(s, ev, { kind: 'habit', id: habit.id });
     expect(s.events![0].tasks).toHaveLength(2);
+  });
+});
+
+describe('cambiar un evento que se repite: este, este y los siguientes, o todos', () => {
+  const base = () => addEvent(emptyState(), { title: 'Gimnasio', day: '2026-11-02', kind: 'otro', time: '18:00', end: '19:00', repeat: 'weekly' }, 1);
+  const idOf = (s: GameState) => s.events![0].id;
+
+  it('este y los siguientes: corta la serie la víspera y sigue otra con el cambio', () => {
+    const s0 = base();
+    const s = editSeries(s0, idOf(s0), '2026-11-16', { time: '19:00', end: '20:00' }, 'following', 'nuevo', 2);
+    expect(eventsOn(s, '2026-11-09')[0].time).toBe('18:00');
+    expect(eventsOn(s, '2026-11-16')[0]).toMatchObject({ id: 'nuevo', time: '19:00' });
+    expect(eventsOn(s, '2026-11-30')[0]).toMatchObject({ id: 'nuevo', time: '19:00' });
+    expect(eventsOn(s, '2026-11-16')).toHaveLength(1);
+  });
+
+  it('todos: cambia la serie entera sin crear otra; mover el día mueve toda la serie', () => {
+    const s0 = base();
+    let s = editSeries(s0, idOf(s0), '2026-11-16', { title: 'Pesas' }, 'all', 'x', 2);
+    expect(s.events).toHaveLength(1);
+    expect(eventsOn(s, '2026-11-09')[0].title).toBe('Pesas');
+    s = editSeries(s, idOf(s), '2026-11-16', { day: '2026-11-17' }, 'all', 'x', 2);
+    expect(eventsOn(s, '2026-11-10')).toHaveLength(1);
+    expect(eventsOn(s, '2026-11-09')).toHaveLength(0);
+  });
+
+  it('este: solo ese día', () => {
+    const s0 = base();
+    const s = editSeries(s0, idOf(s0), '2026-11-16', { time: '07:00', end: '08:00' }, 'one', 'suelto', 2);
+    expect(eventsOn(s, '2026-11-16')).toMatchObject([{ id: 'suelto', time: '07:00' }]);
+    expect(eventsOn(s, '2026-11-23')[0].time).toBe('18:00');
+  });
+
+  it('borrar este y los siguientes deja los anteriores', () => {
+    const s0 = base();
+    const s = deleteSeries(s0, idOf(s0), '2026-11-16', 'following');
+    expect(eventsOn(s, '2026-11-09')).toHaveLength(1);
+    expect(eventsOn(s, '2026-11-16')).toHaveLength(0);
+    expect(deleteSeries(s0, idOf(s0), '2026-11-16', 'one').events![0].skip).toEqual(['2026-11-16']);
+    expect(deleteSeries(s0, idOf(s0), '2026-11-16', 'all').events).toHaveLength(0);
   });
 });

@@ -1,6 +1,7 @@
 // Agenda: recordatorios (cosas pequeñas), el formulario para añadir al calendario, la vista por horas (día o semana)
 // con eventos que se arrastran y se alargan como en Google Calendar, y los avisos cuando llega la hora.
 import { sureThen } from './confirm';
+import { createPortal } from 'react-dom';
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import type { Game } from './screens';
 import type { CalendarEvent, EventKind, EventRepeat, GameState, Reminder, RepeatRule } from './types';
@@ -8,7 +9,7 @@ import { completeQuest, dayKey, pendingQuests, toggleHabit, uid, undoQuest } fro
 import {
   addEvent, addReminder, deleteEvent, deleteReminder, dueAlerts, EVENT_COLORS, EVENT_KINDS, eventColor, eventIcon, eventSpan, eventsOn, fromMin,
   addBlockTask, blockItems, removeBlockTask, type BlockItem,
-  cleanRule, eventLabel, laterReminders, layoutLanes, editOccurrence, isKeyEvent, moveEvent, REPEAT_NAMES, skipEventDay, todayReminders, toggleReminder, toMin, updateEvent,
+  cleanRule, eventLabel, laterReminders, layoutLanes, deleteSeries, editSeries, isKeyEvent, moveEvent, REPEAT_NAMES, repeatText, type EditScope, todayReminders, toggleReminder, toMin, updateEvent,
 } from './life';
 import { relDay } from './life-ui';
 import { DatePicker, DurationChips, Select, TimePicker, durationWords } from './pickers';
@@ -322,34 +323,82 @@ function timeRange(e: { time?: string; end?: string }): string {
  * Lo que sale al pulsar un evento: se edita ahí mismo (nombre, color, día, horas, repetición), Deep Work para los bloques
  * y borrar. En un evento que se repite, los cambios valen para toda la serie.
  */
-function EventSheet({ game, id: firstId, day, onClose, startFocus }: { game: Game; id: string; day: string; onClose: () => void; startFocus?: (label: string) => void }) {
+const SCOPE_NAMES: Record<EditScope, string> = { one: 'Este evento', following: 'Este y los siguientes', all: 'Todos los eventos' };
+
+/** Como en Google Calendar: a qué eventos de la serie se aplica el cambio (o el borrado). */
+export function ScopeDialog({ title, onPick, onCancel }: { title: string; onPick: (s: EditScope) => void; onCancel: () => void }) {
+  const [scope, setScope] = useState<EditScope>('one');
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCancel();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onCancel]);
+  return createPortal(
+    <div className="overlay sure-overlay scope-overlay" role="dialog" aria-modal="true" aria-labelledby="scope-h" onClick={(e) => e.target === e.currentTarget && onCancel()}>
+      <form className="overlay-card sure-card scope-card" onSubmit={(e) => { e.preventDefault(); onPick(scope); }}>
+        <h3 id="scope-h">{title}</h3>
+        <div className="scope-list" role="radiogroup" aria-label="A qué eventos">
+          {(Object.keys(SCOPE_NAMES) as EditScope[]).map((k) => (
+            <label key={k} className={scope === k ? 'scope-opt on' : 'scope-opt'}>
+              <input type="radio" name="scope" checked={scope === k} onChange={() => setScope(k)} /> {SCOPE_NAMES[k]}
+            </label>
+          ))}
+        </div>
+        <div className="sure-actions">
+          <button type="button" className="ghost" onClick={onCancel}>Cancelar</button>
+          <button type="submit" className="primary" autoFocus>Aceptar</button>
+        </div>
+      </form>
+    </div>,
+    document.body,
+  );
+}
+
+type EventPatch = Parameters<typeof updateEvent>[2];
+
+/**
+ * Lo que sale al pulsar un evento: se edita ahí mismo (nombre, color, día, horas, repetición), Deep Work para los bloques
+ * y borrar. En un evento suelto los cambios se guardan al momento. En uno que se repite se juntan y, al guardar,
+ * se pregunta como en Google: este evento, este y los siguientes, o todos.
+ */
+function EventSheet({ game, id, day, onClose, startFocus }: { game: Game; id: string; day: string; onClose: () => void; startFocus?: (label: string) => void }) {
   const [onDay, setOnDay] = useState(day);
-  const [id, setId] = useState(firstId);
-  const [scope, setScope] = useState<'one' | 'all'>('one');
-  const [detachedFrom, setDetachedFrom] = useState<string | null>(null);
-  const ev = eventsOn(game.state, onDay).find((e) => e.id === id) ?? (game.state.events ?? []).find((e) => e.id === id);
-  const [title, setTitle] = useState(ev?.title ?? '');
-  useEffect(() => { if (!ev) onClose(); }, [ev]); // eslint-disable-line react-hooks/exhaustive-deps
-  if (!ev) return null;
-  const series = (game.state.events ?? []).find((e) => e.id === id) ?? ev; // ev es el de ese día; series, el guardado (con su primer día)
-  const one = !!ev.repeat && scope === 'one';
-  const set = (patch: Parameters<typeof updateEvent>[2]) => {
+  const [draft, setDraft] = useState<EventPatch>({});
+  const [asking, setAsking] = useState<'save' | 'delete' | null>(null);
+  const stored = eventsOn(game.state, onDay).find((e) => e.id === id) ?? (game.state.events ?? []).find((e) => e.id === id);
+  const [title, setTitle] = useState(stored?.title ?? '');
+  useEffect(() => { if (!stored) onClose(); }, [stored]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!stored) return null;
+  const series = (game.state.events ?? []).find((e) => e.id === id) ?? stored; // la serie guardada (con su primer día)
+  const repeats = !!stored.repeat;
+  const ev: CalendarEvent = repeats ? { ...stored, ...draft, day: draft.day ?? onDay } : stored;
+  const dirty = repeats && (Object.keys(draft).length > 0 || (title.trim() !== '' && title.trim() !== stored.title));
+  const set = (patch: EventPatch) => {
+    if (repeats) return setDraft((d) => ({ ...d, ...patch }));
     if (ev.academy && (patch.title !== undefined || patch.day !== undefined)) {
       // nombre y día también en Academy
       void pushAcademyExam({ academy: ev.academy, title: patch.title ?? ev.title, day: patch.day ?? ev.day }).then((err) => err && game.toast(`{i:alert} No se pudo cambiar en Academy: ${err}`, 'info', 6000));
     }
-    if (!one) return game.act((s) => updateEvent(s, id, patch));
-    // Solo este día: sale de la serie como evento suelto y la ficha sigue con ese.
-    const newId = uid();
-    game.act((s) => editOccurrence(s, id, onDay, patch, newId, Date.now()));
-    setDetachedFrom(ev.title);
-    setId(newId);
+    game.act((s) => updateEvent(s, id, patch));
     if (patch.day) setOnDay(patch.day);
   };
-  const saveTitle = () => { if (title.trim() && title.trim() !== ev.title) set({ title }); };
+  const saveTitle = () => { if (!repeats && title.trim() && title.trim() !== ev.title) set({ title }); };
+  const fullDraft = (): EventPatch => ({ ...draft, ...(title.trim() && title.trim() !== stored.title ? { title } : {}) });
+  const apply = (scope: EditScope) => {
+    game.act((s) => editSeries(s, id, onDay, fullDraft(), scope, uid(), Date.now()));
+    sfx.place();
+    setAsking(null);
+    onClose();
+  };
+  const remove = (scope: EditScope) => { sfx.remove(); game.act((s) => deleteSeries(s, id, onDay, scope)); setAsking(null); onClose(); };
+  const close = () => {
+    if (dirty) return setAsking('save'); // no se pierde lo cambiado: pregunta a qué eventos aplicarlo
+    saveTitle();
+    onClose();
+  };
   const focusFn = ev.kind === 'bloque' ? startFocus : undefined;
   return (
-    <Sheet label={ev.title} onClose={() => { saveTitle(); onClose(); }}>
+    <Sheet label={ev.title} onClose={close}>
       <div className="sheet-edit" style={evStyle(ev)}>
         {ev.academy ? (
           <p className="eyebrow ev-academy"><Icon name="ev-examen" /> Examen · {ev.academy.subject}
@@ -358,20 +407,13 @@ function EventSheet({ game, id: firstId, day, onClose, startFocus }: { game: Gam
         ) : (
           <p className="eyebrow">
             <Select<EventKind> label="Tipo" className="kind-select" value={ev.kind} onChange={(v) => set({ kind: v })} options={EVENT_KINDS.map((k) => ({ value: k.id, label: k.name }))} />
+            {repeats && <span className="ev-repeat-tag"><Icon name="repeat" /> {repeatText(series)}</span>}
           </p>
         )}
-        {ev.repeat && (
-          <div className="segmented ev-scope" role="radiogroup" aria-label="Qué cambiar">
-            <button type="button" role="radio" aria-checked={scope === 'one'} className={scope === 'one' ? 'seg on' : 'seg'} onClick={() => setScope('one')}>Solo este día</button>
-            <button type="button" role="radio" aria-checked={scope === 'all'} className={scope === 'all' ? 'seg on' : 'seg'} onClick={() => setScope('all')}>Todos los días</button>
-          </div>
-        )}
-        {detachedFrom && !ev.repeat && <p className="muted small-text ev-detached"><Icon name="info" /> Solo este día: los demás siguen como «{detachedFrom}».</p>}
         <input className="sheet-title-input" value={title} onChange={(e) => setTitle(e.target.value)} onBlur={saveTitle}
           onKeyDown={(e) => e.key === 'Enter' && (e.currentTarget.blur())} maxLength={80} aria-label="Nombre del evento" />
         <div className="ev-form-when">
-          <DatePicker value={ev.repeat && !one ? series.day : onDay} label={ev.repeat && !one ? 'Empieza el' : 'Día'}
-            onChange={(d) => { if (!d) return; if (!ev.repeat) setOnDay(d); set({ day: d }); }} />
+          <DatePicker value={ev.day} label="Día" onChange={(d) => { if (d) set({ day: d }); }} />
           <TimeFields start={ev.time ?? null} end={ev.time ? fromMin(Math.min(eventSpan(ev)![1], LAST)) : null}
             onStart={(t) => {
               if (!t) return set({ time: undefined, end: undefined });
@@ -380,15 +422,15 @@ function EventSheet({ game, id: firstId, day, onClose, startFocus }: { game: Gam
             }}
             onEnd={(t) => set({ end: t })} />
         </div>
-        {ev.kind === 'bloque' && <BlockTasks game={game} eventId={id} ev={ev} day={onDay} />}
+        {ev.kind === 'bloque' && <BlockTasks game={game} eventId={id} ev={stored} day={onDay} />}
         <div className="ev-form-extra">
-          {!one && !ev.academy && <RepeatEditor value={series} day={series.day} onChange={(p) => set(p)} />}
+          {!ev.academy && <RepeatEditor value={repeats ? { ...series, ...draft } : series} day={series.day} onChange={(p) => set(p)} />}
           <ColorSwatches value={ev.color} onChange={(c) => set({ color: c })} />
         </div>
       </div>
       <div className="row sheet-actions">
-        {focusFn && <button className="primary" onClick={() => { saveTitle(); onClose(); focusFn(title.trim() || ev.title); }}><Icon name="play" /> Empezar Deep Work</button>}
-        {ev.repeat && <button className="ghost" onClick={() => { sfx.remove(); game.act((s) => skipEventDay(s, ev.id, onDay)); onClose(); }}><Icon name="x" /> Quitar solo este día</button>}
+        {dirty && <button className="primary" onClick={() => setAsking('save')}><Icon name="check" /> Guardar</button>}
+        {focusFn && !dirty && <button className="primary" onClick={() => { saveTitle(); onClose(); focusFn(title.trim() || ev.title); }}><Icon name="play" /> Empezar Deep Work</button>}
         {ev.academy ? (
           <button className="ghost danger-text" onClick={() => sureThen({ title: `¿Borrar «${ev.title}»?`, message: 'También se borra de Academy. Tus tarjetas y simulacros se quedan.', confirmLabel: 'Borrar' }, () => {
             void deleteAcademyExam(ev.academy!.examId).then((err) => {
@@ -396,9 +438,16 @@ function EventSheet({ game, id: firstId, day, onClose, startFocus }: { game: Gam
               sfx.remove(); game.act((s) => deleteEvent(s, ev.id)); onClose();
             });
           })}><Icon name="trash" /> Borrar</button>
-        ) : <button className="ghost danger-text" onClick={() => sureThen({ title: ev.repeat ? `¿Borrar toda la serie «${ev.title}»?` : `¿Borrar «${ev.title}»?`, message: ev.repeat ? 'Se borran todas sus repeticiones.' : undefined, confirmLabel: ev.repeat ? 'Borrar la serie' : 'Borrar' }, () => { sfx.remove(); game.act((s) => deleteEvent(s, ev.id)); onClose(); })}><Icon name="trash" /> {ev.repeat ? 'Borrar la serie' : 'Borrar'}</button>}
+        ) : repeats
+          ? <button className="ghost danger-text" onClick={() => setAsking('delete')}><Icon name="trash" /> Borrar</button>
+          : <button className="ghost danger-text" onClick={() => sureThen({ title: `¿Borrar «${ev.title}»?`, confirmLabel: 'Borrar' }, () => { sfx.remove(); game.act((s) => deleteEvent(s, ev.id)); onClose(); })}><Icon name="trash" /> Borrar</button>}
       </div>
       <p className="hint sheet-hint"><Icon name="info" /> Consejo: en la vista Día o Semana puedes arrastrar el evento para moverlo y estirar su borde de abajo para cambiar lo que dura.</p>
+      {asking && (
+        <ScopeDialog title={asking === 'save' ? 'Editar evento periódico' : 'Borrar evento periódico'}
+          onPick={(sc) => (asking === 'save' ? apply(sc) : remove(sc))}
+          onCancel={() => setAsking(null)} />
+      )}
     </Sheet>
   );
 }
@@ -486,6 +535,8 @@ export function TimeGrid({ game, days, now, onPickDay, startFocus }: {
   const [open, setOpen] = useState<{ id: string; day: string } | null>(null);
   const [session, setSession] = useState<string | null>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
+  /** Mover un evento que se repite: se pregunta a cuáles antes de moverlo. */
+  const [pendingMove, setPendingMove] = useState<{ ev: CalendarEvent; to: { day: string; time: string; end: string } } | null>(null);
   const dragRef = useRef<Drag | null>(null);
   const moved = useRef(false);
 
@@ -569,6 +620,7 @@ export function TimeGrid({ game, days, now, onPickDay, startFocus }: {
       const span = eventSpan(d.ev)!;
       if (to.day === d.ev.day && d.start === span[0] && d.end === span[1]) return;
       sfx.drop();
+      if (d.ev.repeat) { setPendingMove({ ev: d.ev, to }); return; }
       game.act((s) => moveEvent(s, d.ev, to, Date.now()));
       if (d.ev.academy && to.day !== d.ev.day) void pushAcademyExam({ academy: d.ev.academy, title: d.ev.title, day: to.day }).then((err) => err && game.toast(`{i:alert} No se pudo cambiar en Academy: ${err}`, 'info', 6000));
     };
@@ -647,6 +699,10 @@ export function TimeGrid({ game, days, now, onPickDay, startFocus }: {
           <p className="eyebrow">Nuevo · {shortDate(draft.day)}{draft.time ? ` · ${draft.time}${draft.end ? ` – ${draft.end}` : ''}` : ''}</p>
           <AgendaForm key={`${draft.day}${draft.time}${draft.end}`} game={game} day={draft.day} time={draft.time} end={draft.end} onDone={() => setDraft(null)} compact />
         </Sheet>
+      )}
+      {pendingMove && (
+        <ScopeDialog title="Mover evento periódico" onCancel={() => setPendingMove(null)}
+          onPick={(sc) => { const m = pendingMove; setPendingMove(null); game.act((s) => editSeries(s, m.ev.id, m.ev.day, m.to, sc, uid(), Date.now())); }} />
       )}
       {open && <EventSheet key={open.id} game={game} id={open.id} day={open.day} onClose={() => setOpen(null)} startFocus={startFocus} />}
       {session && (
