@@ -1761,24 +1761,41 @@ svg .node-icon { color: var(--fg); }
 .road-bed { fill: none; stroke: #07060c; stroke-width: 7; stroke-linecap: round; opacity: 0.75; }
 .node-base { fill: #000; opacity: 0.4; pointer-events: none; }
 
-/* Ciudades de un reino en pequeño (2026-11-23): sustituyen al segundo mapa */
-.city-list-h { margin: 0; font-size: 15px; }
-.city-list-h .muted { font-weight: 400; font-size: 13px; }
-.city-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
-.city-tile { display: flex; align-items: center; gap: 10px; padding: 6px 10px 6px 6px; border-radius: 12px; text-align: left; color: var(--fg);
-  background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); cursor: pointer; min-width: 0; }
-.city-tile:hover, .city-tile:focus-visible { border-color: color-mix(in srgb, var(--c1) 55%, var(--line)); }
-.city-tile-ring { flex: none; }
-.city-tile-ring .ct-track { fill: color-mix(in srgb, var(--c3) 12%, #060606); stroke: rgba(255, 255, 255, 0.07); stroke-width: 3; }
-.city-tile-ring .ct-fill { fill: none; stroke: var(--c1); stroke-width: 3; stroke-linecap: round; }
-.city-tile-ring .ico { color: var(--fg); fill: currentColor; }
-.city-tile.monument .ct-fill { stroke: var(--gold); }
-.city-tile-text { display: flex; flex-direction: column; min-width: 0; }
-.city-tile-name { font-family: var(--display); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.city-tile-sub { font-family: var(--mono); font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* Los iconos dentro de textos de la escena no son el dibujo: en línea (antes saltaban a su propia línea) */
 .city-scene .castle-cap .ico, .city-scene .chart-tip .ico { display: inline-block; vertical-align: -0.15em; }
 /* «Capital del reino» encima del nombre (antes, en fila, partía el nombre en el móvil: «Program-ación») */
 .kingdom-name:has(.kingdom-capital) { flex-wrap: wrap; row-gap: 0; }
 .kingdom-name .kingdom-capital { flex-basis: 100%; }
-@media (max-width: 640px) { .city-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; } .city-tile { gap: 8px; padding: 5px 8px 5px 5px; } }
+
+/* ---------- Mapa de un reino desde arriba (2026-11-25): cada ciudad es un barrio ---------- */
+.realm-iso { position: relative; width: 100%; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); }
+.realm-iso svg { display: block; }
+.realm-iso .district { cursor: pointer; outline: none; }
+.district-ground { fill: rgba(0, 0, 0, 0.12); stroke: rgba(255, 255, 255, 0.05); stroke-width: 1; transition: fill 0.15s ease, stroke 0.15s ease; }
+.district-ground.hot { fill: color-mix(in srgb, var(--c1) 12%, transparent); stroke: color-mix(in srgb, var(--c1) 70%, transparent); stroke-width: 1.5; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--c1) 60%, transparent)); }
+.district-ground.monument { stroke: color-mix(in srgb, var(--gold) 55%, transparent); }
+.monument-aura { pointer-events: none; }
+.district-path { fill: #3a2c1f; }
+.district-path.paved { fill: #4a4652; }
+.found-plot { fill: rgba(255, 255, 255, 0.02); stroke: color-mix(in srgb, var(--c2) 45%, transparent); stroke-width: 1.2; stroke-dasharray: 5 5; transition: fill 0.15s ease; }
+.found-plot.hot { fill: color-mix(in srgb, var(--c1) 10%, transparent); stroke: var(--c1); }
+.found-stake { stroke: #8a6a44; stroke-width: 2; stroke-linecap: round; }
+.found-sign { fill: #946a40; stroke: #563921; stroke-width: 1; }
+.district-label {
+  position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 0;
+  padding: 3px 10px; border-radius: 999px; white-space: nowrap; cursor: pointer; color: var(--fg);
+  background: rgba(6, 5, 12, 0.72); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  border: 1px solid color-mix(in srgb, var(--c2) 30%, var(--line)); transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.district-label.hot { border-color: var(--c1); transform: translate(-50%, -50%) scale(1.05); box-shadow: 0 0 12px color-mix(in srgb, var(--c1) 45%, transparent); }
+.district-label.monument { border-color: color-mix(in srgb, var(--gold) 55%, transparent); }
+.district-label.found { color: var(--muted); border-style: dashed; }
+.district-label .dl-name { font-family: var(--display); font-size: 12.5px; display: inline-flex; align-items: center; gap: 4px; }
+.district-label .dl-sub { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+.district-label .ico { display: inline-block; }
+.realm-iso-empty { position: absolute; left: 0; right: 0; bottom: 14px; margin: 0; padding: 0 16px; text-align: center; color: var(--muted); }
+@media (max-width: 640px) { .district-label { padding: 2px 7px; } .district-label .dl-name { font-size: 11.5px; } }
+.realm-iso-scroll { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.realm-iso-scroll::-webkit-scrollbar { display: none; }
+.realm-iso-inner { position: relative; }
+.realm-iso .c-ghost { display: none; } /* en el mapa del reino no se enseña la próxima pieza del castillo */

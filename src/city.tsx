@@ -1,7 +1,7 @@
 // Escena de la ciudad medieval de un reino, dibujada en SVG: cada misión es un edificio
 // (cimientos con andamios si está pendiente) y las murallas aparecen según la etapa.
 // Dos perspectivas: frontal (silueta nocturna) y desde arriba (isométrica, al estilo de los juegos de estrategia).
-import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Quest } from './types';
 import { useWidth } from './charts';
 import { Birds, Clouds, Mist, ShootingStars } from './sky-fx';
@@ -1982,6 +1982,366 @@ export function CityScene({ quests, progress, complete, stage, icon }: { quests:
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// =====================================================================
+// Mapa de un reino visto desde arriba: el reino es la estantería y cada ciudad, un libro.
+// Cada ciudad es un barrio con su propio castillo, sus edificios y sus murallas según la etapa.
+// =====================================================================
+
+export type MapCity = { id: string; name: string; quests: Quest[]; stage: string; icon: string; closed: boolean };
+
+/** Huecos de un barrio para sus edificios (alrededor del castillo, dejando libre la avenida de la puerta). */
+const DISTRICT_LOTS: [number, number][] = [[-1.7, -1.7], [1.7, -1.7], [-1.9, 0.1], [1.9, 0.1], [0, -2.05], [-1.7, 1.75], [1.7, 1.75]];
+const DISTRICT = 7; // lado de cada barrio en casillas
+
+function MiniTent({ P, i, j }: { P: Proj; i: number; j: number }) {
+  const [ax, ay] = P(i, j, 0.9);
+  const [lx, ly] = P(i - 0.3, j + 0.3);
+  const [rx, ry] = P(i + 0.3, j - 0.3);
+  const [fx, fy] = P(i + 0.3, j + 0.3);
+  return (
+    <g className="iso-tent">
+      <polygon points={`${ax},${ay} ${lx},${ly} ${fx},${fy}`} className="tent" />
+      <polygon points={`${ax},${ay} ${fx},${fy} ${rx},${ry}`} className="tent-shade" />
+    </g>
+  );
+}
+
+function District({ P, city, s, glow, hot }: { P: Proj; city: MapCity; s: number; glow: string; hot: boolean }) {
+  const all = [...city.quests].sort((a, b) => Number(!a.completedAt) - Number(!b.completedAt) || a.createdAt - b.createdAt);
+  const built = all.filter((q) => q.completedAt).length;
+  const shown = all.slice(0, DISTRICT_LOTS.length);
+  const r = DISTRICT / 2 - 0.75; // línea de la muralla
+  const gate = 0.5;
+  const sc = 0.5;
+  const ground = pts(P, [[-DISTRICT / 2 + 0.35, -DISTRICT / 2 + 0.35, 0], [DISTRICT / 2 - 0.35, -DISTRICT / 2 + 0.35, 0], [DISTRICT / 2 - 0.35, DISTRICT / 2 - 0.35, 0], [-DISTRICT / 2 + 0.35, DISTRICT / 2 - 0.35, 0]]);
+
+  // Interior ordenado de atrás hacia delante: edificios y castillo.
+  const inner: { d: number; node: ReactNode }[] = shown.map((q, k) => {
+    const [oi, oj] = DISTRICT_LOTS[k];
+    const kind = buildingKind(q);
+    const bs = 0.5 * buildingScale(q);
+    const Pl: Proj = (i, j, z = 0) => P(oi + i * bs, oj + j * bs, z * bs);
+    if (!q.completedAt) {
+      const { a, b } = ISO_DIM[kind];
+      return { d: oi + oj, node: <Box key={q.id} P={Pl} i0={-a * 0.8} j0={-b * 0.8} i1={a * 0.8} j1={b * 0.8} z1={0.12} m="m-found" /> };
+    }
+    const body = kind === 'casa' ? <IsoCabana P={Pl} smoke={false} />
+      : kind === 'forja' ? <IsoHerreria P={Pl} gid={glow} live />
+      : kind === 'cuartel' ? <IsoTorreon P={Pl} live />
+      : kind === 'taberna' ? <IsoTaberna P={Pl} live />
+      : kind === 'biblioteca' ? <IsoBiblioteca P={Pl} />
+      : <IsoTemplo P={Pl} />;
+    return { d: oi + oj, node: <g key={q.id} className="iso-bld built">{body}</g> };
+  });
+  const Pc: Proj = (i, j, z = 0) => P(i * sc, j * sc, z * sc);
+  inner.push({
+    d: 0,
+    node: built > 0
+      ? <IsoCastle key="castle" P={Pc} tier={castleTier(built)} prev={castleTier(built)} s={s * sc} glow={glow} />
+      : (
+        <g key="camp">
+          <Pool P={P} i={0} j={0} r={0.9} gid={glow} cls="light-pool fire-light" />
+          <MiniTent P={P} i={-0.5} j={-0.4} />
+          <MiniTent P={P} i={0.45} j={-0.5} />
+          <MiniTent P={P} i={-0.5} j={0.45} />
+        </g>
+      ),
+  });
+  inner.sort((a, b) => a.d - b.d);
+
+  // Murallas: empalizada desde Villa (3), piedra con torres desde Ciudad amurallada (6).
+  const stone = built >= 6;
+  const palisade = built >= 3 && !stone;
+  const stakes = (edges: [number, number, number, number][], skipGate = false) => {
+    const sw = Math.max(1.6, s * 3.2);
+    const [, y0] = P(0, 0);
+    const [, y1] = P(0, 0, 0.7);
+    const hgt = y0 - y1;
+    let d = '';
+    for (const [i0, j0, i1, j1] of edges) {
+      const len = Math.hypot(i1 - i0, j1 - j0);
+      const nst = Math.round(len / 0.32);
+      for (let k = 0; k <= nst; k++) {
+        const i = i0 + ((i1 - i0) * k) / nst;
+        const j = j0 + ((j1 - j0) * k) / nst;
+        if (skipGate && j > r - 0.01 && Math.abs(i) < gate) continue;
+        const [x, y] = P(i, j);
+        d += `M${(x - sw / 2).toFixed(1)},${y.toFixed(1)}V${(y - hgt).toFixed(1)}L${x.toFixed(1)},${(y - hgt - sw).toFixed(1)}L${(x + sw / 2).toFixed(1)},${(y - hgt).toFixed(1)}V${y.toFixed(1)}Z`;
+      }
+    }
+    return <path d={d} />;
+  };
+  const wt = 0.22;
+  const wh = 0.6;
+  const tower = (ci: number, cj: number, key: string) => {
+    const Pt: Proj = (i, j, z = 0) => P(ci + i, cj + j, z);
+    return (
+      <g key={key}>
+        <Box P={Pt} i0={-0.28} j0={-0.28} i1={0.28} j1={0.28} z1={1.15} m="m-wall" />
+        <Pyr P={Pt} a={0.34} z0={1.15} z1={1.85} m={built >= 10 ? 'm-gold' : 'm-roof'} />
+        {built >= 10 && <Flag P={Pt} z={1.85} len={0.8} />}
+      </g>
+    );
+  };
+  let back: ReactNode = null;
+  let front: ReactNode = null;
+  if (stone) {
+    back = (
+      <g className="iso-wall">
+        <Box P={P} i0={-r - wt / 2} j0={-r - wt / 2} i1={-r + wt / 2} j1={r} z1={wh} m="m-wall" />
+        <Box P={P} i0={-r - wt / 2} j0={-r - wt / 2} i1={r} j1={-r + wt / 2} z1={wh} m="m-wall" />
+        {tower(-r, -r, 'tb')}
+      </g>
+    );
+    front = (
+      <g className="iso-wall">
+        {tower(r, -r, 'tr')}
+        {tower(-r, r, 'tl')}
+        <Box P={P} i0={-r} j0={r - wt / 2} i1={-gate} j1={r + wt / 2} z1={wh} m="m-wall" />
+        <Box P={P} i0={gate} j0={r - wt / 2} i1={r} j1={r + wt / 2} z1={wh} m="m-wall" />
+        <Box P={P} i0={r - wt / 2} j0={-r} i1={r + wt / 2} j1={r} z1={wh} m="m-wall" />
+        {tower(r, r, 'tf')}
+      </g>
+    );
+  } else if (palisade) {
+    back = <g className="iso-palisade">{stakes([[-r, r, -r, -r], [-r, -r, r, -r]])}</g>;
+    front = <g className="iso-palisade">{stakes([[-r, r, r, r], [r, -r, r, r]], true)}</g>;
+  }
+
+  return (
+    <>
+      <polygon points={ground} className={`district-ground${hot ? ' hot' : ''}${city.closed ? ' monument' : ''}`} />
+      {city.closed && <Pool P={P} i={0} j={0} r={2.6} gid={`${glow}aura`} cls="monument-aura" />}
+      <polygon className={stone ? 'district-path paved' : 'district-path'} points={pts(P, [[-0.32, 0.9, 0], [0.32, 0.9, 0], [0.32, DISTRICT / 2, 0], [-0.32, DISTRICT / 2, 0]])} />
+      {back}
+      {inner.map((it, k) => <g key={k}>{it.node}</g>)}
+      {front}
+    </>
+  );
+}
+
+export function RealmIsoMap({ name, cities, onSelect, onFound }: { name: string; cities: MapCity[]; onSelect: (id: string) => void; onFound?: () => void }) {
+  const [ref, boxW] = useWidth<HTMLDivElement>(800);
+  // En el móvil el mapa es más ancho que la pantalla y se recorre deslizando (empieza centrado).
+  const narrow = boxW < 600;
+  const W = narrow ? 600 : boxW;
+  const scroller = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (narrow && scroller.current) scroller.current.scrollLeft = (W - boxW) / 2;
+  }, [narrow, W, boxW]);
+  const [hot, setHot] = useState<string | null>(null);
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
+  const glow = `${uid}glow`;
+  const n = cities.length;
+  const want = n + (onFound ? 1 : 0);
+  let K = 3;
+  while (K * K - 1 < want) K += 2;
+  const D = DISTRICT;
+  const m = 1.2;
+  const G = K * D + 2 * m;
+  const maxH = narrow ? 420 : 480;
+  const th = Math.min((W - 12) / G / 2, (maxH - 20) / (G + 4));
+  const tw = th * 2;
+  const H = Math.round(G * th + 4 * th + 20);
+  const ox = W / 2;
+  const oy = 3.3 * th + 8;
+  const P: Proj = (i, j, z = 0) => [ox + ((i - j) * tw) / 2, oy + ((i + j) * th) / 2 - z * th];
+  const s = th / 20;
+  const c = (K - 1) / 2;
+
+  // Barrios: primero los más cercanos a la plaza; a igual distancia, los de los lados y luego los de delante.
+  const slots = useMemo(() => {
+    const list: { di: number; dj: number }[] = [];
+    for (let di = 0; di < K; di++) for (let dj = 0; dj < K; dj++) if (di !== c || dj !== c) list.push({ di, dj });
+    const d = (l: { di: number; dj: number }) => (l.di - c) ** 2 + (l.dj - c) ** 2;
+    const side = (l: { di: number; dj: number }) => Math.abs(l.di - l.dj);
+    return list.sort((x, y) => d(x) - d(y) || side(y) - side(x) || y.di + y.dj - (x.di + x.dj));
+  }, [K, c]);
+  const at = (k: number) => {
+    const { di, dj } = slots[k];
+    return { ci: m + di * D + D / 2, cj: m + dj * D + D / 2 };
+  };
+  const placed = cities.map((city, k) => ({ city, ...at(k) }));
+  const found = onFound && n < slots.length ? at(n) : null;
+  const mid = G / 2;
+
+  const forest = useMemo(() => {
+    const rnd = seeded(43);
+    const out: { x: number; y: number; s: number; depth: number }[] = [];
+    for (let k = 0; k < 200 && out.length < 60; k++) {
+      const x = rnd() * W;
+      const y = 10 + rnd() * (H - 6);
+      const u = (x - ox) / (tw / 2);
+      const v = (y - oy) / (th / 2);
+      const i = (u + v) / 2;
+      const j = (v - u) / 2;
+      if (i > -0.9 && j > -0.9 && i < G + 0.9 && j < G + 0.9) continue;
+      out.push({ x, y, s: s * (0.75 + rnd() * 0.5), depth: i + j });
+    }
+    return out.sort((p, q) => p.y - q.y);
+  }, [W, H, ox, oy, tw, th, G, s]);
+
+  // Hierba y flores sueltas fuera de los caminos.
+  const tufts = useMemo(() => {
+    const rnd = seeded(71);
+    const sz = th * 0.2;
+    let t = '';
+    const onRoad = (v: number) => Math.abs(((v - m) % D + D) % D) < 0.55;
+    for (let k = 0; k < 60 * K; k++) {
+      const i = 0.3 + rnd() * (G - 0.6);
+      const j = 0.3 + rnd() * (G - 0.6);
+      if (onRoad(i) || onRoad(j)) continue;
+      const [x, y] = P(i, j);
+      t += `M${(x - sz).toFixed(1)},${y.toFixed(1)}l${(sz * 0.6).toFixed(1)},${(-sz).toFixed(1)}M${x.toFixed(1)},${y.toFixed(1)}l0,${(-sz * 1.3).toFixed(1)}M${(x + sz).toFixed(1)},${y.toFixed(1)}l${(-sz * 0.6).toFixed(1)},${(-sz).toFixed(1)}`;
+    }
+    return t;
+  }, [G, K, th, ox, oy]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const diamond = [P(0, 0), P(G, 0), P(G, G), P(0, G)].map((p) => p.map((v) => v.toFixed(1)).join(',')).join(' ');
+  const rw = 0.32;
+  const road = (i0: number, j0: number, i1: number, j1: number, key: string) => <polygon key={key} points={pts(P, [[i0, j0, 0], [i1, j0, 0], [i1, j1, 0], [i0, j1, 0]])} />;
+  const roads: ReactNode[] = [];
+  for (let k = 0; k <= K; k++) {
+    const t = m + k * D;
+    roads.push(road(m - rw, t - rw, m + K * D + rw, t + rw, `a${k}`));
+    roads.push(road(t - rw, m - rw, t + rw, m + K * D + rw, `b${k}`));
+  }
+
+  // Plaza del reino: un obelisco con su estandarte, rodeado de árboles.
+  const Pm: Proj = (i, j, z = 0) => P(mid + i, mid + j, z);
+  const plaza = (
+    <g className="realm-plaza">
+      <ellipse cx={Pm(0, 0)[0]} cy={Pm(0, 0)[1]} rx={tw * 1.9} ry={th * 1.9} className="iso-plaza paved" />
+      <ellipse cx={Pm(0, 0)[0]} cy={Pm(0, 0)[1]} rx={tw * 1.4} ry={th * 1.4} className="iso-plaza-ring" />
+      {[[-1.7, -1.7], [1.7, -1.7]].map(([i, j]) => { const [x, y] = Pm(i, j); return <RoundTree key={`${i}${j}`} x={x} y={y} s={s * 1.1} />; })}
+      <Box P={Pm} i0={-0.55} j0={-0.55} i1={0.55} j1={0.55} z1={0.35} m="m-stone2" />
+      <Box P={Pm} i0={-0.24} j0={-0.24} i1={0.24} j1={0.24} z0={0.35} z1={3.1} m="m-stone" />
+      <Pyr P={Pm} a={0.3} z0={3.1} z1={3.7} m="m-gold" />
+      <Flag P={Pm} z={3.7} len={1.6} />
+      {[[-1.7, 1.7], [1.7, 1.7]].map(([i, j]) => { const [x, y] = Pm(i, j); return <RoundTree key={`${i}${j}`} x={x} y={y} s={s * 1.1} />; })}
+    </g>
+  );
+
+  type Item = { d: number; key: string; node: ReactNode };
+  const items: Item[] = [{ d: mid * 2, key: 'plaza', node: plaza }];
+  for (const { city, ci, cj } of placed) {
+    const Pd: Proj = (i, j, z = 0) => P(ci + i, cj + j, z);
+    items.push({
+      d: ci + cj,
+      key: city.id,
+      node: (
+        <g
+          className="district" role="button" tabIndex={0} aria-label={`${city.name}: ${city.closed ? 'Monumento' : city.stage}`}
+          onClick={() => onSelect(city.id)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(city.id); } }}
+          onPointerEnter={() => setHot(city.id)} onPointerLeave={() => setHot(null)} onFocus={() => setHot(city.id)} onBlur={() => setHot(null)}
+        >
+          <District P={Pd} city={city} s={s} glow={glow} hot={hot === city.id} />
+        </g>
+      ),
+    });
+  }
+  if (found) {
+    const Pf: Proj = (i, j, z = 0) => P(found.ci + i, found.cj + j, z);
+    const e = D / 2 - 0.6;
+    const [sx, sy] = Pf(0.6, 0.6);
+    items.push({
+      d: found.ci + found.cj,
+      key: 'found',
+      node: (
+        <g className="district found" role="button" tabIndex={0} aria-label="Fundar una ciudad aquí" onClick={onFound} onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); onFound?.(); } }}
+          onPointerEnter={() => setHot('found')} onPointerLeave={() => setHot(null)}>
+          <polygon points={pts(Pf, [[-e, -e, 0], [e, -e, 0], [e, e, 0], [-e, e, 0]])} className={`found-plot${hot === 'found' ? ' hot' : ''}`} />
+          {[[-e, -e], [e, -e], [-e, e], [e, e]].map(([i, j]) => { const [x, y] = Pf(i, j); const [, y1] = Pf(i, j, 0.6); return <line key={`${i}${j}`} x1={x} y1={y} x2={x} y2={y1} className="found-stake" />; })}
+          <line x1={sx} y1={sy} x2={sx} y2={Pf(0.6, 0.6, 1.4)[1]} className="found-stake" />
+          <rect x={sx - 9 * s * 1.6} y={Pf(0.6, 0.6, 1.4)[1] - 7 * s * 1.6} width={18 * s * 1.6} height={9 * s * 1.6} rx={1.5} className="found-sign" />
+        </g>
+      ),
+    });
+  }
+  // Barrios libres: arboledas y huertos, para que el reino tenga sitio donde crecer.
+  for (let k = n + (found ? 1 : 0); k < slots.length; k++) {
+    const { ci, cj } = at(k);
+    for (const [oi, oj, kind] of [[-1.4, -1.2, k % 3], [1.3, 0.2, (k + 1) % 3], [-0.6, 1.5, (k + 2) % 3]] as [number, number, number][]) {
+      const Pe: Proj = (i, j, z = 0) => P(ci + oi + i * 1.3, cj + oj + j * 1.3, z);
+      items.push({ d: ci + oi + cj + oj, key: `e${k}-${oi}`, node: <EmptyLot P={Pe} kind={kind} s={s * 1.2} /> });
+    }
+  }
+  items.sort((a, b) => a.d - b.d);
+
+  const labelY = (ci: number, cj: number) => P(ci + D / 2 - 0.15, cj + D / 2 - 0.15)[1];
+  return (
+    <div className="realm-iso view-top" ref={ref}>
+     <div className="realm-iso-scroll" ref={scroller}>
+     <div className="realm-iso-inner" style={{ width: W, height: H }}>
+      <svg width={W} height={H} role="img" aria-label={`Mapa de ${name} visto desde arriba, con ${n} ${n === 1 ? 'ciudad' : 'ciudades'}`}>
+        <defs>
+          <radialGradient id={`${uid}field`} cx="50%" cy="55%" r="75%">
+            <stop offset="0%" style={{ stopColor: 'color-mix(in srgb, var(--c3) 14%, #12241a)' }} />
+            <stop offset="100%" style={{ stopColor: 'color-mix(in srgb, var(--c3) 10%, #050806)' }} />
+          </radialGradient>
+          <linearGradient id={`${uid}grass`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" style={{ stopColor: 'color-mix(in srgb, var(--c3) 12%, #1c3a26)' }} />
+            <stop offset="100%" style={{ stopColor: 'color-mix(in srgb, var(--c3) 8%, #2a5236)' }} />
+          </linearGradient>
+          <radialGradient id={glow}>
+            <stop offset="0%" stopColor="#ffbe5c" stopOpacity="0.55" />
+            <stop offset="100%" stopColor="#ffbe5c" stopOpacity="0" />
+          </radialGradient>
+          <radialGradient id={`${glow}aura`}>
+            <stop offset="0%" stopColor="#ffd77a" stopOpacity="0.45" />
+            <stop offset="60%" stopColor="#ffb347" stopOpacity="0.12" />
+            <stop offset="100%" stopColor="#ffb347" stopOpacity="0" />
+          </radialGradient>
+          <linearGradient id="cx-ao" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#fff" stopOpacity="0.07" />
+            <stop offset="45%" stopColor="#000" stopOpacity="0" />
+            <stop offset="100%" stopColor="#000" stopOpacity="0.42" />
+          </linearGradient>
+          <radialGradient id={`${uid}vig`} cx="50%" cy="55%" r="72%">
+            <stop offset="60%" stopColor="#000" stopOpacity="0" />
+            <stop offset="100%" stopColor="#000" stopOpacity="0.6" />
+          </radialGradient>
+        </defs>
+        <rect width={W} height={H} fill={`url(#${uid}field)`} />
+        {forest.filter((t) => t.depth < G).map((t, k) => <Pine key={k} x={t.x} y={t.y} s={t.s} />)}
+        <polygon className="plot-side l" points={pts(P, [[0, G, 0], [G, G, 0], [G, G, -0.7], [0, G, -0.7]])} />
+        <polygon className="plot-side r" points={pts(P, [[G, 0, 0], [G, G, 0], [G, G, -0.7], [G, 0, -0.7]])} />
+        <polygon points={diamond} fill={`url(#${uid}grass)`} className="plot" />
+        <polygon points={diamond} className="plot-edge" />
+        <path className="tufts" d={tufts} />
+        <g className="iso-roads">{roads}</g>
+        {items.map((it) => <g key={it.key}>{it.node}</g>)}
+        {forest.filter((t) => t.depth >= G).map((t, k) => <Pine key={k} x={t.x} y={t.y} s={t.s} />)}
+        <Clouds W={W} shadow rows={[{ y: H * 0.3, s: 1.6, dur: 80, o: 0.05 }, { y: H * 0.7, s: 2.1, dur: 110, o: 0.04 }]} />
+        <rect width={W} height={H} fill={`url(#${uid}vig)`} pointerEvents="none" />
+      </svg>
+      {placed.map(({ city, ci, cj }) => {
+        const built = city.quests.filter((q) => q.completedAt).length;
+        return (
+          <button
+            key={city.id} type="button" tabIndex={-1} aria-hidden="true"
+            className={`district-label${hot === city.id ? ' hot' : ''}${city.closed ? ' monument' : ''}`}
+            style={{ left: P(ci, cj)[0], top: labelY(ci, cj) }}
+            onClick={() => onSelect(city.id)} onPointerEnter={() => setHot(city.id)} onPointerLeave={() => setHot(null)}
+          >
+            <span className="dl-name">{city.closed && <Icon name="laurel-crown" />}{city.name}</span>
+            {!narrow && <span className="dl-sub">{built} · {city.closed ? 'Monumento' : city.stage}</span>}
+          </button>
+        );
+      })}
+      {found && (
+        <button type="button" tabIndex={-1} aria-hidden="true" className={`district-label found${hot === 'found' ? ' hot' : ''}`} style={{ left: P(found.ci, found.cj)[0], top: labelY(found.ci, found.cj) }} onClick={onFound}
+          onPointerEnter={() => setHot('found')} onPointerLeave={() => setHot(null)}>
+          <span className="dl-name"><Icon name="plus" /> Fundar ciudad</span>
+        </button>
+      )}
+     </div>
+     </div>
+      {n === 0 && <p className="realm-iso-empty">Este reino aún no tiene ciudades. Funda la primera: un proyecto concreto dentro de {name}.</p>}
     </div>
   );
 }
