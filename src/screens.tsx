@@ -39,7 +39,7 @@ import { Inventory } from './inventory';
 import { Icon } from './icons';
 import { TodayStrip } from './today';
 import { QuestNode } from './tree-ui';
-import { effectiveDeadline, pathLabel } from './tree';
+import { effectiveDeadline, hasOpenChildren, pathLabel, treeProgress } from './tree';
 import { addSubQuest, rootsInOrder, splitIntoSessions } from './tree-actions';
 import { SessionEdit } from './session-ui';
 import { RateDialog, SessionRating } from './productivity-ui';
@@ -55,7 +55,7 @@ import { QuestHistory } from './quest-history';
 import { CleanupPanel, PriorityPicker, TomorrowPanel } from './priorities-ui';
 import { currentChange, weekFocus } from './review';
 import { RitualCTA } from './ritual';
-import { IMPACTS, priorityIds, priorityQuests, pushToTomorrow, setQuestImpact } from './priorities';
+import { IMPACTS, priorityIds, priorityOf, priorityQuests, pushToTomorrow, setQuestImpact } from './priorities';
 import { ACHIEVEMENTS } from './achievements';
 
 export type Game = ReturnType<typeof useGame>;
@@ -132,23 +132,26 @@ export function Dashboard({
   const pending = pendingQuests(state, now);
   const s = suggest(state, now);
   const fresh = totalXp(state) === 0; // partida nueva: se esconde lo que aún estaría vacío
-  const prio = priorityIds(state, today);
   const prioQs = priorityQuests(state, today);
   const prioDone = prioQs.filter((q) => q.completedAt).length;
   const [picking, setPicking] = useState(false);
   const habitList = useHabitFlip<HTMLUListElement>();
   const hero = s.kind === 'quest' ? s.quest : null;
-  const heroIsPrio = !!hero && prio.includes(hero.id);
+  // la elegida puede ser una misión grande: entonces la principal es su siguiente submisión
+  const heroPrio = hero ? priorityOf(state, today, hero) : undefined;
+  const heroIsPrio = !!heroPrio;
+  const nextLeaf = (q: Quest) => pending.find((x) => priorityOf(state, today, x) === q.id) ?? q;
   const heroPath = hero ? pathLabel(state, hero) : '';
   const heroDue = hero ? effectiveDeadline(state, hero) : undefined;
   // el resto de «Las 3 de hoy» va debajo de la principal; las demás misiones, en Misiones
-  const restPrio = prioQs.filter((q) => q.id !== hero?.id);
-  const more = pending.filter((q) => q.id !== hero?.id && !prio.includes(q.id)).length;
+  const restPrio = prioQs.filter((q) => q.id !== heroPrio);
+  const more = pending.filter((q) => q.id !== hero?.id && !priorityOf(state, today, q)).length;
   const focus = weekFocus(state, now);
   const change = currentChange(state, now);
   const complete = (q: Quest) => act((st) => completeQuest(st, q.id, Date.now()), CAP_QUEST, questOpts(q));
   // «Pasar a mañana»: sale de Las 3 de hoy y entra en las de mañana (si mañana aún tiene hueco)
-  const toTomorrow = (q: Quest) => {
+  const toTomorrow = (sub: Quest) => {
+    const q = state.quests.find((x) => x.id === priorityOf(state, today, sub)) ?? sub;
     if (!pushToTomorrow(state, q.id, Date.now()).ok) { game.toast('Mañana ya tiene 3 prioridades. Cámbialas en Misiones → Mañana.', 'info'); return; }
     act((st) => pushToTomorrow(st, q.id, Date.now()).state);
     game.toast('Pasada a mañana', 'info');
@@ -226,10 +229,12 @@ export function Dashboard({
                   <li key={q.id} className={q.completedAt ? 'done' : ''}>
                     {q.completedAt
                       ? <span className="check checked" aria-hidden="true">✓</span>
-                      : <button className="check" aria-label={`Completar ${q.title}`} title="Completar misión" onClick={() => complete(q)}>✓</button>}
+                      : hasOpenChildren(state, q.id)
+                        ? <span className="check tree-count mono" title="Se cierra cuando todas sus submisiones estén hechas">{treeProgress(state, q.id).done}/{treeProgress(state, q.id).total}</span>
+                        : <button className="check" aria-label={`Completar ${q.title}`} title="Completar misión" onClick={() => complete(q)}>✓</button>}
                     <span className="top3-title">{pathLabel(state, q) && <span className="item-path">{pathLabel(state, q)}</span>}{q.title}</span>
                     {!q.completedAt && <button className="ghost small push-btn" onClick={() => toTomorrow(q)} aria-label={`Pasar a mañana ${q.title}`} title="Pasar a mañana"><Icon name="sunrise" /><span className="push-label"> Mañana</span></button>}
-                    {!q.completedAt && <button className="ghost small" onClick={() => focusQuest(q)} title="Hacer Deep Work en esta misión"><Icon name="play" /> Foco</button>}
+                    {!q.completedAt && <button className="ghost small" onClick={() => focusQuest(nextLeaf(q))} title="Hacer Deep Work en esta misión"><Icon name="play" /> Foco</button>}
                   </li>
                 ))}
               </ol>

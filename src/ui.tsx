@@ -108,6 +108,18 @@ export function deadlineLabel(day: string, now: number): { text: string; tone: '
   return { text: `vence el ${shortDate(day)}`, tone: 'later' };
 }
 
+// Submisiones desplegadas: plegadas por defecto (la lista se ve más limpia); se recuerda en este navegador.
+const FOLD_KEY = 'excelsior:unfolded';
+function unfoldedSet(): Set<string> {
+  try { return new Set(JSON.parse(localStorage.getItem(FOLD_KEY) ?? '[]') as string[]); } catch { return new Set(); }
+}
+const isUnfolded = (id: string) => unfoldedSet().has(id);
+function rememberFold(id: string, open: boolean) {
+  const set = unfoldedSet();
+  if (open) set.add(id); else set.delete(id);
+  try { localStorage.setItem(FOLD_KEY, JSON.stringify([...set].slice(-200))); } catch { /* sin almacenamiento */ }
+}
+
 export function QuestItem({
   quest, kingdom, onComplete, onStart, onDelete, onUndo, onEdit, onDeadline, onRepeat, onImpact, priority,
   path, progress, inherited, onAddChild, onSplit, onBlock, children,
@@ -143,8 +155,9 @@ export function QuestItem({
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);
   const [blocking, setBlocking] = useState(false);
-  const [open, setOpen] = useState(true);
   const container = !!progress && progress.total > 0;
+  const [open, setOpenState] = useState(() => isUnfolded(quest.id));
+  const setOpen = (v: boolean) => { setOpenState(v); rememberFold(quest.id, v); };
   const blocked = container && progress.done < progress.total; // con hojas pendientes no se cierra
   const due = quest.deadline && !done ? deadlineLabel(quest.deadline, Date.now()) : null;
   const inheritedDue = !quest.deadline && inherited && !done ? deadlineLabel(inherited, Date.now()) : null;
@@ -187,6 +200,12 @@ export function QuestItem({
             ? <DatePicker value={quest.deadline ?? null} onChange={onDeadline} label={`Fecha límite de ${quest.title}`} clearLabel="Quitar fecha límite" className={`due due-${due.tone}`}><Icon name="calendar" /> {due.text}</DatePicker>
             : <span className={`due due-${due.tone}`}><Icon name="calendar" /> {due.text}</span>)}
           {inheritedDue && path && <span className={`due inherited due-${inheritedDue.tone}`} title="Fecha de la misión de la que cuelga"><Icon name="calendar" /> {inheritedDue.text}</span>}
+          {container && (
+            <button type="button" className={`sub-toggle${open ? ' open' : ''}`} onClick={() => setOpen(!open)} aria-expanded={open}
+              aria-label={`${open ? 'Plegar' : 'Desplegar'} las submisiones de ${quest.title}`}>
+              <Icon name="chevron-right" /> {progress.total} {progress.total === 1 ? 'submisión' : 'submisiones'}
+            </button>
+          )}
           {container && !blocked && !done && <span className="steps-tag full"><Icon name="check" /> todo hecho: ciérrala o añade más</span>}
           {quest.repeat && !done && (onRepeat
             ? <RepeatPicker value={quest.repeat} onChange={onRepeat} label={`Repetición de ${quest.title}`} describe={repeatLabel} className="repeat-tag"><Icon name="repeat" /> {repeatLabel(quest.repeat)}</RepeatPicker>

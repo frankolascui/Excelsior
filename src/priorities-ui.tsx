@@ -11,7 +11,7 @@ import {
 import { currentChange, previousReview, saveWeeklyReview, VERDICTS, weekFocus, weeklyReview } from './review';
 import { STALE_KINGDOM_DAYS, staleKingdoms } from './kingdoms';
 import { Icon } from './icons';
-import { pathLabel } from './tree';
+import { hasOpenChildren, pathLabel, treeProgress } from './tree';
 import './priorities.css';
 import { InfoTip } from './infotip';
 import { sfx } from './sfx';
@@ -44,6 +44,7 @@ export function PriorityPicker({ game, day, onDone, compact = false }: { game: G
               <button type="button" className={`prio-option${on ? ' on' : ''}`} aria-pressed={on} disabled={full} onClick={() => flip(q.id)}>
                 <span className="prio-box" aria-hidden="true">{on ? picked.indexOf(q.id) + 1 : ''}</span>
                 <span className="prio-title">{pathLabel(state, q) && <span className="item-path">{pathLabel(state, q)}</span>}{q.title}</span>
+                {hasOpenChildren(state, q.id) && <span className="prio-sub mono" title="Misión grande: Hoy te propone su siguiente submisión">{treeProgress(state, q.id).done}/{treeProgress(state, q.id).total}</span>}
                 <span className={`impact-tag imp-${impactOf(q)}`}><Icon name="target" /> {impactName(q)}</span>
               </button>
             </li>

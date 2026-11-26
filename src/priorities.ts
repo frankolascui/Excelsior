@@ -3,7 +3,7 @@
 // El tope diario de XP frena marcarlo todo como alto. Cerrar tus 3 del día da un bonus fijo (PRIORITY_BONUS).
 import type { GameState, Impact, Quest } from './types';
 import { dayKey, deleteQuest, IMPACT_TYPE, impactOf, shiftDay, XP_RULES } from './game';
-import { hasChildren, isLeaf, rootOf } from './tree';
+import { ancestors, hasChildren, rootOf } from './tree';
 
 export const MAX_PRIORITIES = 3;
 
@@ -42,10 +42,13 @@ export function priorityQuests(s: GameState, day: string): Quest[] {
   return priorityIds(s, day).map((id) => s.quests.find((q) => q.id === id)).filter((q): q is Quest => !!q);
 }
 
-/** Candidatas para elegir: pendientes (o visibles ese día), de más a menos impacto. */
+/**
+ * Candidatas para elegir: pendientes (o visibles ese día), de más a menos impacto. Puede ser una misión grande
+ * (con submisiones): entonces «¿Qué hago ahora?» te propone su siguiente submisión.
+ */
 export function priorityCandidates(s: GameState, day: string): Quest[] {
   return s.quests
-    .filter((q) => isLeaf(s, q) && !(q.startsOn && q.startsOn > day))
+    .filter((q) => !q.completedAt && !(q.startsOn && q.startsOn > day))
     .sort((a, b) => impactRank(a) - impactRank(b) || (a.deadline ?? '9999').localeCompare(b.deadline ?? '9999') || a.createdAt - b.createdAt);
 }
 
@@ -61,6 +64,12 @@ export function priorityWeek(s: GameState, from: number): { planned: number; clo
     if (qs.length === MAX_PRIORITIES && qs.every((q) => q.completedAt && dayKey(q.completedAt) <= day)) closed++;
   }
   return { planned, closed };
+}
+
+/** La prioridad del día a la que pertenece una misión: ella misma o la misión grande de la que cuelga. */
+export function priorityOf(s: GameState, day: string, q: Quest): string | undefined {
+  const ids = priorityIds(s, day);
+  return [q, ...ancestors(s, q)].find((x) => ids.includes(x.id))?.id;
 }
 
 // ---------- Limpieza ----------

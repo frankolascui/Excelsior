@@ -982,12 +982,18 @@ export function pendingQuests(s: GameState, now = Date.now()): Quest[] {
   const today = dayKey(now);
   const prio = dayPriorityIds(s, today);
   const impact = (q: Quest) => IMPACT_ORDER[impactOf(q)];
+  const prioIndex = (q: Quest) => {
+    const hit = [q, ...ancestors(s, q)].find((x) => prio.includes(x.id));
+    return hit ? prio.indexOf(hit.id) : -1;
+  };
   return s.quests
     .filter((q) => isLeaf(s, q) && !(q.startsOn && q.startsOn > today))
     .sort((a, b) => {
-      const pa = prio.includes(a.id), pb = prio.includes(b.id);
+      // una submisión de una misión grande elegida en Las 3 cuenta como de Las 3
+      const ia = prioIndex(a), ib = prioIndex(b);
+      const pa = ia >= 0, pb = ib >= 0;
       if (pa !== pb) return pa ? -1 : 1;
-      if (pa && pb) return impact(a) - impact(b) || prio.indexOf(a.id) - prio.indexOf(b.id);
+      if (pa && pb) return impact(a) - impact(b) || ia - ib;
       const ua = urgent(a), ub = urgent(b);
       if (ua !== null || ub !== null) {
         if (ua === null) return 1;

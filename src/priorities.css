@@ -189,3 +189,10 @@ html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted) 2
 }
 .item:has(> .habit-block) { flex-wrap: wrap; }
 .item > .habit-block { flex-basis: 100%; order: 10; }
+
+/* Plegar y desplegar las submisiones */
+.sub-toggle { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px 2px 4px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; }
+.sub-toggle:hover { color: var(--text); background: color-mix(in srgb, var(--surface-2) 80%, transparent); }
+.sub-toggle .ico { transition: transform 0.15s ease; }
+.sub-toggle.open .ico { transform: rotate(90deg); }
+.prio-sub { font-size: 11px; color: var(--muted); border: 1px dashed var(--line); border-radius: 999px; padding: 1px 7px; }

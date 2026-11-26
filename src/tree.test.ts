@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { addQuest, completeQuest, createProfile, dayKey, deleteQuest, emptyState, migrate, pendingQuests, undoQuest } from './game';
 import { addSubQuest, splitIntoSessions } from './tree-actions';
 import { effectiveDeadline, isLeaf, pathLabel, treeProgress } from './tree';
-import { priorityCandidates, setQuestImpact } from './priorities';
+import { priorityCandidates, priorityOf, setPriorities, setQuestImpact } from './priorities';
 import type { GameState } from './types';
 
 const NOW = new Date(2026, 10, 9, 10, 0).getTime(); // lunes
@@ -34,7 +34,20 @@ describe('árbol de misiones', () => {
     expect(pendingQuests(s, NOW).map((q) => q.title)).toEqual(['Examen tema 4', 'Leer 20 páginas']);
     s = addSubQuest(s, find(s, 'Examen tema 4').id, 'Integrales', NOW + 6);
     expect(pendingQuests(s, NOW).map((q) => q.title)).toEqual(['Integrales', 'Leer 20 páginas']);
-    expect(priorityCandidates(s, dayKey(NOW)).map((q) => q.title)).toEqual(['Integrales', 'Leer 20 páginas']);
+    // en Las 3 sí se puede elegir la misión grande
+    expect(priorityCandidates(s, dayKey(NOW)).map((q) => q.title)).toEqual(['Examen tema 4', 'Mates: 10 de media', 'Integrales', 'Leer 20 páginas']);
+  });
+
+  it('elegir una misión grande en Las 3 pone primero su siguiente submisión', () => {
+    let s = mates();
+    s = addQuest(s, 'Leer 20 páginas', 'main', NOW + 5, { impact: 'alto' });
+    s = setQuestImpact(s, find(s, 'Examen tema 4').id, 'bajo');
+    s = addSubQuest(s, find(s, 'Examen tema 4').id, 'Integrales', NOW + 6);
+    s = setQuestImpact(s, find(s, 'Integrales').id, 'bajo');
+    expect(pendingQuests(s, NOW)[0].title).toBe('Leer 20 páginas');
+    s = setPriorities(s, dayKey(NOW), [find(s, 'Mates: 10 de media').id], NOW);
+    expect(pendingQuests(s, NOW)[0].title).toBe('Integrales');
+    expect(priorityOf(s, dayKey(NOW), find(s, 'Integrales'))).toBe(find(s, 'Mates: 10 de media').id);
   });
 
   it('una sesión de un examen cercano pasa por delante aunque su impacto sea menor', () => {

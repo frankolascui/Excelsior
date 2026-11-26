@@ -48,6 +48,13 @@ await page.click('.nav-item:has-text("Misiones")');
 if (await page.isVisible('.calendar')) await page.click('[role=radio]:has-text("Lista")');
 check(await seen('.item.has-sub:has-text("Académico") .tree-count:has-text("0/3")'), 'la raíz cuenta sus hojas a cualquier profundidad');
 check(await seen('.item.has-sub:has-text("Responder correos") .tree-count:has-text("1/2")'), 'los pasos antiguos pasan a ser submisiones');
+// las submisiones salen plegadas y se despliegan con un toque (y se recuerda)
+check(!(await page.isVisible('.item:has-text("Examen tema 4")')), 'las submisiones salen plegadas');
+await page.click('button[aria-label="Desplegar las submisiones de Académico: media de 9 en Bachillerato"]');
+check(await seen('.item.has-sub:has-text("Académico") .sub-toggle.open'), 'un toque las despliega');
+await page.screenshot({ path: `${out}/tree-plegar.png` });
+await page.evaluate((ids) => localStorage.setItem('excelsior:unfolded', JSON.stringify(ids)), state.quests.map((q) => q.id));
+await page.reload(); await page.waitForSelector('.nav');
 check(await seen('.item:has-text("Examen tema 4") .due:has-text("vence en 4 días")'), 'el examen lleva su fecha');
 
 // Repartir sesiones para el examen del tema 4
@@ -71,7 +78,7 @@ check(await seen('.now .now-path:has-text("Académico: media de 9 en Bachillerat
 check(await seen('.now .now-sub:has-text("vence en 4 días")'), 'con la fecha heredada del examen');
 await page.click('.now button:has-text("Elegir las 3 de hoy")');
 const opts = await page.$$eval('.prio-options .prio-title', (els) => els.map((e) => e.textContent));
-check(!opts.some((t) => t.endsWith('Mates: 10 de media') || t.endsWith('Examen tema 4: derivadas')), 'Las 3 de hoy solo ofrece hojas');
+check(opts.some((t) => t.endsWith('Examen tema 4: derivadas')) && await page.isVisible('.prio-option:has-text("Examen tema 4: derivadas") .prio-sub'), 'en Las 3 de hoy se puede elegir la misión grande (con su avance)');
 check(opts.some((t) => t.includes('Física: 9 de media')), 'una rama sin partir aún es una hoja');
 await page.click('.prio-option:has-text("Sesión 1")');
 await page.click('.prio-option:has-text("Simulacro")');
@@ -84,6 +91,16 @@ await page.waitForTimeout(600);
 if (await page.isVisible('.levelup button.primary')) await page.click('.levelup button.primary');
 await page.click('.nav-item:has-text("Misiones")');
 check(await seen('.item.has-sub:has-text("Examen tema 4") .tree-count:has-text("1/5")'), 'cerrar una sesión cuenta en el examen');
+
+// Elegir la misión grande en Las 3: Hoy propone su siguiente submisión
+await page.click('.nav-item:has-text("Hoy")');
+await page.click('.now-top button:has-text("Cambiar")');
+for (const t of ['Simulacro', 'Leer 20']) await page.click(`.prio-option.on:has-text("${t}")`);
+await page.click('.prio-option:has-text("Examen tema 4: derivadas") >> nth=0');
+await page.click('.now button:has-text("Fijar prioridades")');
+await page.waitForTimeout(500);
+check(await seen('.now .eyebrow:has-text("Las 3 de hoy")') && await seen('.now .now-path:has-text("Examen tema 4")') && !(await page.isVisible('.now-rest .tree-count')), 'con la misión grande elegida, Hoy propone su siguiente submisión');
+await page.locator('.now').screenshot({ path: `${out}/arbol-hoy-grande.png` });
 
 // Móvil
 const m = await open({ width: 390, height: 844 });
