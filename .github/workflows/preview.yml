@@ -1,6 +1,6 @@
-# Vista previa de la V2: cada push a v2-social se compila y se publica en GitHub Pages
-# (gratis en repos públicos). Sirve tanto si Pages usa «GitHub Actions» como si usa la rama gh-pages.
-# No toca main ni Netlify.
+# Vista previa: compila la rama elegida y la publica en GitHub Pages (gratis en repos públicos).
+# Pages sirve la rama gh-pages (Settings → Pages → Deploy from a branch → gh-pages): esa copia es lo que se ve.
+# Ojo: hay una sola vista previa; la última rama que se publica pisa a las demás. No toca main ni Netlify.
 name: Vista previa V2
 
 on:
@@ -10,8 +10,6 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 concurrency:
   group: preview
@@ -30,9 +28,6 @@ jobs:
       - run: npm run build
         env:
           SITE_URL: https://frankolascui.github.io/Excelsior/
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
       - name: Copia en la rama gh-pages
         run: |
           cd dist
@@ -42,12 +37,3 @@ jobs:
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -qm "Vista previa de ${GITHUB_SHA::7}"
           git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
