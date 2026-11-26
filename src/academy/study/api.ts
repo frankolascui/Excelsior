@@ -2,6 +2,13 @@
 // No hace falta enviar user_id: la base de datos lo pone sola (default auth.uid())
 // y las reglas por fila impiden tocar filas de otro alumno.
 import { sb } from '../cloud';
+import { getUserId } from '../../cloud';
+
+/**
+ * Con los grupos de estudio, las reglas por fila también dejan ver asignaturas compartidas por otros.
+ * Las consultas de «lo mío» (estantería, repaso, estadísticas, pausa) se quedan solo con tus filas.
+ */
+const me = () => getUserId() ?? '00000000-0000-0000-0000-000000000000';
 import type { CardRow, Exam, ExamDate, Page, Subject, Topic } from './types';
 
 function check<T>(res: { data: T | null; error: { message: string } | null }): T {
@@ -29,13 +36,23 @@ async function paged(make: () => { range: (a: number, b: number) => PromiseLike<
 // ---------- Asignaturas ----------
 const SUBJECT_COLS = 'id, name, color, position, level';
 export async function listSubjects(): Promise<Subject[]> {
-  const res = await sb().from('study_subjects').select(SUBJECT_COLS).order('position');
+  const res = await sb().from('study_subjects').select(SUBJECT_COLS).eq('user_id', me()).order('position');
   // Si aún no se ha ejecutado 03-niveles.sql, la columna «level» no existe: seguimos con el nivel por defecto.
   if (res.error && /level/.test(res.error.message)) {
-    const old = check(await sb().from('study_subjects').select('id, name, color, position').order('position')) as Omit<Subject, 'level'>[];
+    const old = check(await sb().from('study_subjects').select('id, name, color, position').eq('user_id', me()).order('position')) as Omit<Subject, 'level'>[];
     return old.map((x) => ({ ...x, level: 'equilibrado' as const }));
   }
   return check(res);
+}
+/** Una asignatura (tuya o compartida contigo), con su dueño. null si no la puedes ver. */
+export async function getSubject(id: string): Promise<(Subject & { user_id: string }) | null> {
+  let res = await sb().from('study_subjects').select(`${SUBJECT_COLS}, user_id`).eq('id', id).maybeSingle();
+  if (res.error && /level/.test(res.error.message)) {
+    res = await sb().from('study_subjects').select('id, name, color, position, user_id').eq('id', id).maybeSingle() as typeof res;
+    const row = check(res) as (Subject & { user_id: string }) | null;
+    return row ? { ...row, level: 'equilibrado' } : null;
+  }
+  return check(res) as (Subject & { user_id: string }) | null;
 }
 export async function createSubject(s: Omit<Subject, 'id' | 'level'>): Promise<Subject> {
   return check(await sb().from('study_subjects').insert(s).select(SUBJECT_COLS).single());
@@ -104,7 +121,7 @@ async function selectCards(build: (cols: string, extras: boolean) => PromiseLike
 }
 
 export async function listAllTopics(): Promise<Topic[]> {
-  return check(await sb().from('study_topics').select(TOPIC_COLS));
+  return check(await sb().from('study_topics').select(TOPIC_COLS).eq('user_id', me()));
 }
 export async function listCards(topicId: string): Promise<CardRow[]> {
   return selectCards((cols) => sb().from('study_cards').select(cols).eq('topic_id', topicId).order('created_at'));
@@ -152,7 +169,7 @@ export async function newTopicsToday(): Promise<string[]> {
 /** Tarjetas ya empezadas que tocan ahora. topicIds = null → de todas tus asignaturas. */
 export async function loadDue(topicIds: string[] | null, now = new Date()): Promise<CardRow[]> {
   return selectCards((cols, extras) => {
-    let q = sb().from('study_cards').select(cols).neq('state', 0).lte('due', now.toISOString()).order('due').limit(1000);
+    let q = sb().from('study_cards').select(cols).eq('user_id', me()).neq('state', 0).lte('due', now.toISOString()).order('due').limit(1000);
     if (extras) q = q.eq('suspended', false);
     if (topicIds) q = q.in('topic_id', topicIds);
     return q;
@@ -163,7 +180,7 @@ export async function loadDue(topicIds: string[] | null, now = new Date()): Prom
 export async function loadNew(topicIds: string[], limit: number): Promise<CardRow[]> {
   if (limit <= 0 || topicIds.length === 0) return [];
   return selectCards((cols, extras) => {
-    const q = sb().from('study_cards').select(cols).eq('state', 0).in('topic_id', topicIds);
+    const q = sb().from('study_cards').select(cols).eq('user_id', me()).eq('state', 0).in('topic_id', topicIds);
     return (extras ? q.eq('suspended', false) : q).order('created_at').limit(limit);
   });
 }
@@ -229,7 +246,7 @@ export async function countNew(topicIds: string[]): Promise<Map<string, number>>
   const out = new Map<string, number>();
   if (!topicIds.length) return out;
   const rows = (await selectCards((_c, extras) => paged(() => {
-    const q = sb().from('study_cards').select('id, topic_id').eq('state', 0).in('topic_id', topicIds);
+    const q = sb().from('study_cards').select('id, topic_id').eq('user_id', me()).eq('state', 0).in('topic_id', topicIds);
     return (extras ? q.eq('suspended', false) : q).order('id');
   }))) as unknown as { topic_id: string }[];
   for (const r of rows) out.set(r.topic_id, (out.get(r.topic_id) ?? 0) + 1);
@@ -240,7 +257,7 @@ export async function countNew(topicIds: string[]): Promise<Map<string, number>>
 export async function loadStarted(topicIds: string[]): Promise<CardRow[]> {
   if (!topicIds.length) return [];
   return selectCards((cols, extras) => {
-    const q = () => { const b = sb().from('study_cards').select(cols).neq('state', 0).in('topic_id', topicIds); return (extras ? b.eq('suspended', false) : b).order('id'); };
+    const q = () => { const b = sb().from('study_cards').select(cols).eq('user_id', me()).neq('state', 0).in('topic_id', topicIds); return (extras ? b.eq('suspended', false) : b).order('id'); };
     return paged(q, 5000);
   });
 }
@@ -257,7 +274,7 @@ export async function listReviewsSince(days: number): Promise<import('./stats').
 /** Lo justo de cada tarjeta para las estadísticas (sin pregunta ni respuesta). */
 export async function listCardStats(): Promise<import('./stats').CardStat[]> {
   const rows = await selectCards((_c, extras) => paged(() => sb().from('study_cards')
-    .select(`id, topic_id, state, due, stability, lapses, last_review${extras ? ', suspended' : ''}`).order('id')));
+    .select(`id, topic_id, state, due, stability, lapses, last_review${extras ? ', suspended' : ''}`).eq('user_id', me()).order('id')));
   return rows as unknown as import('./stats').CardStat[];
 }
 
@@ -292,7 +309,7 @@ export async function listAllReviews(): Promise<import('./optimize').RawReview[]
  */
 export async function shiftDueForPause(fromIso: string, days: number, onProgress?: (done: number, total: number) => void): Promise<number> {
   if (days <= 0) return 0;
-  const cards = await selectCards((cols) => paged(() => sb().from('study_cards').select(cols).neq('state', 0)
+  const cards = await selectCards((cols) => paged(() => sb().from('study_cards').select(cols).eq('user_id', me()).neq('state', 0)
     .or(`last_review.is.null,last_review.lt."${fromIso}"`).order('id')));
   const ms = days * 86_400_000;
   const rows = cards.map((c) => ({ ...c, due: new Date(new Date(c.due).getTime() + ms).toISOString() }));

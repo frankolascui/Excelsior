@@ -1,0 +1,52 @@
+/* Grupos de estudio (Groups.tsx). Mismo lenguaje que la estantería: superficies oscuras, línea fina y el degradado del tema. */
+.acad .small-title { font-size: 22px; display: flex; align-items: center; gap: 8px; }
+.acad .groups-shelf { margin-top: 10px; gap: 10px; }
+.acad .group-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.acad .group-tile {
+  width: 100%; display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 12px; align-items: center;
+  padding: 12px 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); color: var(--fg);
+  text-decoration: none; text-align: left; transition: border-color 0.15s, transform 0.08s;
+}
+.acad .group-tile:hover { border-color: color-mix(in srgb, var(--c2) 55%, var(--line)); transform: translateY(-2px); }
+.acad .group-tile .group-icon { grid-row: span 2; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; background: var(--surface-2); color: var(--c2); }
+.acad .group-tile .group-name { font-weight: 700; font-size: 17px; overflow-wrap: anywhere; }
+.acad .group-new { border-style: dashed; background: none; color: var(--muted); }
+.acad .group-new .group-name { color: var(--fg); }
+
+.acad .group-cols { display: grid; grid-template-columns: 1fr 300px; gap: 22px; align-items: start; }
+@media (max-width: 860px) { .acad .group-cols { grid-template-columns: 1fr; } }
+.acad .group-h { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); font-weight: 500; margin: 0; }
+
+.acad .member-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.acad .member-row { display: flex; align-items: center; gap: 10px; padding: 6px 4px; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
+.acad .member-row:last-child { border-bottom: 0; }
+.acad .member-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.acad .member-avatar {
+  width: 30px; height: 30px; border-radius: 50%; flex: none; object-fit: cover; display: grid; place-items: center;
+  background: var(--surface-2); color: var(--c2); font-weight: 700; font-size: 14px; border: 1px solid var(--line);
+}
+.acad .pill.role-owner { background: color-mix(in srgb, var(--gold, #fbbf24) 16%, transparent); color: var(--gold, #fbbf24); }
+.acad .pill.role-editor { background: color-mix(in srgb, var(--c2) 18%, transparent); color: color-mix(in srgb, var(--c2) 60%, white); }
+
+.acad .share-dialog { gap: 20px; min-width: min(520px, 100%); }
+.acad .stack.tight { gap: 8px; }
+.acad .share-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.acad .link-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: var(--surface-2); }
+.acad .link-icon { color: var(--c2); display: grid; }
+.acad .link-text { flex: 1; min-width: 0; display: grid; }
+
+.acad .pick-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+.acad .pick-row {
+  width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px;
+  background: var(--surface-2); border: 1px solid var(--line); color: var(--fg); text-align: left; font-weight: 700;
+}
+.acad .pick-row:hover { border-color: var(--spine); }
+.acad .pick-row .icon { margin-left: auto; color: var(--muted); }
+.acad .pick-dot { width: 10px; height: 10px; border-radius: 3px; background: var(--spine); box-shadow: 0 0 10px var(--spine); }
+
+.acad .join-card-wrap { justify-items: center; }
+.acad .join-card { max-width: 520px; width: 100%; display: grid; gap: 12px; padding: 22px; }
+
+/* Asignatura compartida: aviso arriba del archivador. */
+.acad .shared-note { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
+.acad .shared-note .grow { flex: 1; min-width: 200px; color: var(--muted); }

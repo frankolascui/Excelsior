@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { getPage, listSubjects, listTopics, updatePage } from '../study/api';
+import { getPage, getSubject, listTopics, updatePage } from '../study/api';
+import { canEdit, subjectAccess, type Access } from '../study/groups';
 import { smartFormat } from '../study/format';
 import { routeToHash } from '../study/logic';
 import { pastedMarkdown } from '../study/paste';
@@ -16,7 +17,10 @@ const Toc = lazy(() => md().then((m) => ({ default: m.Toc })));
 interface Props { subjectId: string; topicId: string; pageId: string; edit: boolean }
 
 /** Una hoja: se lee como unos apuntes cuidados y se edita en Markdown con vista previa al lado. */
-export function PageView({ subjectId, topicId, pageId, edit }: Props) {
+export function PageView({ subjectId, topicId, pageId, edit: wantEdit }: Props) {
+  const [access, setAccess] = useState<Access | undefined>(undefined);
+  const editable = canEdit(access ?? null);
+  const edit = wantEdit && editable;
   const [page, setPage] = useState<Page | null>(null);
   const [subject, setSubject] = useState<Subject | null>(null);
   const [topicName, setTopicName] = useState('…');
@@ -29,10 +33,11 @@ export function PageView({ subjectId, topicId, pageId, edit }: Props) {
 
   useEffect(() => {
     getPage(pageId).then((p) => { setPage(p); setTitle(p.title); setContent(p.content); }).catch((e) => setError(e.message));
-    Promise.all([listSubjects(), listTopics(subjectId)]).then(([ss, ts]) => {
-      setSubject(ss.find((s) => s.id === subjectId) ?? null);
+    Promise.all([getSubject(subjectId), listTopics(subjectId)]).then(async ([sub, ts]) => {
+      setSubject(sub);
+      setAccess(sub ? await subjectAccess(subjectId, sub.user_id) : null);
       setTopicName(ts.find((t) => t.id === topicId)?.title ?? '…');
-    }).catch(() => {});
+    }).catch(() => setAccess(null));
   }, [pageId, subjectId, topicId]);
 
   const dirty = page !== null && (title !== page.title || content !== page.content);
@@ -86,7 +91,7 @@ export function PageView({ subjectId, topicId, pageId, edit }: Props) {
     location.hash = routeToHash({ view: 'hoja', subjectId, topicId, pageId, edit: editMode });
   };
 
-  if (!page) return <p className="muted">{error ?? 'Abriendo hoja…'}</p>;
+  if (!page || access === undefined) return <p className="muted">{error ?? 'Abriendo hoja…'}</p>;
 
   const spine = { '--spine': subject?.color ?? 'var(--c2)' } as React.CSSProperties;
 
@@ -140,12 +145,12 @@ export function PageView({ subjectId, topicId, pageId, edit }: Props) {
             <header className="paper-head">
               <p className="eyebrow">{topicName}</p>
               <h1 className="page-title">{page.title}</h1>
-              <button className="ghost small" onClick={() => go(true)}><Icon name="edit" size={16} /> Editar</button>
+              {editable && <button className="ghost small" onClick={() => go(true)}><Icon name="edit" size={16} /> Editar</button>}
             </header>
             <Suspense fallback={null}><Toc text={page.content} /></Suspense>
             {page.content.trim()
               ? <Suspense fallback={<p className="muted">Cargando…</p>}><Markdown text={page.content} /></Suspense>
-              : <p className="muted">Hoja en blanco. Pulsa Editar para escribir o pegar tus apuntes.</p>}
+              : <p className="muted">{editable ? 'Hoja en blanco. Pulsa Editar para escribir o pegar tus apuntes.' : 'Hoja en blanco.'}</p>}
           </article>
         </div>
       )}

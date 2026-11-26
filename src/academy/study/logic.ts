@@ -68,7 +68,9 @@ export type Route =
   | { view: 'simulacros'; subjectId: string }
   | { view: 'simulacro'; subjectId: string; examId: string }
   | { view: 'hoja'; subjectId: string; topicId: string; pageId: string; edit: boolean }
-  | { view: 'repasar'; subjectId?: string; topicIds?: string[] };
+  | { view: 'repasar'; subjectId?: string; topicIds?: string[] }
+  | { view: 'grupo'; groupId: string }
+  | { view: 'unirse'; token: string };
 
 export function parseRoute(hash: string): Route {
   const parts = hash.replace(/^#(academy)?\/?/, '').split('/').filter(Boolean);
@@ -79,6 +81,8 @@ export function parseRoute(hash: string): Route {
     return { view: 'repasar', subjectId, topicIds };
   }
   if (parts[0] === 'ajustar') return { view: 'ajustar' };
+  if (parts[0] === 'g' && parts[1]) return { view: 'grupo', groupId: parts[1] };
+  if (parts[0] === 'unirse' && parts[1]) return { view: 'unirse', token: parts[1] };
   if (parts[0] === 'estadisticas') return { view: 'estadisticas', subjectId: parts[1] === 'a' ? parts[2] : undefined };
   if (parts[0] === 'a' && parts[1]) {
     if (parts[2] === 'simulacros') {
@@ -96,6 +100,8 @@ export function routeToHash(r: Route): string {
   if (r.view === 'asignatura') return `#academy/a/${r.subjectId}${r.topicId ? `/t/${r.topicId}` : ''}`;
   if (r.view === 'repasar') return `#academy/repasar${r.subjectId ? `/a/${r.subjectId}` : ''}${r.subjectId && r.topicIds?.length ? `/t/${r.topicIds.join(',')}` : ''}`;
   if (r.view === 'ajustar') return '#academy/ajustar';
+  if (r.view === 'grupo') return `#academy/g/${r.groupId}`;
+  if (r.view === 'unirse') return `#academy/unirse/${r.token}`;
   if (r.view === 'estadisticas') return `#academy/estadisticas${r.subjectId ? `/a/${r.subjectId}` : ''}`;
   if (r.view === 'simulacros') return `#academy/a/${r.subjectId}/simulacros`;
   if (r.view === 'simulacro') return `#academy/a/${r.subjectId}/simulacros/${r.examId}`;

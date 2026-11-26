@@ -10,10 +10,14 @@ import { askConfirm } from './Dialog';
 import { Icon } from './Icon';
 import { ImportCards } from './ImportCards';
 import { Menu } from './Kit';
+import { canEdit, type Access } from '../study/groups';
 import { addDrafts, draftFlags, FLAG_HINT, FLAG_LABEL, loadDrafts, saveDrafts, type Draft } from '../study/drafts';
 
 /** Las flashcards de un tema: crear, editar, borrar, importar y lanzar el repaso. */
-export function CardsPanel({ subjectId, topicId, onTopicsChanged }: { subjectId: string; topicId: string; onTopicsChanged?: () => void }) {
+export function CardsPanel({ subjectId, topicId, onTopicsChanged, access = 'owner' }: { subjectId: string; topicId: string; onTopicsChanged?: () => void; access?: Access }) {
+  // En una asignatura compartida, la memoria de las tarjetas es del dueño: aquí no se repasa ni se aparta.
+  const own = access === 'owner';
+  const editable = canEdit(access);
   const [cards, setCards] = useState<CardRow[] | null>(null);
   const [front, setFront] = useState('');
   const [back, setBack] = useState('');
@@ -66,10 +70,10 @@ export function CardsPanel({ subjectId, topicId, onTopicsChanged }: { subjectId:
     <div className="stack">
       <div className="review-cta">
         <div>
-          <strong>{cards.length}</strong> tarjetas · <span className="pill due">{dueNow} tocan</span> <span className="pill new">{fresh} nuevas</span>
-          {apartadas > 0 && <> <span className="pill off">{apartadas} apartadas</span></>}
+          <strong>{cards.length}</strong> tarjetas{own && <> · <span className="pill due">{dueNow} tocan</span> <span className="pill new">{fresh} nuevas</span></>}
+          {own && apartadas > 0 && <> <span className="pill off">{apartadas} apartadas</span></>}
         </div>
-        <div className="row">
+        {own && <div className="row">
           <button className="ghost" onClick={() => { setImporting(true); sfx.open(); }}><Icon name="download" /> Importar</button>
           <a
             className={dueNow + fresh ? 'primary' : 'secondary'}
@@ -78,7 +82,7 @@ export function CardsPanel({ subjectId, topicId, onTopicsChanged }: { subjectId:
           >
             <Icon name="play" /> Repasar
           </a>
-        </div>
+        </div>}
       </div>
       {importing && (
         <ImportCards subjectId={subjectId} topicId={topicId} existing={cards}
@@ -86,21 +90,21 @@ export function CardsPanel({ subjectId, topicId, onTopicsChanged }: { subjectId:
           onDone={(changed) => { setImporting(false); reload(); if (changed) onTopicsChanged?.(); }}
           onDrafts={(list, source) => { setDrafts(addDrafts(topicId, list, source)); setImporting(false); }} />
       )}
-      {drafts.length > 0 && (
+      {own && drafts.length > 0 && (
         <DraftTray drafts={drafts} existing={cards} onChange={keepDrafts} onApprove={approve} />
       )}
 
-      <form className="card-form composer" onSubmit={add}>
+      {editable && <form className="card-form composer" onSubmit={add}>
         <textarea ref={frontRef} placeholder="Escribe la pregunta… o una frase con huecos: La capital de Francia es {{c1::París}}" value={front} onChange={(e) => setFront(e.target.value)} onKeyDown={ctrlEnter} rows={2} maxLength={4000} />
         <textarea placeholder={clozeCount ? '…nota extra para el reverso (opcional)' : '…y la respuesta'} value={back} onChange={(e) => setBack(e.target.value)} onKeyDown={ctrlEnter} rows={2} maxLength={8000} />
         <div className="row card-form-foot">
           <span className="muted small">{clozeCount ? `Huecos: se crearán ${clozeCount} ${clozeCount === 1 ? 'tarjeta' : 'tarjetas hermanas'} (sale una al día)` : 'Ctrl+Enter para añadir · {{c1::…}} para huecos · Markdown y fórmulas'}</span>
           <button className="primary" disabled={!front.trim()}><Icon name="plus" /> {clozeCount > 1 ? `Añadir ${clozeCount}` : 'Añadir'}</button>
         </div>
-      </form>
+      </form>}
 
       <ul className="cards">
-        {cards.length === 0 && <li className="empty-state">Sin tarjetas todavía. Escribe una arriba o pulsa Importar.</li>}
+        {cards.length === 0 && <li className="empty-state">{editable ? 'Sin tarjetas todavía. Escribe una arriba o pulsa Importar.' : 'Sin tarjetas todavía.'}</li>}
         {cards.map((c) =>
           editing === c.id ? (
             <CardEditor key={c.id} card={c} onCancel={() => setEditing(null)} onSave={(f, b) => {
@@ -110,20 +114,20 @@ export function CardsPanel({ subjectId, topicId, onTopicsChanged }: { subjectId:
               if (await askConfirm({ title: '¿Borrar esta tarjeta?', message: 'Se borra también su historial de repasos.', confirmLabel: 'Borrar tarjeta', danger: true })) { setEditing(null); act(() => deleteCard(c.id), sfx.remove); }
             }} />
           ) : (
-            <li key={c.id} className={c.suspended ? 'card-row off' : 'card-row'} onClick={() => { sfx.tick(); setEditing(c.id); }} title="Pulsa para editar">
+            <li key={c.id} className={own && c.suspended ? 'card-row off' : 'card-row'} onClick={editable ? () => { sfx.tick(); setEditing(c.id); } : undefined} title={editable ? 'Pulsa para editar' : undefined}>
               <div className="card-text">
                 <span className="card-front">{plainPreview(c.front)}</span>
                 <span className="card-back">{plainPreview(c.back)}</span>
               </div>
-              {isLeech(c) && <span className="pill leech" title={`Fallada ${c.lapses} veces: reescríbela más simple`}>{c.lapses} fallos</span>}
-              <span className={c.suspended ? 'pill off' : `pill s${c.state}`}>{c.suspended ? 'apartada' : dueLabel(c, now)}</span>
-              <Menu items={[
+              {own && isLeech(c) && <span className="pill leech" title={`Fallada ${c.lapses} veces: reescríbela más simple`}>{c.lapses} fallos</span>}
+              {own && <span className={c.suspended ? 'pill off' : `pill s${c.state}`}>{c.suspended ? 'apartada' : dueLabel(c, now)}</span>}
+              {editable && <Menu items={[
                 { icon: 'edit', label: 'Editar', onSelect: () => setEditing(c.id) },
-                c.suspended
-                  ? { icon: 'play', label: 'Volver a repasar', onSelect: () => act(() => updateCard(c.id, { suspended: false }), sfx.check) }
-                  : { icon: 'eye', label: 'Apartar (no repasar)', onSelect: () => act(() => updateCard(c.id, { suspended: true }), sfx.uncheck) },
+                ...(!own ? [] : [c.suspended
+                  ? { icon: 'play' as const, label: 'Volver a repasar', onSelect: () => act(() => updateCard(c.id, { suspended: false }), sfx.check) }
+                  : { icon: 'eye' as const, label: 'Apartar (no repasar)', onSelect: () => act(() => updateCard(c.id, { suspended: true }), sfx.uncheck) }]),
                 { icon: 'trash', label: 'Borrar', danger: true, onSelect: async () => { if (await askConfirm({ title: '¿Borrar esta tarjeta?', message: 'Se borra también su historial de repasos.', confirmLabel: 'Borrar tarjeta', danger: true })) act(() => deleteCard(c.id), sfx.remove); } },
-              ]} />
+              ]} />}
             </li>
           ),
         )}
