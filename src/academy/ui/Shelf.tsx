@@ -7,6 +7,8 @@ import { askConfirm, askText } from './Dialog';
 import { prefetchToday, TodayPanel } from './Review';
 import { Icon } from './Icon';
 import { Menu, Modal } from './Kit';
+import { GroupsShelf } from './Groups';
+import { sharedOwnSubjects } from '../study/groups';
 
 /** La estantería: una carpeta por asignatura. */
 let shelfMem: Subject[] | null = null; // la estantería de la última vez, para no enseñar «Cargando…» al volver
@@ -17,9 +19,14 @@ export function Shelf() {
   const [color, setColor] = useState(SUBJECT_COLORS[0]);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [shared, setShared] = useState<Set<string>>(new Set());
 
   const reload = () => listSubjects().then((s) => { shelfMem = s; setSubjects(s); }).catch((e) => setError(e.message));
-  useEffect(() => { prefetchToday().catch(() => { /* el panel enseña su error */ }); reload(); }, []);
+  useEffect(() => {
+    prefetchToday().catch(() => { /* el panel enseña su error */ });
+    reload();
+    sharedOwnSubjects().then(setShared).catch(() => { /* sin grupos todavía */ });
+  }, []);
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
@@ -55,7 +62,7 @@ export function Shelf() {
         {byPosition(subjects).map((s) => (
           <li key={s.id} className="binder" style={{ '--spine': s.color } as React.CSSProperties}>
             <a href={routeToHash({ view: 'asignatura', subjectId: s.id })} className="binder-cover" onClick={() => sfx.open()}>
-              <span className="binder-label">Asignatura</span>
+              <span className="binder-label" title={shared.has(s.id) ? 'Compartida en un grupo de estudio' : undefined}>{shared.has(s.id) ? 'Compartida' : 'Asignatura'}</span>
               <span className="binder-name">{s.name}</span>
             </a>
             <Menu label={`Opciones de ${s.name}`} items={[
@@ -78,6 +85,8 @@ export function Shelf() {
           </button>
         </li>
       </ul>
+
+      <GroupsShelf />
 
       {adding && (
         <Modal title="Nueva asignatura" onClose={() => setAdding(false)}>

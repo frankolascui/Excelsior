@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  createPage, createTopic, updateSubject, deletePage, deleteTopic, listPages, listSubjects, listTopics,
+  createPage, createTopic, updateSubject, deletePage, deleteTopic, getSubject, listPages, listTopics,
   savePositions, updateTopic, type PageSummary,
 } from '../study/api';
 import { byPosition, nextPosition, routeToHash, swapWithNeighbour, titleFromMarkdown } from '../study/logic';
@@ -15,23 +15,31 @@ import { Icon } from './Icon';
 import { DropZone, Menu, Modal } from './Kit';
 import { LEVELS } from '../study/srs';
 import type { Level } from '../study/types';
+import { canEdit, subjectAccess, type Access } from '../study/groups';
+import { copyToShelf } from './Groups';
 
 /** El archivador de una asignatura: separadores (temas) a la izquierda y hojas a la derecha. */
 export function Binder({ subjectId, topicId, section }: { subjectId: string; topicId?: string; section?: 'simulacros' }) {
   const [subject, setSubject] = useState<Subject | null>(null);
+  const [access, setAccess] = useState<Access | undefined>(undefined);
   const [topics, setTopics] = useState<Topic[] | null>(null);
   const [newTopic, setNewTopic] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const reloadTopics = () => listTopics(subjectId).then(setTopics).catch((e) => setError(e.message));
   useEffect(() => {
-    listSubjects().then((all) => setSubject(all.find((s) => s.id === subjectId) ?? null)).catch((e) => setError(e.message));
+    getSubject(subjectId).then(async (s) => {
+      setSubject(s);
+      setAccess(s ? await subjectAccess(subjectId, s.user_id) : null);
+    }).catch((e) => setError(e.message));
     reloadTopics();
   }, [subjectId]);
 
   const sorted = topics ? byPosition(topics) : [];
   // Si no has elegido tema, se abre el primero.
-  const current = section ? undefined : sorted.find((t) => t.id === topicId) ?? sorted[0];
+  const own = access === 'owner';
+  const editable = canEdit(access ?? null);
+  const current = section && own ? undefined : sorted.find((t) => t.id === topicId) ?? sorted[0];
 
   async function act(fn: () => Promise<unknown>, sound: () => void = sfx.drop) {
     try { await fn(); sound(); await reloadTopics(); } catch (err) { setError((err as Error).message); sfx.error(); }
@@ -48,7 +56,15 @@ export function Binder({ subjectId, topicId, section }: { subjectId: string; top
     }, sfx.place);
   }
 
-  if (!topics) return <p className="muted">{error ?? 'Abriendo archivador…'}</p>;
+  if (!topics || access === undefined) return <p className="muted">{error ?? 'Abriendo archivador…'}</p>;
+  if (access === null) {
+    return (
+      <section className="stack">
+        <nav className="crumbs"><a className="back-btn" href="#academy/" onClick={() => sfx.page()}><Icon name="left" size={16} /> Estantería</a></nav>
+        <p className="empty-state">No puedes ver esta asignatura: puede que la hayan quitado del grupo.</p>
+      </section>
+    );
+  }
 
   return (
     <section className="stack" style={{ '--spine': subject?.color ?? '#a54dff' } as React.CSSProperties}>
@@ -58,8 +74,17 @@ export function Binder({ subjectId, topicId, section }: { subjectId: string; top
       </nav>
       <div className="binder-head">
         <h1 className="binder-title">{subject?.name ?? '…'}</h1>
-        {subject && <LevelPicker subject={subject} onChange={(level) => setSubject({ ...subject, level })} onError={setError} />}
+        {subject && own && <LevelPicker subject={subject} onChange={(level) => setSubject({ ...subject, level })} onError={setError} />}
       </div>
+      {subject && !own && (
+        <div className="shared-note" data-testid="shared-note">
+          <Icon name="users" />
+          <span className="grow">{access === 'editor'
+            ? 'Asignatura compartida: puedes cambiar sus hojas y tarjetas. Para repasarla a tu ritmo, cópiala.'
+            : 'Asignatura compartida: puedes leerla. Para repasar sus tarjetas, cópiala a tu estantería.'}</span>
+          <button className="secondary small" onClick={() => copyToShelf(subject, setError)}><Icon name="copy" size={16} /> Copiar a mi estantería</button>
+        </div>
+      )}
 
       <div className="binder-open">
         <aside className="tabs">
@@ -75,18 +100,18 @@ export function Binder({ subjectId, topicId, section }: { subjectId: string; top
               );
             })}
           </ol>
-          <form onSubmit={addTopic} className="add-tab">
+          {editable && <form onSubmit={addTopic} className="add-tab">
             <input placeholder="Nuevo tema" value={newTopic} onChange={(e) => setNewTopic(e.target.value)} maxLength={120} />
             <button className="primary icon-only" title="Añadir tema" aria-label="Añadir tema"><Icon name="plus" /></button>
-          </form>
-          {sorted.length > 1 && <MixReview subjectId={subjectId} topics={sorted} />}
-          <a className={section ? 'exams-tab active' : 'exams-tab'} href={routeToHash({ view: 'simulacros', subjectId })} onClick={() => !section && sfx.page()}>
+          </form>}
+          {own && sorted.length > 1 && <MixReview subjectId={subjectId} topics={sorted} />}
+          {own && <a className={section ? 'exams-tab active' : 'exams-tab'} href={routeToHash({ view: 'simulacros', subjectId })} onClick={() => !section && sfx.page()}>
             <Icon name="exam" size={18} /> Exámenes y simulacros
-          </a>
+          </a>}
         </aside>
 
         <div className="sheet-area">
-          {section ? (
+          {section && own ? (
             <div className="stack exams-area">
               <ExamDatesPanel subjectId={subjectId} topics={sorted} level={subject?.level} />
               <ExamsPanel subjectId={subjectId} topics={sorted} />
@@ -96,6 +121,7 @@ export function Binder({ subjectId, topicId, section }: { subjectId: string; top
               key={current.id}
               subjectId={subjectId}
               topic={current}
+              access={access}
               onMove={(dir) => act(() => savePositions('study_topics', swapWithNeighbour(topics, current.id, dir)))}
               onTopicsChanged={reloadTopics}
               onRename={async () => {
@@ -112,7 +138,7 @@ export function Binder({ subjectId, topicId, section }: { subjectId: string; top
               }}
             />
           ) : (
-            <p className="empty-state">Este archivador está vacío. Crea el primer tema: será un separador.</p>
+            <p className="empty-state">{editable ? 'Este archivador está vacío. Crea el primer tema: será un separador.' : 'Este archivador aún está vacío.'}</p>
           )}
         </div>
       </div>
@@ -124,6 +150,7 @@ export function Binder({ subjectId, topicId, section }: { subjectId: string; top
 interface PanelProps {
   subjectId: string;
   topic: Topic;
+  access: Access;
   onMove: (dir: -1 | 1) => void;
   onRename: () => void;
   onDelete: () => void;
@@ -131,7 +158,7 @@ interface PanelProps {
 }
 
 /** Las hojas de un tema, con las acciones del tema arriba. */
-function TopicPanel({ subjectId, topic, onMove, onRename, onDelete, onTopicsChanged }: PanelProps) {
+function TopicPanel({ subjectId, topic, access, onMove, onRename, onDelete, onTopicsChanged }: PanelProps) {
   const [pages, setPages] = useState<PageSummary[] | null>(null);
   // Pestaña elegida (hojas o tarjetas); se recuerda en este navegador.
   const [mode, setMode] = useState<'hojas' | 'tarjetas'>(() => { try { return sessionStorage.getItem('modo') === 'tarjetas' ? 'tarjetas' : 'hojas'; } catch { return 'hojas'; } });
@@ -173,12 +200,12 @@ function TopicPanel({ subjectId, topic, onMove, onRename, onDelete, onTopicsChan
     <div className="stack">
       <header className="topic-head">
         <h2>{topic.title}</h2>
-        <Menu label="Opciones del tema" items={[
+        {canEdit(access) && <Menu label="Opciones del tema" items={[
           { icon: 'edit', label: 'Renombrar tema', onSelect: onRename },
           { icon: 'up', label: 'Subir tema', onSelect: () => onMove(-1) },
           { icon: 'down', label: 'Bajar tema', onSelect: () => onMove(1) },
           { icon: 'trash', label: 'Borrar tema', danger: true, onSelect: onDelete },
-        ]} />
+        ]} />}
       </header>
 
       <div className="mode-tabs" role="tablist">
@@ -187,32 +214,32 @@ function TopicPanel({ subjectId, topic, onMove, onRename, onDelete, onTopicsChan
       </div>
 
       {mode === 'tarjetas' ? (
-        <CardsPanel subjectId={subjectId} topicId={topic.id} onTopicsChanged={onTopicsChanged} />
+        <CardsPanel subjectId={subjectId} topicId={topic.id} onTopicsChanged={onTopicsChanged} access={access} />
       ) : !pages ? (
         <p className="muted">Cargando hojas…</p>
       ) : (
         <ul className="pages">
-          {pages.length === 0 && <li className="empty-state">Sin hojas todavía. Crea una o importa tus resúmenes.</li>}
+          {pages.length === 0 && <li className="empty-state">{canEdit(access) ? 'Sin hojas todavía. Crea una o importa tus resúmenes.' : 'Sin hojas todavía.'}</li>}
           {byPosition(pages).map((p) => (
             <li key={p.id} className="page-row">
               <a href={routeToHash({ view: 'hoja', subjectId, topicId: topic.id, pageId: p.id, edit: false })} onClick={() => sfx.page()}>
                 <span className="page-name"><Icon name="page" size={16} /> {p.title}</span>
                 <span className="page-meta">editada {new Date(p.updated_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</span>
               </a>
-              <Menu items={[
+              {canEdit(access) && <Menu items={[
                 { icon: 'edit', label: 'Editar', onSelect: () => open(p.id, true) },
                 { icon: 'up', label: 'Subir', onSelect: () => act(() => savePositions('study_pages', swapWithNeighbour(pages, p.id, -1))) },
                 { icon: 'down', label: 'Bajar', onSelect: () => act(() => savePositions('study_pages', swapWithNeighbour(pages, p.id, 1))) },
                 { icon: 'trash', label: 'Borrar', danger: true, onSelect: async () => {
                   if (await askConfirm({ title: `¿Borrar la hoja «${p.title}»?`, message: 'No se puede deshacer.', confirmLabel: 'Borrar hoja', danger: true })) act(() => deletePage(p.id), sfx.remove);
                 } },
-              ]} />
+              ]} />}
             </li>
           ))}
         </ul>
       )}
 
-      {mode === 'hojas' && <div className="row">
+      {mode === 'hojas' && canEdit(access) && <div className="row">
         <button className="primary" onClick={newPage}><Icon name="plus" /> Hoja nueva</button>
         <button className="ghost" onClick={() => { setImporting(true); sfx.open(); }}><Icon name="download" /> Importar</button>
       </div>}

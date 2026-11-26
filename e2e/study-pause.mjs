@@ -32,7 +32,7 @@ const card = (id, topic, front, back, st = 2) => ({
 });
 const db = {
   saves: { user_id: ME, state, updated_at: iso(now) },
-  study_subjects: [{ id: 's1', name: 'Matemáticas', color: '#a855f7', position: 0, level: 'equilibrado' }],
+  study_subjects: [{ id: 's1', user_id: ME, name: 'Matemáticas', color: '#a855f7', position: 0, level: 'equilibrado' }],
   study_topics: [{ id: 't1', subject_id: 's1', title: 'Derivadas', position: 0, exam_date: null }],
   study_cards: [card('c1', 't1', '¿Derivada de $x^2$?', '$2x$'), card('c2', 't1', '¿Derivada de $\\sin x$?', '$\\cos x$'), card('c3', 't1', 'Regla de la cadena', "$(f\\circ g)' = f'(g)\\,g'$", 0)],
   study_reviews: [], study_exam_dates: [], study_settings: [], study_pages: [], study_exams: [], nights: [], settings: [],
@@ -44,6 +44,7 @@ const writes = [];
 function filter(rows, params) {
   return rows.filter((r) => [...params].every(([k, v]) => {
     if (['select', 'on_conflict', 'order', 'limit', 'columns', 'offset'].includes(k)) return true;
+    if (k === 'user_id' && !(k in r)) return true; // filas de prueba sin dueño: son tuyas
     const [op, ...rest] = v.split('.');
     const arg = rest.join('.');
     if (op === 'eq') return String(r[k]) === arg;
@@ -85,7 +86,7 @@ async function fake(ctx) {
         return json(201, []);
       }
       const added = (Array.isArray(b) ? b : [b]).map((x) => {
-        const fresh = { id: `${table}-${rows.length + 1}`, created_at: iso(Date.now()), ...x };
+        const fresh = { id: `${table}-${rows.length + 1}`, created_at: iso(Date.now()), ...(table === "study_subjects" ? { user_id: ME } : {}), ...x };
         if (table === 'study_cards') Object.assign(fresh, { ...card(fresh.id, x.topic_id, x.front, x.back, 0), ...x });
         if (table === 'nights' || table === 'settings') fresh.updated_at = iso(Date.now());
         const at = table === 'nights' ? rows.findIndex((y) => y.fecha === x.fecha) : -1;

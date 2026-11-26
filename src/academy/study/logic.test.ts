@@ -65,6 +65,8 @@ describe('rutas', () => {
     { view: 'repasar', subjectId: 's1' },
     { view: 'repasar', subjectId: 's1', topicIds: ['t1'] },
     { view: 'repasar', subjectId: 's1', topicIds: ['t1', 't2', 't3'] },
+    { view: 'grupo', groupId: 'g1' },
+    { view: 'unirse', token: '0123456789abcdef0123456789abcdef' },
   ];
   it.each(casos)('ida y vuelta: %o', (r) => {
     expect(parseRoute(routeToHash(r))).toEqual(r);

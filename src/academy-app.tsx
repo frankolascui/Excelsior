@@ -23,6 +23,8 @@ import { ExamView } from './academy/ui/ExamView';
 import { Shelf } from './academy/ui/Shelf';
 import { Stats } from './academy/ui/Stats';
 import { Tune } from './academy/ui/Tune';
+import { GroupView, JoinView } from './academy/ui/Groups';
+import { pendingLink, rememberLink } from './academy/study/groups';
 import './academy/academy.css';
 import './academy.css';
 
@@ -121,11 +123,19 @@ export default function AcademyApp({ game }: { game: Game }) {
       .finally(() => { shiftLock = false; });
   }, [shiftKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Enlace de invitación a un grupo: espera en este navegador hasta que entres con tu cuenta.
+  if (route.view === 'unirse') rememberLink(route.token);
+  const waitingLink = pendingLink();
+  useEffect(() => {
+    if (cloud.userId && waitingLink && route.view === 'estanteria') location.replace(`#academy/unirse/${waitingLink}`);
+  }, [cloud.userId, waitingLink, route.view]);
+
   if (!cloud.userId) {
     return (
       <section className="panel">
         <h2 className="kingdom-name"><Icon name="graduate-cap" /> Academy</h2>
         <p>Academy guarda tus apuntes y tarjetas en tu cuenta, así que necesita que entres con tu email (Ajustes → Cuenta).</p>
+        {waitingLink && <p className="hint"><Icon name="users" /> Tienes una invitación a un grupo de estudio: al entrar con tu cuenta, vuelve aquí para unirte.</p>}
       </section>
     );
   }
@@ -148,6 +158,8 @@ export default function AcademyApp({ game }: { game: Game }) {
       {route.view === 'estanteria' && <Shelf />}
       {route.view === 'asignatura' && <Binder subjectId={route.subjectId} topicId={route.topicId} />}
       {route.view === 'ajustar' && <Tune />}
+      {route.view === 'grupo' && <GroupView key={route.groupId} groupId={route.groupId} />}
+      {route.view === 'unirse' && <JoinView key={route.token} token={route.token} />}
       {route.view === 'estadisticas' && <Stats key={route.subjectId ?? 'todas'} subjectId={route.subjectId} />}
       {route.view === 'simulacros' && <Binder subjectId={route.subjectId} section="simulacros" />}
       {route.view === 'simulacro' && <ExamView subjectId={route.subjectId} examId={route.examId} />}
