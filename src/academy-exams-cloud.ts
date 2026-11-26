@@ -7,7 +7,7 @@ import type { ExamDate, Subject } from './academy/study/types';
 import { createExamDate, deleteExamDate, listAllExams, listExamDates, listSubjects, updateExam, updateExamDate } from './academy/study/api';
 import { studyBridge } from './academy/bridge';
 import { useCloud } from './cloud';
-import { addAcademyEvent, simDeadline, syncAcademyExams, syncSimulacros, type SimSummary } from './academy-exams';
+import { addAcademyEvent, simDeadline, syncAcademyExams, syncPlannedSims, syncSimulacros, type SimSummary } from './academy-exams';
 import { addEvent } from './life';
 import { sfx } from './sfx';
 import { shortDate } from './ui';
@@ -100,7 +100,7 @@ export function useAcademyExamsSync(game: Game) {
     const deadline = (x: SimSummary) => simDeadline(x, sm ?? [], list);
     const apply = (s: GameState) => {
       const a = syncAcademyExams(s, list, subs, now);
-      return sm ? syncSimulacros(a, sm, subs, deadline, now) : a;
+      return sm ? syncPlannedSims(syncSimulacros(a, sm, subs, deadline, now), sm, list, subs, now) : a;
     };
     // Solo se toca la partida si algo cambió (si no, cada lectura sería un guardado).
     if (apply(game.state) !== game.state) game.act(apply);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { academyEventId, addAcademyEvent, simDeadline, simQuestId, syncAcademyExams, syncSimulacros, type SimSummary } from './academy-exams';
+import { academyEventId, addAcademyEvent, simDeadline, simQuestId, syncAcademyExams, syncPlannedSims, syncSimulacros, type SimSummary } from './academy-exams';
 import { foundAcademy, recordExam } from './academy-game';
 import { eventLabel, eventsOn, updateEvent } from './life';
 import { deleteQuest, emptyState } from './game';
@@ -84,5 +84,25 @@ describe('simulacros como misiones', () => {
     expect(simDeadline(all[1], all, dates, today)).toBe('2026-11-18'); // D-4
     expect(simDeadline(all[2], all, dates, today)).toBe('2026-11-21'); // D-1
     expect(simDeadline(sim('y', { subject_id: 's2' }), all, dates, today)).toBeUndefined();
+  });
+
+  it('los simulacros que pide el plan y aún no existen salen como misiones con su día', () => {
+    const now = new Date(2026, 10, 10, 12).getTime();
+    const dates = [exam('e1', 'Final', '2026-11-22'), exam('e2', 'Lejano', '2027-02-01')];
+    let s = syncPlannedSims(emptyState(), [], dates, subjects, now);
+    expect(s.quests.map((q) => [q.title, q.deadline])).toEqual([
+      ['Simulacro 1 de Física (Final)', '2026-11-12'],
+      ['Simulacro 2 de Física (Final)', '2026-11-18'],
+      ['Simulacro 3 de Física (Final)', '2026-11-21'],
+    ]); // el de febrero aún queda lejos
+    expect(syncPlannedSims(s, [], dates, subjects, now)).toBe(s);
+    // creas el primero en Academy: su misión del plan se va (la real la pone syncSimulacros)
+    s = syncPlannedSims(s, [sim('x1')], dates, subjects, now);
+    expect(s.quests.map((q) => q.academy!.plan!.n)).toEqual([2, 3]);
+    // borrada a mano, no vuelve
+    s = syncPlannedSims(deleteQuest(s, s.quests[0].id), [sim('x1')], dates, subjects, now);
+    expect(s.quests.map((q) => q.academy!.plan!.n)).toEqual([3]);
+    // syncSimulacros no toca las del plan
+    expect(syncSimulacros(s, [sim('x1')], subjects, none, now).quests.some((q) => q.academy?.plan)).toBe(true);
   });
 });

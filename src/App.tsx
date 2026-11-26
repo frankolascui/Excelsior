@@ -151,7 +151,7 @@ export default function App() {
 
   function focusQuest(q: Quest | null) {
     // La misión de un simulacro abre el simulacro en Academy.
-    if (q?.academy) { location.hash = `#academy/a/${q.academy.subjectId}/simulacros/${q.academy.simId}`; return; }
+    if (q?.academy) { location.hash = `#academy/a/${q.academy.subjectId}/simulacros${q.academy.plan ? '' : `/${q.academy.simId}`}`; return; }
     setPreselect(q?.id ?? null);
     setPresetIntent('');
     go('deepwork');

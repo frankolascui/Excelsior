@@ -3,7 +3,7 @@
 // Nombre y día mandan en Academy: si cambian en el calendario, se suben; hora y color son solo del calendario.
 import type { AcademyLink, CalendarEvent, GameState, Quest } from './types';
 import type { Exam, ExamDate, Subject } from './academy/study/types';
-import { simDay, upcoming } from './academy/study/plan';
+import { HORIZON_DAYS, simDay, simDays, upcoming } from './academy/study/plan';
 
 export const ACADEMY_EVENT_PREFIX = 'acad-';
 export const academyEventId = (examId: string) => `${ACADEMY_EVENT_PREFIX}${examId}`;
@@ -83,7 +83,7 @@ export function syncSimulacros(
   let changed = false;
   const quests: Quest[] = [];
   for (const q of s.quests) {
-    if (!q.academy || q.completedAt) { quests.push(q); continue; }
+    if (!q.academy || q.completedAt || q.academy.plan) { quests.push(q); continue; }
     const sim = open.get(q.academy.simId);
     if (!sim) { changed = true; continue; } // entregado o borrado en Academy
     const next = simQuest(sim, names.get(sim.subject_id) ?? 'Academy', deadlineFor(sim), q);
@@ -104,6 +104,53 @@ function simQuest(sim: SimSummary, subject: string, deadline: string | undefined
     : { id: simQuestId(sim.id), title: simQuestTitle(sim, subject), type: 'side', impact: 'medio', focus: 'sabiduria', createdAt: now, completedAt: null, academy: { simId: sim.id, subjectId: sim.subject_id } };
   if (deadline) q.deadline = deadline; else delete q.deadline;
   return q;
+}
+
+export const planSimId = (examId: string, n: number) => `plan-${examId}-${n}`;
+
+/**
+ * Los simulacros que el plan de un examen pide (D-10, D-4, D-1…) y que aún no has creado en Academy también son
+ * misiones, con su día del plan como fecha límite. Al crear el simulacro N en Academy, su misión real sustituye
+ * a la del plan. Solo exámenes de las próximas 5 semanas. Las completadas no se tocan; las borradas no vuelven.
+ */
+export function syncPlannedSims(
+  s: GameState, sims: SimSummary[], exams: ExamDate[], subjects: Pick<Subject, 'id' | 'name'>[], now: number, today = new Date(now),
+): GameState {
+  const names = new Map(subjects.map((x) => [x.id, x.name]));
+  const ignored = new Set(s.academyIgnored ?? []);
+  const overlaps = (a: string[], b: string[]) => !a.length || !b.length || a.some((t) => b.includes(t));
+  const wanted = new Map<string, Quest>();
+  for (const exam of upcoming(exams, today)) {
+    if (exam.daysLeft > HORIZON_DAYS) continue;
+    const made = sims.filter((x) => x.subject_id === exam.subject_id && overlaps(exam.topic_ids, x.topic_ids)).length;
+    const subject = names.get(exam.subject_id) ?? 'Academy';
+    simDays(exam.daysLeft).forEach((_, i) => {
+      const n = i + 1;
+      if (n <= made) return;
+      const id = planSimId(exam.id, n);
+      wanted.set(id, {
+        id: `${SIM_QUEST_PREFIX}${id}`, title: `Simulacro ${n} de ${subject}${exam.title.trim() ? ` (${exam.title.trim()})` : ''}`,
+        type: 'side', impact: 'medio', focus: 'sabiduria', createdAt: now, completedAt: null,
+        deadline: simDay(exam.date, n, today) ?? exam.date,
+        academy: { simId: id, subjectId: exam.subject_id, plan: { examId: exam.id, n } },
+      });
+    });
+  }
+  let changed = false;
+  const quests: Quest[] = [];
+  for (const q of s.quests) {
+    if (!q.academy?.plan || q.completedAt) { quests.push(q); continue; }
+    const w = wanted.get(q.academy.simId);
+    if (!w) { changed = true; continue; } // ya creado en Academy, examen pasado o borrado
+    if (w.title !== q.title || w.deadline !== q.deadline) changed = true;
+    quests.push({ ...q, title: w.title, deadline: w.deadline });
+  }
+  for (const [id, w] of wanted) {
+    if (ignored.has(id) || s.quests.some((q) => q.academy?.simId === id)) continue;
+    quests.push(w);
+    changed = true;
+  }
+  return changed ? { ...s, quests } : s;
 }
 
 /** La misión pendiente de un simulacro, si existe. */

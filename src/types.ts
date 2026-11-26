@@ -47,8 +47,11 @@ export interface Quest {
   impact?: Impact;
   /** Cuándo decidiste conservarla en la limpieza (no vuelve a preguntar en 14 días). */
   keptAt?: number;
-  /** Misión de un simulacro de Academy: se completa sola al entregarlo y «Empezar» lo abre. */
-  academy?: { simId: string; subjectId: string };
+  /**
+   * Misión de un simulacro de Academy: se completa sola al entregarlo y «Empezar» lo abre.
+   * Con `plan`, es un simulacro que el plan del examen pide y que aún no has creado en Academy.
+   */
+  academy?: { simId: string; subjectId: string; plan?: { examId: string; n: number } };
 }
 
 export type Impact = 'alto' | 'medio' | 'bajo';
