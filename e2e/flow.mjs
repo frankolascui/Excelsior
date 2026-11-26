@@ -289,6 +289,11 @@ check(await seen('.kingdom-name:has-text("Reino del Código")'), 'un reino se pu
 await page.click('button[aria-label="Renombrar Reino del Código"]');
 await page.fill('[aria-label="Nuevo nombre del reino"]', 'Reino de la Programación');
 await page.press('[aria-label="Nuevo nombre del reino"]', 'Enter');
+// 2026-11-25: el reino es la estantería; las construcciones van en sus ciudades.
+check(await seen('.realm-iso') && !(await page.$('.kingdom [aria-label="Nueva construcción"]')), 'un reino nuevo es su mapa de ciudades, sin construcciones propias');
+await page.fill('#new-city', 'Calculadora');
+await page.click('button:has-text("Fundar ciudad"):not(.district-label)');
+await page.waitForSelector('.kingdom [aria-label="Nueva construcción"]');
 await page.fill('.kingdom input', 'Terminar una calculadora');
 await page.click('.kingdom [role=radio]:has-text("Forja")'); // V3.5: el edificio va por atributo y el tamaño por impacto
 await page.click('.kingdom button[aria-label^="Tamaño de la construcción"]');
@@ -302,12 +307,14 @@ await page.click('button[aria-label="Completar Terminar una calculadora"]');
 check(await seen('.toast:has-text("+50 XP")'), 'construir la torre da +50 XP');
 check(await seen('.kingdom-stage:has-text("Aldea")') && await seen('.kingdom-count:has-text("1 por construir")'), 'con una construcción el reino pasa a Aldea 1/2');
 check(await seen('.city-scene .bld.built') && !(await page.$('.city-scene .palisade')), 'la ciudad dibuja la construcción; la empalizada llega con 3 (Villa)');
+await page.click('.kingdom-back button:has-text("Reino de la Programación")');
+check(await seen('.district-label:has-text("Calculadora")'), 'la ciudad sale como barrio en el mapa de su reino');
 await page.click('.kingdom-back button:has-text("Mapa del reino")');
 check(await seen('.realm') && !(await page.$('.kingdom')), 'el mapa se ve solo, sin las ciudades debajo');
 check(await seen('.kingdom-node[aria-label*="Aldea, 1 construcciones"]'), 'el mapa muestra el reino como Aldea con 1 construcción');
 check(await seen('.realm .chart-sub:has-text("1/2 construcciones en 1 reino")'), 'el mapa cuenta 1/2 construcciones en 1 reino');
 await page.click('.kingdom-node');
-check(await seen('.kingdom .kingdom-name:has-text("Reino de la Programación")') && await seen('.city-list-h:has-text("Ciudades de Reino de la Programación")'), 'pulsar el reino en el mapa abre su propia vista, con sus ciudades en pequeño');
+check(await seen('.kingdom .kingdom-name:has-text("Reino de la Programación")') && await seen('.realm-iso'), 'pulsar el reino en el mapa abre su propia vista, con el mapa de sus ciudades desde arriba');
 await page.evaluate(() => window.scrollTo(0, 0));
 await page.screenshot({ path: `${out}/08-kingdom.png`, fullPage: true });
 

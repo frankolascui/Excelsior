@@ -18,7 +18,7 @@ const quests = [];
 const ATT = ['voluntad', 'sabiduria', 'maestria', 'conexion', 'creacion', null]; const IMP = ['alto', 'medio', 'bajo'];
 const add = (kid, total, done) => { for (let i = 0; i < total; i++) quests.push({ id: `q${n++}`, title: `Tarea ${n}`, type: 'daily', impact: IMP[i % 3], ...(ATT[i % 6] ? { focus: ATT[i % 6] } : {}), kingdomId: kid, createdAt: NOW - 10 * DAY, completedAt: i < done ? NOW - 2 * DAY : null }); };
 add('p', 3, 3); add('p1', 6, 6); add('p2', 4, 1); add('p3', 8, 5); add('p4', 2, 0); add('p5', 12, 11);
-add('f', 4, 2); add('f1', 5, 3); add('m', 3, 1); add('e', 2, 2); add('e1', 10, 4); add('e2', 6, 6); add('n', 1, 0); add('o', 4, 4);
+add('f', 4, 2); add('f1', 5, 3); add('m', 3, 1);  add('e1', 10, 4); add('e2', 6, 6); add('n', 1, 0); add('o', 4, 4);
 const state = { version: 6, profile: { name: 'Nicolas', createdAt: NOW - 90 * DAY }, quests, habits: [], habitCompletions: [], sessions: [], activeTimer: null,
   kingdoms, goals: [], rewards: [], purchases: [], bosses: [], xp: [{ id: 'x0', at: NOW - 30 * DAY, amount: 6000, source: 'quest', sourceId: 'old', label: 'Antes', attributes: { voluntad: 2 } }],
   tours: ['intro', 'reinos', 'arena', 'gremios', 'v3'], newsSeen: readFileSync('src/version.ts', 'utf8').match(/APP_VERSION = '([^']+)'/)[1], ascended: [] };
@@ -36,9 +36,16 @@ for (const [tag, viewport] of [['pc', { width: 1280, height: 900 }], ['movil', {
   await p.locator('.realm').first().screenshot({ path: `${out}/mapa-${tag}-general.png` });
   await p.locator('.realm .kingdom-node').filter({ hasText: 'Programación' }).first().click({ force: true });
   await p.waitForTimeout(700);
+  await p.waitForTimeout(500);
   await p.screenshot({ path: `${out}/mapa-${tag}-reino.png` });
+  await p.locator('.realm-iso').screenshot({ path: `${out}/reino-${tag}-iso.png` });
+  await p.locator('.kingdom-back .chip-btn').filter({ hasText: 'Estudios' }).click();
+  await p.waitForTimeout(600);
+  await p.screenshot({ path: `${out}/estante-${tag}.png`, fullPage: true });
+  await p.locator('.kingdom-back .chip-btn').filter({ hasText: 'Programación' }).click();
+  await p.waitForTimeout(500);
   for (const city of ['App de notas', 'Calculadora']) {
-    await p.locator('.city-tile').filter({ hasText: city }).click();
+    await p.locator('.district-label').filter({ hasText: city }).click();
     await p.waitForSelector('.city-scene');
     await p.locator('.city-view .seg').nth(1).click();
     await p.waitForTimeout(3500);

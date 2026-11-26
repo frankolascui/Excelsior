@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { sureThen } from './confirm';
 import type { useGame } from './store';
-import type { AttributeId, BlockTask, DeepWorkArea, FocusPhase, GameState, Impact, Kingdom, Quest, QuestType } from './types';
+import type { AttributeId, BlockTask, DeepWorkArea, FocusPhase, GameState, Impact, Quest, QuestType } from './types';
 import { addGoal, attributeDef, avatarInfo, DEEP_WORK_AREA_HINT, deepWorkRewards, inferDeepWorkArea, deleteGoal, formatAttrXp, goalProgress, habitRewards, questRewards, updateGoal } from './attributes';
 import { CustomizeToggle, RewardEditor, sameRewards, type CustomValue } from './customize';
 import { addKingdom, citiesOf, realms, realmTotals, BUILDING_CHOICES, BUILDING_OF, buildings, guessBuildingAttr, KIND_INFO, closeKingdom, deleteKingdom, kingdomIdleDays, kingdomName, kingdomProgress, nextStage, renameKingdom, reopenKingdom, setKingdomDeadline, STALE_KINGDOM_DAYS } from './kingdoms';
 import { DatePicker, ImpactPicker, Select } from './pickers';
-import { CityScene } from './city';
+import { CityScene, RealmIsoMap, type MapCity } from './city';
 import { kingdomBonus, spendShield } from './economy';
 import { RealmMap } from './realm';
 import { HealthKingdom } from './health-ui';
@@ -1006,16 +1006,29 @@ export function Kingdoms({ game, focusQuest }: { game: Game; focusQuest: (q: Que
             ))}
           </div>
         </div>
-        <section className="panel city-list" aria-labelledby="city-list-h">
-          <h3 id="city-list-h" className="city-list-h">Ciudades de {current.name} <span className="muted">· {cities.length} · {realmTotals(state, current.id).built} levantadas</span></h3>
-          {cities.length > 0 && (
-            <div className="city-tiles">
-              {cities.map((k) => <CityTile key={k.id} state={state} city={k} onOpen={() => open(k.id)} />)}
-            </div>
-          )}
-          {!current.closedAt && <CityForm onCreate={(n) => { const next = addKingdom(state, n, Date.now(), current.id); act(() => next); open(next.kingdoms.at(-1)!.id); }} />}
-        </section>
-        <KingdomCard key={current.id} game={game} kingdomId={current.id} focusQuest={focusQuest} capital={cities.length > 0} />
+        {(() => {
+          // El reino es la estantería: su mapa desde arriba con una ciudad por barrio. Si tiene construcciones
+          // propias (reinos de antes de las ciudades), su capital sigue debajo con su escena.
+          const mapCities: MapCity[] = cities.map((k) => {
+            const p = kingdomProgress(state, k.id);
+            return { id: k.id, name: k.name, quests: buildings(state, k.id), stage: p.stage, icon: p.icon, closed: !!k.closedAt };
+          });
+          const found = () => { const el = document.getElementById('new-city'); el?.scrollIntoView({ block: 'center', behavior: 'smooth' }); el?.focus({ preventScroll: true }); };
+          const shelf = (
+            <>
+              <RealmIsoMap name={current.name} cities={mapCities} onSelect={(id) => open(id)} onFound={current.closedAt ? undefined : found} />
+              {!current.closedAt && <CityForm onCreate={(n) => { const next = addKingdom(state, n, Date.now(), current.id); act(() => next); open(next.kingdoms.at(-1)!.id); }} />}
+            </>
+          );
+          return buildings(state, current.id).length === 0
+            ? <KingdomCard key={current.id} game={game} kingdomId={current.id} focusQuest={focusQuest} shelf={shelf} />
+            : (
+              <>
+                <section className="panel city-list" aria-label={`Ciudades de ${current.name}`}>{shelf}</section>
+                <KingdomCard key={current.id} game={game} kingdomId={current.id} focusQuest={focusQuest} capital />
+              </>
+            );
+        })()}
       </div>
     );
   }
@@ -1043,27 +1056,6 @@ export function Kingdoms({ game, focusQuest }: { game: Game; focusQuest: (q: Que
   );
 }
 
-/** Ciudad en pequeño: anillo de progreso con su etapa, nombre y construcciones. Sustituye al segundo mapa. */
-function CityTile({ state, city, onOpen }: { state: GameState; city: Kingdom; onOpen: () => void }) {
-  const p = kingdomProgress(state, city.id);
-  const done = !!city.closedAt;
-  const pct = done ? 1 : p.progress;
-  const C = 2 * Math.PI * 17;
-  return (
-    <button type="button" className={done ? 'city-tile monument' : 'city-tile'} onClick={onOpen} aria-label={`${city.name}: ${done ? 'Monumento' : p.stage}, ${p.built} construcciones`}>
-      <svg className="city-tile-ring" width={42} height={42} viewBox="-21 -21 42 42" aria-hidden="true">
-        <circle r={17} className="ct-track" />
-        <circle r={17} className="ct-fill" strokeDasharray={`${pct * C} ${C}`} transform="rotate(-90)" />
-        <Icon name={done ? 'laurel-crown' : p.icon} x={-10} y={-10} size={20} />
-      </svg>
-      <span className="city-tile-text">
-        <span className="city-tile-name">{city.name}</span>
-        <span className="city-tile-sub">{p.built} · {done ? 'Monumento' : p.stage}</span>
-      </span>
-    </button>
-  );
-}
-
 function CityForm({ onCreate }: { onCreate: (name: string) => void }) {
   const [name, setName] = useState('');
   return (
@@ -1074,13 +1066,15 @@ function CityForm({ onCreate }: { onCreate: (name: string) => void }) {
   );
 }
 
-function KingdomCard({ game, kingdomId, focusQuest, capital = false }: { game: Game; kingdomId: string; focusQuest: (q: Quest) => void; capital?: boolean }) {
+function KingdomCard({ game, kingdomId, focusQuest, capital = false, shelf }: { game: Game; kingdomId: string; focusQuest: (q: Quest) => void; capital?: boolean; shelf?: ReactNode }) {
   const { state, act } = game;
   const kingdom = state.kingdoms.find((k) => k.id === kingdomId)!;
-  const p = kingdomProgress(state, kingdomId);
+  // Un reino sin construcciones propias es solo la estantería de sus ciudades: cuenta lo de todas ellas.
+  const p = shelf ? realmTotals(state, kingdomId) : kingdomProgress(state, kingdomId);
   const all = buildings(state, kingdomId).sort((a, b) => a.createdAt - b.createdAt);
   const pending = all.filter((q) => !q.completedAt);
   const built = all.filter((q) => q.completedAt);
+  const toBuild = shelf ? (p as { total: number }).total - p.built : pending.length;
   const bonus = kingdomBonus(state, kingdomId);
   const [title, setTitle] = useState('');
   const [impact, setImpact] = useState<Impact>('medio');
@@ -1152,9 +1146,9 @@ function KingdomCard({ game, kingdomId, focusQuest, capital = false }: { game: G
             </DatePicker>
           </div>}
         </div>
-        <div className="kingdom-count" aria-label={`${p.built} construcciones levantadas, ${pending.length} por construir`}>
+        <div className="kingdom-count" aria-label={`${p.built} construcciones levantadas, ${toBuild} por construir`}>
           <span className="kingdom-pct mono">{p.built}</span>
-          <span className="muted small-text">{p.built === 1 ? 'construcción' : 'construcciones'}{pending.length > 0 && <><br />{pending.length} por construir</>}</span>
+          <span className="muted small-text">{p.built === 1 ? 'construcción' : 'construcciones'}{toBuild > 0 && <><br />{toBuild} por construir</>}</span>
         </div>
       </header>
       {idle >= STALE_KINGDOM_DAYS && (
@@ -1165,8 +1159,8 @@ function KingdomCard({ game, kingdomId, focusQuest, capital = false }: { game: G
             : <span className="muted small-text">Sin nada construido, mejor bórralo abajo.</span>}
         </div>
       )}
-      <CityScene quests={all} progress={p.progress} complete={p.complete || closed} stage={closed ? 'Monumento' : p.stage} icon={closed ? 'laurel-crown' : p.icon} />
-      {pending.length > 0 && (
+      {shelf ?? <CityScene quests={all} progress={p.progress} complete={p.complete || closed} stage={closed ? 'Monumento' : p.stage} icon={closed ? 'laurel-crown' : p.icon} />}
+      {!shelf && pending.length > 0 && (
         <ul className="list">
           {pending.map((root) => (
             <QuestNode key={root.id} state={state} quest={root} render={(q, extra) => (
@@ -1184,7 +1178,7 @@ function KingdomCard({ game, kingdomId, focusQuest, capital = false }: { game: G
           ))}
         </ul>
       )}
-      {built.length > 0 && (
+      {!shelf && built.length > 0 && (
         <>
           <button className="link" onClick={() => setShowBuilt(!showBuilt)} aria-expanded={showBuilt}>
             {showBuilt ? 'Ocultar' : 'Ver'} lo construido ({built.length})
@@ -1201,7 +1195,7 @@ function KingdomCard({ game, kingdomId, focusQuest, capital = false }: { game: G
           <button type="button" className="ghost" onClick={() => act((s) => reopenKingdom(s, kingdomId))}><Icon name="anvil" /> Reabrir para seguir construyendo</button>
         </div>
       ) : <>
-      <form className="quick-add" onSubmit={submit}>
+      {!shelf && <form className="quick-add" onSubmit={submit}>
         <input id={`b-${kingdomId}`} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="+ Nueva construcción (ej. Terminar una calculadora)" maxLength={80} aria-label="Nueva construcción" />
         <div className="quick-add-row">
           <div className="segmented building-pick" role="radiogroup" aria-label="Edificio (según el atributo que trabaja)">
@@ -1219,7 +1213,7 @@ function KingdomCard({ game, kingdomId, focusQuest, capital = false }: { game: G
           <button type="submit" className="primary" disabled={!title.trim()}><Icon name="plus" /> Construir</button>
         </div>
         {open && <RewardEditor autoXp={XP_RULES.quest[type]} autoRewards={questRewards(type, title, attr)} value={custom} onChange={setCustom} maxXp={CUSTOM_LIMITS.questXp} idPrefix={`b-${kingdomId}`} />}
-      </form>
+      </form>}
       <div className="kingdom-actions">
         {p.built > 0 && <button type="button" className="ghost" onClick={close}><Icon name="laurel-crown" /> Cerrar como monumento</button>}
         <ConfirmButton label={`Borrar ${noun}`} confirmLabel={isCity || !citiesOf(state, kingdomId).length ? 'Sí, borrar (lo construido se conserva)' : 'Sí, borrar el reino y sus ciudades'} onConfirm={() => act((s) => deleteKingdom(s, kingdomId))} />
